@@ -1083,8 +1083,9 @@ AI 동료와 AI 어시스턴트는 답할 때 어느 문서를 근거로 했는�
 <td>F-18</td>
 <td>디브리핑</td>
 <td>P0</td>
-<td>종료 직후 실제로 연출된 상황의 설명과 리포트 처리 방식 안내가
-보임</td>
+<td>종료 직후 실제로 연출된 상황의 설명, 동료가 회사 인재상
+페르소나였다는 점, 평가표 항목과 리포트 처리 방식 안내가 보임(점수는
+보이지 않음)</td>
 </tr>
 <tr>
 <td>F-19</td>
@@ -1174,8 +1175,8 @@ AI 동료와 AI 어시스턴트는 답할 때 어느 문서를 근거로 했는�
 <td>F-30</td>
 <td>관찰 기록</td>
 <td>P0</td>
-<td>이벤트마다 그 뒤의 지원자 메시지 중 관련 행동이 요소별로 기록되고,
-근거 메시지가 연결됨</td>
+<td>이벤트마다 그 뒤 관찰 창 안의 지원자 행동(메시지, 문서 수정, 문서
+열람, AI 어시스턴트 호출)이 요소별로 기록되고, 근거가 연결됨</td>
 </tr>
 <tr>
 <td>F-31</td>
@@ -1644,8 +1645,8 @@ Trial AI</a></td>
 <td>AI Agent 설계</td>
 <td>State 구조와 Graph 흐름(Node, 분기, 반복), Agentic AI 요소</td>
 <td>15</td>
-<td>세션 흐름 자체가 분기(분업 합의 여부)와 반복(남은 이벤트)을
-가짐</td>
+<td>세션 흐름 자체가 분기(분업 결정 여부·수신자)와 반복(남은 이벤트,
+분업 조정)을 가짐</td>
 </tr>
 <tr>
 <td>AI Agent 구현</td>
@@ -1772,7 +1773,7 @@ rag-mcp(<code>:9102/mcp</code>)를 별도 컨테이너로 운영</td>
 </table>
 <h3 id="a2-구성도">A.2 구성도</h3>
 <figure class="arch">
-<svg viewBox="0 0 820 470" role="img" aria-label="시스템 구성도: 브라우저, gateway, agent, MCP 서버 2개, RabbitMQ, report-worker, PostgreSQL, OpenAI, LangSmith">
+<svg viewBox="0 0 820 470" role="img" aria-label="시스템 구성도: 브라우저, web, api(에이전트 모듈 포함), MCP 서버 2개, RabbitMQ, report-worker, PostgreSQL, OpenAI, LangSmith">
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow-head" /></marker></defs>
 <g class="edges">
 <line x1="160" y1="180" x2="208" y2="180" marker-end="url(#arr)"></line>

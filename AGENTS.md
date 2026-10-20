@@ -21,7 +21,7 @@
 - LLM은 `gpt-4o-mini`만 쓴다. 대체 모델 없이 재시도 2회 후 규칙 폴백.
 - 평가표 필수 요소: State·Graph 기반 에이전트, business-mcp·rag-mcp, Harness 8요소(Instructions, Tools, Context, State·Memory, Agent Loop, Guardrails, Recovery, Observability), 인증, 대기열과 재시도.
 - 같은 채용 건의 지원자는 같은 시나리오를 받는다. 시나리오는 데이터이고 코드는 해석만 한다.
-- AI 동료·팀장·어시스턴트는 점수, 합격 가능성, 연출될 상황을 말하지 않는다. 리포트에는 점수·합격 표현이 없다.
+- AI 동료·팀장·어시스턴트는 점수, 합격 가능성, 연출될 상황을 말하지 않는다. 리포트의 점수는 평가표 규칙으로 센 값과 담당자 조정값뿐이며, 합격·순위 표현은 어디에도 없다(`docs/common/rubric.md`).
 - MVP 관점을 지킨다. 평가 항목이 요구하는 조각(MCP 2개, 큐·워커, 프론트)만 분리하고 나머지는 합친다. 제외 목록은 `docs/plan.md`에 있다.
 
 ## 개발 프로세스

@@ -40,17 +40,8 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 
 2026-10-20 사용자 결정(기획 변경): **지원자 리드 고정**, **동료 = 회사 인재상 페르소나(성향 + 의무 액션 + 금지)**, **평가표(규칙 산출 기본 점수 + 담당자 조정)**, 리포트에 산출물 섹션. 기본값으로 정한 것: 상호 리뷰 양방향은 성향에 맡김, 동료 파트는 리뷰 시점에 완성본, 파트당 300~600자, 빈 파트 제출 허용(미작성 표시), 지원자는 점수를 보지 않음, 관리자 회사당 1명, 채용 건 수정·삭제 없음, 평가자 대화 열람은 근거 인용까지, 존중 창은 리뷰~보고 요청, 한국어·고정 인물.
 
-3관점 리뷰에서 확정한 것: 수신자 규칙·페르소나 행동 계약 표(agent/design.md), 리뷰 단계에서 동료가 자기 파트만 수정, 업무 중 재분업 1회, 창 경계=카드 due_at, inject→observe 순서, evidence 타입화, 레이블 no_evidence·unclassified·null 구분, agent_runs·client_msg_id, 프롬프트를 `scenarios/prompts/`로 옮겨 버전 해시에 포함, 종료 후 디브리핑 토큰, failed_stage, 보관 90일, 초대 링크 수동 전달, 재사용 추정 함수 명세, 토큰 예산 300k, e2e 단언 3a·3b·8·9, eval-live 기록, M4 파일럿.
+3관점 리뷰·재검토에서 확정한 세부 규칙은 `docs/decisions.md`의 같은 날짜 절에 있다.
 
-재검토에서 반영한 결정(설계 방향은 바뀌지 않음, 세부 규칙만 확정):
-- 카드 실패는 최초 포함 총 3회 시도 후 세션 failed. 재실행은 fired 시 기록한 같은 run_id를 쓴다.
-- 멱등 키: 메시지 (run_id, seq) · 문서 수정 (part_no, run_id) · 관찰 (element, window_start). document_revisions에 본문 스냅샷 저장.
-- 리포트 워커 순서: interrupt 체크포인트 → draft 저장 → ack. approve 발행도 outbox(`approve_enqueued_at`). DLQ는 워커 소비자가 report_failed 호출.
-- 세션 종료: submitted_at 커밋 → end 실행(고정 run_id) → completed → 큐 발행. 마지막 관찰이 리포트보다 먼저 저장됨.
-- RAG 청크 키에 catalog_version 포함, 검색은 채용 건 버전만.
-- 분업 최소 조건(2번 지원자, 4·5 중 하나 동료 단독)과 미합의 시 다음 이벤트 도래 때 마지막 안 확정을 PRD 6.2·F-21에 반영.
-- 시작 전 JWT 만료는 /consent 재호출, 시작 후는 /resume. 운영 목표 수치를 테스트 단언과 통일(±10초, 복구 90초, 동시 5 대본).
-- web·report-worker healthcheck 추가. foundation 완료 기준에서 rag 검색·WS 제외. web-polish로 ui·globals.css 소유권 이양 시점 명시.
 
 ## 진행 표
 
