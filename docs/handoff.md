@@ -52,8 +52,8 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 | W1 | prompts | w1J:pE | 진행 중 | | |
 | W1 | api-admin | w1J:pC | 진행 중 | | |
 | W1 | api-candidate | w1J:pB | 진행 중 | | |
-| W1 | business-mcp | w1J:pD | 진행 중 | | |
-| W2 | rag-mcp | — | 대기 | | |
+| W1 | business-mcp | w1J:pD(닫음) | 병합 완료 | Codex 차단 1·권장 1 반영 | 502b88b |
+| W2 | rag-mcp | w1J:pG | 진행 중 | | |
 | W2 | web-admin | — | 대기 | | |
 | W2 | web-office | — | 대기 | | |
 | W2 | worker | — | 대기 | | |
