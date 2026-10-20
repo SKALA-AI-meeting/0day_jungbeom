@@ -5,7 +5,7 @@
 ## 현재 상태 (2026-10-20)
 
 - M0 완료. 문서·계약·카탈로그·회사 문서·대본·프롬프트 폴더(README만)·compose·스키마·Makefile·ruff 설정이 `main`에 있다. 앱 코드는 아직 없다(각 `services/*`, `apps/web`은 README만).
-- 설계 리뷰 5라운드(Codex 4, Claude UX 1) 전부 반영 완료. 마지막 반영 커밋은 `git log`의 최신. W0 foundation은 병합됐다(c9fa550). **W1 4개 트랙 진행 중**(브리프는 오케스트레이터 세션 scratchpad의 `brief-<트랙>.md`, 보고서는 `<트랙>-report.md`). `infra/.env.local`은 main에 있고 worktree마다 `.env`·`.env.local`을 복사해 준다.
+- 설계 리뷰 5라운드(Codex 4, Claude UX 1) 전부 반영 완료. 마지막 반영 커밋은 `git log`의 최신. W0·W1·W2 전부 병합됐다(worker까지). **사용자 지시로 W2 완료 시점에서 일시 정지.** agent-session 탭의 agent-min은 보고서까지만 받고 리뷰·병합 보류. 재개 시: agent-min 리뷰·병합 → W3(agent-session M2, agent-assistant, web-polish, e2e-runner) → W4. 지난 W1 안내(브리프는 오케스트레이터 세션 scratchpad의 `brief-<트랙>.md`, 보고서는 `<트랙>-report.md`). `infra/.env.local`은 main에 있고 worktree마다 `.env`·`.env.local`을 복사해 준다.
 - 환경: `infra/.env`에 OpenAI·LangSmith 키가 들어 있다(git 무시). `infra/.env.local`은 아직 없다(foundation이 만든다).
 - 저장소: GitHub `SKALA-AI-meeting/Day-0_zaeho`, main 단일 브랜치. worktree 없음.
 - Herdr: 열려 있는 리뷰·개발 pane 없음. Claude pane은 처음 보는 폴더(worktree)에서 폴더 신뢰 확인에 멈추므로, worktree를 만든 뒤 사용자에게 한 번 "Yes, I trust"를 눌러 달라고 한다. Claude pane의 긴 출력은 `herdr agent read`로 다 못 읽으므로 결과를 파일로 저장하게 시킨다. Codex 리뷰어는 별도 탭에 pane으로 띄우고(`-s workspace-write -a never`, read-only면 파일 저장이 막힘) 결과를 worktree의 `REVIEW.md`(추적 안 함, 병합 전 삭제)에 쓰게 한다. `codex exec`를 백그라운드로 쓰려면 반드시 `</dev/null`.
@@ -58,7 +58,7 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 | W2 | rag-mcp | 닫음 | 병합 완료 | Codex 차단 1 반영 | (이 커밋) |
 | W2 | web-admin | 닫음 | 병합 완료 | Codex 차단 7 반영 | (이 커밋 직전) |
 | W2 | web-office | 닫음 | 병합 완료 | Codex 차단 6 반영 | (이 커밋 직전) |
-| W2 | worker | 탭 w1J:t5 | 리뷰 반영 중 | Codex 차단 7 | |
+| W2 | worker | 닫음 | 병합 완료 | Codex 차단 7 반영 | (이 커밋 직전) |
 | W3 | agent-min / agent-session | 탭 agent-session | agent-min 진행 중 | | |
 | W3 | agent-assistant | — | 대기 | | |
 | W3 | web-polish | — | 대기 | | |
