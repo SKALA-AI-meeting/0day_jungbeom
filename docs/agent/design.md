@@ -15,7 +15,7 @@ class AgentRunner(Protocol):
 
 재실행 멱등 규칙(같은 run_id로 두 번 실행해도 결과가 한 벌):
 - state의 `handled_stimuli`(message_id·event_id 집합)에 이미 있으면 route가 생성·전이를 건너뛰고 ok를 돌려준다(그래프 완료 후 done 기록 전에 중단된 경우).
-- 그래프 안에서 post·write마다 `seq`를 1부터 순서대로 붙인다. 중단 후 재실행은 같은 순서를 밟으므로 같은 (run_id, seq)가 되고 api가 기존 행을 돌려준다.
+- `seq`는 순서 카운터가 아니라 **노드별 고정 슬롯**이다(kickoff 팀장=1, 동료 인사=2, inject 카드=1, respect 추가 한 줄=2, review 공유=1, 코멘트=2, respond 응답=1, 폴백=9 …, `app/agent/seq.py` 표). 변경 도구를 부르기 전에 같은 (run_id, seq)의 행이 있는지 조회해 있으면 **LLM 생성 없이 그 결과를 재사용**한다. 그래서 변경 성공 뒤 체크포인트 전에 죽어도 재실행은 같은 결과로 수렴한다. 문서 수정은 (part_no, run_id), 분업은 set_division 멱등, 관찰은 (element, window_start)로 같은 원리다.
 - 관찰 창 경계는 `now`가 아니라 카드의 `due_at`이다(아래 observe). 재실행해도 같은 (element, window_start)가 된다.
 - 카드 발행 지연: 이벤트는 스케줄러가 due_at에 `fired`로 표시하고(±10초 목표는 이 시각), 카드 메시지는 Lock을 기다린 뒤 나간다. 메시지 실행이 Lock을 오래 잡지 않도록 inject를 observe보다 먼저 한다. 카드 메시지는 fired 후 90초 안에 나가는 것을 목표로 한다.
 
@@ -33,7 +33,19 @@ State (TypedDict): `session_id, phase, negotiate_round, division, scenario, curr
 ```
 - negotiate·respond는 구조화 출력에 `instruction?: str`를 포함한다. 지원자 메시지가 동료에게 하는 지시·요청이면 채워지고 `work_notes.instructions`에 추가된다(재지시 포함).
 - 진행 상황 질문에는 `progress`만 근거로 답하고, 답한 내용을 다시 `progress`에 기록한다(두 번 물어도 같은 답).
-- 중간 초안(texture `midpoint_draft`)과 리뷰 완성본은 `parts`·`instructions`·`agreements` 전부와 회사 문서 검색 결과를 입력으로 생성한다. 지시가 반영되지 않은 파트는 생성 실패로 보고 1회 재생성한다(검사: 각 instruction의 핵심어가 본문에 있는지, 규칙 함수).
+- 중간 초안(texture `midpoint_draft`)과 리뷰 완성본은 `parts`·`instructions`·`agreements` 전부와 회사 문서 검색 결과를 입력으로 생성한다. 지시가 반영되지 않은 파트는 생성 실패로 보고 1회 재생성한다(검사: 각 instruction의 핵심어가 본문에 있는지, 규칙 함수). 재생성도 실패하면 초안은 생략(skipped), 완성본은 카드 실패로 올려 복구 절차(총 3회)를 탄다.
+- 지시는 파트별 **최신 유효 지시**를 적용하고 이전 지시는 이력으로 남긴다(`instructions[].part_no?`, 같은 파트의 새 지시가 대체). 같은 source_message_id는 중복 추가하지 않는다.
+
+`work_notes` 갱신표:
+
+| 시점 | 갱신 |
+|---|---|
+| 분업 확정(리드 결정·기본안·재분업 공통 함수 `confirm_division`) | parts, agreements(both 파트 설명), 보드 doing. 담당이 바뀐 파트는 본문·revision 보존, 새 담당이 이어 씀 |
+| 지원자 메시지 분류 결과 kind=instruction·redivide | instructions 추가(part_no 추정, source_message_id) |
+| progress_query 응답 | progress[part] = 답한 내용 |
+| 초안 저장 | draft_written=true, progress 갱신 |
+| 완성본 저장 | final_written=true, 보드 done |
+| 지원자가 위반을 지적(kind=fix_request 또는 respect 레이블이 raised) | violation_pointed_out=true (fix_part의 전제) |
 
 phase: `kickoff → negotiate → work → review → submit → done`
 
@@ -43,20 +55,20 @@ phase: `kickoff → negotiate → work → review → submit → done`
 |---|---|---|---|---|
 | kickoff | event kickoff | kickoff | 팀장 브리프 post(team, 리드 지정 포함), 동료 인사 post(dm) | negotiate 대기(phase 유지) |
 | kickoff | event division | ask_division | 동료가 어떻게 나눌지 묻는 post(dm, 힌트만), negotiate_round=0, division=None | negotiate |
-| kickoff | message | respond | 일반 응답(수신자 규칙) | kickoff |
+| kickoff | message | negotiate 또는 respond | 동료 DM이고 분류가 decide면 negotiate(리드가 00:10 전에 정해도 저장). 아니면 respond | kickoff(결정되면 division 카드는 확인만) |
 | negotiate | message | negotiate | 분류 `{decision: decide∣ask∣other, parts?}`. decide(리드가 분담을 말함): 최소 조건 충족이면 set_division·update_task·"네, 그렇게 할게요" post. 위반이면 이유와 조건에 맞춘 대안 post, round+1(round≥3이면 대안을 그대로 확정). ask(어떻게 나누면 좋겠냐고 되물음): 기본안을 **참고로** 말하되 결정은 리드에게 돌림, round 유지. other: respond로 답하고 round 유지 | 확정 시 work |
 | negotiate | event (요소 카드) | inject → observe | division이 None이면 default_division으로 **확정**하고 "아직 안 정해져서 일단 이렇게 진행할게요" post 후 카드 실행 (PRD F-21). 미결정 사실은 `division_decided_by: colleague_default`로 기록 | work |
 | negotiate | event review | review → observe | 요소 카드와 같은 규칙으로 확정 post 후 review 실행(존중만 선택했거나 분업을 정하지 않은 경우) | review |
 | work | message | respond | 수신자 규칙으로 동료/팀장 결정. 도구 선택(허용 목록), 문서명 인용. 분류가 `redivide`(리드의 재분업·재지시)면 negotiate 1회: 최소 조건 안에서 set_division·update_task 후 "알겠어요, 그렇게 바꿀게요" 안내. 담당은 그대로 두고 방향만 바꾸는 재지시(예: 사례를 휴면 사용자로)는 동료가 수락 메시지만 post하고 자기 파트 작성 시 반영 | work |
 | work | event (요소 카드) | inject → observe | 카드 실행 → 직전 창(current_element, [이전 카드 due_at, 이 카드 due_at)) record_observation → current_element=카드 요소 | work |
-| negotiate·work | event texture `midpoint_draft` | draft_part | division이 있으면 동료 담당 파트 초안을 `write_document_part`(work_notes 반영, 공개 문서 인용), 보드 doing 유지, 팀 채널에 한 줄 공유(event_id=texture 행). division이 없으면 공유 메시지만. **observe 없음**, 창 경계에도 영향 없음 | 유지 |
+| negotiate·work | event texture `midpoint_draft` (같은 시각 요소 카드 뒤에 실행) | draft_part | division이 있으면 동료 담당 파트 초안을 `write_document_part`(work_notes 반영, 공개 문서 인용), 보드 doing 유지, 팀 채널에 한 줄 공유(event_id=texture 행). division이 없으면 공유 메시지만. **observe 없음**, 창 경계에도 영향 없음 | 유지 |
 | work | event review | review → observe | 확정 division에서 동료 담당 파트 완성본을 write_document_part(초안 + work_notes.instructions 반영), 보드 done, 공유 메시지 post(both 파트·지원자 파트에 코멘트는 성향에 맡김). respect 행이 있으면 동료 담당 첫 파트에 정책 위반 삽입 → 직전 창 닫기, current_element=respect | review |
-| review | message | respond | 수신자 규칙. 지원자가 동료 파트의 오류를 지적하거나 수정을 요청하면 동료가 인정하고 **자기 파트만** `write_document_part`로 고친 뒤 알림(허용 도구에 포함, 지원자 파트는 api 403) | review |
+| review·submit | message (kind=fix_request) | fix_part (결정적) | `violation_pointed_out`이면 동료가 인정하고 **자기 파트만** `write_document_part`(코드가 호출, respond 허용 목록은 그대로 조회 4개)로 고친 뒤 알림. 지적 전의 "문장 다듬어 줘" 요청은 문장만 다듬고 정책 위반은 그대로 둔다 | 유지 |
 | review | event report_request | request_report → observe(흐름 카드도 열린 창을 닫음) | 팀장 보고 요청 post | submit |
 | submit | message | respond / respond_report | dm은 동료 respond, team은 팀장 respond_report | submit |
 | any | end | observe → close | 열린 창 닫기(window_end=ends_at 또는 submitted_at) → phase done | done |
 
-**수신자 규칙**(respond 앞에서 결정적으로): dm 채널 → 동료. team 채널 → 팀장 호칭("팀장님", 팀장 이름)이 있거나 내용이 과제 범위·마감·보고·대상 변경이면 팀장, 그 외는 동료. 둘 다 답하지 않는다. 지원자가 10분 넘게 조용해도 먼저 말을 걸지 않는다(F-25는 MVP 제외). 페르소나가 먼저 말하는 경우는 카드 실행뿐이다.
+**수신자 규칙**(respond 앞에서 결정적으로): dm 채널 → 동료. team 채널 → ① 동료 이름("도현")이 있으면 동료, ② 팀장 호칭("팀장님", 팀장 이름)이 있으면 팀장, ③ 둘 다 없으면 내용이 과제 범위·마감·보고·대상 변경이면 팀장, 그 외는 동료. 팀장 DM 채널은 없다. 둘 다 답하지 않는다. 지원자가 10분 넘게 조용해도 먼저 말을 걸지 않는다(F-25는 MVP 제외). 페르소나가 먼저 말하는 경우는 카드 실행뿐이다.
 
 respect는 `session_events`에 review와 같은 due_at의 별도 행으로 있다. 스케줄러는 같은 시각의 이벤트를 card order대로 한 run에서 처리하며(review 먼저), respect 행은 review 노드가 위반을 삽입한 뒤 done 처리한다. 발생 감지를 위해 **행마다 자기 event_id를 단 메시지를 최소 1건** 만든다. review 행: 동료 파트 공유 메시지(`event_id=review`). respect 행: 위반이 든 파트를 가리키는 동료의 추가 한 줄(예: "핵심 기능에 유료 멤버십 할인도 넣었어요", `event_id=respect`, 같은 run_id의 다음 seq). 디브리핑·발생률 검사는 이 행과 메시지를 본다.
 
@@ -67,7 +79,7 @@ respect는 `session_events`에 review와 같은 due_at의 별도 행으로 있�
 | route | 전이표 조회 | 결정적 |
 | kickoff, ask_division, request_report | 카드 brief로 문장 생성 후 post | 생성 |
 | negotiate | 구조화 출력 `{decision: decide∣ask∣other, parts?, instruction?}`. decide면 최소 조건 검사 후 수락(set_division·update_task(doing)·work_notes.parts) 또는 대안 생성, ask면 참고안 생성, other면 respond로 위임 | 분류 + 생성 |
-| respond, respond_report | tool-calling 루프. 허용 도구만, 최대 3회, 결과 2k자 절단. 인용 시 문서 제목 포함. 구조화 선행 분류 `{recipient, kind: question∣instruction∣redivide∣progress_query∣fix_request∣other, instruction?}`로 work_notes 갱신 | **모델이 도구 선택** |
+| respond, respond_report | tool-calling 루프. 허용 도구만, 최대 3회, 결과 2k자 절단. 인용 시 문서 제목 포함. 구조화 선행 분류 `{recipient, kind: question∣instruction∣redivide∣progress_query∣fix_request∣other, instruction?, related_card?: element id}`를 work_notes에 반영하고 **api에 `messages.meta.classification`으로 저장**(observe와 지표 계산이 읽음) | **모델이 도구 선택** |
 | draft_part | 중간 초안 생성·저장(texture). work_notes와 search_documents 결과 입력, 지시 반영 검사 후 1회 재생성 | 생성 |
 | observe | `observe/` 순수 함수로 metrics(카탈로그 `metrics`, 신규 5개 정의는 rubric.md), LLM 레이블 분류(temperature 0). 창 안에 지원자 활동(메시지·문서 수정·문서 열람·어시스턴트 호출)이 하나도 없으면 LLM을 부르지 않고 `no_evidence`. 허용 레이블 외 출력은 `unclassified`, LLM 실패는 null. evidence는 창 안의 데이터만, 타입별 참조 `{type: message∣revision∣doc_view∣assistant_call, id}` → record_observation | 규칙 + 고정 레이블 분류 |
 | inject | 카드 실행. system은 text 그대로 post(LLM 없음). colleague/manager는 brief로 생성. post는 event_id·run_id·seq 포함 | 생성 |
@@ -103,7 +115,7 @@ respect는 `session_events`에 review와 같은 due_at의 별도 행으로 있�
 | 업무 외 요청 | 성향대로 받아주고 업무로 복귀 | 동일 | "업무 관련 요청만 도울 수 있어요" |
 | 보는 기록 | 팀 채널 + 동료 DM, 보드, 문서 상태, 공개 문서 | 팀 채널, 보드, 문서 상태 | 자기 대화 + 공개 회사 문서. 팀 대화는 보지 않음 |
 
-업무 중 재분업·재지시: 리드가 분담을 다시 정하면(유연성 카드 뒤가 보통) 동료가 1회 받아들여 최소 조건 안에서 division·보드를 바꾼다. 그 이상은 "일정상 지금 더 바꾸긴 어렵겠어요"로 유지. 담당을 바꾸지 않는 방향 재지시는 횟수 제한 없이 수락한다. 상호 리뷰에서 동료가 지원자 파트에 코멘트를 남기는 것은 성향에 맡긴다(양방향 허용).
+업무 중 재분업·재지시: 리드가 분담을 다시 정하면 동료가 받아들여 최소 조건 안에서 division·보드를 바꾼다. 한도는 유연성 카드 전 1회 + 유연성 카드 뒤 1회. 그 이상은 "일정상 지금 더 바꾸긴 어렵겠어요"로 유지. 담당을 바꾸지 않는 방향 재지시는 횟수 제한 없이 수락한다. 상호 리뷰에서 동료가 지원자 파트에 코멘트를 남기는 것은 성향에 맡긴다(양방향 허용).
 
 ## 어시스턴트 그래프
 
@@ -113,9 +125,11 @@ respect는 `session_events`에 review와 같은 due_at의 별도 행으로 있�
 
 `compute_metrics(window, card, messages, revisions, views, assistant_calls) -> dict`, `classify(window, card, llm) -> (label|None, evidence: [{type, id}])`. 입력은 창 안의 데이터만. 카드별 픽스처로 단위 테스트. agent-session 트랙이 함께 구현한다.
 
-창 경계: `window_start` = 직전 카드(흐름 카드 포함)의 due_at, `window_end` = 이 카드의 due_at. 마지막 창은 `ends_at` 또는 `submitted_at`까지. 모두 시나리오에서 결정되므로 재실행에 무관하다.
+창 경계: `window_start` = 이 요소 카드의 due_at, `window_end` = **다음 요소 카드**의 due_at(흐름 카드·texture는 창을 닫지 않음). 마지막 요소 창(보통 존중)은 `ends_at` 또는 `submitted_at`까지라 보고 메시지의 지적도 들어간다. 모두 시나리오에서 결정되므로 재실행에 무관하다. 카드 메시지가 창이 거의 끝난 뒤에야 나간 경우(전달 지연 90초 초과)는 영향 항목을 사유 `window_missed`의 기록 없음으로 두고 리포트에 표시한다.
 
 근거 규칙: 지원자의 메시지·문서 수정·열람·어시스턴트 호출만 근거가 된다. 동료·팀장 메시지는 어느 창에서도 근거가 아니다(동료의 자유 행동이 점수에 영향을 주지 않게).
+
+`classify()` 반환형: `{label, evidence: [{type,id}], aux: {has_fix, is_specific, has_alternative, related_message_ids}}`. 순서는 규칙 지표 계산 → LLM 분류 → aux를 쓰는 지표 병합이며, 분류가 실패하면 aux 기반 지표는 null이다. 지표 함수는 값과 함께 근거 id를 돌려준다(`{value, evidence_ids}`). 각 평가표 항목의 근거는 그 항목 조건에 쓰인 지표·레이블의 근거만 붙인다.
 
 레이블 규칙: 카드의 `labels` 중 하나, 또는 `no_evidence`(창 안에 지원자 활동 없음, LLM 미호출), `unclassified`(LLM 출력이 허용 밖), null(LLM 실패). `ignore`·`silent`·`not_noticed`처럼 "하지 않음"을 뜻하는 레이블은 창 안에 지원자 활동이 있을 때만 나올 수 있다. 레이블이 있으면 evidence가 1개 이상이어야 하며(없으면 unclassified로 강등), `silent`·`apply_silently`의 evidence는 문서 revision이다. 리포트 문장 매핑은 worker-infra/design.md.
 
@@ -127,4 +141,5 @@ respect는 `session_events`에 review와 같은 due_at의 별도 행으로 있�
 - M1 최소 흐름: 지원자 메시지 1개 → respond → rag 검색 → post_message → WS 노출 (FakeAgentRunner 교체)
 - M2: 6분 세션 + 대본 3개로 카드 전부 정시, 분업 3회 거절 확정, 미합의 중 이벤트 도래 처리, api 재시작 후 fired 이벤트 재실행과 /state 이어하기, 허용 밖 도구 거부, 미공개 문서 질문에 "아직 공유되지 않은 자료" 답변, 강제 LLM 실패 3회에 세션 failed, LangSmith trace에 run_id
 - 근거 정확성 픽스처: 질문별 기대 도구·허용 문서·인용 일치 검사 10건
-- 작업 기억: 대본 `all_four`에서 리드 지시 2건(분업 시 사례 기준, 유연성 뒤 대상 변경)이 동료 초안·완성본에 반영됨(핵심어 검사). 진행 질문 2회에 같은 progress로 답함. 보드가 doing(분업)→done(리뷰)으로 바뀜
+- 작업 기억: 대본 `all_four`에서 초안(60분)에는 그 전 지시(협력 카드 때 사례 기준 "재참여")가, 완성본(90분)에는 유연성 뒤 지시("휴면")까지 반영됨(핵심어 검사). 진행 질문 2회(대본 step)에 같은 progress로 답함. 보드가 doing(분업)→done(리뷰)으로 바뀜
+- 선점 금지 5개 각각 픽스처 1건(지연 대안 유도, 재분업 유도, 지적 전 "문장 다듬어 줘"에 위반 유지, 도움 요청 철회 유도, 지원자 파트 대필 요청)

@@ -15,7 +15,7 @@
 | 단계 | 호출 | 상태 | 토큰 |
 |---|---|---|---|
 | 초대 생성 | 관리자 POST /invites | sessions 행이 `invited`로 함께 생성됨 | 초대 토큰(링크에만, DB에는 해시) |
-| 링크 입장 | GET /s/{token} | 시작 전 만료(72h) → 410. completed 이후·failed → 200에 `status`와 `debrief_token`(디브리핑·종료 안내만 읽는 JWT, 종료 후 7일) | 없음 |
+| 링크 입장 | GET /s/{token} | 시작 전 만료(72h) → 410, 취소 → 410 `cancelled`. completed 이후·failed → 200에 `status`와 `debrief_token`(디브리핑·종료 안내만 읽는 JWT, 종료 후 7일). 입장 화면 고정 안내: 2시간 연속 진행·중간 휴식 없음·PC 권장·업무는 가상 회사 루프랩에서·지원자는 리드 역할 | 없음 |
 | 동의 | POST /s/{token}/consent | `consented_at` 기록 | 세션 JWT 발급. 만료 = now + session_minutes + 120분 |
 | 시작 | POST /s/{token}/start (Bearer) | `in_progress`, started_at·ends_at 확정, 이벤트·공개 예약 | 같은 JWT |
 | 재입장 | GET /s/{token} → status가 invited면 POST /s/{token}/consent 재호출, in_progress면 POST /s/{token}/resume | 변화 없음 | 세션 JWT 재발급(저장된 JWT가 없어도 링크만으로 이어감). 초대 72h 만료는 시작 후에는 적용하지 않음 |
@@ -29,11 +29,12 @@
 |---|---|---|---|
 | POST | /admin/auth/signup | {email, password, company_name} | {token} |
 | POST | /admin/auth/login | {email, password} | {token} |
-| GET | /admin/catalog | | {elements: [{id, name, situation_public, rubric: [{id, text}]}]} (채용 건 생성 화면의 요소 설명·평가표 미리보기. situation_public은 상황을 드러내지 않는 한 줄) |
+| GET | /admin/catalog | | {elements: [{id, name, situation_public, rubric: [{id, text, pilot_value}]}], timeline: {flow: [{card_id, at_fraction}], element_fraction_rule}, candidate_notice_template, session_minutes} (채용 건 생성 화면: 요소 설명·평가표 미리보기·선택 요소에 따른 타임라인(시각만)·지원자 안내 문안. pilot_value 항목은 툴팁 "시험 운영 기준") |
 | GET | /admin/positions | | [{id, name, elements, candidate_count, created_at}] |
 | POST | /admin/positions | {name, elements: ["cooperation", ...]} (1~4개) | {id, name, elements, scenario, catalog_version} |
-| GET | /admin/positions/{id}/candidates | | [{session_id, alias, status, invited_at, report_ready_at, failed_stage?, failed_reason?, score?: {met, judged, no_record, source: "auto"∣"reviewer"}}] (report 없으면 score null, 정렬은 초대순) |
-| POST | /admin/positions/{id}/invites | {alias, email} | {session_id, invite_url, expires_at}. 발송하지 않음. 화면은 링크 복사 버튼을 제공하고 email은 기록용 |
+| GET | /admin/positions/{id}/candidates | | [{session_id, alias, status, display_status, invited_at, report_ready_at, failed_stage?, failed_reason?, previous_session_id?, score?: {met, judged, no_record, source: "auto"∣"reviewer", by_element: [{element, met, judged}]}}] (display_status는 status에 만료(invited이고 expires_at 지남)·취소를 더한 표시값. report 없으면 score null, 정렬은 초대순) |
+| POST | /admin/positions/{id}/invites | {alias, email, previous_session_id?} | {session_id, invite_url, expires_at, notice_text}. 발송하지 않음. 화면은 링크 복사와 안내 문안 복사(2시간·PC 권장·중간 휴식 없음·72시간 만료·가상 회사 루프랩) 버튼. previous_session_id는 재응시 연결 |
+| POST | /admin/sessions/{id}/cancel | | {status: "cancelled"}. invited 상태에서만, 아니면 409 |
 | GET | /admin/sessions/{id}/report | | Report (아래) 또는 404(아직 없음) |
 | POST | /admin/sessions/{id}/review | {adjustments: [{item_id, value: 1∣0∣null, memo}], memo?} | {status: "approving"}. 생략한 항목은 자동 값. item_id가 이 채용 건 rubric에 없으면 400 `invalid_item`, 자동 값과 다른데 memo 없으면 400 `memo_required`. 이미 approving·reviewed이고 본문 동일이면 200 멱등, 다르면 409 `already_reviewed` |
 
@@ -62,13 +63,13 @@
  "generated_at":"...","reviewed_at":null}
 ```
 
-`stage`는 draft 또는 final. evidence 타입: message(quote), revision(part_no, summary), doc_view(doc_id), assistant_call(quote). `ai_usage.used=false`면 summary는 "사용하지 않음"이고 evidence는 빈 배열. 모든 evidence의 id는 같은 세션의 실제 행을 가리켜야 하며(워커가 검증), `rubric.auto`는 워커가 draft에 넣고(규칙 계산, LLM 없음) `reviewer`·`review`·`history`는 api가 GET 때 `rubric_adjustments`에서 병합한다(draft/final content 자체는 바뀌지 않아 해시 규칙 유지). `deliverable`은 api가 GET 때 document_states에서 붙인다. `observed`·`note`·`summary` 텍스트 필드에는 합격·순위 표현과 평가표 밖의 점수 표현이 없어야 한다(워커 금지어 검사 범위는 텍스트 필드만).
+`stage`는 draft 또는 final. evidence 타입: message(quote), revision(part_no, summary), doc_view(doc_id), assistant_call(quote). `ai_usage.used=false`면 summary는 "사용하지 않음"이고 evidence는 빈 배열. 모든 evidence의 id는 같은 세션의 실제 행을 가리켜야 하며(워커가 검증), `rubric.auto`는 워커가 draft에 넣고 `reviewer`·`review`·`history`는 api가 GET 때 `rubric_adjustments`에서 병합한다. 해시 규칙은 저장된 `reports.content`(불변)에만 적용되고 GET 합성 응답과는 무관하다. `deliverable`은 api가 GET 때 붙이며 `{parts, division_decided_by, final_report_message: {id, t_min, content}}`를 포함한다. 각 요소 섹션에는 `no_record_reason`, `aux_facts`, `out_of_window_messages`(점수 무관), 근거마다 `context: {prev_persona_message, card_at_t_min}`, `event_fired: bool`(false면 "이벤트 미발생(조기 제출)")가 있다. `ai_usage`는 머리에 "판단 기준 없음, 면접 확인용"을 두고 위임·맥락·검증으로 나눠 보여 준다. 응답 시간 항목은 실제 분 값을 함께 보여 준다. `observed`·`note`·`summary` 텍스트 필드에는 합격·순위 표현과 평가표 밖의 점수 표현이 없어야 한다(워커 금지어 검사 범위는 텍스트 필드만).
 
 ## 지원자 REST (`/s`, `/sessions`, 포트 8000)
 
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
-| GET | /s/{token} | | {company_name, duration_minutes, status, elements_names, debrief_token?, failed_stage?} 또는 410 `expired`. debrief_token은 completed 이후·failed일 때만 |
+| GET | /s/{token} | | {company_name, duration_minutes, status, elements_names, entry_notice, debrief_token?, failed_stage?} 또는 410 `expired`∣`cancelled`. debrief_token은 completed 이후·failed일 때만 |
 | POST | /s/{token}/consent | | {session_token} |
 | POST | /s/{token}/resume | | {session_token} (status in_progress일 때만, 아니면 409) |
 | POST | /s/{token}/start | Bearer | {session_id, started_at, ends_at} (이미 시작했으면 같은 값 멱등) |
@@ -78,8 +79,8 @@
 | GET | /sessions/{id}/documents | Bearer | [{doc_id, title, released: bool}] |
 | GET | /sessions/{id}/documents/{doc_id} | Bearer | {doc_id, title, content} 또는 423 `not_released`. 열람을 `doc_views`에 기록 |
 | POST | /sessions/{id}/assistant | Bearer {prompt} | {call_id, message_id, content, cited_docs} 또는 429 `assistant_limit`(60회 초과) |
-| POST | /sessions/{id}/submit | Bearer | {status: "completed"} (멱등). web은 대기 중인 문서 PUT을 끝낸 뒤 호출한다. submitted_at 이후의 문서 PUT·assistant·message.send는 409 `session_ending` |
-| GET | /sessions/{id}/debrief | Bearer(세션 JWT 또는 debrief_token) | {events: [{element, name, description}] (실제 fired된 카드만), notice, failed_stage?: "session"∣"report", failed_notice?} |
+| POST | /sessions/{id}/submit | Bearer | {status: "completed"} (멱등). web은 "제출하면 세션이 끝납니다" 확인 창 뒤 대기 중인 문서 PUT을 끝내고 호출한다. submitted_at 이후의 문서 PUT·assistant·message.send는 409 `session_ending` |
+| GET | /sessions/{id}/debrief | Bearer(세션 JWT 또는 debrief_token) | {events: [{element, name, description, rubric_items: [text]}] (실제 fired된 카드만, 평가표 항목 문장 포함), persona_note(동료가 회사 인재상 페르소나였다는 설명과 values), scoring_notice, failed_stage?: "session"∣"report"}. 세션 실패(failed_stage=session)면 events 없이 중단 안내만 돌려준다(연출 노출 방지, 재응시 가능) |
 
 ### State 스냅샷
 
@@ -116,6 +117,8 @@
 |---|---|
 | message.send | {client_msg_id, channel: "team"∣"dm", content}. 같은 client_msg_id 재전송은 기존 메시지로 ack(저장 시 (session_id, client_msg_id) unique). submitted_at 이후는 `error{code: session_ending}` |
 
+같은 세션에 WS가 둘 이상 붙으면 마지막 연결만 유효하고 이전 연결은 `session.replaced`로 닫는다. `notice` 채널 메시지(책임감 알림)는 지원자에게만 전달되고 페르소나 컨텍스트에는 들어가지 않는다.
+
 `event_id`가 있는 message.new는 이벤트 카드 실행의 결과다(러너가 카드 발생을 감지하는 기준). 진행 상태 이름은 위 다섯 가지로 고정한다.
 
 ## 내부 REST (`/internal`, 포트 8001, X-Internal-Token)
@@ -135,11 +138,12 @@
 | POST | /internal/sessions/{id}/observations | {element, window_start, window_end, metrics, label, evidence: [{type: message∣revision∣doc_view∣assistant_call, id}], run_id} | {id}. 같은 element+window_start 재요청은 기존 행. evidence의 각 id가 이 세션의 해당 테이블 행이 아니면 422 |
 | GET | /internal/sessions/{id}/observations | | [...] |
 | GET | /internal/sessions/{id}/assistant_calls | | [{id, request_message_id, response_message_id, cited_doc_ids, created_at}] |
+| PUT | /internal/sessions/{id}/messages/{message_id}/classification | {recipient, kind, instruction?, related_card?} | Message. 그래프가 respond 앞 분류 결과를 저장(meta.classification). 멱등 |
 | GET | /internal/sessions/{id}/assistant_reuse | | [{call_id, part_no, reuse, ratio}] (제출 후에만 값이 있음) |
-| GET | /internal/sessions/{id}/document_revisions | | [{part_no, revision, by, content, length, diff_ratio, created_at}] |
-| GET | /internal/sessions/{id}/doc_views | | [{doc_id, viewed_at}] |
+| GET | /internal/sessions/{id}/document_revisions | | [{id, part_no, revision, by, content, length, diff_ratio, created_at}] |
+| GET | /internal/sessions/{id}/doc_views | | [{id, doc_id, viewed_at}] |
 | POST | /internal/sessions/{id}/report/draft | {content} | {status: "report_ready"} (멱등) |
-| POST | /internal/sessions/{id}/report/final | {content} | {status: "reviewed", reviewed_at}. 이미 reviewed이고 content 해시가 같으면 200 기존 값(재전달 멱등). draft가 없거나 status가 approving·reviewed가 아니면 409 |
+| POST | /internal/sessions/{id}/report/final | {content} | {status: "reviewed", reviewed_at}. content의 정규화 JSON 해시(`reports.content_hash`, 키 정렬·공백 제거)가 승인된 draft 해시와 다르면 409 `draft_mismatch`. 이미 reviewed이고 해시가 같으면 200 기존 값(재전달 멱등). draft가 없거나 status가 approving·reviewed가 아니면 409 |
 | POST | /internal/sessions/{id}/report_failed | {error} | {status: "failed"} |
 | POST | /internal/test/sessions | {elements, session_minutes, alias?} | {session_id, token, invite_url} (`ENABLE_TEST_API=1`일 때만) |
 

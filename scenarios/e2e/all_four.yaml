@@ -15,7 +15,11 @@ steps:
   - at: responsibility
     say: { channel: team, content: "인터뷰 자료가 늦어서 2번 파트가 조금 늦어질 것 같아요. 그동안 1번 문제 정의를 먼저 끝내 둘게요." }
     write: { part_no: 1, content: "문제: 첫 모임 참여자의 두 번째 참여율이 22%에 그친다. 대상: 첫 모임을 막 마친 사용자." }
-  - at: +1.0
+  - at: +0.5
+    say: { channel: dm, content: "도현님, 4번은 어디까지 됐어요?" }
+  - at: +0.3
+    say: { channel: dm, content: "5번 진행은요?" }
+  - at: +0.2
     assistant: "지표 현황 문서를 기준으로 재참여율 문제를 세 줄로 요약해줘"
   - at: flexibility
     say: { channel: team, content: "알겠습니다. 대상을 3개월 이상 미참여자로 바꾸면 2번 근거도 다시 봐야 해서, 3번 핵심 기능은 도현님과 범위를 다시 나눠도 될까요?" }

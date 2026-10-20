@@ -36,6 +36,8 @@ CREATE TABLE invites (
   token_hash text NOT NULL UNIQUE,
   expires_at timestamptz NOT NULL,
   used_at timestamptz,
+  cancelled_at timestamptz,
+  previous_session_id uuid,                 -- 재응시 연결
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -43,7 +45,7 @@ CREATE TABLE sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   invite_id uuid NOT NULL UNIQUE REFERENCES invites(id),
   status text NOT NULL DEFAULT 'invited'
-    CHECK (status IN ('invited','in_progress','completed','report_ready','approving','reviewed','failed')),
+    CHECK (status IN ('invited','cancelled','in_progress','completed','report_ready','approving','reviewed','failed')),
   consented_at timestamptz,
   started_at timestamptz,
   ends_at timestamptz,
@@ -64,7 +66,7 @@ CREATE TABLE session_events (
   card_id text NOT NULL,
   element text,
   due_at timestamptz NOT NULL,
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','fired','done','failed')),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','fired','done','failed','skipped')),   -- skipped는 texture만
   fired_at timestamptz,
   done_at timestamptz,
   attempts int NOT NULL DEFAULT 0,
@@ -78,7 +80,7 @@ CREATE INDEX ON session_events (session_id) WHERE status = 'fired';
 CREATE TABLE messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL REFERENCES sessions(id),
-  channel text NOT NULL CHECK (channel IN ('team','dm','assistant')),
+  channel text NOT NULL CHECK (channel IN ('team','dm','assistant','notice')),   -- notice: 지원자에게만 보이는 시스템 알림
   sender text NOT NULL CHECK (sender IN ('manager','colleague','candidate','assistant','system')),
   content text NOT NULL,
   event_id uuid REFERENCES session_events(id),
@@ -188,6 +190,7 @@ CREATE TABLE reports (
   session_id uuid PRIMARY KEY REFERENCES sessions(id),
   stage text NOT NULL CHECK (stage IN ('draft','final')),
   content jsonb NOT NULL,
+  content_hash text NOT NULL,               -- 정규화 JSON 해시. final은 승인 draft와 같아야 함
   generated_at timestamptz NOT NULL DEFAULT now(),
   reviewed_at timestamptz,
   attempts int NOT NULL DEFAULT 0,
@@ -205,7 +208,8 @@ CREATE TABLE rubric_adjustments (                              -- 항목별 담�
   reviewer_value smallint,
   memo text NOT NULL,
   admin_id uuid NOT NULL REFERENCES admins(id),
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (session_id, item_id)              -- 검토 완료는 1회라 항목당 조정 1행
 );
 CREATE INDEX ON rubric_adjustments (session_id);
 
