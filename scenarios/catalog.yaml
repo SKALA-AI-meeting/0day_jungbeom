@@ -1,0 +1,97 @@
+# 요소 카탈로그. 코드는 이 파일을 해석만 한다. 구조는 docs/common/scenario-model.md.
+version: 1
+company:
+  name: 루프랩
+  product: 모아런
+  manager: { name: 한서윤, title: 프로덕트 팀장 }
+  colleague: { name: 이도현, title: 기획자, years: 2 }
+parts:
+  1: 문제 정의와 대상 사용자
+  2: 사용자 인터뷰에서 찾은 근거
+  3: 핵심 기능 제안
+  4: 비슷한 서비스 사례
+  5: 성공 지표와 출시 일정
+default_division: { 1: candidate, 2: candidate, 3: both, 4: colleague, 5: colleague }
+documents:
+  - { id: company_intro, title: 회사·서비스 소개, file: company_intro.md }
+  - { id: metrics, title: 지표 현황, file: metrics.md }
+  - { id: interview_summary, title: 사용자 인터뷰 요약, file: interview_summary.md }
+  - { id: policy, title: 운영 정책, file: policy.md }
+  - { id: meeting_notes, title: 지난주 회의록, file: meeting_notes.md }
+
+flow_cards:
+  - id: kickoff
+    at_fraction: 0
+    actor: manager
+    channel: team
+    brief: 과제 브리프를 공지한다. 첫 모임 참여자가 두 번째 모임에도 나오게 하는 신규 기능 기획, 마감까지 2~3쪽 기획안, AI 어시스턴트 사용 가능. 동료가 이어서 인사하고 분담안을 제안한다.
+  - id: division
+    at_fraction: 0.0833
+    actor: colleague
+    channel: dm
+    brief: default_division을 제안하고 지원자의 응답을 기다린다. 다르게 나누자고 하면 조정한다. 최대 3회.
+  - id: review
+    at_fraction: 0.75
+    actor: colleague
+    channel: team
+    brief: 동료가 자기 파트(4, 5)를 공유 문서에 쓰고 팀 채널에 공유하며 지원자 파트 리뷰를 요청한다.
+  - id: report_request
+    at_fraction: 0.9167
+    actor: manager
+    channel: team
+    brief: 마감 전 보고를 요청한다. 지원자의 보고에 답한다.
+
+element_cards:
+  - id: cooperation
+    name: 협력 태도
+    order: 1
+    actor: colleague
+    channel: dm
+    brief: 비슷한 서비스 사례를 찾는데 기준이 헷갈린다며 10분만 같이 봐 줄 수 있는지 묻는다. 지원자가 바쁜 시점이다.
+    labels: [help_now, negotiate_timing, decline, ignore]
+    metrics: [response_minutes, first_recipient]
+    situation: 내 일이 바쁠 때 동료의 도움 요청
+    debrief: 00:30 무렵 동료가 도움을 요청한 것은 협력 태도를 보기 위한 연출이었습니다.
+  - id: responsibility
+    name: 책임감
+    order: 2
+    actor: system
+    channel: team
+    text: "[알림] 사용자 인터뷰 요약 공유가 리서치 담당자 사정으로 약 15분 늦어집니다."
+    effects:
+      release_document: interview_summary
+      delay_fraction: 0.125
+    unselected:
+      release_at_start: interview_summary
+    labels: [notify_with_alternative, notify_only, silent, ask_colleague]
+    metrics: [response_minutes, first_recipient, notified_before_release, doc_opened_after_release]
+    situation: 담당 파트에 필요한 인터뷰 자료 지연
+    debrief: 인터뷰 자료가 늦게 도착한 것은 책임감을 보기 위한 연출이었습니다.
+  - id: flexibility
+    name: 유연성
+    order: 3
+    actor: manager
+    channel: team
+    brief: 대표와 이야기한 결과 기획 대상을 첫 참여자에서 "3개월 넘게 모임에 안 나온 사용자"로 바꿔 달라고 한다. 마감은 그대로다.
+    labels: [replan_and_apply, apply_silently, complain_then_apply, refuse_or_ignore]
+    metrics: [response_minutes, document_changed_after, mentions_scope_or_division]
+    situation: 막판 요구사항 변경
+    debrief: 팀장이 대상 사용자를 바꾼 것은 유연성을 보기 위한 연출이었습니다.
+  - id: respect
+    name: 존중·소통
+    order: 4
+    attach_to: review
+    actor: colleague
+    channel: team
+    brief: review 카드 실행 시 동료 파트 3·4번 내용에 "재참여 시 할인되는 유료 멤버십"을 핵심 기능으로 포함한다. 운영 정책(올해 유료 기능 없음)과 어긋난다.
+    unselected:
+      review_without_violation: true
+    requires_docs: [policy]
+    labels: [point_out_with_evidence, point_out_blaming, point_out_vague, not_noticed]
+    metrics: [policy_doc_opened, response_minutes, mentions_policy]
+    situation: AI 동료의 실수
+    debrief: 동료 파트에 유료 멤버십이 들어 있던 것은 존중·소통을 보기 위한 연출이었습니다.
+
+timing:
+  element_window: { start_fraction: 0.25, end_fraction: 0.75 }
+  order: [cooperation, responsibility, flexibility, respect]

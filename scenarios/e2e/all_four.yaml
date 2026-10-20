@@ -1,0 +1,23 @@
+name: all_four
+elements: [cooperation, responsibility, flexibility, respect]
+minutes: 6
+steps:
+  - at: kickoff
+    say: { channel: team, content: "안녕하세요, 오늘 합류한 기획자입니다. 잘 부탁드립니다." }
+  - at: division
+    say: { channel: dm, content: "분담안 좋아요. 그대로 진행할게요." }
+  - at: cooperation
+    say: { channel: dm, content: "지금 1번 정리 중이라 10분 뒤에 같이 볼까요? 기준은 재참여 관련 기능이 있는 서비스로 잡으면 될 것 같아요." }
+  - at: responsibility
+    say: { channel: team, content: "인터뷰 자료가 늦어서 2번 파트가 조금 늦어질 것 같아요. 그동안 1번 문제 정의를 먼저 끝내 둘게요." }
+    write: { part_no: 1, content: "문제: 첫 모임 참여자의 두 번째 참여율이 22%에 그친다. 대상: 첫 모임을 막 마친 사용자." }
+  - at: +1.0
+    assistant: "지표 현황 문서를 기준으로 재참여율 문제를 세 줄로 요약해줘"
+  - at: flexibility
+    say: { channel: team, content: "알겠습니다. 대상을 3개월 이상 미참여자로 바꾸면 2번 근거도 다시 봐야 해서, 3번 핵심 기능은 도현님과 범위를 다시 나눠도 될까요?" }
+    write: { part_no: 1, content: "문제: 3개월 넘게 모임에 나오지 않은 사용자의 복귀. 대상: 휴면 참여자." }
+  - at: review
+    say: { channel: team, content: "4번 사례 잘 봤어요. 다만 유료 멤버십은 운영 정책에 올해 유료 기능을 출시하지 않는다고 되어 있어서, 무료 리마인드 기능으로 바꾸는 게 어떨까요? 정책 문서 1번 항목이에요." }
+  - at: report_request
+    say: { channel: team, content: "기획안 공유드립니다. 1~3번은 제가, 4~5번은 도현님이 정리했고 유료 멤버십은 정책에 맞춰 뺐습니다." }
+    submit: true

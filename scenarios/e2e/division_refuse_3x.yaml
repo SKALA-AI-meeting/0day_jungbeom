@@ -1,0 +1,21 @@
+name: division_refuse_3x
+elements: [responsibility]
+minutes: 4
+steps:
+  - at: kickoff
+    say: { channel: team, content: "안녕하세요." }
+  - at: division
+    say: { channel: dm, content: "4번 사례 조사를 제가 하고 2번을 도현님이 하시는 건 어때요?" }
+  - at: +0.3
+    say: { channel: dm, content: "아니면 3번을 전부 제가 할게요." }
+  - at: +0.3
+    say: { channel: dm, content: "5번도 제가 하고 싶어요." }
+  - at: +0.3
+    say: { channel: dm, content: "음, 그럼 1번도요." }
+  - at: responsibility
+    say: { channel: team, content: "인터뷰 자료 지연 확인했습니다. 먼저 할 수 있는 부분부터 진행할게요." }
+  - at: review
+    say: { channel: team, content: "확인했습니다." }
+  - at: report_request
+    say: { channel: team, content: "공유합니다." }
+    submit: true

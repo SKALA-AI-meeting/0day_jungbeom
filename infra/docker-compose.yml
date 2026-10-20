@@ -1,0 +1,78 @@
+# Day Zero 로컬 구성. 공개 포트는 web(3000)과 api(8000)뿐이다. 나머지는 compose 네트워크 안.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: dayzero
+      POSTGRES_PASSWORD: dayzero
+      POSTGRES_DB: dayzero
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dayzero"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"   # 관리 UI (로컬 확인용)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: ../services/api
+    env_file: .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      business-mcp: { condition: service_started }
+      rag-mcp: { condition: service_started }
+    volumes:
+      - ../scenarios:/scenarios:ro
+
+  business-mcp:
+    build: ../services/business-mcp
+    env_file: .env
+    expose: ["9101"]
+
+  rag-mcp:
+    build: ../services/rag-mcp
+    env_file: .env
+    expose: ["9102"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    volumes:
+      - ../scenarios:/scenarios:ro
+      - hfcache:/root/.cache/huggingface
+    deploy:
+      resources:
+        limits:
+          memory: 3g
+
+  report-worker:
+    build: ../services/report-worker
+    env_file: .env
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      api: { condition: service_started }
+
+  web:
+    build: ../apps/web
+    env_file: .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      api: { condition: service_started }
+
+volumes:
+  pgdata:
+  hfcache:

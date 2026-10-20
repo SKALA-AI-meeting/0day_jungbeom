@@ -1,0 +1,51 @@
+# 프론트 설계 (web)
+
+Next.js App Router + Tailwind. 상태 관리는 React 상태와 fetch로 충분하다. UI 라이브러리는 디자인 스킬의 `pick-ui-library`가 고른 것만 쓴다.
+
+## 디자인
+
+- 디자인은 `emilkowalski/skills`를 쓴다. 설치: `npx skills@latest add emilkowalski/skills`. 각 스킬은 `skills/<이름>/SKILL.md`.
+- web-design 트랙이 먼저 토큰(색·타이포·간격), 로고·워드마크, 공용 컴포넌트(`components/ui/`)를 만든다. 쓰는 스킬: `emil-design-eng`(기본 원칙), `pick-ui-library`, `prototype`(핵심 화면 2~3안 비교), `animate`(메시지 도착·진행 표시·타이머 같은 소수의 모션만).
+- web-admin·web-office는 그 토큰과 컴포넌트 위에서 만들고, 끝나면 `review-animations`, `break-ui`(긴 별칭, 빈 목록, 긴 메시지, 5파트 긴 문서)로 점검한다.
+- 서비스 이름과 로고는 Day Zero, Day-Zero, Day-0 중 자유롭게 변주한다. 톤: 채용 도구지만 지원자에게는 업무 도구처럼 보여야 한다. 가상 오피스는 "평가 중"이 드러나지 않게 메신저·문서 도구의 평범한 모습을 유지한다.
+- 모션은 절제한다. 메시지 도착, 입력 중 표시, 문서 공개 잠금 해제, 남은 시간 경고(10분 전) 정도만.
+
+## 경로
+
+| 경로 | 화면 | 트랙 |
+|---|---|---|
+| /admin/login, /admin/signup | 로그인·가입 | web-admin |
+| /admin/positions | 채용 건 목록 | web-admin |
+| /admin/positions/new | 채용 건 생성: 이름, 요소 체크 4개(1~4개) | web-admin |
+| /admin/positions/[id] | 지원자 목록, 초대 폼, 상태 배지 | web-admin |
+| /admin/sessions/[id]/report | 리포트, 검토 완료 버튼 | web-admin |
+| /s/[token] | 링크 입장 → 동의 → 대기 → 오피스 → 디브리핑 (단계는 상태로 전환) | web-office |
+
+## 가상 오피스 레이아웃
+
+```
+┌ 상단: 회사명 · 남은 시간(mm:ss) · 제출 버튼 ───────────────┐
+│ 좌: 채널 목록(팀 채널, 이도현 DM)  │ 중: 메시지 목록 + 입력  │ 우: 탭(기획안 문서 / 태스크 보드 / 회사 문서 / AI 어시스턴트) │
+└───────────────────────────────────────────────────────────┘
+```
+
+- 메시지는 WS `message.new`로 추가. `agent.progress started`면 "이도현이 입력 중…" 표시, finished면 제거.
+- 기획안 문서: 파트 5개 textarea. 1초 디바운스 후 PUT. 동료 파트는 읽기 전용이고 `document.part_updated`로 채워짐.
+- 보드: 파트 카드 5개, 담당자 배지, 지원자 카드만 상태 select.
+- 회사 문서: 목록과 본문. `released=false`면 잠금 표시, `document.released`로 열림.
+- 어시스턴트: 요청·응답 목록, 인용 문서명 표시. POST 후 응답 대기 표시.
+- 타이머는 `ends_at` 기준으로 로컬 계산. `session.ended` 수신 시 디브리핑으로 전환.
+- 재연결: WS 끊기면 3초 후 재연결하고 `/s/{token}/state`로 전체 갱신.
+
+## 관리자 리포트 화면
+
+섹션별 카드: 요소명, 상황, 관찰된 행동, 근거 목록(t_min과 인용). 관찰 없음은 회색 안내 문구. AI 활용 섹션. 상단에 단계 배지(검토 대기 draft / 검토 완료 final). 하단 "검토 완료" 버튼: 누르면 "확정 중…"으로 바뀌고 폴링으로 reviewed가 되면 검토 시각 표시. 점수·등급 UI 없음.
+
+## mock
+
+`apps/web/mocks/`에 계약 예시 JSON과 WS 이벤트 재생 스크립트를 두고 `NEXT_PUBLIC_MOCK=1`이면 사용한다.
+
+## 완료 기준
+
+- 관리자: 가입→채용 건 생성(요소 0개·5개는 거부)→초대→목록 상태(7종)→리포트 draft→검토 완료→reviewed가 mock으로 동작
+- 지원자: 만료·완료 링크 안내, 동의 전 시작 불가, 오피스 4탭, 타이머, 진행 표시, 제출, 디브리핑, 재연결 후 상태 복원
