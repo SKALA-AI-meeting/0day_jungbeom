@@ -17,7 +17,7 @@
 
 | 레퍼런스 기대 | Day Zero | 대응 |
 |---|---|---|
-| 변경 도구 앞에서 interrupt로 멈추고 승인 후 같은 thread로 재개 (전체 흐름 2) | 리포트 그래프가 draft 뒤에서 interrupt로 멈추고, 관리자의 "검토 완료"가 큐를 통해 같은 thread를 재개해 최종 리포트를 저장 | 해소. 확장 후보: 상호 리뷰에서 동료가 지원자 파트를 고치기 전 허락을 구하는 세션 내 승인(`write_document_part` 앞 interrupt, 지원자가 수락·거절) |
-| 질문을 202로 접수하고 SSE로 진행 이벤트 | WebSocket 양방향(동료가 먼저 말을 걺) | 진행 이벤트 이름을 레퍼런스와 맞춤(tool_start·tool_end·done·failed) |
-| 화면·업무 서버·Agent 서버 분리 | Agent가 api 프로세스 안의 모듈 | 논리 계층은 분리 유지(라우터 vs agent 모듈), 배포 tier만 합침을 구성도에 명시 |
-| Vue + Spring Boot | Next.js + FastAPI | 부록에서 스택 변경 허용 |
+| 변경 도구 앞에서 interrupt로 멈추고 승인 후 같은 thread로 재개 (전체 흐름 2) | 리포트 그래프가 draft 뒤에서 interrupt로 멈추고, 관리자의 "검토 완료"가 큐를 통해 같은 thread를 재개해 최종 리포트를 저장 | 승인 대상 변경은 "초안을 최종본으로 확정하는 저장"이다. 증명: 승인 전 final 저장은 api가 409로 차단, final은 승인한 draft와 해시 동일, 워커 로그의 같은 thread_id. MCP 변경 도구 앞 승인과 같다고 표현하지 않고 "변경 저장 앞 승인"으로 설명. 확장 후보: 세션 내 지원자 승인(`write_document_part` 앞 interrupt) |
+| 질문을 202로 접수하고 SSE로 진행 이벤트 | WebSocket 양방향(동료가 먼저 말을 걺) | 대응 관계: 202 접수 = `message.ack{run_id}`, 진행 = `agent.progress{run_id, started∣tool_start∣tool_end}`, 완료·실패 = `agent.progress{finished∣failed}` + `message.new{run_id}`. 재접속은 `/state` 스냅샷(active_runs 포함)으로 복구 |
+| 화면·업무 서버·Agent 서버 분리 | Agent가 api 프로세스 안의 모듈 | 논리 계층은 분리(라우터 → SessionService → AgentRunner 인터페이스 → 그래프 → MCP 어댑터), 배포 tier만 합침. 그래프 실행 중에도 HTTP·WS·스케줄러가 동작하는지 테스트로 확인. 단일 프로세스 제약과 향후 분리 지점(AgentRunner)을 plan.md에 기록 |
+| Vue + Spring Boot | Next.js + FastAPI | 부록이 변경을 허용. 선택 이유: FastAPI는 LangGraph와 같은 Python 프로세스에서 비동기 WS를 처리, Next.js는 관리자·지원자 두 화면을 한 앱의 경로로. 업무 규칙의 소유자는 FastAPI뿐이고 Next.js 서버 영역은 쓰지 않음. 기능 동등성은 인증·진행 이벤트·MCP·승인 재개·큐 재시도 시연으로 증명 |

@@ -1,5 +1,5 @@
 # 요소 카탈로그. 코드는 이 파일을 해석만 한다. 구조는 docs/common/scenario-model.md.
-version: 1
+version: 1          # 채용 건 생성 시 이 파일의 해시를 catalog_version으로 고정한다. 진행 중 채용 건이 참조하는 내용은 바꾸지 않는다.
 company:
   name: 루프랩
   product: 모아런
@@ -24,7 +24,7 @@ flow_cards:
     at_fraction: 0
     actor: manager
     channel: team
-    brief: 과제 브리프를 공지한다. 첫 모임 참여자가 두 번째 모임에도 나오게 하는 신규 기능 기획, 마감까지 2~3쪽 기획안, AI 어시스턴트 사용 가능. 동료가 이어서 인사하고 분담안을 제안한다.
+    brief: 과제 브리프를 공지한다. 첫 모임 참여자가 두 번째 모임에도 나오게 하는 신규 기능 기획, 마감까지 2~3쪽 기획안, AI 어시스턴트 사용 가능. 동료가 이어서 인사만 한다(분담안은 division 카드에서).
   - id: division
     at_fraction: 0.0833
     actor: colleague
@@ -34,7 +34,7 @@ flow_cards:
     at_fraction: 0.75
     actor: colleague
     channel: team
-    brief: 동료가 자기 파트(4, 5)를 공유 문서에 쓰고 팀 채널에 공유하며 지원자 파트 리뷰를 요청한다.
+    brief: 동료가 확정된 분업에서 자기 담당 파트를 공유 문서에 쓰고 팀 채널에 공유하며 지원자 파트 리뷰를 요청한다.
   - id: report_request
     at_fraction: 0.9167
     actor: manager
@@ -83,7 +83,7 @@ element_cards:
     attach_to: review
     actor: colleague
     channel: team
-    brief: review 카드 실행 시 동료 파트 3·4번 내용에 "재참여 시 할인되는 유료 멤버십"을 핵심 기능으로 포함한다. 운영 정책(올해 유료 기능 없음)과 어긋난다.
+    brief: review 카드 실행 시 동료 담당 파트 중 번호가 가장 작은 파트에 "재참여 시 할인되는 유료 멤버십"을 핵심 제안으로 포함한다. 운영 정책(올해 유료 기능 없음)과 어긋난다.
     unselected:
       review_without_violation: true
     requires_docs: [policy]

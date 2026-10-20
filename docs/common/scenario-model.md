@@ -22,7 +22,7 @@ MVP는 인성 요소 4개만 둔다. 카드 하나의 필드:
 
 ## 조립 (`positions.scenario`)
 
-채용 건 생성 시 api가 한 번 계산해 저장한다.
+채용 건 생성 시 api가 한 번 계산해 저장한다. 카탈로그 파일 해시를 `catalog_version`으로, 카드 내용과 회사 문서 본문을 scenario JSON에 복사해 고정한다. 이후 카탈로그를 고쳐도 진행 중 채용 건은 바뀌지 않는다.
 
 ```
 L = session_minutes
@@ -46,16 +46,17 @@ L=120, 3개(협력·책임·유연): 30, 50, 70. L=6, 4개: 1.5, 2.5, 3.5, 4.5�
   {"card_id":"cooperation","at_min":30},
   {"card_id":"responsibility","at_min":50,"effects":{"release_document":"interview_summary","at_min":65}},
   {"card_id":"flexibility","at_min":70},
-  {"card_id":"review","at_min":90,"with":"respect"},
+  {"card_id":"review","at_min":90},
+  {"card_id":"respect","at_min":90,"element":"respect","attach_to":"review"},
   {"card_id":"report_request","at_min":110}],
  "releases_at_start": ["company_intro","metrics","policy","meeting_notes"]}
 ```
 
-세션 시작 시 api가 `cards`를 `session_events`로, `releases_at_start`와 지연 공개를 `document_releases`로 펼친다.
+세션 시작 시 api가 `cards`를 `session_events`로(respect도 별도 행, review와 같은 due_at), `releases_at_start`와 지연 공개를 `document_releases`로 펼친다. 같은 due_at의 이벤트는 카드 순서대로 한 실행에서 처리한다.
 
 ## 관찰 창
 
-카드 i의 창은 `fired_at(i)`부터 다음 카드의 `fired_at` 또는 세션 종료까지. 창 안의 지원자 메시지, 문서 변경, 어시스턴트 호출이 observe의 입력이다. 흐름 카드는 관찰하지 않는다. AI 활용은 창과 무관하게 세션 전체를 본다.
+요소 카드 i의 창은 그 카드가 실행된 시각부터 **다음 카드(흐름 카드 포함)의 실행 또는 세션 종료**까지다. 그래프 State의 `current_element`가 열린 창을 가리키고, 모든 카드 경계와 종료에서 열린 창을 닫아 관찰을 기록한다. 창 안의 지원자 메시지, 문서 변경 로그(document_revisions), 문서 열람(doc_views), 어시스턴트 호출이 observe의 입력이다. 흐름 카드 자체는 관찰 요소가 없다. AI 활용은 창과 무관하게 세션 전체를 본다.
 
 ## 회사 문서 (`scenarios/documents/`)
 
@@ -69,4 +70,4 @@ L=120, 3개(협력·책임·유연): 30, 50, 70. L=6, 4개: 1.5, 2.5, 3.5, 4.5�
 
 ## 디브리핑
 
-`session_events`에서 `fired_at`이 있는 요소 카드만 골라 카탈로그의 `debrief` 문장을 보여 준다.
+`session_events`에서 `element`가 있고 status가 done인 행만 골라 scenario에 고정된 `debrief` 문장을 보여 준다. respect도 별도 행이므로 빠지지 않는다.

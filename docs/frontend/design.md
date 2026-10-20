@@ -5,8 +5,8 @@ Next.js App Router + Tailwind. 상태 관리는 React 상태와 fetch로 충분�
 ## 디자인
 
 - 디자인은 `emilkowalski/skills`를 쓴다. 설치: `npx skills@latest add emilkowalski/skills`. 각 스킬은 `skills/<이름>/SKILL.md`.
-- web-design 트랙이 먼저 토큰(색·타이포·간격), 로고·워드마크, 공용 컴포넌트(`components/ui/`)를 만든다. 쓰는 스킬: `emil-design-eng`(기본 원칙), `pick-ui-library`, `prototype`(핵심 화면 2~3안 비교), `animate`(메시지 도착·진행 표시·타이머 같은 소수의 모션만).
-- web-admin·web-office는 그 토큰과 컴포넌트 위에서 만들고, 끝나면 `review-animations`, `break-ui`(긴 별칭, 빈 목록, 긴 메시지, 5파트 긴 문서)로 점검한다.
+- foundation이 기본 토큰(색·타이포·간격)과 공용 컴포넌트의 props·골격만 먼저 확정한다(`pick-ui-library`로 라이브러리 선택). web-admin·web-office는 그 위에서 바로 시작한다.
+- 디자인 다듬기는 M2 web-polish 트랙이 한다: `emil-design-eng`, 로고·워드마크, `animate`(메시지 도착·진행 표시·타이머 경고 정도), `review-animations`, `break-ui`(긴 별칭, 빈 목록, 긴 메시지, 5파트 긴 문서). 컴포넌트 내부만 바꾸고 props는 유지한다.
 - 서비스 이름과 로고는 Day Zero, Day-Zero, Day-0 중 자유롭게 변주한다. 톤: 채용 도구지만 지원자에게는 업무 도구처럼 보여야 한다. 가상 오피스는 "평가 중"이 드러나지 않게 메신저·문서 도구의 평범한 모습을 유지한다.
 - 모션은 절제한다. 메시지 도착, 입력 중 표시, 문서 공개 잠금 해제, 남은 시간 경고(10분 전) 정도만.
 
@@ -19,7 +19,7 @@ Next.js App Router + Tailwind. 상태 관리는 React 상태와 fetch로 충분�
 | /admin/positions/new | 채용 건 생성: 이름, 요소 체크 4개(1~4개) | web-admin |
 | /admin/positions/[id] | 지원자 목록, 초대 폼, 상태 배지 | web-admin |
 | /admin/sessions/[id]/report | 리포트, 검토 완료 버튼 | web-admin |
-| /s/[token] | 링크 입장 → 동의 → 대기 → 오피스 → 디브리핑 (단계는 상태로 전환) | web-office |
+| /s/[token] | 링크 입장 → 동의 → 대기 → 오피스 → 디브리핑 (단계는 상태로 전환). 접속이 끊겨도 시간은 흐르며, 복귀 시 그동안의 메시지를 그대로 봄 | web-office |
 
 ## 가상 오피스 레이아웃
 
@@ -29,13 +29,13 @@ Next.js App Router + Tailwind. 상태 관리는 React 상태와 fetch로 충분�
 └───────────────────────────────────────────────────────────┘
 ```
 
-- 메시지는 WS `message.new`로 추가. `agent.progress started`면 "이도현이 입력 중…" 표시, finished면 제거.
+- 메시지 전송은 `client_msg_id`를 붙이고 `message.ack`로 확정 표시. `message.new`로 추가. `agent.progress`는 run_id별로 started→(tool_start/tool_end)→finished/failed를 따라 "이도현이 입력 중…", "자료 찾는 중…"을 표시. 재접속 시 `/state`의 `active_runs`로 복원.
 - 기획안 문서: 파트 5개 textarea. 1초 디바운스 후 PUT. 동료 파트는 읽기 전용이고 `document.part_updated`로 채워짐.
 - 보드: 파트 카드 5개, 담당자 배지, 지원자 카드만 상태 select.
 - 회사 문서: 목록과 본문. `released=false`면 잠금 표시, `document.released`로 열림.
 - 어시스턴트: 요청·응답 목록, 인용 문서명 표시. POST 후 응답 대기 표시.
 - 타이머는 `ends_at` 기준으로 로컬 계산. `session.ended` 수신 시 디브리핑으로 전환.
-- 재연결: WS 끊기면 3초 후 재연결하고 `/s/{token}/state`로 전체 갱신.
+- 재연결: WS 끊기면 3초 후 재연결하고 `/sessions/{id}/state`로 전체 갱신. 세션 JWT가 없으면 `/s/{token}/resume`으로 재발급.
 
 ## 관리자 리포트 화면
 

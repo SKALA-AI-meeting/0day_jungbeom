@@ -22,6 +22,7 @@ CREATE TABLE positions (
   name text NOT NULL,
   elements text[] NOT NULL,
   session_minutes int NOT NULL DEFAULT 120,
+  catalog_version text NOT NULL,
   scenario jsonb NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   CHECK (cardinality(elements) BETWEEN 1 AND 4)
@@ -48,6 +49,8 @@ CREATE TABLE sessions (
   ends_at timestamptz,
   division jsonb,
   submitted_at timestamptz,
+  llm_failures int NOT NULL DEFAULT 0,
+  report_enqueued_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -55,11 +58,16 @@ CREATE TABLE session_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL REFERENCES sessions(id),
   card_id text NOT NULL,
+  element text,
   due_at timestamptz NOT NULL,
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','fired','done','failed')),
   fired_at timestamptz,
+  done_at timestamptz,
+  attempts int NOT NULL DEFAULT 0,
   UNIQUE (session_id, card_id)
 );
-CREATE INDEX ON session_events (due_at) WHERE fired_at IS NULL;
+CREATE INDEX ON session_events (due_at) WHERE status = 'pending';
+CREATE INDEX ON session_events (session_id) WHERE status = 'fired';
 
 CREATE TABLE messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -68,8 +76,11 @@ CREATE TABLE messages (
   sender text NOT NULL CHECK (sender IN ('manager','colleague','candidate','assistant','system')),
   content text NOT NULL,
   event_id uuid REFERENCES session_events(id),
+  run_id uuid,
+  seq int,
   meta jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (session_id, run_id, seq)
 );
 CREATE INDEX ON messages (session_id, created_at);
 
@@ -77,8 +88,29 @@ CREATE TABLE document_states (
   session_id uuid NOT NULL REFERENCES sessions(id),
   part_no int NOT NULL CHECK (part_no BETWEEN 1 AND 5),
   content text NOT NULL DEFAULT '',
+  revision int NOT NULL DEFAULT 0,
+  updated_by text CHECK (updated_by IN ('candidate','colleague')),
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (session_id, part_no)
+);
+
+CREATE TABLE document_revisions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL REFERENCES sessions(id),
+  part_no int NOT NULL,
+  revision int NOT NULL,
+  by text NOT NULL CHECK (by IN ('candidate','colleague')),
+  length int NOT NULL,
+  diff_ratio real,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (session_id, part_no, revision)
+);
+
+CREATE TABLE doc_views (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL REFERENCES sessions(id),
+  doc_id text NOT NULL,
+  viewed_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE tasks (
@@ -106,7 +138,9 @@ CREATE TABLE observations (
   metrics jsonb NOT NULL DEFAULT '{}'::jsonb,
   label text,
   evidence_message_ids uuid[] NOT NULL DEFAULT '{}',
-  created_at timestamptz NOT NULL DEFAULT now()
+  run_id uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (session_id, element, window_start)
 );
 
 CREATE TABLE assistant_calls (
@@ -115,8 +149,16 @@ CREATE TABLE assistant_calls (
   request_message_id uuid NOT NULL REFERENCES messages(id),
   response_message_id uuid REFERENCES messages(id),
   cited_doc_ids text[] NOT NULL DEFAULT '{}',
-  reused_in_part text CHECK (reused_in_part IN ('none','verbatim','edited')),
   created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE assistant_reuse (
+  call_id uuid NOT NULL REFERENCES assistant_calls(id),
+  part_no int NOT NULL,
+  reuse text NOT NULL CHECK (reuse IN ('none','verbatim','edited')),
+  ratio real NOT NULL,
+  computed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (call_id, part_no)
 );
 
 CREATE TABLE reports (
@@ -135,5 +177,6 @@ CREATE TABLE doc_chunks (
   content text NOT NULL,
   embedding vector(1024) NOT NULL,
   model text NOT NULL DEFAULT 'BAAI/bge-m3',
+  catalog_version text NOT NULL,
   UNIQUE (doc_id, chunk_no)
 );

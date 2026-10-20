@@ -6,29 +6,37 @@ PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시�
 |---|---|---|
 | companies | id, name | |
 | admins | id, company_id, email(unique), password_hash | bcrypt |
-| positions | id, company_id, name, elements text[], session_minutes int default 120, scenario jsonb, created_at | 수정·삭제 없음 |
+| positions | id, company_id, name, elements text[], session_minutes int default 120, catalog_version text, scenario jsonb, created_at | 생성 시 카탈로그 카드와 문서 내용을 scenario에 복사해 고정. 수정·삭제 없음 |
 | invites | id, position_id, alias, email, token_hash, expires_at, used_at | 토큰 원문은 링크에만 |
-| sessions | id, invite_id(unique), status, consented_at, started_at, ends_at, division jsonb, submitted_at | status: invited·in_progress·completed·report_ready·approving·reviewed·failed |
-| session_events | id, session_id, card_id, due_at, fired_at | 스케줄러 대상. (session_id, card_id) unique |
-| messages | id, session_id, channel, sender, content, event_id, meta jsonb, created_at | channel: team·dm·assistant. sender: manager·colleague·candidate·assistant·system. meta에 토큰·지연 |
-| document_states | session_id, part_no(1~5), content, updated_at | 기획안 파트 |
+| sessions | id, invite_id(unique), status, consented_at, started_at, ends_at, division jsonb, submitted_at, llm_failures int, report_enqueued_at | **초대와 동시에 생성**(status invited). status: invited·in_progress·completed·report_ready·approving·reviewed·failed |
+| session_events | id, session_id, card_id, element, due_at, status(pending·fired·done·failed), fired_at, done_at, attempts | respect는 review와 같은 due_at의 별도 행. (session_id, card_id) unique |
+| messages | id, session_id, channel, sender, content, event_id, run_id, seq, meta jsonb, created_at | (session_id, run_id, seq) unique로 멱등. meta에 토큰·지연·모델 |
+| document_states | session_id, part_no(1~5), content, revision, updated_by, updated_at | 현재 내용 |
+| document_revisions | id, session_id, part_no, revision, by(candidate·colleague), length, diff_ratio, created_at | 관찰용 변경 로그. 본문은 저장하지 않고 길이·변화율만 |
+| doc_views | id, session_id, doc_id, viewed_at | 회사 문서 열람 기록 |
 | tasks | session_id, part_no, assignee(candidate·colleague·both), status(todo·doing·done) | |
-| document_releases | session_id, doc_id, release_at, released_at | release_at 도달 시 스케줄러가 released_at 기록 후 WS `document.released` |
-| observations | id, session_id, element, window_start, window_end, metrics jsonb, label, evidence_message_ids uuid[], created_at | |
-| assistant_calls | id, session_id, request_message_id, response_message_id, cited_doc_ids text[], reused_in_part, created_at | reused_in_part: none·verbatim·edited, 제출 시 계산 |
-| reports | session_id(pk), stage(draft·final), content jsonb, generated_at, reviewed_at, attempts int | 워커 그래프가 draft 뒤 interrupt, 승인 후 final |
-| checkpoints 등 | LangGraph PostgresSaver 기본 테이블 | 에이전트 모듈만 접근 |
-| doc_chunks | id, doc_id, chunk_no, content, embedding vector(1024) | rag-mcp만 접근 |
+| document_releases | session_id, doc_id, release_at, released_at | 스케줄러가 released_at 기록 후 WS |
+| observations | id, session_id, element, window_start, window_end, metrics jsonb, label, evidence_message_ids uuid[], run_id, created_at | evidence는 같은 세션 메시지만(api가 검증). (session_id, element, window_start) unique |
+| assistant_calls | id, session_id, request_message_id, response_message_id, cited_doc_ids text[], created_at | |
+| assistant_reuse | call_id, part_no, reuse(verbatim·edited·none), ratio, computed_at | 제출 시 호출×파트별 계산. "반영 추정"이며 검증 행동의 증거는 아님 |
+| reports | session_id(pk), stage(draft·final), content jsonb, generated_at, reviewed_at, attempts | |
+| checkpoints 등 | LangGraph PostgresSaver 기본 테이블 | api 에이전트 모듈(thread `session:{id}`, `assistant:{id}`)과 report-worker(thread `report:{id}`)가 각자 자기 thread만 접근 |
+| doc_chunks | id, doc_id, chunk_no, content, embedding vector(1024), model, catalog_version | rag-mcp만 접근 |
 
 ## 세션 상태 전이
 
 ```
-invited ──동의+시작──▶ in_progress ──제출/만료──▶ completed ──워커 draft──▶ report_ready ──검토 완료(큐)──▶ approving ──워커 final──▶ reviewed
-                                                      └──3회 실패──▶ failed
+invited ──동의·시작──▶ in_progress ──제출/만료──▶ completed ──워커 draft──▶ report_ready ──검토 완료──▶ approving ──워커 final──▶ reviewed
+            │                                        └──워커 3회 실패──▶ failed
+            └──LLM 연속 실패 3회 또는 필수 카드 2회 실패──▶ failed
 ```
 
-지원자 목록의 표시명: 초대됨, 진행 중, 완료, 리포트 준비됨, 검토 완료, 실패.
+상태 변경은 api의 `SessionService` 한 곳만 한다(start, complete, mark_report_ready, approve, mark_reviewed, fail). 지원자 목록 표시명: 초대됨, 진행 중, 완료, 리포트 준비됨, 확정 중, 검토 완료, 실패.
+
+## 이벤트 처리 상태
+
+`pending`(예약) → `fired`(스케줄러가 집음) → `done`(그래프가 카드 메시지를 저장함). 그래프 실패 시 attempts+1, 2회까지 재실행, 그래도 실패면 `failed`이고 세션도 failed. 재시작 후 `fired`인데 done이 아닌 행은 재실행 대상이다. 메시지 저장이 (run_id, seq)로 멱등이라 재실행해도 중복이 생기지 않는다.
 
 ## 기업 간 격리
 
-관리자 API의 모든 조회는 JWT의 company_id로 positions를 거쳐 필터한다. 내부 API는 session_id로만 접근하며 외부에 노출되지 않는다.
+관리자 API의 모든 조회는 JWT의 company_id로 positions를 거쳐 필터한다. 내부 API는 별도 포트(8001)에서만 열리고 session_id로만 접근한다.

@@ -1,4 +1,4 @@
-# Day Zero 로컬 구성. 공개 포트는 web(3000)과 api(8000)뿐이다. 나머지는 compose 네트워크 안.
+# Day Zero 로컬 구성. 공개 포트는 web(3000), api(8000), rabbitmq 관리 UI(127.0.0.1 전용)뿐이다. 나머지는 compose 네트워크 안.
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -18,7 +18,7 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - "15672:15672"   # 관리 UI (로컬 확인용)
+      - "127.0.0.1:15672:15672"   # 관리 UI, 로컬에서만
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 5s
@@ -29,12 +29,18 @@ services:
     build: ../services/api
     env_file: .env
     ports:
-      - "8000:8000"
+      - "8000:8000"        # 공개 API. 내부 API 8001은 공개하지 않는다
+    expose: ["8001"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
-      business-mcp: { condition: service_started }
-      rag-mcp: { condition: service_started }
+      business-mcp: { condition: service_healthy }
+      rag-mcp: { condition: service_healthy }
     volumes:
       - ../scenarios:/scenarios:ro
 
@@ -42,11 +48,21 @@ services:
     build: ../services/business-mcp
     env_file: .env
     expose: ["9101"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9101/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
 
   rag-mcp:
     build: ../services/rag-mcp
     env_file: .env
     expose: ["9102"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9102/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60   # 모델 로드 시간
     depends_on:
       postgres: { condition: service_healthy }
     volumes:
@@ -63,7 +79,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
-      api: { condition: service_started }
+      api: { condition: service_healthy }
 
   web:
     build: ../apps/web
@@ -71,7 +87,7 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      api: { condition: service_started }
+      api: { condition: service_healthy }
 
 volumes:
   pgdata:
