@@ -3,7 +3,7 @@
 // 오피스에 들어가기 전 화면: 링크 안내(만료·취소·없음), 입장 안내, 동의, 대기. 문구는 docs/frontend/design.md.
 import type { ReactNode } from "react";
 
-import { Avatar, Button } from "@/components/ui";
+import { Avatar, Button, Wordmark } from "@/components/ui";
 
 import type { Entry } from "./types";
 
@@ -21,7 +21,7 @@ export const WORK_STEPS = [
 function Page({ children, width = "max-w-xl" }: { children: ReactNode; width?: string }) {
   return (
     <main className={`mx-auto flex min-h-dvh ${width} flex-col justify-center gap-6 px-6 py-16`}>
-      <p className="text-sm font-semibold tracking-tight text-subtle">Day Zero</p>
+      <Wordmark className="h-5 self-start" />
       {children}
     </main>
   );

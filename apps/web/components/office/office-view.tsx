@@ -245,7 +245,8 @@ export function OfficeView(props: OfficeViewProps) {
     typeof target === "number" ? snap.my_documents.find((d) => d.part_no === target) : null;
 
   return (
-    <div className="grid h-dvh grid-cols-[232px_minmax(0,1fr)_440px] overflow-hidden">
+    // ≥1440은 가운데와 작업 패널을 반씩 나눈다: 받은 문서를 가운데에 연 채 오른쪽에서 내 문서를 고치는 분할 보기, 넓은 보드
+    <div className="grid h-dvh grid-cols-[232px_minmax(0,1fr)_440px] overflow-hidden min-[1440px]:grid-cols-[232px_minmax(0,1fr)_minmax(0,1fr)]">
       <nav aria-label="채널" className="flex min-h-0 flex-col gap-4 bg-surface-sunken px-3 py-4">
         <div className="px-2.5">
           <p className="text-lg font-semibold">루프랩</p>

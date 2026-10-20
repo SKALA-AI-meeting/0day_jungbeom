@@ -9,6 +9,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Day Zero",
   description: "AI 동료와 함께 일해 보는 협업 시뮬레이션",
+  icons: { icon: "/brand/favicon.svg" },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

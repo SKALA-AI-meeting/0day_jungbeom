@@ -20,6 +20,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useReducedMotion } from "motion/react";
 import { useState } from "react";
 
 import {
@@ -158,20 +159,28 @@ function BoardCard({
   onSelect: () => void;
   onAssign: (assignee: Assignee) => void;
 }) {
+  const reduce = useReducedMotion();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.part_no,
     disabled: locked,
-    // 카드 이동 150ms(design-system.md 모션)
-    transition: { duration: 150, easing: "cubic-bezier(0.23, 1, 0.32, 1)" },
+    // 카드 이동 150ms(design-system.md 모션). 동작 줄이기면 자리만 바꾼다
+    transition: reduce ? null : { duration: 150, easing: "cubic-bezier(0.23, 1, 0.32, 1)" },
   });
   return (
     <li
       ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
+      style={{
+        transform: CSS.Translate.toString(transform),
+        // 끄는 동안 0.98로 눌렀다가 놓으면 1로 돌아온다(scale은 transform과 따로 전환)
+        transition: [transition, "scale 150ms cubic-bezier(0.23, 1, 0.32, 1)"]
+          .filter(Boolean)
+          .join(", "),
+      }}
       className={cn(
         "flex items-center gap-2 rounded-md border bg-surface px-2.5 py-2",
         selected ? "border-accent/60" : "border-line",
-        isDragging && "relative z-10 scale-[1.02] shadow-[var(--shadow-float)]",
+        isDragging &&
+          "relative z-10 scale-[0.98] shadow-[var(--shadow-float)] motion-reduce:scale-100",
       )}
     >
       <button
@@ -191,7 +200,9 @@ function BoardCard({
       >
         <span className="flex w-full min-w-0 items-center gap-1.5">
           <Chip tone={partTone(task.part_no)}>{task.part_no}</Chip>
-          <span className="min-w-0 truncate text-sm font-medium">{title}</span>
+          <span className="min-w-0 truncate text-sm font-medium @min-[680px]:line-clamp-2 @min-[680px]:whitespace-normal">
+            {title}
+          </span>
         </span>
         <span className="flex flex-wrap items-center gap-1.5">
           {task.depends_on.map((d) => (
@@ -230,6 +241,8 @@ function Column({
   count: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${status}` });
+  // 빈 완료 칸은 머리 한 줄로 접는다. 칸 전체가 놓을 자리라 끌어 오면 카드가 들어가며 펼쳐진다
+  const folded = status === "done" && count === 0;
   return (
     <section
       ref={setNodeRef}
@@ -238,11 +251,12 @@ function Column({
         isOver ? "bg-accent-soft/50" : "bg-surface-sunken/60",
       )}
     >
-      <h4 className="mb-2 flex items-center gap-2 px-1">
+      <h4 className={cn("flex items-center gap-2 px-1", !folded && "mb-2")}>
         <StatusPill status={status} />
         <span className="text-xs text-subtle tabular-nums">{count}</span>
+        {folded && <span className="text-xs text-subtle">끝난 카드를 여기로</span>}
       </h4>
-      {children}
+      {!folded && children}
     </section>
   );
 }
@@ -475,7 +489,8 @@ export function Board({
   const selectedTask = snap.tasks.find((t) => t.part_no === selected);
 
   return (
-    <div className="flex flex-col gap-3 p-5">
+    // 패널이 넓으면(≥1440 분할 배치의 넓은 쪽) 칸 3개를 가로로 놓는다
+    <div className="@container flex flex-col gap-3 p-5">
       {snap.division ? (
         <p className="rounded-md bg-success-soft px-3 py-2 text-sm text-ink">
           {divisionLine(snap.division.parts, snap.division.decided_by, snap.persona)} · 재배정 가능
@@ -492,34 +507,36 @@ export function Board({
         onDragEnd={onDragEnd}
         onDragCancel={() => setDragging(null)}
       >
-        {COLUMNS.map((status) => (
-          <Column key={status} status={status} count={columns[status].length}>
-            <SortableContext
-              items={columns[status].map((t) => t.part_no)}
-              strategy={verticalListSortingStrategy}
-            >
-              <ul className="flex min-h-10 flex-col gap-1.5">
-                {columns[status].map((task) => (
-                  <BoardCard
-                    key={task.part_no}
-                    task={task}
-                    title={titles[task.part_no] ?? ""}
-                    snap={snap}
-                    locked={locked}
-                    selected={selected === task.part_no}
-                    onSelect={() => setSelected(selected === task.part_no ? null : task.part_no)}
-                    onAssign={(assignee) => onPatch(task.part_no, { assignee })}
-                  />
-                ))}
-                {columns[status].length === 0 && (
-                  <li className="rounded-md border border-dashed border-line px-3 py-2 text-xs text-subtle">
-                    여기로 끌어 놓기
-                  </li>
-                )}
-              </ul>
-            </SortableContext>
-          </Column>
-        ))}
+        <div className="flex flex-col gap-3 @min-[680px]:grid @min-[680px]:grid-cols-3 @min-[680px]:items-start">
+          {COLUMNS.map((status) => (
+            <Column key={status} status={status} count={columns[status].length}>
+              <SortableContext
+                items={columns[status].map((t) => t.part_no)}
+                strategy={verticalListSortingStrategy}
+              >
+                <ul className="flex min-h-10 flex-col gap-1.5">
+                  {columns[status].map((task) => (
+                    <BoardCard
+                      key={task.part_no}
+                      task={task}
+                      title={titles[task.part_no] ?? ""}
+                      snap={snap}
+                      locked={locked}
+                      selected={selected === task.part_no}
+                      onSelect={() => setSelected(selected === task.part_no ? null : task.part_no)}
+                      onAssign={(assignee) => onPatch(task.part_no, { assignee })}
+                    />
+                  ))}
+                  {columns[status].length === 0 && (
+                    <li className="rounded-md border border-dashed border-line px-3 py-2 text-xs text-subtle">
+                      여기로 끌어 놓기
+                    </li>
+                  )}
+                </ul>
+              </SortableContext>
+            </Column>
+          ))}
+        </div>
       </DndContext>
       {selectedTask && (
         <CardDetail

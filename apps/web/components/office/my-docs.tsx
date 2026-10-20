@@ -341,16 +341,24 @@ export function FinalDoc({
         ))}
       </div>
       <div className="flex shrink-0 items-center gap-3 border-t border-line bg-surface px-5 py-3">
-        <span className="min-w-0 flex-1 text-xs text-subtle">
+        {/* 저장 실패는 다음 저장이 성공할 때까지 바닥에 남긴다(제출은 저장 확인이 막는다) */}
+        <span
+          className={cn(
+            "min-w-0 flex-1 text-xs",
+            !locked && save === "failed" ? "text-danger" : "text-subtle",
+          )}
+        >
           {locked
             ? "제출 완료 · 수정 불가"
-            : remainingSeconds != null && remainingSeconds <= 120
-              ? `마감 ${remainText(remainingSeconds)} 전 · 시간이 끝나면 자동 제출`
-              : save === "saving"
-                ? "저장 중…"
-                : empty > 0
-                  ? `빈 섹션 ${empty}개 · 제출 뒤 팀장 보고로 종료`
-                  : "제출 뒤 팀장 보고로 종료"}
+            : save === "failed"
+              ? "저장 실패 · 다음 편집 때 다시 저장"
+              : remainingSeconds != null && remainingSeconds <= 120
+                ? `마감 ${remainText(remainingSeconds)} 전 · 시간이 끝나면 자동 제출`
+                : save === "saving"
+                  ? "저장 중…"
+                  : empty > 0
+                    ? `빈 섹션 ${empty}개 · 제출 뒤 팀장 보고로 종료`
+                    : "제출 뒤 팀장 보고로 종료"}
         </span>
         {/* 빈 섹션이 있으면 제출을 보조 버튼으로 낮춘다 */}
         <Button variant={empty > 0 ? "secondary" : "primary"} disabled={locked} onClick={onSubmit}>

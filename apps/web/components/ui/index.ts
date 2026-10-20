@@ -39,3 +39,4 @@ export {
 } from "./status-pill";
 export { Toaster, toast } from "./toaster";
 export { DropMenu, type DropMenuProps, type MenuEntry } from "./menu";
+export { Wordmark, type WordmarkProps } from "./wordmark";

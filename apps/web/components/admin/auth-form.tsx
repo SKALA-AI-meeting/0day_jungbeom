@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
-import { Button, Card, Input } from "@/components/ui";
+import { Button, Card, Input, Wordmark } from "@/components/ui";
 
 export type AuthValues = { email: string; password: string; company_name: string };
 
@@ -28,6 +28,7 @@ export function AuthForm({ mode, pending, error, onSubmit }: AuthFormProps) {
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 px-6 py-20">
+      <Wordmark className="mb-4 h-6 self-start" />
       <h1 className="text-2xl font-semibold">{signup ? "관리자 가입" : "관리자 로그인"}</h1>
       <Card>
         <form className="flex flex-col gap-4" onSubmit={submit}>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 
-import { Button } from "@/components/ui";
+import { Button, Wordmark } from "@/components/ui";
 
 import { setToken, useToken } from "./client";
 
@@ -37,8 +37,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh">
       <header className="no-print border-b border-line bg-surface">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-          <Link href="/admin/positions" className="font-semibold">
-            Day Zero <span className="font-normal text-muted">채용 담당</span>
+          <Link href="/admin/positions" className="flex items-center gap-2">
+            <Wordmark className="h-5" />
+            <span className="text-muted">채용 담당</span>
           </Link>
           {token ? (
             <Button

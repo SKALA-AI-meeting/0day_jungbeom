@@ -4,7 +4,7 @@
 // 세션 실패(failed_stage=session)면 연출 설명 없이 중단 안내만 보여 준다(contracts).
 import { useState } from "react";
 
-import { Button, Card, cn } from "@/components/ui";
+import { Button, Card, cn, Wordmark } from "@/components/ui";
 
 import { copyText } from "./assistant-panel";
 import { gapLine } from "./lines";
@@ -106,7 +106,7 @@ export function DebriefScreen({
   if (debrief.failed_stage === "session") {
     return (
       <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center gap-5 px-6 py-16">
-        <p className="text-sm font-semibold text-subtle">Day Zero</p>
+        <Wordmark className="h-5 self-start" />
         <h1 className="text-2xl font-semibold">세션 중단</h1>
         <p className="text-base">{debrief.scoring_notice}</p>
         <p className="text-muted">문의: {contactLine}</p>
@@ -117,7 +117,7 @@ export function DebriefScreen({
   const gaps = debrief.connection_gaps ?? [];
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-16">
-      <p className="text-sm font-semibold text-subtle">Day Zero</p>
+      <Wordmark className="h-5 self-start" />
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">수고하셨습니다</h1>
         <p className="text-muted">

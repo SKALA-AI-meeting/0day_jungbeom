@@ -93,14 +93,32 @@ export type DocCardInfo = {
   opened?: boolean;
 };
 
-export function DocCard({ info, onOpen }: { info: DocCardInfo; onOpen: () => void }) {
+export function DocCard({
+  info,
+  onOpen,
+  small,
+}: {
+  info: DocCardInfo;
+  onOpen: () => void;
+  /** 묶음(2열) 안의 작은 카드: 아이콘을 줄이고 "열기" 글자를 뺀다(카드 전체가 누르는 곳) */
+  small?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="press mt-1.5 flex w-full max-w-md items-center gap-3 rounded-md border border-line bg-surface px-3 py-2.5 text-left transition-colors hover:border-accent/40 hover:bg-accent-soft/40"
+      aria-label={small ? `${info.part_no}. ${info.title} v${info.version} 열기` : undefined}
+      className={cn(
+        "press flex w-full items-center rounded-md border border-line bg-surface text-left transition-colors hover:border-accent/40 hover:bg-accent-soft/40",
+        small ? "gap-2 px-2.5 py-2" : "gap-3 px-3 py-2.5",
+      )}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-muted">
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-md bg-surface-sunken text-muted",
+          small ? "size-6" : "size-8",
+        )}
+      >
         <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
           <path
             d="M4 1.5h5l3 3V14a.5.5 0 0 1-.5.5h-7.5A.5.5 0 0 1 3.5 14V2a.5.5 0 0 1 .5-.5z"
@@ -121,7 +139,7 @@ export function DocCard({ info, onOpen }: { info: DocCardInfo; onOpen: () => voi
           {info.opened && " · 열어 봄"}
         </span>
       </span>
-      <span className="shrink-0 text-sm font-medium text-accent">열기</span>
+      {!small && <span className="shrink-0 text-sm font-medium text-accent">열기</span>}
     </button>
   );
 }
@@ -176,8 +194,71 @@ export function MessageRow({
         )}
         <p className="text-base break-words whitespace-pre-wrap">{message.content}</p>
         {message.shared_doc && docInfo && (
-          <DocCard info={docInfo} onOpen={() => onOpenDoc(message.shared_doc!)} />
+          <div className="mt-1.5 max-w-md">
+            <DocCard info={docInfo} onOpen={() => onOpenDoc(message.shared_doc!)} />
+          </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 문서 카드 메시지 행. 같은 사람이 같은 분에 보낸 카드가 이어지면 머리 한 번, 한마디는 줄마다, 카드는 작게 2열(UI/UX R3).
+ * 카드 한 장일 때부터 이 행으로 그려, 두 번째 카드가 와도 첫 카드 DOM·포커스가 그대로 남는다(key = 첫 메시지 id).
+ */
+function DocGroupRow({
+  messages,
+  seen,
+  snap,
+  alias,
+  docInfo,
+  docLabel,
+  onOpenDoc,
+}: {
+  messages: Message[];
+  seen: Set<string>;
+  snap: StateSnapshot;
+  alias: string;
+  docInfo: (ref: DocRef) => DocCardInfo | null;
+  docLabel: (ref: DocRef) => string;
+  onOpenDoc: (ref: DocRef) => void;
+}) {
+  const first = messages[0];
+  const avatar = senderAvatar(first.sender, snap.persona, alias);
+  const many = messages.length > 1;
+  // 화면을 연 뒤 온 행은 통째로, 묶음에 뒤늦게 붙은 줄·카드는 그것만 페이드(클래스가 그대로라 다시 재생되지 않는다)
+  const fresh = (m: Message) => m !== first && !seen.has(m.id) && "arrive";
+  return (
+    <div className={cn("flex gap-3 px-5 pt-3", !seen.has(first.id) && "arrive")}>
+      <div className="w-9 shrink-0">
+        <Avatar {...avatar} size={36} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="font-semibold">{avatar.name}</span>
+          <span className="text-xs text-subtle tabular-nums">{clock(first.t_min)}</span>
+        </div>
+        {messages.map((m) => (
+          <div key={m.id} className={cn(fresh(m))}>
+            {m.reply_to_doc && (
+              <ReplyRef target={m.reply_to_doc} label={docLabel(m.reply_to_doc)} />
+            )}
+            {m.content && <p className="text-base break-words whitespace-pre-wrap">{m.content}</p>}
+          </div>
+        ))}
+        <div className={cn("mt-1.5 grid gap-2", many ? "max-w-2xl grid-cols-2" : "max-w-md")}>
+          {messages.map((m) => {
+            const info = docInfo(m.shared_doc!);
+            return (
+              info && (
+                <div key={m.id} className={cn("min-w-0", fresh(m))}>
+                  <DocCard small={many} info={info} onOpen={() => onOpenDoc(m.shared_doc!)} />
+                </div>
+              )
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -237,6 +318,33 @@ export function Timeline({
   const last = items.at(-1);
   const urgent =
     last?.kind === "line" && (last.line.kind === "deadline" || last.line.kind === "submitted");
+  // 문서 카드 메시지는 한 장이어도 묶음 행으로 그리고, 같은 사람·같은 분(시계 표시 기준)이 이어지면 그 행에 붙인다. 표시만 바꾸고 메시지는 그대로다
+  const groups = new Map<number, Message[]>();
+  const grouped = new Set<number>();
+  items.forEach((item, i) => {
+    // 알림 채널은 "나에게만" 머리가 따로라 MessageRow로 둔다
+    if (
+      grouped.has(i) ||
+      item.kind !== "message" ||
+      !item.message.shared_doc ||
+      item.message.channel === "notice"
+    )
+      return;
+    const run = [item.message];
+    for (let j = i + 1; j < items.length; j++) {
+      const next = items[j];
+      if (
+        next.kind !== "message" ||
+        !next.message.shared_doc ||
+        next.message.sender !== item.message.sender ||
+        clock(next.message.t_min) !== clock(item.message.t_min)
+      )
+        break;
+      run.push(next.message);
+      grouped.add(j);
+    }
+    groups.set(i, run);
+  });
   useLayoutEffect(() => {
     const el = scroller.current;
     if (el && (atBottom.current || urgent)) el.scrollTop = el.scrollHeight;
@@ -254,6 +362,22 @@ export function Timeline({
         <p className="px-5 py-10 text-center text-sm text-muted">아직 대화 없음</p>
       )}
       {items.map((item, i) => {
+        if (grouped.has(i)) return null;
+        const group = groups.get(i);
+        if (group) {
+          return (
+            <DocGroupRow
+              key={group[0].id}
+              messages={group}
+              seen={seen}
+              snap={snap}
+              alias={alias}
+              docInfo={docInfo}
+              docLabel={docLabel}
+              onOpenDoc={onOpenDoc}
+            />
+          );
+        }
         if (item.kind === "line") {
           return (
             <SystemLineRow key={itemKey(item)} line={item.line} fresh={!seen.has(itemKey(item))} />
