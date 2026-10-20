@@ -60,6 +60,11 @@
 - **web**: 리포트 머리 "연결 끊김" 목록에서 1분 미만은 접어 "짧은 끊김 n회"로(결정 2026-10-21, 점수 무관 표시). "입력 중…" 표시는 채널 구분(DM 응답 중이면 DM에만).
 - 인증 경계: 타 기업 접근은 404 유지(testing.md 수정), "동료 문서 PUT"은 내부 docs/send에 지원자 doc_id → 403으로 정의.
 
+## 사용자 결정 (2026-10-21 07:10): 개발을 Codex로, 리뷰는 가볍게, 파일럿 전까지 빨리
+
+- 이후 개발 pane은 Codex(`gpt-6.1-sol`, `-s workspace-write -a never`)로 띄우고, 리뷰는 Claude Opus 한 번(차단만, 재확인 루프 최소)으로 한다. 작성 모델 ≠ 리뷰 모델 유지. 진행 중이던 Claude pane(e2e-runner)은 그대로 끝낸다.
+- 목표: P3(e2e·fix) 완료 → P5 docs → 파일럿(P4)은 사용자 일정.
+
 ## pane 브리프 템플릿
 
 ```
@@ -115,7 +120,7 @@
 | P1 | scenario-redesign | 병합 완료. catalog_version `b2cc7dd7baa915ca`. 소유권 반환: `app/agent/`→agent-session, `scenarios/missions/` 문구→prompts, `scenarios/e2e/`→e2e-runner | Codex 관문 3회(차단 4·7·5) + 재확인 반영(보고서 `reports/scenario-redesign-report.md`) | 4b849b8 |
 | P2 | agent-session M2 | 병합 완료. 남은 문제: 6k 토큰 요약 접기 미구현, 보드 1분 묶음 재분업 설계 변경 요청, live 선점 금지 2/6(모델 상향 판단 자료는 보고서 끝) | Codex 차단 9 → 재확인 6 → 2 반영 | a1723ad |
 | P2 | agent-assistant | 병합 완료. api 수준 요청(라우터 마스킹·60회 직렬화·run.py 수명주기)은 위 'P2 진행 중 모인 api 수준 변경 요청' | Codex 차단 6 + 재확인 2회 반영 | cd55eb4 |
-| P2 | web-integrate | 1라운드 병합 완료(FakeAgentRunner로 27단계). 2라운드(AGENT_RUNNER=session·ASSISTANT_RUNNER=graph 실제 한 세션)는 api-fix 병합 뒤 같은 트랙으로 | Codex 차단 3 + 재확인 반영 | 1e7ce3f |
+| P2 | web-integrate | 1·2라운드 병합 완료(실 그래프 30단계·99 checks). 결함은 fix-p3로 | Codex 차단 3+1 반영 | 6af5703 |
 | P2 | web-polish | 병합 완료. B2(최종본 저장 실패 표시 유지)는 web-integrate 필수 후속 | Codex 차단 1·권장 2 반영 | fb788aa |
 | P2 보충 | api-fix | 병합 완료(어시스턴트 마스킹·60회 직렬화·run.py 수명주기·테스트 세션 회사 지정) | codex exec 리뷰 필수 2 반영 | 7bd2b86 |
 | P3 | e2e-runner | 진행 중(1단계 러너·단언·픽스처 mock 작성). 실 스택 사용권은 web-integrate 2라운드 뒤 | | |
