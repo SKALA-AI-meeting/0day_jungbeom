@@ -146,3 +146,84 @@ cd apps/web && npx next build   # 통과(MOCK 없음)
 make lint                        # 통과
 node e2e/session.mjs            # 27단계 통과, 검사 82개
 ```
+
+## 2라운드 (실제 세션·어시스턴트 그래프)
+
+기준: main `6192f3f`(agent-session·agent-assistant·api-fix 병합) 위로 rebase. 스택은 공용 DB `dayzero`(새 스키마, 기본 DATABASE_URL), `AGENT_RUNNER=session ASSISTANT_RUNNER=graph ENABLE_TEST_API=1`, 모든 역할 모델 gpt-4o-mini(`infra/.env.local`의 MODEL_*), report-worker도 실제 LLM. `make seed` → `catalog_version=b2cc7dd7baa915ca`, rag 재색인 **indexed 6**(model BAAI/bge-m3). 끝난 뒤 api·business-mcp·worker·web 전부 내림(네 포트 LISTEN 없음).
+
+### 결과
+
+| 항목 | 결과(마지막 실행 `e2e/shots/2026-10-20T21-51-57-183Z/`, 30단계 431초) | 검증 방식 |
+|---|---|---|
+| 연결 스크립트 30단계 | 전부 통과, 검사 99개(강한 검사 + 그래프 결과 soft 검사) 전부 ✓, soft 실패 0건. api 응답 112건·WS 프레임 140건 기록 | 실 API + 실 LLM |
+| 팀장 킥오프·동료 인사 | 킥오프(team) 0.07분, 동료 인사(dm) 0.09분 | soft |
+| 422 뒤 동료 자극 | 보드 PUT 422 문장 → 확정(`division.confirmed{candidate}`) → 동료 dm(이벤트 없는 응답) 0.15분 "보드에 정해 주신 대로 3번…, 4번…, 5번… 진행할게요." | soft |
+| 동료 문서(중간 점검 카드 2.25분) | 내부 docs/send 없이 그래프가 3·4·5번 v1을 팀 채널에 보냄(첫 카드 2.34분, `shared_doc`·본문 "3번 핵심 기능 제안 v1") → 열기 → 답글(reply_to_doc) → 동료 답 2.51분 | soft + check |
+| 최종본 | 동료 3번 v1 가져오기(source_version 1), 내 문서 vnull 가져오기, 저장 실패·느린 저장 겹침 검사 전부 통과(1라운드 수정 라운드 단계 그대로) | check |
+| 어시스턴트(그래프) | 실제 응답 "첫 참여 후 두 번째 모임 참여율은 22%입니다 [지표 현황]. 출처: 지표 현황", `cited_docs: ["metrics"]` → 칩 "지표 현황"(제목), 복사 일치. 한도: DB로 assistant_calls 59건을 채운 뒤 화면 61번째 → 429 `assistant_limit`·"한도(60회)" 안내 | check |
+| active_runs 복원 | 동료에게 메시지 → ack 직후 새로고침 → `/state.active_runs`에 그 실행(actor colleague, node respond) → "이도현님이 입력 중…" → 응답 뒤 해제 | soft |
+| 지연 공개·재연결 3종·reporting 재입장·긴 끊김 줄·경계 ①② | 1라운드와 같은 단계 전부 통과(경계 ①: 연결 2개, 상류 연결 입장 +2503ms, 대상 메시지 state는 연결 +37ms) | check |
+| 보고 요청 카드 | 팀장 honesty_report 메시지 5.58분, 카드 메시지가 붙은 이벤트 9개(킥오프·리뷰 포함) | soft |
+| 실제 분류로 종료 | 팀 채널 보고 메시지 → `meta.classification {kind: report, recipient: manager, related_card: honesty_report}` → 6.9초 뒤 `session.ended{submitted}`(보고 기한 3분 51초 남음) → 디브리핑 | soft |
+| 카드 7장 | 디브리핑 events = planning_division, collab_help, planning_checkin, responsibility_delay, adaptability_change, collab_disagree, honesty_report | soft |
+| 리포트 근거 | draft 자동 합계 충족 7·미충족 4·기록 없음 9. 카드 소섹션 근거 record_ref 11개, 평가표 항목 근거 record_ref 12개, AI 호출 포함 83개 전부 전체 기록(116행)에 있음. 조정(자동 값 있는 항목을 반대 값+메모) → 검토 완료 → final → 메모 추가 | soft + check |
+| `pnpm test` / `pnpm lint` / `npx next build` / `make lint` | 12 passed / 통과 / 통과 / 통과 | — |
+
+### 스크립트 변경(`apps/web/e2e/session.mjs`)
+
+- 내부 `docs/send`·`classification`·`complete`를 메인 흐름에서 뺐다. 동료 문서는 `/state.received`를 2초마다 받아 기다리고(최대 5분), 문서 파트·제목·버전은 실제 값으로 따라간다. 보고 뒤에는 `session.ended`만 기다리고 분류는 내부 messages의 `meta.classification`으로 확인한다(분류가 안 되면 deadline까지 기다려 timeout 경로로 끝남을 기록).
+- 검사 세 단계: 화면 경로는 `check`(즉시 멈춤), 그래프 결과의 필수 인수 항목은 `must`(실패해도 끝까지 증거를 모은 뒤 **exit 1**), 참고 관찰(문구·도착 시각·카드 메시지 수 등)은 `soft`(경고만). 아래 "2라운드 Codex 반영" 참고.
+- 보고 요청 카드(5.5분)를 기다린 뒤 제출한다(6분 마감 15초 전까지만). 제출 전에 시간이 끝나면 soft 실패로 남기고 계속한다.
+- 테스트 세션은 api-fix의 `admin_email`로 관리자 회사에 만든다(SQL 이동 제거). 관리자 화면은 그 채용 건 id로 바로 들어간다.
+- 어시스턴트 한도: 실 그래프 59회 대신 DB로 `assistant_calls` 59건을 채운다(내부 API에 카운트를 채우는 경로가 없음). SQL은 assistant 채널 **요청 메시지의 `messages.created_at`만** 세션 시작 30분 전으로 흩어 둔다(아래 1차 실행 실패 참고). `assistant_calls.created_at`은 기본값 now()라 59건이 채운 시각에 몰린다. 이 행들은 재동기화 뒤 어시스턴트 이력·리포트 AI 활용·전체 기록·관리자 목록 message_count(채널 구분 없이 candidate 메시지를 셈)에 남으므로, 이 세션의 AI 활용·대화량 수치는 순수 대화의 증거가 아니다(83개 링크 중 AI 호출 60개 가운데 59개가 주입값). 페이지 결함을 피하는 테스트 우회이며 그 결함을 고친 것은 아니다.
+- 경계 ②의 "끊긴 사이 세션 종료"는 여전히 내부 `complete`로 만든다(끊긴 동안의 종료를 재현하는 장애 주입).
+- 조정 단계는 리포트 JSON에서 자동 값이 있는 항목을 골라 반대 값을 준다(실제 리포트는 자동 값이 섞여 있어 고정 선택으로는 메모 칸이 안 뜰 수 있음).
+
+### 실패했던 실행과 원인
+
+| 실행 | 실패 단계 | 증거 | 원인·처리 |
+|---|---|---|---|
+| 1차 `2026-10-20T21-20-51-041Z` | 18 active_runs(soft), 24 보고 분류(soft, deadline 238초 기다려 종료), 29 조정 메모 칸 없음(멈춤) | `agent_runs`: 3.5분 뒤 메시지 실행 4건이 0.2초·LLM 0회로 `failed`. `fail-29-*.png` | 한도 검증용으로 SQL로 넣은 59건이 같은 시각(같은 t_min)이라, 세션 그래프의 메시지 이어 읽기(`refresh_messages`, t_min 기준 50개 페이지, 최대 5쪽)가 같은 페이지만 되풀이해 새 지원자 메시지를 못 찾았다(`message_not_found`). 테스트 부작용이라 채우기 시각을 흩었고, 경계 결함은 아래 변경 요청 2. 29는 스크립트가 자동 값과 같은 값을 골라서였다(화면 결함 아님) |
+| 2·3차 `…21-35-27-829Z`, `…21-43-16-561Z` | 18 active_runs(soft)만 | api를 직접 붙여 본 실험: ack 직후부터 응답 직전 2.5초 동안 `/state.active_runs`에 실행이 있음 | 스크립트가 지원자 `message.new.run_id`(비어 있음)로 비교했다. 실행 id는 `message.ack.run_id`라 고쳤다. 같은 실험에서 메시지 응답 전에 `agent.progress`가 한 번도 오지 않음을 확인(변경 요청 1) |
+| 4차 `…21-51-57-183Z` | 없음 | 위 결과 표 | — |
+
+### 변경 요청(agent·api)
+
+1. **agent-session: 메시지 실행 앞부분이 `agent.progress` 밖에 있다.** route·분류(약 1.8초) 동안 진행 프레임이 없다. `respond started`는 응답 생성 전에 오고(`nodes.py` respond), 일반 답은 started 152.9s → 검색 → finished 154.4s, 보고 응답은 413.6s → 415.3s처럼 실제 길이로 온다. active_runs 시험에서 started→finished가 0.1초였던 것은 진행 질문을 작업 기억에서 바로 답하는 빠른 분기(progress_query)였다. 그래서 메시지를 보낸 뒤 약 1.8초는 "입력 중…"이 안 보이고, 그 사이 새로고침하면 `/state.active_runs`로만 보인다. 요청: 실행 시작부터 진행 상태를 보내되, 수신자 판정 전의 actor와 실패·조기 종료 때 finished/failed 정리를 함께 설계.
+2. **agent-session(P2): `refresh_messages` 페이지 방식.** `since_t_min = 마지막 t_min - 0.02`로 다음 쪽을 읽어서, 한 t_min(0.01분)에 50개 넘게 몰리면 같은 쪽을 되풀이하고 그 뒤 메시지를 놓친다(`message_not_found`로 실행 실패). 채널을 거르기 전에 50개를 읽으므로 assistant 등 페르소나 밖 채널도 쪽을 채운다. 쪽 상한(5쪽)을 다 써도 error 없이 성공처럼 끝나 메시지 응답·보고 종료를 놓칠 수 있다(리뷰가 실제 함수로 재현). offset이나 (created_at, id) 커서로 바꾸고, 상한 소진을 실패로 다룰지 함께 정한다.
+3. **prompts(참고): 보고 요청 카드 문장.** 1차 실행에서 팀장이 "진행 상황을 간단히 보고드립니다…"로 스스로 현황을 정리했고, 1·3차에서는 킥오프 끝에도 "다 됐다고 전해도 되죠?"가 붙었다(agent-session 보고서 문구 요청 1과 같은 현상).
+
+### 화면 결함·관찰
+
+- 화면 코드 수정은 없었다(이번 라운드의 실패는 스크립트와 그래프 쪽).
+- 관찰(표시 개선 후보): 리포트 머리의 "연결 끊김" 목록에 같은 시각처럼 보이는 짧은 끊김이 13개까지 늘어선다(새로고침·창 교체·장애 주입이 모두 남음). 길이 0인 기록이 아니라 `components/admin/format.ts`가 세션 분을 정수로 내림해 같은 분 안의 짧은 구간이 같은 시각으로 보이는 것이다. 원본 connection_gaps와 카드 창 겹침 근거는 그대로 두고, 리포트 머리에서 짧은 끊김을 묶어 접거나 초 단위로 보이는 표시 조정(계약 변경 없음)으로 배정할 수 있다. 이번에는 고치지 않았다.
+- 관찰: 새로고침 뒤에는 팀 채널이 열리므로, 동료가 DM에 답하는 중이어도 "이도현님이 입력 중…"이 팀 채널 아래에 보인다(채널 구분 없는 기존 표시).
+- 모양 비교: `GET /admin/sessions/{id}/report`의 evidence 차이(quote·channel ↔ doc_id·summary·flag)는 근거 타입이 섞인 배열의 첫 원소 타입이 픽스처와 달라서 생긴 것이라 계약 차이가 아니다. 그 밖은 1라운드와 같다.
+
+### 남은 것
+
+- 6분 세션 한 번만 돌렸다. 120분 실세션·1280px·제출 전 보고·5분 만료 종료는 e2e-runner·P4 몫.
+- 어시스턴트 한도 61번째는 DB 채우기로 확인했다. 내부 API로 카운트를 채우는 경로가 필요하면 api에 요청한다.
+
+### 2라운드 Codex 반영
+
+원문 `REVIEW.md` `## 2라운드`(차단 1). 실 스택은 e2e-runner가 쓰는 중이라 띄우지 않았다. 스크립트 수정은 실세션으로 다시 돌리지 않았다(마지막 실세션 증거는 위 4차 실행 그대로).
+
+| # | 처리 | 내용 |
+|---|---|---|
+| R2-1 | 고침 | `must()`를 새로 두고 필수 인수 항목을 옮겼다: 보고 메시지 분류 kind=report, 종료 reason=submitted(새 검사), 보고로 종료(기한 전), 제출 전 시간 만료 안 됨, 디브리핑 카드 7장, 카드 소섹션 근거 record_ref 있음, 평가표 항목 근거 record_ref 있음, 새로고침 뒤 active_runs, 응답 뒤 '입력 중…' 해제. 끝까지 증거를 모은 뒤 `verdict()`가 필수 실패가 하나라도 있으면 `process.exitCode = 1`(요약 "필수 실패 n건 · 참고 경고 m건", `log.json`의 `verdict`). 킥오프·인사·확정 뒤 자극·문서 도착 시각·카드 메시지 수·답글 응답·cited_docs·자동 합계는 `soft`(경고)로 남겼다. `check` 실패는 전처럼 즉시 멈추고 0이 아닌 코드로 끝난다 |
+| 함께 | 고침 | `session.ended.reason === "submitted"` 검사 추가. 문서 답글의 동료 응답은 내 답글의 `message.ack.run_id`와 같은 run_id의 동료 메시지만 센다(카드·문서 메시지 제외). 보고 메시지·답글의 ack도 첫 ack가 아니라 내 메시지 id로 찾는다 |
+| 보고서 | 고침 | 위 변경 요청 1을 "route/분류 약 1.8초가 progress 밖"으로 정정, 어시스턴트 채우기 SQL이 `messages.created_at`만 옮기고 `assistant_calls.created_at`은 now()임과 그 영향(이력·AI 활용·message_count)을 명시, refresh_messages를 P2로, 끊김 표시 관찰을 정수 분 내림 원인으로 정정 |
+
+확인(실 스택 없음):
+
+```
+node --check apps/web/e2e/session.mjs                  # 통과
+cd apps/web && pnpm lint                               # 통과
+# 추출 실행: session.mjs의 soft·must·record·verdict 원문을 잘라 Node로 실행
+node verdict-check.mjs e2e/session.mjs must-fail       # ✗ 보고 메시지 분류 kind=report → 필수 실패 1건, exit=1
+node verdict-check.mjs e2e/session.mjs soft-fail       # △ 도착 시각 → 참고 경고 1건, exit=0
+node verdict-check.mjs e2e/session.mjs pass            # exit=0
+```
+
+(추출 실행 스크립트는 scratchpad에 두었고 커밋하지 않았다. 원문을 `/** 그래프(LLM) 결과의 참고 관찰`부터 `function short(` 앞까지 잘라 `new Function`으로 실행한다.)

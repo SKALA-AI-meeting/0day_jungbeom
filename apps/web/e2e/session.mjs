@@ -1,7 +1,9 @@
 // 실 API 연결 스크립트(web-integrate). 띄워 둔 api(8000·8001)·web(3000)·worker에 브라우저로 한 세션을 돌린다.
 // 관리자 가입·로그인·채용 건·초대 → 6분 테스트 세션으로 지원자 전체 흐름 → 관리자 리포트·전체 기록.
 // 재연결 3종(끊김 3초 재접속, 4401 → resume, session.replaced 4000)은 브라우저의 WS 경로를 가로채 닫는다.
-// 동료 문서 보내기·보고 분류는 FakeAgentRunner가 하지 않으므로 내부 API로 그래프 역할을 대신한다.
+// 실제 세션 그래프(AGENT_RUNNER=session)·어시스턴트 그래프(ASSISTANT_RUNNER=graph)를 전제로 동료 문서·보고 분류를
+// 그래프 결과로 기다린다. 화면 경로는 check(즉시 멈춤), 그래프 결과의 필수 인수는 must(끝까지 모은 뒤 실패 종료),
+// 참고 관찰은 soft(경고만)다.
 // 단계별 스크린샷과 응답 로그는 e2e/shots/<실행 시각>/에 남긴다(git 무시).
 //
 //   node e2e/session.mjs            (환경변수: WEB_URL, API_URL, API_INTERNAL_URL, E2E_DB, HEADED=1)
@@ -19,7 +21,7 @@ const WEB = process.env.WEB_URL ?? "http://localhost:3000";
 const API = process.env.API_URL ?? "http://localhost:8000";
 const INTERNAL = process.env.API_INTERNAL_URL ?? "http://localhost:8001";
 // 테스트 세션의 채용 건을 관리자 회사로 옮길 DB(테스트 API가 고정 회사에 만든다)
-const DB = process.env.E2E_DB ?? "dayzero_web_integrate";
+const DB = process.env.E2E_DB ?? "dayzero";
 const ELEMENTS = ["responsibility", "planning", "adaptability", "collaboration", "honesty"];
 
 const RUN = new Date().toISOString().replace(/[:.]/g, "-");
@@ -78,6 +80,39 @@ function check(name, ok, detail) {
     `  ${ok ? "✓" : "✗"} ${name}${detail === undefined ? "" : ` — ${JSON.stringify(detail)}`}`,
   );
   if (!ok) throw new Error(`check failed: ${name}`);
+}
+
+/** 그래프(LLM) 결과의 참고 관찰(문구·도착 시각 등): 실패해도 경고만 남긴다 */
+function soft(name, ok, detail) {
+  return record(name, ok, detail, false);
+}
+
+/**
+ * 그래프 결과에 달린 필수 인수 항목(보고 분류·기한 전 종료·카드 7장·근거·active_runs 복원):
+ * 실패해도 증거를 끝까지 모으되, 마지막에 하나라도 실패했으면 실패 종료한다(verdict)
+ */
+function must(name, ok, detail) {
+  return record(name, ok, detail, true);
+}
+
+function record(name, ok, detail, required) {
+  log.checks.push({ step: stepNo, name, ok: !!ok, soft: true, required, detail });
+  const mark = ok ? "✓" : required ? "✗" : "△";
+  console.log(`  ${mark} ${name}${detail === undefined ? "" : ` — ${JSON.stringify(detail)}`}`);
+  return !!ok;
+}
+
+/** 마지막 판정: 참고 실패는 경고, 필수 실패가 있으면 exit 1 */
+function verdict() {
+  const failed = log.checks.filter((c) => c.soft && !c.ok);
+  const required = failed.filter((c) => c.required);
+  const line = (c) => `\n  ${c.required ? "✗" : "△"} ${c.step}. ${c.name}`;
+  console.log(
+    `\n필수 실패 ${required.length}건 · 참고 경고 ${failed.length - required.length}건${failed.map(line).join("")}`,
+  );
+  log.verdict = { required_failed: required.length, warnings: failed.length - required.length };
+  if (required.length) process.exitCode = 1;
+  return required.length === 0;
 }
 
 function short(value, max = 600) {
@@ -352,6 +387,7 @@ let positionId = "";
 let inviteUrl = "";
 let token = "";
 let sessionId = "";
+let e2ePositionId = "";
 
 try {
   // ── 관리자 ──
@@ -424,21 +460,25 @@ try {
   });
 
   // ── 6분 테스트 세션 ──
-  await step("6분 테스트 세션 만들기(내부 API) → 관리자 회사로 옮김", async () => {
+  await step("6분 테스트 세션 만들기(내부 API, 관리자 회사 지정)", async () => {
+    // admin_email을 주면 그 관리자 회사의 채용 건으로 만든다(관리자 화면에서 리포트를 볼 수 있게)
     const created = await internal("POST", "/test/sessions", {
       elements: ELEMENTS,
       session_minutes: 6,
       alias: "지원자E2E",
+      admin_email: email,
     });
     token = created.token;
     sessionId = created.session_id;
-    // 테스트 API는 고정 회사에 채용 건을 만든다. 관리자 화면에서 리포트를 보려고 관리자 회사로 옮긴다
-    const moved = psql(
-      `UPDATE positions SET company_id = (SELECT company_id FROM admins WHERE email = '${email}'), ` +
-        `name = 'e2e 6분 세션' WHERE id = (SELECT i.position_id FROM sessions s JOIN invites i ON i.id = s.invite_id WHERE s.id = '${sessionId}') RETURNING id`,
+    const adminJwt = await admin.evaluate(() => localStorage.getItem("dayzero.admin.token"));
+    const positions = (await publicApi("GET", "/admin/positions", adminJwt)).body;
+    e2ePositionId = positions.find((p) => p.id !== positionId)?.id;
+    check(
+      "관리자 회사의 채용 건",
+      !!e2ePositionId,
+      positions.map((p) => p.name),
     );
-    check("position moved", moved.length > 0, moved);
-    return { session_id: sessionId };
+    return { session_id: sessionId, position_id: e2ePositionId };
   });
 
   const pageA = await candCtx.newPage();
@@ -460,10 +500,8 @@ try {
     const snap = await (await state).json();
     check("state alias", snap.session.alias === "지원자E2E", snap.session.alias);
     check("tasks 5 null", snap.tasks.length === 5 && snap.tasks.every((t) => t.assignee === null));
-    await waitFrame(tapA, "message.new").catch(() => null);
     await pageA.getByRole("navigation", { name: "채널" }).waitFor();
-    await sleep(800);
-    return { shots: [s1, await shot(pageA, "office")] };
+    return { shot: s1 };
   });
 
   const work = pageA.getByRole("complementary", { name: "작업" });
@@ -471,6 +509,43 @@ try {
     page.getByRole("complementary", { name: "작업" }).getByRole("tab", { name }).click();
   const jwtOf = (page, link = token) =>
     page.evaluate((t) => sessionStorage.getItem(`dz:${t}`), link);
+  /** 지원자 /state를 2초마다 받아 조건을 기다린다(프레임은 재연결 중에 놓칠 수 있다). 시간이 지나면 마지막 state */
+  const waitState = async (pred, timeout, page = pageA, sid = sessionId, link = token) => {
+    const end = Date.now() + timeout;
+    for (;;) {
+      const snap = (await publicApi("GET", `/sessions/${sid}/state`, await jwtOf(page, link))).body;
+      if (snap && pred(snap)) return { ok: true, snap };
+      if (Date.now() > end) return { ok: false, snap };
+      await sleep(2000);
+    }
+  };
+
+  await step("팀장 킥오프(team)·동료 인사(dm) 도착", async () => {
+    const got = await waitState(
+      (s) =>
+        s.messages.some((m) => m.sender === "manager" && m.channel === "team") &&
+        s.messages.some((m) => m.sender === "colleague" && m.channel === "dm"),
+      90_000,
+    );
+    const kickoff = got.snap.messages.find((m) => m.sender === "manager" && m.channel === "team");
+    soft(
+      "팀장 킥오프",
+      !!kickoff,
+      kickoff && { t_min: kickoff.t_min, content: kickoff.content.slice(0, 80) },
+    );
+    const hello = got.snap.messages.find((m) => m.sender === "colleague" && m.channel === "dm");
+    soft(
+      "동료 인사 dm",
+      !!hello,
+      hello && { t_min: hello.t_min, content: hello.content.slice(0, 80) },
+    );
+    await pageA
+      .getByText(kickoff?.content.split("\n")[0].slice(0, 20) ?? "들어왔어요")
+      .first()
+      .waitFor();
+    return { shot: await shot(pageA, "office") };
+  });
+
   const assign = async (page, part, label) => {
     await page.getByRole("button", { name: new RegExp(`^${part}번 담당:`) }).click();
     await page.getByRole("menuitem", { name: label, exact: true }).click();
@@ -502,6 +577,27 @@ try {
     check("PUT tasks/2 200", (await good).status() === 200);
     const confirmed = await waitFrame(tapA, "division.confirmed");
     check("division.confirmed", confirmed.decided_by === "candidate", confirmed.parts);
+    // 보드 확정은 동료 그래프 자극(division)이다: 확정 뒤 동료 dm이 한 건 와야 한다
+    const after = await waitState(
+      (s) =>
+        s.messages.some(
+          (m) =>
+            m.sender === "colleague" &&
+            m.channel === "dm" &&
+            !m.event_id &&
+            m.t_min >= confirmed.t_min,
+        ),
+      90_000,
+    );
+    const reply = after.snap.messages.find(
+      (m) =>
+        m.sender === "colleague" && m.channel === "dm" && !m.event_id && m.t_min >= confirmed.t_min,
+    );
+    soft(
+      "확정 뒤 동료 자극(dm)",
+      !!reply,
+      reply && { t_min: reply.t_min, content: reply.content.slice(0, 80) },
+    );
     await sleep(500);
     return { shots: [s1, await shot(pageA, "board-confirmed")] };
   });
@@ -538,49 +634,84 @@ try {
     return { shot: await shot(pageA, "share") };
   });
 
+  /** 동료 그래프가 보낸 첫 문서 {doc_id, part_no, title, version} */
   let colleagueDoc = null;
-  await step("동료 문서 받기(내부 docs/send) → 열기(open) → 답글(reply_to_doc)", async () => {
-    // FakeAgentRunner는 문서를 보내지 않는다. 동료 그래프의 send_document를 내부 API로 대신한다
-    colleagueDoc = await internal("POST", `/sessions/${sessionId}/docs/send`, {
-      part_no: 4,
-      content: "비슷한 서비스 사례\n- 런데이: 주간 목표 알림\n- 나이키 런: 친구 챌린지",
-      channel: "team",
-      run_id: randomUUID(),
-      seq: 40,
-    });
-    const frame = await waitFrame(tapA, "document.shared", (p) => p.by === "colleague");
-    check("document.shared(colleague)", frame.doc_id === colleagueDoc.doc_id, frame);
-    await waitFrame(tapA, "message.new", (m) => m.shared_doc?.doc_id === colleagueDoc.doc_id);
-    const opened = waitApi(pageA, "POST", /\/documents\/[^/]+\/open$/);
-    // 문서 카드(한 장이면 큰 카드, 묶이면 작은 카드)
-    await pageA.getByRole("button", { name: /비슷한 서비스 사례.*v1.*열기/ }).click();
-    const openBody = await (await opened).json();
-    check(
-      "open 200",
-      openBody.version === 1 && openBody.content.includes("런데이"),
-      openBody.t_min,
-    );
-    await pageA.getByText("런데이: 주간 목표 알림").waitFor();
-    const s1 = await shot(pageA, "doc-open");
-    await pageA.getByRole("button", { name: "답글 쓰기" }).click();
-    await pageA.getByText(/v1에 답/).waitFor();
-    const composer = pageA.getByPlaceholder(/에 메시지 보내기/);
-    await composer.fill("4번 사례 좋아요. 재참여 지표도 같이 적어 주세요.");
-    await composer.press("Enter");
-    const ack = await waitFrame(tapA, "message.ack");
-    const mine = await waitFrame(tapA, "message.new", (m) => m.id === ack.message_id);
-    check("reply_to_doc", mine.reply_to_doc?.doc_id === colleagueDoc.doc_id, mine.reply_to_doc);
-    const reply = await waitFrame(
-      tapA,
-      "message.new",
-      (m) => m.sender === "colleague" && !m.shared_doc,
-    );
-    check("동료 응답(FakeAgentRunner)", !!reply.content, reply.content);
-    await sleep(500);
-    return { shots: [s1, await shot(pageA, "reply")] };
-  });
+  await step(
+    "동료 문서 받기(중간 점검 카드, 그래프가 보냄) → 열기(open) → 답글(reply_to_doc)",
+    async () => {
+      // 6분 세션의 중간 점검 카드는 2.25분. 동료 그래프가 문서 카드 메시지와 document.shared를 보낸다
+      const got = await waitState((s) => s.received.some((d) => d.versions.length), 300_000);
+      check(
+        "동료 문서 도착",
+        got.ok,
+        got.snap.received.map((d) => [d.part_no, d.versions.length]),
+      );
+      const doc = got.snap.received.find((d) => d.versions.length);
+      const v = doc.versions[0];
+      colleagueDoc = {
+        doc_id: doc.doc_id,
+        part_no: doc.part_no,
+        title: doc.title,
+        version: v.version,
+      };
+      soft("도착 시각(카드 2.25분 뒤)", v.t_min >= 2, {
+        part_no: doc.part_no,
+        t_min: v.t_min,
+        channel: v.channel,
+      });
+      const card = got.snap.messages.find((m) => m.id === v.message_id);
+      soft("문서 카드 메시지(shared_doc)", card?.shared_doc?.doc_id === doc.doc_id, card?.content);
+      if (v.channel !== "team")
+        await pageA.getByRole("navigation", { name: "채널" }).getByText("이도현").click();
+      const opened = waitApi(pageA, "POST", /\/documents\/[^/]+\/open$/);
+      // 문서 카드(한 장이면 큰 카드, 묶이면 작은 카드)
+      await pageA
+        .getByRole("button", { name: new RegExp(`${doc.title}.*v${v.version}.*열기`) })
+        .first()
+        .click();
+      const openBody = await (await opened).json();
+      check("open 200", openBody.version === v.version && openBody.content.length > 0, {
+        t_min: openBody.t_min,
+        chars: openBody.content.length,
+      });
+      await pageA
+        .getByText(
+          openBody.content
+            .split("\n")
+            .find((l) => l.trim())
+            .trim()
+            .slice(0, 15),
+        )
+        .first()
+        .waitFor();
+      const s1 = await shot(pageA, "doc-open");
+      await pageA.getByRole("button", { name: "답글 쓰기" }).click();
+      await pageA.getByText(new RegExp(`v${v.version}에 답`)).waitFor();
+      const composer = pageA.getByPlaceholder(/에 메시지 보내기/);
+      await composer.fill(`${doc.part_no}번 잘 봤어요. 재참여 지표 기준을 한 줄 더 적어 주세요.`);
+      await composer.press("Enter");
+      const replyText = `${doc.part_no}번 잘 봤어요. 재참여 지표 기준을 한 줄 더 적어 주세요.`;
+      const mine = await waitFrame(tapA, "message.new", (m) => m.content === replyText);
+      const ack = await waitFrame(tapA, "message.ack", (a) => a.message_id === mine.id);
+      check("reply_to_doc", mine.reply_to_doc?.doc_id === doc.doc_id, mine.reply_to_doc);
+      // 이 답글로 시작된 실행(ack.run_id)이 올린 동료 메시지만 응답으로 센다(카드·문서 메시지 제외)
+      const reply = await waitFrame(
+        tapA,
+        "message.new",
+        (m) => m.sender === "colleague" && m.run_id === ack.run_id && !m.shared_doc,
+        90_000,
+      ).catch(() => null);
+      soft(
+        "답글에 동료 응답",
+        !!reply,
+        reply && { t_min: reply.t_min, content: reply.content.slice(0, 80) },
+      );
+      await sleep(500);
+      return { shots: [s1, await shot(pageA, "reply")] };
+    },
+  );
 
-  await step("최종본: 동료 v1·내 문서(현재 저장본 vnull) 가져오기 → 편집", async () => {
+  await step("최종본: 동료 문서·내 문서(현재 저장본 vnull) 가져오기 → 편집", async () => {
     await tab(pageA, "내 문서");
     await work
       .getByRole("button", { name: "← 내 문서" })
@@ -600,15 +731,18 @@ try {
         body: await response.json(),
       };
     };
-    const four = await pick("비슷한 서비스 사례", "4. 비슷한 서비스 사례 v1");
-    check("import 4 ← 동료 v1", four.status === 200 && four.request.version === 1, four.body);
+    const { part_no: cp, title: ct, version: cv } = colleagueDoc;
+    const four = await pick(ct, `${cp}. ${ct} v${cv}`);
+    check(`import ${cp} ← 동료 v${cv}`, four.status === 200 && four.request.version === cv, {
+      source_version: four.body.source_version,
+    });
     const two = await pick("사용자 인터뷰에서 찾은 근거", "2. 사용자 인터뷰에서 찾은 근거");
     check("import 2 ← 내 문서 vnull", two.status === 200 && two.request.version === null, two.body);
     const one = await pick("문제 정의와 대상 사용자", "1. 문제 정의와 대상 사용자");
     check("import 1 ← 내 문서", one.status === 200, one.body);
     const saved = waitApi(pageA, "PUT", /\/my-documents\/final$/);
     await work
-      .getByLabel("최종본 4. 비슷한 서비스 사례")
+      .getByLabel(`최종본 ${cp}. ${ct}`)
       .fill(`${four.body.content}\n- 재참여 지표: 4주 잔존율`);
     check("PUT final", (await saved).status() === 200);
     await sleep(400);
@@ -711,6 +845,9 @@ try {
         .getByRole("button", { name: "가져오기" })
         .click();
       await pageA.getByRole("menuitem", { name: /^1\. 문제 정의와 대상 사용자/ }).click();
+      // 3번에 이미 동료 문서를 가져왔으면 덮어쓰기 확인 창이 뜬다
+      const overwrite = pageA.getByRole("dialog").getByRole("button", { name: "덮어쓰기" });
+      if (await overwrite.isVisible({ timeout: 1000 }).catch(() => false)) await overwrite.click();
       check("3번 가져오기 200", (await imported).status() === 200);
       pageA.off("request", onImport);
       const lastFinal = puts.final.at(-1);
@@ -733,27 +870,42 @@ try {
     },
   );
 
-  await step("어시스턴트: 응답 표시·복사 → 60회 초과 429 안내", async () => {
+  await step("어시스턴트(그래프): 실제 응답·인용 문서 칩·복사 → 60회 초과 429 안내", async () => {
     await tab(pageA, "어시스턴트");
-    const asked = waitApi(pageA, "POST", /\/assistant$/);
-    await pageA.getByLabel("어시스턴트 요청").fill("지표 현황에서 재참여율을 요약해 줘");
+    const asked = waitApi(pageA, "POST", /\/assistant$/, 120_000);
+    await pageA
+      .getByLabel("어시스턴트 요청")
+      .fill("지표 현황 문서에서 첫 참여자의 두 번째 참여율 수치를 알려 줘");
     await pageA.getByRole("button", { name: "묻기" }).click();
     const reply = await (await asked).json();
-    check("assistant 200", !!reply.content, reply.content);
-    await work.getByText(reply.content).waitFor();
-    await work.getByRole("button", { name: "복사" }).first().click();
+    check("assistant 200", !!reply.content, reply.content.slice(0, 120));
+    await work.getByText(reply.content.split("\n")[0].slice(0, 20)).first().waitFor();
+    const docs = (await waitState(() => true, 0)).snap.documents;
+    const titles = reply.cited_docs.map((id) => docs.find((d) => d.doc_id === id)?.title ?? id);
+    if (soft("cited_docs 있음", reply.cited_docs.length > 0, reply.cited_docs)) {
+      // 칩은 State 문서 제목으로 보인다(id가 그대로 보이면 안 된다)
+      const chips = work.locator("li").last();
+      for (const title of titles) await chips.getByText(title, { exact: true }).first().waitFor();
+      check("인용 문서 칩(제목)", true, titles);
+    }
+    await work.getByRole("button", { name: "복사" }).last().click();
     const copied = await pageA.evaluate(() => navigator.clipboard.readText());
     check("복사", copied === reply.content);
     const s1 = await shot(pageA, "assistant");
-    // 한도(60회)까지 직접 채운 뒤 화면에서 한 번 더 묻는다
-    const jwt = await jwtOf(pageA);
-    let calls = 1;
-    for (; calls < 60; calls += 1) {
-      const r = await publicApi("POST", `/sessions/${sessionId}/assistant`, jwt, {
-        prompt: `채우기 ${calls}`,
-      });
-      if (r.status !== 200) throw new Error(`assistant ${calls + 1} → ${r.status}`);
-    }
+    // 실 그래프 59회는 비용이 크다. 한도 카운트(assistant_calls)를 DB로 59건 채운 뒤 화면에서 한 번 더 묻는다
+    // 시각은 세션 시작 전으로 흩어 둔다: 같은 시각에 50개 넘게 몰리면 세션 그래프의 메시지 이어 읽기(t_min 페이지)가
+    // 같은 페이지만 되풀이해 새 메시지를 못 찾는다(1차 실행에서 확인, 보고서 2라운드 절)
+    const filled = psql(
+      `WITH m AS (INSERT INTO messages (session_id, channel, sender, content, created_at) ` +
+        `SELECT '${sessionId}', 'assistant', 'candidate', '한도 채우기 ' || g, ` +
+        `(SELECT started_at FROM sessions WHERE id = '${sessionId}') - interval '30 minutes' + g * interval '10 seconds' ` +
+        `FROM generate_series(1, 59) g RETURNING id) ` +
+        `INSERT INTO assistant_calls (session_id, request_message_id) SELECT '${sessionId}', id FROM m RETURNING id`,
+    );
+    check(
+      "한도 채우기 59건(DB)",
+      filled.split("\n").filter((l) => /^[0-9a-f-]{36}$/.test(l)).length === 59,
+    );
     const limited = waitApi(pageA, "POST", /\/assistant$/);
     await pageA.getByLabel("어시스턴트 요청").fill("한 번 더");
     await pageA.getByRole("button", { name: "묻기" }).click();
@@ -862,6 +1014,39 @@ try {
     return { shot: await shot(pageA, "released") };
   });
 
+  await step("active_runs 복원: 동료가 답하는 중 새로고침 → '입력 중…' 다시 보임", async () => {
+    let restored = null;
+    for (let attempt = 1; attempt <= 3 && !restored; attempt += 1) {
+      await pageA.getByRole("navigation", { name: "채널" }).getByText("이도현").click();
+      const text = `도현님, 지금 맡은 파트 어디까지 됐어요? (${attempt})`;
+      const composer = pageA.getByPlaceholder(/에 메시지 보내기/);
+      await composer.fill(text);
+      await composer.press("Enter");
+      const mine = await waitFrame(tapA, "message.new", (m) => m.content === text);
+      // 이 메시지로 시작된 실행 id는 message.ack에 있다(지원자 message.new의 run_id가 아님)
+      const { run_id: runId } = await waitFrame(
+        tapA,
+        "message.ack",
+        (a) => a.message_id === mine.id,
+      );
+      // 내 메시지가 저장되면 바로 새로고침한다. 동료 그래프는 분류 LLM을 도는 동안 agent.progress 없이
+      // agent_runs만 started라, 진행 프레임을 기다리면 이미 끝나 있다(보고서 2라운드 절)
+      const state = waitApi(pageA, "GET", /\/state$/, 20_000);
+      await pageA.reload();
+      const snap = await (await state).json();
+      if (snap.active_runs.some((r) => r.run_id === runId)) restored = { snap, run_id: runId };
+      else await sleep(3000);
+    }
+    if (!must("새로고침 뒤 state.active_runs에 실행", !!restored, restored?.snap.active_runs))
+      return {};
+    const typing = pageA.getByText(/님이 (입력|자료 찾는) 중…/).first();
+    await typing.waitFor();
+    const s1 = await shot(pageA, "active-runs");
+    await typing.waitFor({ state: "hidden", timeout: 120_000 }).catch(() => null);
+    must("응답 뒤 '입력 중…' 해제", !(await typing.isVisible()));
+    return { shot: s1 };
+  });
+
   const pageB = await candCtx.newPage();
   watch(pageB, "B");
   const tapB = await wsTap(pageB, "B");
@@ -879,7 +1064,36 @@ try {
   });
 
   const workB = pageB.getByRole("complementary", { name: "작업" });
+  await step("보고 요청(5.5분 카드)까지 기다림 → 카드 메시지 수", async () => {
+    // 제출 전에 마감 보고 카드가 와야 카드 7장이 다 돈다. 6분 마감 15초 전까지만 기다린다
+    const { snap: now } = await waitState(() => true, 0, pageB);
+    const left = Date.parse(now.session.ends_at) - Date.now() - 15_000;
+    const got = await waitState(
+      (s) => s.messages.some((m) => m.sender === "manager" && m.event_id && m.t_min >= 5.4),
+      Math.max(0, left),
+      pageB,
+    );
+    const ask = got.snap.messages.find(
+      (m) => m.sender === "manager" && m.event_id && m.t_min >= 5.4,
+    );
+    soft(
+      "팀장 보고 요청(honesty_report 카드)",
+      !!ask,
+      ask && { t_min: ask.t_min, content: ask.content.slice(0, 80) },
+    );
+    const cards = new Set(got.snap.messages.filter((m) => m.event_id).map((m) => m.event_id));
+    soft("카드 메시지가 붙은 이벤트 수(킥오프·리뷰 포함 9)", cards.size >= 9, {
+      events: cards.size,
+    });
+    return { shot: await shot(pageB, "report-request") };
+  });
+
   await step("제출 → reporting(deadline_at·5분 카운트)", async () => {
+    const { snap } = await waitState(() => true, 0, pageB);
+    if (snap.session.status !== "in_progress") {
+      must("제출 전 시간 만료 안 됨", false, snap.session.status);
+      return { shot: await shot(pageB, "reporting") };
+    }
     await tab(pageB, "내 문서");
     await workB.getByRole("button", { name: /^최종본/ }).click();
     await workB.getByRole("button", { name: "제출", exact: true }).click();
@@ -923,23 +1137,47 @@ try {
   });
 
   await step(
-    "보고 메시지 → (그래프 대신) 분류 kind=report·complete → session.ended → 디브리핑",
+    "보고 메시지 → 그래프 분류(kind=report) → session.ended → 디브리핑(카드 7장)",
     async () => {
+      await pageB.getByRole("navigation", { name: "채널" }).getByText("# 재참여-기획").click();
       const composer = pageB.getByPlaceholder(/에 메시지 보내기/);
-      await composer.fill("팀장님, 최종본 제출했습니다. 4번은 도현님 v1을 가져와 지표를 더했어요.");
+      const { snap } = await waitState(() => true, 0, pageB);
+      const { part_no: cp } = colleagueDoc;
+      const reportText = `팀장님, 최종본 제출했습니다. ${cp}번은 도현님 문서를 가져와 지표를 더했고, 3번은 제가 정리했어요. 빈 섹션은 없습니다.`;
+      await composer.fill(reportText);
       await composer.press("Enter");
-      const ack = await waitFrame(tapB, "message.ack");
-      // 실제 그래프는 respond 앞 분류를 저장하고 complete를 부른다(agent-session 몫)
-      await internal("PUT", `/sessions/${sessionId}/messages/${ack.message_id}/classification`, {
-        recipient: "manager",
-        kind: "report",
+      const sent = await waitFrame(tapB, "message.new", (m) => m.content === reportText);
+      const ack = await waitFrame(tapB, "message.ack", (a) => a.message_id === sent.id);
+      // 화면은 서버가 보낸 session.ended만 따른다. 분류로 끝나지 않으면 보고 기한(deadline_at)이 지나야 끝난다
+      const deadline = Date.parse(snap.session.deadline_at) - Date.now();
+      const sentAt = Date.now();
+      const ended = await waitFrame(
+        tapB,
+        "session.ended",
+        () => true,
+        Math.max(150_000, deadline + 30_000),
+      );
+      const waitedMs = Date.now() - sentAt;
+      const internalMsgs = await internal(
+        "GET",
+        `/sessions/${sessionId}/messages?channel=team&limit=1000`,
+      );
+      const classified = internalMsgs.find((m) => m.id === ack.message_id)?.meta?.classification;
+      must("보고 메시지 분류 kind=report", classified?.kind === "report", classified);
+      must("종료 reason=submitted", ended.reason === "submitted", ended);
+      must("보고로 종료(기한 전)", waitedMs < deadline, {
+        reason: ended.reason,
+        waitedMs,
+        deadlineLeftMs: deadline,
       });
-      await internal("POST", `/sessions/${sessionId}/complete`);
-      const ended = await waitFrame(tapB, "session.ended");
-      check("session.ended", !!ended.reason, ended);
-      const debrief = waitApi(pageB, "GET", /\/debrief$/, 10_000);
+      const debrief = waitApi(pageB, "GET", /\/debrief$/, 20_000);
       const body = await (await debrief).json();
       check("debrief final", !!body.final?.sections?.length, body.survey);
+      must(
+        "디브리핑 카드 7장",
+        body.events.length === 7,
+        body.events.map((e) => e.card_id),
+      );
       await pageB.getByText("내가 제출한 최종본").waitFor();
       return { shot: await shot(pageB, "debrief") };
     },
@@ -1055,9 +1293,9 @@ try {
 
   // ── 관리자 리포트 ──
   await step("관리자: 지원자 목록 → 리포트 draft(워커)", async () => {
-    await admin.goto(`${WEB}/admin/positions`);
-    await admin.getByText("e2e 6분 세션").click();
-    const deadline = Date.now() + 240_000;
+    await admin.goto(`${WEB}/admin/positions/${e2ePositionId}`);
+    // 워커가 실제 LLM으로 요약을 쓰므로 넉넉히 기다린다
+    const deadline = Date.now() + 600_000;
     for (;;) {
       // 목록이 다 그려진 뒤에 리포트 버튼을 본다
       await admin.getByText("지원자E2E").first().waitFor();
@@ -1079,11 +1317,19 @@ try {
   });
 
   await step("관리자: 조정·메모 → 검토 완료 → final → 메모 추가", async () => {
-    const select = admin.locator("select[aria-label$='담당자 값']").first();
+    // 자동 값이 있는 항목 하나를 반대 값으로 바꾼다(자동 값과 달라야 메모 칸이 뜬다)
+    const adminJwt = await admin.evaluate(() => localStorage.getItem("dayzero.admin.token"));
+    const draft = (await publicApi("GET", `/admin/sessions/${sessionId}/report`, adminJwt)).body;
+    const target = draft.rubric.elements
+      .flatMap((el) => el.cards.flatMap((c) => c.items.map((i) => ({ card: c.card_id, item: i }))))
+      .find((x) => x.item.auto !== null) ?? {
+      card: draft.rubric.elements[0].cards[0].card_id,
+      item: draft.rubric.elements[0].cards[0].items[0],
+    };
+    const select = admin.getByLabel(`${target.item.text} 담당자 값`, { exact: true }).first();
     if (!(await select.isVisible()))
-      await admin.locator("details[id^='card-'] > summary").first().click();
-    const current = await select.inputValue();
-    await select.selectOption(current === "0" ? "1" : "0");
+      await admin.locator(`details[id="card-${target.card}"] > summary`).click();
+    await select.selectOption(target.item.auto === 1 ? "0" : "1");
     await admin.getByLabel("조정 메모").first().fill("면접에서 다시 확인");
     await admin.getByLabel("검토자 이름").fill("담당자 e2e");
     await admin.getByRole("button", { name: "검토 완료" }).click();
@@ -1124,15 +1370,25 @@ try {
     const adminJwt = await admin.evaluate(() => localStorage.getItem("dayzero.admin.token"));
     const report = (await publicApi("GET", `/admin/sessions/${sessionId}/report`, adminJwt)).body;
     const refs = new Set(entries.map((e) => `${e.ref.type}-${e.ref.id}`));
+    const sectionRefs = report.sections.flatMap((sec) =>
+      sec.cards.flatMap((c) => c.evidence.map((e) => e.record_ref).filter(Boolean)),
+    );
+    const itemRefs = report.rubric.elements.flatMap((el) =>
+      el.cards.flatMap((c) =>
+        c.items.flatMap((i) => i.evidence.map((e) => e.record_ref).filter(Boolean)),
+      ),
+    );
+    must("카드 소섹션 근거 record_ref 있음", sectionRefs.length > 0, { count: sectionRefs.length });
+    must("평가표 항목 근거 record_ref 있음", itemRefs.length > 0, { count: itemRefs.length });
+    const counts = report.rubric.auto_total;
+    soft(
+      "자동 점수에 충족·미충족이 있음(전부 기록 없음 아님)",
+      counts.met + counts.unmet > 0,
+      counts,
+    );
     const wanted = [
-      ...report.sections.flatMap((sec) =>
-        sec.cards.flatMap((c) => c.evidence.map((e) => e.record_ref).filter(Boolean)),
-      ),
-      ...report.rubric.elements.flatMap((el) =>
-        el.cards.flatMap((c) =>
-          c.items.flatMap((i) => i.evidence.map((e) => e.record_ref).filter(Boolean)),
-        ),
-      ),
+      ...sectionRefs,
+      ...itemRefs,
       ...report.ai_usage.events.map((e) => ({ type: "assistant_call", id: e.call_id })),
     ];
     const lost = wanted.filter((r) => !refs.has(`${r.type}-${r.id}`));
@@ -1142,8 +1398,7 @@ try {
     });
     await sleep(400);
     const s1 = await shot(admin, "record");
-    await admin.goto(`${WEB}/admin/positions`);
-    await admin.getByText("e2e 6분 세션").click();
+    await admin.goto(`${WEB}/admin/positions/${e2ePositionId}`);
     await admin
       .getByText(/삭제 예정/)
       .first()
@@ -1151,6 +1406,7 @@ try {
     return { shots: [s1, await shot(admin, "purge")] };
   });
 
+  verdict();
   console.log("\nlog:", join(OUT, "log.json"));
 } finally {
   compareShapes();
