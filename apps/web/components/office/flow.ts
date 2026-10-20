@@ -1,16 +1,17 @@
-// 지원자 흐름: 링크 입장 → 안내·동의 → 대기 → 오피스 → 디브리핑. 단계 판정과 api 호출을 모은다.
-// 화면은 이 함수들만 부르고, 계약 경로는 이 파일에만 둔다.
+// 지원자 흐름: 링크 입장 → 안내·동의 → 대기 → 오피스 → 보고 대기 → 디브리핑. 단계 판정과 api 호출을 모은다.
+// 화면은 이 함수들만 부르고, 계약 경로(docs/common/contracts.md 지원자 REST)는 이 파일에만 둔다.
 import { api } from "@/lib/api";
 
-import type { OfficeAction } from "./reducer";
 import type {
+  Assignee,
   AssistantReply,
   CompanyDoc,
   Debrief,
   Entry,
+  FinalSection,
+  OpenedDocument,
   StateSnapshot,
   Task,
-  TaskStatus,
 } from "./types";
 
 /** 링크로 들어왔을 때 보여 줄 첫 화면 */
@@ -21,8 +22,14 @@ export type Landing =
   | { kind: "notice"; title: string; description: string; retry?: boolean };
 
 export const LINK_NOTICES = {
-  expired: { title: "링크가 만료되었습니다", description: "채용 담당자에게 문의해 주세요." },
-  cancelled: { title: "취소된 초대입니다", description: "채용 담당자에게 문의해 주세요." },
+  expired: {
+    title: "링크가 만료되었습니다",
+    description: "초대 링크는 72시간 동안 열립니다. 채용 담당자에게 새 링크를 요청해 주세요.",
+  },
+  cancelled: {
+    title: "취소된 초대입니다",
+    description: "채용 담당자가 이 초대를 취소했습니다. 궁금한 점은 담당자에게 문의해 주세요.",
+  },
   not_found: {
     title: "초대 링크를 찾을 수 없습니다",
     description: "받은 주소를 다시 확인해 주세요.",
@@ -46,6 +53,10 @@ export function errorCode(error: unknown): string | undefined {
   return typeof error === "object" && error && "code" in error ? String(error.code) : undefined;
 }
 
+export function errorText(error: unknown): string | undefined {
+  return error instanceof Error ? error.message : undefined;
+}
+
 export function landingFromError(error: unknown): Extract<Landing, { kind: "notice" }> {
   const code = errorCode(error);
   const notice =
@@ -57,7 +68,9 @@ export function landingFromError(error: unknown): Extract<Landing, { kind: "noti
 
 export function landingFromEntry(entry: Entry): Landing {
   if (entry.status === "invited") return { kind: "entry", entry };
-  if (entry.status === "in_progress") return { kind: "resume", entry };
+  if (entry.status === "in_progress" || entry.status === "reporting") {
+    return { kind: "resume", entry };
+  }
   return { kind: "ended", entry };
 }
 
@@ -78,6 +91,11 @@ export function sessionIdFromToken(jwt: string): string {
 }
 
 const link = (token: string) => `/s/${encodeURIComponent(token)}`;
+const doc = (id: string) => encodeURIComponent(id);
+
+export type TaskPatch = Partial<Pick<Task, "status" | "order" | "due_min">> & {
+  assignee?: Assignee | null;
+};
 
 export const candidateApi = {
   consent: (token: string) =>
@@ -90,19 +108,50 @@ export const candidateApi = {
       token: jwt,
     }),
   state: (id: string, jwt: string) => api<StateSnapshot>(`/sessions/${id}/state`, { token: jwt }),
-  putPart: (id: string, jwt: string, partNo: number, content: string) =>
-    api<{ updated_at: string; revision: number }>(`/sessions/${id}/document/${partNo}`, {
+  saveDoc: (id: string, jwt: string, partNo: number, content: string) =>
+    api<{ updated_at: string; revision: number }>(`/sessions/${id}/my-documents/${partNo}`, {
       method: "PUT",
       token: jwt,
       body: { content },
     }),
-  putTask: (id: string, jwt: string, partNo: number, status: TaskStatus) =>
-    api<Task>(`/sessions/${id}/tasks/${partNo}`, { method: "PUT", token: jwt, body: { status } }),
+  saveFinal: (id: string, jwt: string, sections: { part_no: number; content: string }[]) =>
+    api<{ updated_at: string; revision: number }>(`/sessions/${id}/my-documents/final`, {
+      method: "PUT",
+      token: jwt,
+      body: { sections },
+    }),
+  /** note: 문서 카드에 함께 보낼 한마디(선택). 비우면 카드만 올라간다 */
+  share: (id: string, jwt: string, partNo: number, channel: "team" | "dm", note?: string) =>
+    api<{ version: number; message_id: string }>(`/sessions/${id}/my-documents/${partNo}/share`, {
+      method: "POST",
+      token: jwt,
+      body: note?.trim() ? { channel, note: note.trim() } : { channel },
+    }),
+  open: (id: string, jwt: string, docId: string, version: number) =>
+    api<OpenedDocument>(`/sessions/${id}/documents/${doc(docId)}/open`, {
+      method: "POST",
+      token: jwt,
+      body: { version },
+    }),
+  importSection: (
+    id: string,
+    jwt: string,
+    partNo: number,
+    /** version null = 보내지 않은 내 문서의 현재 저장본 */
+    source: { source_doc_id: string; version: number | null },
+  ) =>
+    api<FinalSection>(`/sessions/${id}/final/sections/${partNo}/import`, {
+      method: "PUT",
+      token: jwt,
+      body: source,
+    }),
+  putTask: (id: string, jwt: string, partNo: number, patch: TaskPatch) =>
+    api<Task>(`/sessions/${id}/tasks/${partNo}`, { method: "PUT", token: jwt, body: patch }),
   documents: (id: string, jwt: string) =>
     api<CompanyDoc[]>(`/sessions/${id}/documents`, { token: jwt }),
   document: (id: string, jwt: string, docId: string) =>
     api<{ doc_id: string; title: string; content: string }>(
-      `/sessions/${id}/documents/${encodeURIComponent(docId)}`,
+      `/sessions/${id}/documents/${doc(docId)}`,
       { token: jwt },
     ),
   assistant: (id: string, jwt: string, prompt: string) =>
@@ -112,32 +161,20 @@ export const candidateApi = {
       body: { prompt },
     }),
   submit: (id: string, jwt: string) =>
-    api<{ status: "completed" }>(`/sessions/${id}/submit`, { method: "POST", token: jwt }),
+    api<{ status: string; deadline_at?: string | null }>(`/sessions/${id}/submit`, {
+      method: "POST",
+      token: jwt,
+    }),
   debrief: (id: string, jwt: string) => api<Debrief>(`/sessions/${id}/debrief`, { token: jwt }),
+  survey: (id: string, jwt: string, answers: { q: string; value: number }[]) =>
+    api<{ submitted: boolean }>(`/sessions/${id}/debrief/survey`, {
+      method: "POST",
+      token: jwt,
+      body: { answers },
+    }),
 };
 
 export type CandidateApi = typeof candidateApi;
-
-/**
- * 제출: 대기 중인 문서 저장을 먼저 끝내고 submit을 부른다(contracts.md).
- * 저장이 실패하면 submit을 부르지 않고 거부한다(원고 보존). submit이 session_ending·conflict면
- * 이미 끝났을 수 있으므로 isEnded(/state)로 실제 종료를 확인한 뒤에만 끝난 것으로 본다.
- */
-export async function submitSession(
-  flush: () => Promise<void>,
-  submit: () => Promise<unknown>,
-  isEnded: () => Promise<boolean>,
-): Promise<"submitted" | "ended"> {
-  await flush();
-  try {
-    await submit();
-    return "submitted";
-  } catch (error) {
-    const code = errorCode(error);
-    if ((code === "session_ending" || code === "conflict") && (await isEnded())) return "ended";
-    throw error;
-  }
-}
 
 export const STATE_RETRY_MS = 3000;
 
@@ -155,33 +192,6 @@ export async function fetchSnapshot(
     }
   }
   return null;
-}
-
-/**
- * 기획안 파트 저장 콜백(PartSaver의 save). 성공이면 saved, 동료 담당(403 forbidden)이면
- * 남은 저장을 버리고 서버 본문으로 되돌린 뒤 정상 반환, 그 밖의 실패는 save_failed 후 다시 던진다.
- */
-export function partSaveHandler(deps: {
-  put: (partNo: number, content: string) => Promise<{ revision: number }>;
-  refresh: () => Promise<StateSnapshot | null>;
-  dispatch: (action: OfficeAction) => void;
-  cancel: (partNo: number) => void;
-}) {
-  return async (partNo: number, content: string) => {
-    try {
-      const saved = await deps.put(partNo, content);
-      deps.dispatch({ type: "saved", part_no: partNo, content, revision: saved.revision });
-    } catch (error) {
-      if (errorCode(error) !== "forbidden") {
-        deps.dispatch({ type: "save_failed", part_no: partNo });
-        throw error;
-      }
-      deps.cancel(partNo);
-      deps.dispatch({ type: "rejected", part_no: partNo });
-      const snapshot = await deps.refresh().catch(() => null);
-      if (snapshot) deps.dispatch({ type: "snapshot", state: snapshot, now: Date.now() });
-    }
-  };
 }
 
 /** 세션 JWT를 탭 단위로 기억한다. 없어도 링크만으로 /resume이 가능하므로 실패는 무시한다. */

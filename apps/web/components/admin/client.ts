@@ -5,7 +5,16 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 
 import { api } from "@/lib/api";
 
-import type { Adjustment, Candidate, Catalog, InviteResult, Position, Report } from "./types";
+import type {
+  Adjustment,
+  Candidate,
+  Catalog,
+  InviteResult,
+  Note,
+  Position,
+  RecordEntry,
+  Report,
+} from "./types";
 
 const TOKEN_KEY = "dayzero.admin.token";
 const TOKEN_EVENT = "dayzero-admin-token";
@@ -45,7 +54,10 @@ export function useToken(): string | null {
 const ERROR_TEXT: Record<string, string> = {
   conflict: "이미 사용 중이거나 지금 상태에서는 할 수 없는 요청입니다.",
   unauthorized: "이메일 또는 비밀번호가 맞지 않습니다.",
-  invalid_elements: "평가 요소는 1개 이상 4개 이하로 중복 없이 골라 주세요.",
+  invalid_elements: "요소는 1개 이상 5개 이하로 중복 없이 골라 주세요.",
+  invalid_mission: "없는 미션입니다.",
+  invalid_previous_session: "실패·만료·취소된 세션만 이어서 다시 초대할 수 있습니다.",
+  invalid_input: "필수 입력을 확인해 주세요.",
   memo_required: "값을 바꾼 항목에는 메모를 적어야 합니다.",
   invalid_item: "이 채용 건의 평가표에 없는 항목입니다.",
   duplicate_item: "같은 항목이 두 번 들어 있습니다.",
@@ -72,7 +84,10 @@ export const adminApi = {
     api<{ token: string }>("/admin/auth/login", { method: "POST", body }),
   catalog: (token: string) => api<Catalog>("/admin/catalog", { token }),
   positions: (token: string) => api<Position[]>("/admin/positions", { token }),
-  createPosition: (token: string, body: { name: string; elements: string[] }) =>
+  createPosition: (
+    token: string,
+    body: { name: string; elements: string[]; mission_id?: string },
+  ) =>
     api<{ id: string; name: string; elements: string[] }>("/admin/positions", {
       method: "POST",
       token,
@@ -87,14 +102,31 @@ export const adminApi = {
   ) => api<InviteResult>(`/admin/positions/${positionId}/invites`, { method: "POST", token, body }),
   cancel: (token: string, sessionId: string) =>
     api<{ status: string }>(`/admin/sessions/${sessionId}/cancel`, { method: "POST", token }),
+  regenerate: (token: string, sessionId: string) =>
+    api<{ status: string }>(`/admin/sessions/${sessionId}/report/regenerate`, {
+      method: "POST",
+      token,
+    }),
   report: (token: string, sessionId: string) =>
     api<Report>(`/admin/sessions/${sessionId}/report`, { token }),
-  review: (token: string, sessionId: string, body: { adjustments: Adjustment[]; memo?: string }) =>
+  review: (
+    token: string,
+    sessionId: string,
+    body: { adjustments: Adjustment[]; memo?: string; reviewer_name: string },
+  ) =>
     api<{ status: string }>(`/admin/sessions/${sessionId}/review`, {
       method: "POST",
       token,
       body,
     }),
+  addNote: (token: string, sessionId: string, body: { text: string; reviewer_name: string }) =>
+    api<{ notes: Note[] }>(`/admin/sessions/${sessionId}/report/notes`, {
+      method: "POST",
+      token,
+      body,
+    }),
+  record: (token: string, sessionId: string) =>
+    api<RecordEntry[]>(`/admin/sessions/${sessionId}/record`, { token }),
 };
 
 export type Loaded<T> = {

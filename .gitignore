@@ -13,3 +13,4 @@ node_modules/
 apps/web/.agents/
 apps/web/.claude/
 apps/web/skills-lock.json
+docs/handoff/reviews/uiux-shots/

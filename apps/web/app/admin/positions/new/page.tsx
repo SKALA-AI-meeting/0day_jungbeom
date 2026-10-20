@@ -13,7 +13,7 @@ export default function NewPositionPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function create(value: { name: string; elements: string[] }) {
+  async function create(value: { name: string; elements: string[]; mission_id: string }) {
     if (!token) return;
     setPending(true);
     setError(null);
@@ -29,12 +29,14 @@ export default function NewPositionPage() {
   return (
     <>
       <h1 className="text-2xl font-semibold">채용 건 만들기</h1>
-      {(loadError || error) && (
+      {loadError && (
         <p role="alert" className="text-danger">
-          {loadError ?? error}
+          {loadError}
         </p>
       )}
-      {catalog && <PositionForm catalog={catalog} pending={pending} onSubmit={create} />}
+      {catalog && (
+        <PositionForm catalog={catalog} pending={pending} error={error} onSubmit={create} />
+      )}
     </>
   );
 }

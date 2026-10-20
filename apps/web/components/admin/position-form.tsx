@@ -1,153 +1,142 @@
 "use client";
 
+// 채용 건 생성: 미션 1개 표시(선택 없음), 요소 카드 5장(기본 전체 선택, 체크 해제로 뺌, 뺀 카드에 차이 한 줄).
+// 상황·시점·평가표 항목은 보여 주지 않는다(docs/frontend/design.md "관리자 생성 화면").
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
-import { Badge, Button, Card, Input } from "@/components/ui";
+import { Button, Card, cn, Input } from "@/components/ui";
 
-import type { Catalog } from "./types";
+import type { Catalog, ElementId } from "./types";
 
-export const MAX_ELEMENTS = 4;
+export const SAME_BASIS_LINE =
+  "요소 구성이 같은 채용 건끼리만 같은 기준 · 구성이 다르면 만점도 다름";
 
-/** 요소는 1~4개. 위반이면 안내 문구, 통과하면 null. 서버도 같은 규칙을 invalid_elements(400)로 검증한다. */
-export function validateElements(selected: string[]): string | null {
-  if (selected.length < 1) return "평가 요소를 1개 이상 골라 주세요.";
-  if (selected.length > MAX_ELEMENTS)
-    return `평가 요소는 최대 ${MAX_ELEMENTS}개까지 고를 수 있습니다.`;
-  return null;
+/** 뺀 요소마다 달라지는 것 한 줄(카탈로그의 if_unselected) */
+export function unselectedLines(catalog: Catalog, selected: ElementId[]) {
+  return catalog.elements
+    .filter((e) => !selected.includes(e.id))
+    .map((e) => ({ id: e.id, line: e.if_unselected }));
 }
 
-const FLOW_NAMES: Record<string, string> = {
-  kickoff: "킥오프",
-  division: "분업 논의",
-  review: "상호 리뷰",
-  report_request: "마감 보고 요청",
-};
-
-export type TimelineRow = { label: string; at: number };
-
-/**
- * 선택한 요소에 따른 카드 시각(분). 요소 카드가 n개면 n=1일 때 1/4 지점, n≥2면 i번째가 1/4 + i×(1/2)/n 지점이고
- * 흐름 카드는 카탈로그의 at_fraction이다(배치 규칙은 catalog.timeline.element_fraction_rule).
- */
-export function timelineRows(catalog: Catalog, selected: string[]): TimelineRow[] {
-  const minutes = catalog.session_minutes;
-  const picked = catalog.elements.filter((e) => selected.includes(e.id));
-  const n = picked.length;
-  const rows: TimelineRow[] = catalog.timeline.flow.map((card) => ({
-    label: FLOW_NAMES[card.card_id] ?? card.card_id,
-    at: card.at_fraction * minutes,
-  }));
-  picked.forEach((element, i) => {
-    const fraction = n === 1 ? 0.25 : 0.25 + (i * 0.5) / n;
-    rows.push({ label: `${element.name} 상황`, at: fraction * minutes });
-  });
-  return rows.sort((a, b) => a.at - b.at);
-}
-
-export type PositionFormProps = {
+export function PositionForm({
+  catalog,
+  pending,
+  error,
+  onSubmit,
+}: {
   catalog: Catalog;
   pending?: boolean;
-  /** 서버가 돌려준 오류 문구 */
   error?: string | null;
-  onSubmit: (value: { name: string; elements: string[] }) => void;
-};
-
-export function PositionForm({ catalog, pending, error, onSubmit }: PositionFormProps) {
+  onSubmit: (value: { name: string; elements: ElementId[]; mission_id: string }) => void;
+}) {
+  const mission = catalog.missions[0];
   const [name, setName] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
-  const [problem, setProblem] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ElementId[]>(catalog.elements.map((e) => e.id));
+  const off = new Map(unselectedLines(catalog, selected).map((u) => [u.id, u.line]));
 
-  const toggle = (id: string) =>
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const toggle = (id: ElementId) =>
+    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
 
-  function submit(event: FormEvent) {
+  const submit = (event: FormEvent) => {
     event.preventDefault();
-    const invalid = validateElements(selected);
-    setProblem(invalid);
-    if (!invalid) onSubmit({ name: name.trim(), elements: selected });
-  }
+    if (selected.length === 0) return;
+    // 카탈로그 순서대로 보낸다
+    onSubmit({
+      name,
+      mission_id: mission.id,
+      elements: catalog.elements.map((e) => e.id).filter((id) => selected.includes(id)),
+    });
+  };
 
-  const shown = problem ?? error;
   return (
     <form className="flex flex-col gap-6" onSubmit={submit}>
-      <Input label="채용 건 이름" value={name} onChange={(e) => setName(e.target.value)} required />
-      <fieldset className="flex flex-col gap-3">
-        <legend className="mb-1 text-sm font-medium">
-          평가 요소{" "}
-          <span className="text-muted">
-            ({selected.length}/{MAX_ELEMENTS}개 선택)
-          </span>
-        </legend>
-        {catalog.elements.map((element) => (
-          <label key={element.id} className="cursor-pointer">
-            <Card className={selected.includes(element.id) ? "border-accent" : undefined}>
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  className="mt-1.5"
-                  checked={selected.includes(element.id)}
-                  onChange={() => toggle(element.id)}
-                />
-                <div className="flex flex-col gap-2">
-                  <p className="font-medium">{element.name}</p>
-                  <p className="text-sm text-muted">{element.situation_public}</p>
-                  <ul className="flex flex-col gap-1 text-sm">
-                    {element.rubric.map((item) => (
-                      <li key={item.id} className="flex items-center gap-2">
-                        <span className="text-subtle">·</span>
-                        <span>{item.text}</span>
-                        {item.pilot_value && (
-                          <span title="시험 운영 기준">
-                            <Badge tone="warning">시험 운영 기준</Badge>
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </Card>
-          </label>
-        ))}
-      </fieldset>
-      <Card title="타임라인 미리보기">
-        {selected.length === 0 ? (
-          <p className="text-sm text-muted">요소를 고르면 카드가 나오는 시각이 표시됩니다.</p>
-        ) : (
-          <ul className="flex flex-col gap-1 text-sm">
-            {timelineRows(catalog, selected).map((row) => (
-              <li key={row.label}>
-                <span className="inline-block w-16 text-subtle">{Math.round(row.at)}분</span>
-                {row.label}
+      <Card>
+        <Input
+          label="채용 건 이름"
+          placeholder="예: PM 인턴 2026 하반기"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+      </Card>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-semibold">미션</h2>
+        <div className="rounded-lg border border-line bg-surface px-5 py-4">
+          <p className="font-semibold">{mission.name}</p>
+          <p className="text-sm text-muted">
+            {mission.company_name} · {catalog.session_minutes}분 · 산출물 {mission.deliverable}
+          </p>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-semibold">관찰 요소</h2>
+          <span className="text-sm text-muted">{selected.length}/5 선택 · 체크 해제로 제외</span>
+        </div>
+        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {catalog.elements.map((element) => {
+            const on = selected.includes(element.id);
+            return (
+              <li key={element.id}>
+                <label
+                  className={cn(
+                    "flex h-full cursor-pointer gap-3 rounded-lg border bg-surface px-4 py-4 transition-colors",
+                    on ? "border-accent/50" : "border-line bg-surface-sunken/60",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => toggle(element.id)}
+                    className="mt-1 size-4 shrink-0 accent-[var(--color-accent)]"
+                  />
+                  <span className="flex min-w-0 flex-1 flex-col gap-2">
+                    <span className={cn("font-semibold", !on && "text-muted")}>{element.name}</span>
+                    {/* 라벨은 제품 UI처럼 명사형. 값 문구는 카탈로그(서버)에서 온다 */}
+                    <dl className="grid grid-cols-[64px_1fr] gap-x-2 gap-y-1 text-sm">
+                      <dt className="text-xs leading-5 text-subtle">한 줄 설명</dt>
+                      <dd>{element.meaning}</dd>
+                      <dt className="text-xs leading-5 text-subtle">관찰 기준</dt>
+                      <dd className="text-muted">{element.how_we_see}</dd>
+                      {!on && (
+                        <>
+                          <dt className="text-xs leading-5 text-warning">미선택 시</dt>
+                          <dd className="rounded-sm bg-warning-soft px-1.5">
+                            {off.get(element.id)}
+                          </dd>
+                        </>
+                      )}
+                    </dl>
+                  </span>
+                </label>
               </li>
-            ))}
-          </ul>
-        )}
-        <p className="mt-2 text-sm text-muted">
-          세션 {catalog.session_minutes}분 기준, 시각만 표시합니다.{" "}
-          {catalog.timeline.element_fraction_rule}
+            );
+          })}
+        </ul>
+        <p className="text-sm text-muted">
+          {SAME_BASIS_LINE}{" "}
+          <Link
+            href="/admin/sample-report"
+            className="text-accent underline-offset-4 hover:underline"
+          >
+            샘플 리포트 보기
+          </Link>
         </p>
-      </Card>
-      <Card title="지원자 안내 문안">
-        <p className="mb-2 text-sm text-muted">
-          초대를 만들면 아래 문안의 자리표시자가 채워집니다. 이메일은 발송되지 않습니다.
-        </p>
-        <pre className="whitespace-pre-wrap rounded-md bg-surface-sunken p-3 text-sm">
-          {catalog.candidate_notice_template}
-        </pre>
-      </Card>
-      <p className="text-sm text-muted">
-        평가표 항목은 지원자에게 세션 전에 공개되지 않고, 종료 뒤 디브리핑에서 공개됩니다.
-      </p>
-      {shown && (
+      </section>
+
+      {error && (
         <p role="alert" className="text-sm text-danger">
-          {shown}
+          {error}
         </p>
       )}
-      <div>
-        <Button type="submit" loading={pending}>
+      <div className="flex items-center gap-3">
+        <Button type="submit" loading={pending} disabled={selected.length === 0}>
           채용 건 만들기
         </Button>
+        {selected.length === 0 && <span className="text-sm text-danger">요소 1개 이상 필요</span>}
       </div>
     </form>
   );

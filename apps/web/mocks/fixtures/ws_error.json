@@ -1,0 +1,7 @@
+{
+  "type": "error",
+  "payload": {
+    "code": "invalid_input",
+    "message": "reply_to_doc must point to a shared version"
+  }
+}

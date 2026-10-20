@@ -20,9 +20,17 @@ export default function PositionsPage() {
     <>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">채용 건</h1>
-        <Link href="/admin/positions/new">
-          <Button>채용 건 만들기</Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/sample-report"
+            className="text-sm text-accent underline-offset-4 hover:underline"
+          >
+            샘플 리포트 보기
+          </Link>
+          <Link href="/admin/positions/new">
+            <Button>채용 건 만들기</Button>
+          </Link>
+        </div>
       </div>
       {error && (
         <p role="alert" className="text-danger">

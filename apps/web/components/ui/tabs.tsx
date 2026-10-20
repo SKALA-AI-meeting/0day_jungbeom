@@ -29,12 +29,12 @@ export function Tabs({ items, value, defaultValue, onValueChange, className }: T
       onValueChange={(next) => onValueChange?.(String(next))}
       className={cn("flex min-h-0 flex-col", className)}
     >
-      <BaseTabs.List className="flex gap-1 border-b border-line">
+      <BaseTabs.List className="flex shrink-0 gap-1 border-b border-line px-3">
         {items.map((item) => (
           <BaseTabs.Tab
             key={item.value}
             value={item.value}
-            className="-mb-px border-b-2 border-transparent px-3 py-2 text-sm text-muted data-[selected]:border-accent data-[selected]:text-ink"
+            className="-mb-px border-b-2 border-transparent px-3 py-2 text-sm text-muted aria-selected:border-accent aria-selected:font-medium aria-selected:text-ink"
           >
             {item.label}
             {!!item.count && (

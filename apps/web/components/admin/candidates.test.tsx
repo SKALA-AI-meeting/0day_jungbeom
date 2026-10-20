@@ -1,57 +1,45 @@
+// 완료 기준(관리자 2): 지원자 목록에 상태 묶음·필터·세 수 점수·실패 행동 안내·삭제 예정일이 mock으로 보인다.
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, test } from "vitest";
+import { beforeEach, expect, test } from "vitest";
 
-import candidatesJson from "@/mocks/fixtures/admin/candidates.json";
-import catalogJson from "@/mocks/fixtures/admin/catalog.json";
+import { mockRequest } from "@/mocks";
+import { resetAdminMock } from "@/mocks/admin";
 
-import { CandidateTable, InvitePanel } from "./candidates";
-import type { Candidate, Catalog } from "./types";
+import { CandidateTable, GROUPS } from "./candidates";
+import type { Candidate } from "./types";
 
-const names = new Map((catalogJson as unknown as Catalog).elements.map((e) => [e.id, e.name]));
+beforeEach(resetAdminMock);
 
-test("지원자 목록은 상태 7종 이상과 합계·요소별 칩을 보여 주고 초대 폼에 복사 버튼이 붙는다", () => {
+test("목록: 묶음 5종·필터·세 수·실패 안내·삭제 예정일, 리포트 실패는 다시 생성으로 진행 묶음으로 간다", async () => {
+  const list = await mockRequest<Candidate[]>("GET", "/admin/positions/pos-1/candidates");
+  expect(new Set(list.map((c) => c.display_group))).toEqual(new Set(GROUPS.map((g) => g.id)));
+
+  const noop = () => {};
   const html = renderToStaticMarkup(
     <CandidateTable
-      candidates={candidatesJson as Candidate[]}
-      names={names}
-      onCancel={() => {}}
-      onReinvite={() => {}}
+      candidates={list}
+      names={new Map()}
+      onCancel={noop}
+      onReinvite={noop}
+      onRegenerate={noop}
     />,
   );
-  for (const label of [
-    "초대됨",
-    "만료",
-    "취소",
-    "진행 중",
-    "완료",
-    "리포트 준비됨",
-    "확정 중",
-    "검토 완료",
-    "실패",
-  ]) {
-    expect(html).toContain(label);
-  }
-  expect(html).toContain("5/7 · 기록 없음 1");
-  expect(html).toContain("기본 점수");
-  expect(html).toContain("담당자 점수");
-  expect(html).toContain("협력 태도 2/3");
-  expect(html).toContain("–/0");
-  // 실패·만료·취소 3행은 다시 초대할 수 있다
-  expect(html.match(/다시 초대/g)).toHaveLength(4);
-  expect(html).not.toMatch(/합격|순위|등급/);
+  for (const label of ["대기", "진행", "검토 필요", "완료", "문제"])
+    expect(html).toContain(`${label} <span`);
+  expect(html).toContain('aria-pressed="true"');
+  expect(html).toContain("충족 16 · 미충족 2 · 기록 없음 2");
+  expect(html).toContain("새 초대를 만들어 보내세요");
+  expect(html).toContain("리포트를 다시 생성하세요");
+  expect(html).toContain("리포트 다시 생성");
+  expect(html).toContain("초대됨(만료)");
+  expect(html).toMatch(/1월 1[38]일 삭제 예정/);
+  expect(html).not.toMatch(/합격|등급|\d+위/);
 
-  const invite = renderToStaticMarkup(
-    <InvitePanel
-      onInvite={() => {}}
-      result={{
-        session_id: "s-1",
-        invite_url: "http://localhost:3000/s/abc",
-        expires_at: "2026-10-23T01:00:00+00:00",
-        notice_text: "안내",
-      }}
-    />,
-  );
-  expect(invite).toContain("http://localhost:3000/s/abc");
-  expect(invite).toContain("링크 복사");
-  expect(invite).toContain("안내 문안 복사");
+  await mockRequest("POST", "/admin/sessions/sess-8/report/regenerate");
+  const after = await mockRequest<Candidate[]>("GET", "/admin/positions/pos-1/candidates");
+  expect(after.find((c) => c.session_id === "sess-8")).toMatchObject({
+    status: "completed",
+    display_group: "in_progress",
+    next_action: null,
+  });
 });

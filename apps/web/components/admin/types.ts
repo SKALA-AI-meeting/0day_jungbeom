@@ -1,48 +1,61 @@
-// /admin 응답 형태. 정본은 docs/common/contracts.md이고, 계약에 열려 있는 필드는 선택으로 둔다.
-import type { DisplayStatus } from "@/components/ui";
+// 관리자 화면이 쓰는 계약 형태. 정본은 docs/common/contracts.md "관리자 REST"와 Report.
 
-export type RubricRef = { id: string; text: string; pilot_value: boolean };
+export type ElementId =
+  "responsibility" | "planning" | "adaptability" | "collaboration" | "honesty";
 
 export type CatalogElement = {
-  id: string;
+  id: ElementId;
   name: string;
-  situation_public: string;
-  rubric: RubricRef[];
+  meaning: string;
+  how_we_see: string;
+  if_unselected: string;
 };
 
 export type Catalog = {
+  missions: { id: string; name: string; company_name: string; deliverable: string }[];
   elements: CatalogElement[];
-  timeline: { flow: { card_id: string; at_fraction: number }[]; element_fraction_rule: string };
   candidate_notice_template: string;
+  candidate_faq: { q: string; a: string }[];
   session_minutes: number;
 };
 
 export type Position = {
   id: string;
   name: string;
-  elements: string[];
+  mission_id: string;
+  elements: ElementId[];
   candidate_count: number;
   created_at: string;
 };
 
-export type Tally = { met: number; judged: number; no_record: number };
+export type DisplayGroup = "waiting" | "in_progress" | "needs_review" | "done" | "problem";
 
-export type CandidateScore = Tally & {
-  source: "auto" | "reviewer";
-  by_element: { element: string; met: number; judged: number }[];
-};
+export type Counts = { met: number; unmet: number; no_record: number };
 
 export type Candidate = {
   session_id: string;
   alias: string;
+  email: string;
   status: string;
-  display_status: DisplayStatus;
+  display_status: string;
+  display_group: DisplayGroup;
   invited_at: string;
-  report_ready_at: string | null;
-  failed_stage?: string;
-  failed_reason?: string;
-  previous_session_id?: string;
-  score: CandidateScore | null;
+  started_at?: string | null;
+  ends_at?: string | null;
+  last_activity_at?: string | null;
+  message_count: number;
+  report_ready_at?: string | null;
+  purge_at?: string | null;
+  failed_stage?: "session" | "report" | null;
+  failed_reason?: string | null;
+  next_action?: string | null;
+  previous_session_id?: string | null;
+  previous_relation?: "retry" | "reissue" | null;
+  met: number | null;
+  unmet: number | null;
+  no_record: number | null;
+  score_source: "auto" | "reviewer" | null;
+  by_element: ({ element: ElementId } & Counts)[] | null;
 };
 
 export type InviteResult = {
@@ -52,105 +65,155 @@ export type InviteResult = {
   notice_text: string;
 };
 
-/** 평가표 항목 값: 1 충족, 0 미충족, null 기록 없음 */
-export type ItemValue = 1 | 0 | null;
+export type RecordRef = { type: string; id: string; t_min: number };
 
 export type Evidence = {
-  type: "message" | "revision" | "doc_view" | "assistant_call";
+  type: "message" | "document" | "share" | "open" | "task_event" | "doc_view" | "assistant_call";
   id: string;
   t_min: number;
   channel?: string;
   quote?: string;
-  part_no?: number;
   summary?: string;
-  change_ratio?: number;
-  context?: { prev_persona_message?: string | null; card_at_t_min?: number | null };
+  doc_id?: string;
+  part_no?: number | "final";
+  version?: number;
+  flag?: "aux_fact" | "out_of_window";
+  reply_to_doc?: { doc_id: string; version: number } | null;
+  context?: { prev_persona_message: string | null; card_at_t_min: number | null };
+  record_ref: RecordRef | null;
 };
+
+export type NoRecordReason =
+  | "no_activity"
+  | "classify_failed"
+  | "window_missed"
+  | "document_missing"
+  | "not_applicable"
+  | "event_not_fired";
 
 export type RubricItem = {
   id: string;
   text: string;
-  auto: ItemValue;
-  reviewer: ItemValue;
+  basis: "metric" | "label";
+  auto: 1 | 0 | null;
+  reviewer: 1 | 0 | null;
   memo: string | null;
-  adjusted?: boolean;
-  no_record_reason?: string;
-  /** 응답 시간 항목의 실제 분 */
-  minutes?: number;
-  evidence: { type: string; id: string; t_min?: number }[];
-};
-
-export type RubricElement = {
-  element: string;
-  name: string;
-  auto: Tally;
-  reviewer: Tally | null;
-  items: RubricItem[];
-};
-
-export type HistoryRow = {
-  item_id: string;
-  element: string;
-  auto: ItemValue;
-  reviewer: ItemValue;
-  memo: string;
-  created_at: string;
-};
-
-export type Fact = string | { text: string };
-
-export type ReportSection = {
-  element: string;
-  name: string;
-  situation: string;
-  card_t_min?: number;
-  event_fired?: boolean;
-  observed: string | null;
-  note?: string;
-  no_record_reason?: string;
+  adjusted: boolean;
+  no_record_reason: NoRecordReason | null;
+  minutes?: number | null;
   evidence: Evidence[];
-  aux_facts?: Fact[];
-  out_of_window_messages?: { t_min: number; channel?: string; quote: string }[];
 };
 
-export type AiEvidence = {
-  call_id: string;
-  t_min: number;
-  quote?: string;
-  part_no?: number;
-  reuse?: string;
-  /** 위임·맥락·검증 구분. 없으면 "기타" */
-  category?: "delegate" | "context" | "verify";
+export type HonestyFacts = {
+  shares: {
+    doc_id: string;
+    owner: "candidate" | "colleague";
+    part_no: number;
+    versions: { version: number; channel: string; t_min: number }[];
+  }[];
+  final_sections: {
+    part_no: number;
+    source_doc_id: string | null;
+    source_version: number | null;
+    edited: boolean;
+  }[];
+  tasks: { part_no: number; assignee: string | null; status: string }[];
+  empty_sections: number[];
+  tasks_not_done: number[];
+  changed_after_adaptability: boolean | null;
 };
+
+export type ReportCard = {
+  card_id: string;
+  name: string;
+  /** 관찰 창(세션 분). 끊김 겹침·"판정 창에 메시지 없음" 표시에 쓴다 */
+  window?: { start_min: number; end_min: number };
+  situation: string;
+  event_fired: boolean;
+  card_at_t_min: number | null;
+  observed: string | null;
+  no_record_reason: NoRecordReason | null;
+  note: string | null;
+  evidence: Evidence[];
+  facts?: HonestyFacts;
+};
+
+export type FinalSectionReport = {
+  part_no: number;
+  title: string;
+  content: string;
+  source_doc_id: string | null;
+  source_owner: "candidate" | "colleague" | null;
+  source_version: number | null;
+  edited: boolean;
+  source_content: string | null;
+};
+
+export type ReportDocument = {
+  doc_id: string;
+  owner: "candidate" | "colleague";
+  part_no: number;
+  title: string;
+  versions: number;
+  shares: { version: number; channel: string; t_min: number }[];
+  empty?: boolean;
+  opened_by_candidate?: number[];
+};
+
+export type ReviewInfo = { memo: string | null; reviewer_name: string; reviewed_at: string | null };
+
+export type Note = { id: string; text: string; reviewer_name: string; created_at: string };
 
 export type Report = {
   session_id: string;
   alias: string;
   stage: "draft" | "final";
-  position: { name: string; elements: string[] };
+  position: { name: string; mission_id: string; elements: ElementId[] };
+  summary: ({ element: ElementId; name: string; line: string | null } & Counts)[];
   deliverable: {
-    parts: {
-      part_no: number;
-      title: string;
-      assignee: string | null;
-      content: string;
-      revisions: number;
-      empty: boolean;
-    }[];
-    division_decided_by: string | null;
+    final: { sections: FinalSectionReport[]; submitted_version: number };
+    documents: ReportDocument[];
+    division_decided_by: "candidate" | "colleague_default" | null;
     final_report_message: { id: string; t_min: number; content: string } | null;
   };
   rubric: {
-    elements: RubricElement[];
-    auto_total: Tally;
-    reviewer_total: Tally | null;
-    review: { memo: string | null; reviewed_at: string | null } | null;
-    history: HistoryRow[];
+    elements: {
+      element: ElementId;
+      name: string;
+      auto: Counts;
+      cards: { card_id: string; name: string; items: RubricItem[] }[];
+    }[];
+    auto_total: Counts;
+    reviewer_total: Counts | null;
+    review: ReviewInfo | null;
   };
-  sections: ReportSection[];
-  ai_usage: { used: boolean; summary: string; evidence: AiEvidence[] };
+  sections: { element: ElementId; name: string; cards: ReportCard[] }[];
+  ai_usage: {
+    used: boolean;
+    events: {
+      call_id: string;
+      t_min: number;
+      request_quote: string;
+      response_quote: string;
+      cited_doc_ids: string[];
+      applied_part: number | "final" | null;
+    }[];
+  };
+  notes: Note[];
+  connection_gaps: { from_t_min: number; to_t_min: number }[];
   generated_at: string;
   reviewed_at: string | null;
+  purge_at: string;
 };
 
-export type Adjustment = { item_id: string; value: ItemValue; memo: string };
+export type Adjustment = { item_id: string; value: 1 | 0 | null; memo: string };
+
+export type RecordEntry = {
+  t_min: number;
+  type:
+    "message" | "share" | "open" | "task_event" | "assistant_call" | "notice" | "connection_gap";
+  channel?: string;
+  by: string;
+  summary: string;
+  ref: RecordRef;
+};

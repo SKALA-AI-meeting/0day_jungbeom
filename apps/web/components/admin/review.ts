@@ -1,52 +1,76 @@
-// 리포트 화면의 조정 입력 규칙. 서버(POST /review)와 같은 기준으로 메모 필수를 먼저 막는다.
-import type { Adjustment, ItemValue, Report, Tally } from "./types";
-
-/** keep = 자동 값 유지(조정 없음) */
-export type Choice = "keep" | "1" | "0" | "null";
-export type DraftEntry = { choice: Choice; memo: string };
-export type Draft = Record<string, DraftEntry>;
+// 리포트 검토 계산: 단계 판정, 담당자 조정(바꾸면 메모 필수), 조정 반영 합계, 전체 기록 링크.
+import type { Adjustment, Counts, RecordRef, Report, RubricItem } from "./types";
 
 export type Phase = "draft" | "approving" | "final";
 
-/** stage가 final이면 확정, 아직 draft인데 review가 채워졌으면 확정 중(approving), 아니면 검토 대기. */
+/** review가 있으면 검토 제출 뒤(확정 중), stage final이면 검토 완료 */
 export function phaseOf(report: Report): Phase {
   if (report.stage === "final") return "final";
   return report.rubric.review ? "approving" : "draft";
 }
 
-function toValue(choice: Choice): ItemValue | undefined {
-  if (choice === "keep") return undefined;
-  return choice === "null" ? null : (Number(choice) as 0 | 1);
+export type Choice = "auto" | "1" | "0" | "null";
+export type Edits = Record<string, { choice: Choice; memo: string }>;
+
+const value = (choice: Exclude<Choice, "auto">): 1 | 0 | null =>
+  choice === "1" ? 1 : choice === "0" ? 0 : null;
+
+export function allItems(report: Report): RubricItem[] {
+  return report.rubric.elements.flatMap((e) => e.cards.flatMap((c) => c.items));
 }
 
-/** 값을 바꾼 항목만 {item_id, value, memo}로. 자동 값과 같은 선택은 조정이 아니다. */
-export function changedAdjustments(report: Report, draft: Draft): Adjustment[] {
-  const rows: Adjustment[] = [];
-  for (const element of report.rubric.elements) {
-    for (const item of element.items) {
-      const entry = draft[item.id];
-      const value = entry ? toValue(entry.choice) : undefined;
-      if (value === undefined || value === item.auto) continue;
-      rows.push({ item_id: item.id, value, memo: entry.memo.trim() });
-    }
-  }
-  return rows;
+/** 자동 값과 다른 선택만 조정으로 보낸다 */
+export function changedAdjustments(report: Report, edits: Edits): Adjustment[] {
+  const items = new Map(allItems(report).map((i) => [i.id, i]));
+  return Object.entries(edits).flatMap(([id, edit]) => {
+    const item = items.get(id);
+    if (!item || edit.choice === "auto" || value(edit.choice) === item.auto) return [];
+    return [{ item_id: id, value: value(edit.choice), memo: edit.memo.trim() }];
+  });
 }
 
-/** 메모가 비어 있는 조정 항목의 id */
-export function missingMemos(adjustments: Adjustment[]): string[] {
+export function missingMemos(adjustments: Adjustment[]) {
   return adjustments.filter((a) => !a.memo).map((a) => a.item_id);
 }
 
-/** 조정을 반영해 센 담당자 합계(제출 전 미리보기) */
-export function previewTotal(report: Report, adjustments: Adjustment[]): Tally {
-  const byItem = new Map(adjustments.map((a) => [a.item_id, a.value]));
-  const values = report.rubric.elements.flatMap((e) =>
-    e.items.map((i) => (byItem.has(i.id) ? (byItem.get(i.id) as ItemValue) : i.auto)),
-  );
+/** 항목의 최종 값: 조정됐으면 담당자 값(null 포함), 아니면 자동 값 */
+export function finalValue(item: RubricItem) {
+  return item.adjusted ? item.reviewer : item.auto;
+}
+
+export function countOf(values: (1 | 0 | null)[]): Counts {
   return {
     met: values.filter((v) => v === 1).length,
-    judged: values.filter((v) => v !== null).length,
+    unmet: values.filter((v) => v === 0).length,
     no_record: values.filter((v) => v === null).length,
+  };
+}
+
+/** 저장 전 조정을 반영한 합계 미리보기 */
+export function previewTotal(report: Report, adjustments: Adjustment[]): Counts {
+  const changed = new Map(adjustments.map((a) => [a.item_id, a.value]));
+  return countOf(
+    allItems(report).map((i) => (changed.has(i.id) ? changed.get(i.id)! : finalValue(i))),
+  );
+}
+
+/** 전체 기록 화면의 줄 앵커. 리포트 근거의 record_ref와 기록의 ref가 같은 값이다 */
+export function recordAnchor(ref: RecordRef) {
+  return `${ref.type}-${ref.id}`;
+}
+
+/**
+ * 확정 중(approving) 리포트의 검토 본문을 서버 값으로 되살린다. 리포트에 다시 들어와 "확정 다시 시도"를 누를 때
+ * 처음 제출과 같은 본문을 보내야 200 멱등이 된다(다르면 409 already_reviewed).
+ */
+export function reviewBodyFrom(report: Report) {
+  if (!report.rubric.review) return null;
+  const adjustments: Adjustment[] = allItems(report)
+    .filter((i) => i.adjusted)
+    .map((i) => ({ item_id: i.id, value: i.reviewer, memo: i.memo ?? "" }));
+  return {
+    adjustments,
+    ...(report.rubric.review.memo ? { memo: report.rubric.review.memo } : {}),
+    reviewer_name: report.rubric.review.reviewer_name,
   };
 }

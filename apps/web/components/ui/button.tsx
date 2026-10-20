@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "./cn";
 
 const button = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-[background-color,transform] duration-100 ease-out active:not-disabled:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:active:not-disabled:scale-100",
   {
     variants: {
       variant: {
@@ -14,6 +14,7 @@ const button = cva(
         danger: "bg-danger text-white hover:opacity-90",
       },
       size: {
+        xs: "h-7 px-2 text-xs",
         sm: "h-8 px-3 text-sm",
         md: "h-10 px-4 text-base",
       },

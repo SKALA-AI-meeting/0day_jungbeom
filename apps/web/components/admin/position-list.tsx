@@ -1,3 +1,4 @@
+// 채용 건 목록: 이름, 요소, 지원자 수(초대한 사람 수), 생성 시각.
 import Link from "next/link";
 
 import { Badge, Button, Card, EmptyState } from "@/components/ui";
@@ -12,7 +13,7 @@ export function PositionList({ positions, catalog }: { positions: Position[]; ca
       <Card>
         <EmptyState
           title="아직 채용 건이 없습니다"
-          description="평가할 요소를 골라 첫 채용 건을 만드세요."
+          description="관찰 요소를 골라 첫 채용 건 만들기"
           action={
             <Link href="/admin/positions/new">
               <Button>채용 건 만들기</Button>
@@ -30,7 +31,9 @@ export function PositionList({ positions, catalog }: { positions: Position[]; ca
             <Card
               title={position.name}
               actions={
-                <span className="text-sm text-muted">지원자 {position.candidate_count}명</span>
+                <span className="shrink-0 text-sm text-muted">
+                  지원자 {position.candidate_count}명
+                </span>
               }
               className="hover:bg-surface-sunken"
             >

@@ -1,0 +1,12 @@
+{
+  "events": [],
+  "persona_note": null,
+  "scoring_notice": "세션이 시스템 문제로 중단됐습니다. 담당자가 새 초대를 보내면 다시 응시할 수 있습니다.",
+  "final": null,
+  "final_view_until": null,
+  "survey": {
+    "submitted": false,
+    "questions": []
+  },
+  "failed_stage": "session"
+}

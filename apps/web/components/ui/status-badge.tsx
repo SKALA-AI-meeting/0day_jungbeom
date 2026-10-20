@@ -6,6 +6,7 @@ export type DisplayStatus =
   | "expired"
   | "cancelled"
   | "in_progress"
+  | "reporting"
   | "completed"
   | "report_ready"
   | "approving"
@@ -17,6 +18,7 @@ export const STATUS_LABELS: Record<DisplayStatus, string> = {
   expired: "만료",
   cancelled: "취소",
   in_progress: "진행 중",
+  reporting: "보고 중",
   completed: "완료",
   report_ready: "리포트 준비됨",
   approving: "확정 중",
@@ -29,6 +31,7 @@ const TONES: Record<DisplayStatus, BadgeTone> = {
   expired: "neutral",
   cancelled: "neutral",
   in_progress: "accent",
+  reporting: "accent",
   completed: "accent",
   report_ready: "warning",
   approving: "warning",

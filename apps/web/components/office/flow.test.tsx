@@ -1,4 +1,5 @@
-// 완료 기준(docs/frontend/design.md 지원자): 화면 단계마다 하나. mock(NEXT_PUBLIC_MOCK=1)과 ws-replay fixture로 돈다.
+// 완료 기준(지원자): 만료·완료 링크 안내, 동의 전 시작 불가, 대기 화면 레이아웃 그림, 오피스 4탭과 "?",
+// 보고 대기·reporting 재입장, 디브리핑(최종본 열람·설문·문의 창구). 재연결 복원은 lib/ws.test.ts.
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
 
@@ -7,249 +8,136 @@ vi.hoisted(() => {
   process.env.NEXT_PUBLIC_MOCK = "1";
 });
 
-import * as mocks from "@/mocks/office";
-
-import events from "@/mocks/fixtures/ws_events.json";
-import debriefFixture from "@/mocks/fixtures/office/debrief.json";
+import { resetMockOffice } from "@/mocks/office";
 
 import { DebriefScreen } from "./debrief-screen";
-import * as flow from "./flow";
-import { ConsentScreen, EntryScreen, LinkNotice } from "./link-screens";
-import { OfficeView } from "./office-view";
-import { PartSaver } from "./part-saver";
-import { initialState, progressLabels, reduce } from "./reducer";
-import type { Debrief, Entry, ServerFrame } from "./types";
+import { candidateApi, land, sessionIdFromToken } from "./flow";
+import { ConsentScreen, LinkNotice, WaitingScreen } from "./link-screens";
+import { OfficeView, type OfficeViewProps } from "./office-view";
+import { initialState } from "./reducer";
+import type { Entry, StateSnapshot } from "./types";
 
-afterEach(() => mocks.resetMockOffice());
-
-async function startDemo() {
-  const { session_token } = await flow.candidateApi.consent("demo");
-  await flow.candidateApi.start("demo", session_token);
-  const id = flow.sessionIdFromToken(session_token);
-  return { id, jwt: session_token, snapshot: await flow.candidateApi.state(id, session_token) };
-}
+afterEach(resetMockOffice);
 
 const noop = () => {};
-const officeProps = { companyName: "루프랩", connection: "open" as const };
 const handlers = {
   onView: noop,
   onSend: noop,
-  onEdit: noop,
-  onRetrySave: noop,
-  onTask: noop,
-  onOpenDoc: async () => ({ title: "", content: "" }),
-  onAsk: noop,
+  onOpenDoc: async () => "",
+  onImport: async () => {},
+  onEditDoc: noop,
+  onShare: noop,
+  onEditFinal: noop,
   onSubmit: noop,
-  onDismissNotice: noop,
+  onTask: noop,
+  onMove: noop,
+  onReadCompany: async () => "",
+  onAsk: noop,
+  onEditingChange: noop,
 };
 
-test("링크 입장: 만료·취소·없는 링크는 안내만, 완료된 링크는 디브리핑을 다시 보여 준다", async () => {
-  const expired = await flow.land("expired");
-  expect(expired).toMatchObject({ kind: "notice", title: "링크가 만료되었습니다" });
-  expect(await flow.land("cancelled")).toMatchObject({
-    kind: "notice",
-    title: "취소된 초대입니다",
-  });
-  expect(await flow.land("unknown-token")).toMatchObject({
-    kind: "notice",
-    title: "초대 링크를 찾을 수 없습니다",
-  });
-  if (expired.kind === "notice") {
-    expect(renderToStaticMarkup(<LinkNotice {...expired} />)).toContain(
-      "채용 담당자에게 문의해 주세요",
-    );
-  }
-
-  const done = await flow.land("done");
-  expect(done.kind).toBe("ended");
-  const token = (done as { entry: Entry }).entry.debrief_token!;
-  const debrief = await flow.candidateApi.debrief(flow.sessionIdFromToken(token), token);
-  expect(renderToStaticMarkup(<DebriefScreen debrief={debrief} revisit />)).toContain(
-    "이미 완료된 평가입니다",
-  );
-
-  const demo = await flow.land("demo");
-  expect(demo.kind).toBe("entry");
-  const html = renderToStaticMarkup(
-    <EntryScreen entry={(demo as { entry: Entry }).entry} onNext={noop} />,
-  );
-  expect(html).toContain("2시간");
-  expect(html).toContain("중간 휴식은 없습니다");
-});
-
-test("안내·동의: 동의 전에는 시작 버튼이 잠기고, 동의하면 세션 토큰으로 시작한다", async () => {
-  const entry = (await flow.land("demo")) as { entry: Entry };
-  const props = { entry: entry.entry, onAgreedChange: noop, onConsent: noop };
-  const locked = renderToStaticMarkup(<ConsentScreen {...props} agreed={false} />);
-  expect(locked).toMatch(/<button[^>]*disabled=""[^>]*>동의하고 계속/);
-  expect(locked).toContain("90일");
-  const open = renderToStaticMarkup(<ConsentScreen {...props} agreed />);
-  expect(open).not.toMatch(/<button[^>]*disabled=""[^>]*>동의하고 계속/);
-
-  const { snapshot } = await startDemo();
-  expect(snapshot.session.status).toBe("in_progress");
-  expect(snapshot.session.remaining_seconds).toBeGreaterThan(7190);
-});
-
-test("오피스: 상단 회사명·남은 시간 mm:ss·제출, 채널 안 읽음, 탭 4개, notice는 알림 띠", async () => {
-  const { snapshot } = await startDemo();
-  // 새로고침·재입장 첫 스냅샷에 이미 있던 notice도 알림 띠로 복원한다(채널 안 읽음과는 따로)
-  const notice = {
-    ...snapshot.messages[0],
-    id: "n-1",
-    channel: "notice" as const,
-    sender: "system" as const,
-    content: "자료가 늦어집니다",
-  };
-  const withNotice = { ...snapshot, messages: [...snapshot.messages, notice] };
-  const deadline = Date.parse(snapshot.session.ends_at!);
-  let state = initialState(withNotice, 0);
-  expect(state.notices).toEqual(["n-1"]);
-  expect(state.unread).toEqual({ team: 0, dm: 0 });
-  // 타이머는 ends_at 기준: 스냅샷을 늦게 적용해도 종료 시각이 밀리지 않는다
-  expect(state.deadline).toBe(deadline);
-  expect(initialState(withNotice, 5_000).deadline).toBe(deadline);
-
-  const dm = {
-    ...snapshot.messages[0],
-    id: "d-1",
-    channel: "dm" as const,
-    sender: "colleague" as const,
-  };
-  state = reduce(state, { type: "frame", frame: { type: "message.new", payload: dm } });
-
-  const html = renderToStaticMarkup(
+function office(snap: StateSnapshot, extra: Partial<OfficeViewProps> = {}) {
+  return renderToStaticMarkup(
     <OfficeView
-      state={state}
-      now={deadline - (118 * 60 + 59) * 1000}
-      {...officeProps}
       {...handlers}
+      state={initialState(snap)}
+      alias="지원자A"
+      now={Date.now()}
+      connection="open"
+      saves={{}}
+      taskErrors={{}}
+      assistantPending={null}
+      assistantError={null}
+      submitting={false}
+      {...extra}
     />,
   );
-  for (const tab of ["기획안 문서", "태스크 보드", "회사 문서", "AI 어시스턴트"]) {
-    expect(html).toContain(tab);
+}
+
+/** 지원자 화면에 보이면 안 되는 말(동의 화면의 점수 설명은 예외) */
+const FORBIDDEN = /리드|평가|점수/;
+
+test("지원자 전 상태: 링크 안내, 동의 전 시작 불가, 대기, 오피스 4탭·?, 보고 대기 재입장, 디브리핑", async () => {
+  for (const [token, title] of [
+    ["expired", "링크가 만료되었습니다"],
+    ["cancelled", "취소된 초대입니다"],
+    ["nope", "초대 링크를 찾을 수 없습니다"],
+  ]) {
+    const landing = await land(token);
+    expect(landing).toMatchObject({ kind: "notice", title });
+    if (landing.kind === "notice")
+      expect(renderToStaticMarkup(<LinkNotice {...landing} />)).toContain(title);
   }
-  expect(html).toContain("118:59");
-  expect(html).toContain("루프랩");
-  expect(html).toContain(">제출<");
-  expect(html).toContain("안 읽은 메시지 1개");
-  expect(html).toMatch(/role="alert"[^>]*><span>자료가 늦어집니다/);
-});
+  const done = await land("done");
+  expect(done.kind).toBe("ended");
 
-test("진행 표시: client_msg_id로 보내고 ack로 확정, agent.progress로 입력 중·자료 찾는 중", async () => {
-  const { snapshot } = await startDemo();
-  let state = initialState(snapshot, 0);
-  state = reduce(state, {
-    type: "send",
-    outgoing: { client_msg_id: "c-1", channel: "team", content: "네, 확인했습니다." },
-  });
-  expect(state.outgoing[0].message_id).toBeUndefined();
+  // 동의 전에는 "동의하고 계속"이 잠겨 있고, 시작은 동의로 받은 JWT로만 한다
+  const entry = (await land("demo")) as { kind: "entry"; entry: Entry };
+  const consent = renderToStaticMarkup(
+    <ConsentScreen entry={entry.entry} agreed={false} onAgreedChange={noop} onConsent={noop} />,
+  );
+  expect(consent).toMatch(/<button[^>]*disabled=""[^>]*>동의하고 계속/);
+  expect(consent).toContain("합격·순위 판정 없음");
+  expect(consent).toContain("관찰 요소: 책임감/성실성 · 계획성/꼼꼼함");
+  expect(consent).toContain("90일 보관");
+  expect(consent).toContain("어시스턴트 사용 여부는 점수와 무관");
+  expect(consent).toContain("recruit@example.com");
 
-  const seen: string[][] = [];
-  for (const frame of events as ServerFrame[]) {
-    state = reduce(state, { type: "frame", frame });
-    seen.push(progressLabels(state, "team"));
+  const waiting = renderToStaticMarkup(<WaitingScreen entry={entry.entry} onStart={noop} />);
+  expect(waiting).toContain("오피스 화면 구성");
+  expect(waiting).toContain("? 버튼으로 다시 보기");
+  expect(waiting).toContain("보드에서 카드 5장 담당 정하기");
+  expect(waiting).not.toMatch(FORBIDDEN);
+
+  const { session_token } = await candidateApi.consent("demo");
+  await candidateApi.start("demo", session_token);
+  const snap = await candidateApi.state(sessionIdFromToken(session_token), session_token);
+  const html = office(snap);
+  for (const tab of ["내 문서", "보드", "자료", "어시스턴트"]) expect(html).toContain(`>${tab}<`);
+  expect(html).toContain('aria-label="화면 설명 다시 보기"');
+  expect(html).toContain("마감까지");
+  expect(html).not.toMatch(FORBIDDEN);
+
+  // reporting 재입장: resume으로 이어 붙고 보고 대기 화면(5분 카운트, 채널 잠금 없음)으로 복원
+  expect(await land("reporting")).toMatchObject({ kind: "resume" });
+  const resumed = await candidateApi.resume("reporting");
+  const reporting = await candidateApi.state(
+    sessionIdFromToken(resumed.session_token),
+    resumed.session_token,
+  );
+  expect(reporting.session).toMatchObject({ status: "reporting" });
+  const waitingHtml = office(reporting);
+  expect(waitingHtml).toContain("보고 대기");
+  expect(waitingHtml).toMatch(/0[0-5]:\d\d/); // 남은 보고 시간(5분 이하)
+  expect(waitingHtml).toContain("메시지 보내기"); // 입력창이 열려 있다
+  expect(waitingHtml).not.toMatch(FORBIDDEN);
+
+  // 디브리핑: 최종본 열람·복사, 설문 2문항, 문의 창구. 세션 실패면 중단 안내만
+  const debriefJwt = (done as { entry: Entry }).entry.debrief_token!;
+  const debrief = await candidateApi.debrief(sessionIdFromToken(debriefJwt), debriefJwt);
+  const debriefHtml = renderToStaticMarkup(
+    <DebriefScreen debrief={debrief} onSurvey={async () => {}} />,
+  );
+  for (const text of [
+    "내가 제출한 최종본",
+    "전체 복사",
+    "짧은 설문",
+    "건너뛰기",
+    "recruit@example.com",
+    "미리 준비된 연출입니다",
+  ]) {
+    expect(debriefHtml).toContain(text);
   }
-  expect(seen).toContainEqual(["이도현이 입력 중…"]);
-  expect(seen).toContainEqual(["이도현이 자료 찾는 중…"]);
-  expect(progressLabels(state)).toEqual([]);
-  expect(state.outgoing).toEqual([]);
-  expect(state.messages.filter((m) => m.id === "m-2")).toHaveLength(1);
-  expect(state.documents.find((d) => d.doc_id === "interview_summary")?.released).toBe(true);
-});
-
-test("제출: 기획안은 1초 디바운스로 저장하고, 제출 전 남은 저장을 끝낸 뒤 submit을 부른다", async () => {
-  vi.useFakeTimers();
-  const calls: string[] = [];
-  let failNext = false;
-  const saver = new PartSaver(async (partNo, content) => {
-    calls.push(`PUT ${partNo} ${content}`);
-    await new Promise((resolve) => setTimeout(resolve, 500)); // 서버 Lock 대기 흉내
-    if (failNext) throw new Error("network");
-    calls.push(`OK ${partNo} ${content}`);
-  });
-  saver.schedule(1, "가");
-  saver.schedule(1, "가나");
-  await vi.advanceTimersByTimeAsync(999);
-  expect(calls).toEqual([]);
-  await vi.advanceTimersByTimeAsync(1);
-  expect(calls).toEqual(["PUT 1 가나"]);
-  // 보내는 동안 바뀐 본문은 앞 PUT이 끝난 뒤 최신 것 하나만 이어 보낸다(같은 파트 동시 PUT 없음)
-  saver.schedule(1, "가나다");
-  saver.schedule(1, "가나다라");
-  await vi.advanceTimersByTimeAsync(1000);
-  expect(calls).toEqual(["PUT 1 가나", "OK 1 가나", "PUT 1 가나다라", "OK 1 가나다라"]);
-
-  // 제출 전 남은 PUT이 끝난(OK) 뒤에야 POST
-  saver.schedule(2, "근거");
-  const isEnded = async () => false;
-  const done = flow.submitSession(
-    () => saver.flush(),
-    async () => calls.push("POST submit"),
-    isEnded,
+  const failed = await land("failed");
+  const failedJwt = (failed as { entry: Entry }).entry.debrief_token!;
+  const failedHtml = renderToStaticMarkup(
+    <DebriefScreen
+      debrief={await candidateApi.debrief(sessionIdFromToken(failedJwt), failedJwt)}
+      contactEmail={(failed as { entry: Entry }).entry.contact_email}
+      onSurvey={async () => {}}
+    />,
   );
-  await vi.advanceTimersByTimeAsync(500);
-  expect(await done).toBe("submitted");
-  expect(calls.slice(-3)).toEqual(["PUT 2 근거", "OK 2 근거", "POST submit"]);
-
-  // 저장 실패: flush는 성공으로 끝나지 않고 submit을 부르지 않으며, 본문은 남아 다시 보낸다
-  calls.length = 0;
-  failNext = true;
-  saver.schedule(3, "기능");
-  const failed = flow.submitSession(
-    () => saver.flush(),
-    async () => calls.push("POST submit"),
-    isEnded,
-  );
-  const settled = failed.then(
-    () => "resolved",
-    () => "rejected",
-  );
-  await vi.advanceTimersByTimeAsync(500);
-  expect(await settled).toBe("rejected");
-  expect(calls).toEqual(["PUT 3 기능"]);
-  failNext = false;
-  const retried = saver.flush();
-  await vi.advanceTimersByTimeAsync(500);
-  await retried;
-  expect(calls).toEqual(["PUT 3 기능", "PUT 3 기능", "OK 3 기능"]);
-  vi.useRealTimers();
-
-  // submit이 session_ending이면 /state로 실제 종료를 확인한 뒤에만 끝난 것으로 본다
-  const ending = async () => {
-    throw new mocks.MockApiError(409, "session_ending");
-  };
-  const flushed = async () => {};
-  expect(await flow.submitSession(flushed, ending, async () => true)).toBe("ended");
-  await expect(flow.submitSession(flushed, ending, async () => false)).rejects.toThrow();
-
-  // 동료 담당 파트(403): 남은 저장을 버리고 서버 본문으로 되돌린 뒤 안내. flush는 정상 종료
-  const demo = await startDemo();
-  let state = initialState(demo.snapshot, 0);
-  const handler = flow.partSaveHandler({
-    put: (partNo, content) => flow.candidateApi.putPart(demo.id, demo.jwt, partNo, content),
-    refresh: () => flow.candidateApi.state(demo.id, demo.jwt),
-    dispatch: (action) => (state = reduce(state, action)),
-    cancel: (partNo) => rejectedSaver.cancel(partNo),
-  });
-  const rejectedSaver = new PartSaver(handler);
-  state = reduce(state, { type: "edit", part_no: 4, content: "내가 쓴 사례" });
-  rejectedSaver.schedule(4, "내가 쓴 사례");
-  await rejectedSaver.flush();
-  expect(state.document[4]).toMatchObject({ content: "", dirty: false });
-  expect(state.rejected).toEqual([4]);
-});
-
-test("디브리핑: 실제 상황·평가표 항목·페르소나 설명, 세션 실패면 중단 안내만", async () => {
-  const html = renderToStaticMarkup(<DebriefScreen debrief={debriefFixture as Debrief} />);
-  expect(html).toContain("책임감");
-  expect(html).toContain("자료가 공개되기 전에 지연을 팀에 알림");
-  expect(html).toContain("AI 페르소나");
-
-  const entry = (await flow.land("failed")) as { entry: Entry };
-  const token = entry.entry.debrief_token!;
-  const failed = await flow.candidateApi.debrief(flow.sessionIdFromToken(token), token);
-  const notice = renderToStaticMarkup(<DebriefScreen debrief={failed} />);
-  expect(notice).toContain("시스템 문제로 평가가 중단되었습니다");
-  expect(notice).not.toContain("페르소나");
+  // 실패 안내는 서버 문장 하나와 연락처만(중복 문장 없음)
+  expect(failedHtml).toContain("recruit@example.com");
+  expect(failedHtml).not.toContain("연출 장면");
 });

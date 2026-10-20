@@ -21,3 +21,21 @@ export {
   type StatusBadgeProps,
 } from "./status-badge";
 export { Tabs, type TabItem, type TabsProps } from "./tabs";
+export {
+  Avatar,
+  AvatarGroup,
+  initial,
+  type AvatarGroupProps,
+  type AvatarProps,
+  type AvatarTone,
+} from "./avatar";
+export { Chip, partTone, type ChipProps, type ChipTone } from "./chip";
+export {
+  PILL_LABELS,
+  StatusIcon,
+  StatusPill,
+  type PillStatus,
+  type StatusPillProps,
+} from "./status-pill";
+export { Toaster, toast } from "./toaster";
+export { DropMenu, type DropMenuProps, type MenuEntry } from "./menu";

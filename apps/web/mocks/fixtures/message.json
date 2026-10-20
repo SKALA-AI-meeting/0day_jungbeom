@@ -1,10 +1,12 @@
 {
-  "id": "...",
+  "id": "m-1",
   "channel": "team",
   "sender": "manager",
-  "content": "...",
-  "event_id": null,
-  "run_id": "...",
+  "content": "안녕하세요, 이번 건 주담당은 지원자A님입니다. 모아런 재참여율 개선 기획 초안을 2시간 안에 모아 주세요. 최종본 템플릿은 오른쪽 탭에 있고 섹션당 5~10줄이면 됩니다. 인터뷰 요약은 01:00에 공유될 예정이에요.",
+  "event_id": "ev-1",
+  "run_id": "r-1",
   "t_min": 0.0,
-  "created_at": "2026-10-20T01:00:00Z"
+  "created_at": "2026-10-20T01:00:00Z",
+  "reply_to_doc": null,
+  "shared_doc": null
 }

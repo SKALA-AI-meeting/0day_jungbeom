@@ -5,7 +5,7 @@ import { expect, test, vi } from "vitest";
 import { fetchSnapshot } from "@/components/office/flow";
 import { initialState, progressLabels, reduce } from "@/components/office/reducer";
 import type { ServerFrame, StateSnapshot } from "@/components/office/types";
-import state from "@/mocks/fixtures/office/state.json";
+import state from "@/mocks/fixtures/state.json";
 
 import { SessionSocket, type SocketLike } from "./ws";
 
@@ -43,8 +43,8 @@ test("재연결: 3초 뒤 다시 붙어 /state로 메시지와 진행 중 실행
   });
 
   // 처음 연결 뒤 진행 중이던 것이 없는 화면
-  const snapshot = state as StateSnapshot;
-  let view = initialState({ ...snapshot, messages: [], active_runs: [] }, 0);
+  const snapshot = state as unknown as StateSnapshot;
+  let view = initialState({ ...snapshot, messages: [], active_runs: [] });
   socket.connect();
   made[0].onopen!();
   expect(opens).toEqual([false]);
@@ -79,19 +79,33 @@ test("재연결: 3초 뒤 다시 붙어 /state로 메시지와 진행 중 실행
       payload: { ...snapshot.messages[0], id: "late-1", channel: "dm", sender: "colleague" },
     },
     {
-      type: "document.part_updated",
-      payload: { part_no: 2, content: "동료 초안", revision: 1, by: "colleague" },
+      type: "task.updated",
+      payload: {
+        part_no: 2,
+        assignee: "candidate",
+        status: "doing",
+        order: 2,
+        due_min: 70,
+        by: "candidate",
+      },
     },
   ];
   for (const frame of during) view = reduce(view, { type: "frame", frame });
   expect(view.unread.dm).toBe(1);
-  view = reduce(view, { type: "snapshot", state: fetched, now: 0, frames: during });
-  expect(view.messages.map((m) => m.id)).toEqual([snapshot.messages[0].id, "late-1"]);
+  view = reduce(view, { type: "snapshot", state: fetched, frames: during });
+  expect(view.snap.messages.map((m) => m.id)).toEqual([
+    ...snapshot.messages.map((m) => m.id),
+    "late-1",
+  ]);
   expect(view.unread.dm).toBe(1);
-  expect(view.document[2]).toMatchObject({ content: "동료 초안", revision: 1 });
-  // 끊긴 사이 시작된 실행은 active_runs로 복원, 타이머는 ends_at 기준
-  expect(progressLabels(view)).toEqual(["이도현이 입력 중…"]);
-  expect(view.deadline).toBe(Date.parse(snapshot.session.ends_at!));
+  expect(view.snap.tasks.find((t) => t.part_no === 2)).toMatchObject({
+    status: "doing",
+    due_min: 70,
+  });
+  // 끊긴 사이 시작된 실행은 active_runs로, 끊긴 구간은 connection_gaps로 복원. 타이머는 ends_at 기준
+  expect(progressLabels(view)).toEqual(["이도현님이 입력 중…"]);
+  expect(view.snap.connection_gaps).toEqual([{ from_t_min: 31.2, to_t_min: 46.0 }]);
+  expect(view.snap.session.ends_at).toBe(snapshot.session.ends_at);
 
   made[1].onclose!({ code: 4401 });
   await vi.advanceTimersByTimeAsync(0);

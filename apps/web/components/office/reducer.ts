@@ -1,419 +1,682 @@
-// 가상 오피스 상태. /state 스냅샷이 전체 상태이고 WS 프레임은 증분이다(contracts.md "재접속 복구 범위").
-// 화면 밖에서도 검사할 수 있게 순수 함수로 둔다.
+// 가상 오피스 상태. /state 스냅샷이 전체이고 WS 프레임은 증분이다(contracts "재접속 복구 범위").
+// 순수 함수라 테스트가 프레임을 그대로 흘려 넣어 확인한다.
+import {
+  AUTO_SUBMITTED_LINE,
+  boardLine,
+  divisionLine,
+  GAP_LINE_MIN,
+  gapLine,
+  PRESENCE_LINE,
+  SUBMITTED_LINE,
+  WAITING_LINE,
+  type SysLine,
+} from "./lines";
 import type {
-  ActiveRun,
-  Actor,
   AssistantCall,
   Channel,
+  DocRef,
+  FinalSection,
   Message,
-  Part,
-  ProgressStatus,
   ServerFrame,
   StateSnapshot,
+  Task,
 } from "./types";
 
-export type ChatChannel = "team" | "dm";
-
-/** 보낸 뒤 ack를 기다리는 메시지. ack가 오면 message_id로 확정된다. */
-export type Outgoing = {
+export type Pending = {
   client_msg_id: string;
-  channel: ChatChannel;
+  channel: "team" | "dm" | "manager_dm";
   content: string;
-  message_id?: string;
-  failed?: string;
+  reply_to_doc?: DocRef;
+  t_min: number;
 };
-
-export type RunView = {
-  actor: Actor;
-  status: ProgressStatus;
-  tool?: string;
-  channel?: ChatChannel;
-};
-
-/** dirty: 서버에 아직 저장 안 됨(성공해야 풀린다). failed: 마지막 저장 시도가 실패함 */
-export type LocalPart = Part & { dirty: boolean; failed?: boolean };
 
 export type OfficeState = {
-  sessionId: string;
-  status: StateSnapshot["session"]["status"];
-  /** 종료 시각(ms). ends_at 기준, 없을 때만 remaining_seconds로 계산 */
-  deadline: number | null;
-  messages: Message[];
-  outgoing: Outgoing[];
-  document: Record<number, LocalPart>;
-  /** 동료 담당이라 저장이 거부된 파트(안내 표시) */
-  rejected: number[];
-  tasks: StateSnapshot["tasks"];
-  documents: StateSnapshot["documents"];
-  /** 방금 열린 회사 문서(잠금 해제 표시) */
-  fresh: string[];
-  assistant: (AssistantCall & { pending?: boolean })[];
-  runs: Record<string, RunView>;
-  /** run_id → 그 실행을 시작한 지원자 메시지의 채널 */
-  runChannel: Record<string, ChatChannel>;
-  persona: StateSnapshot["persona"];
-  channel: ChatChannel;
-  unread: Record<ChatChannel, number>;
-  /** 상단 알림 띠에 띄울 notice 메시지 id(닫으면 빠진다) */
-  notices: string[];
-  ended: "submitted" | "timeout" | "failed" | null;
+  snap: StateSnapshot;
+  /** 스냅샷에 없는 라이브 줄(보드 변경·마감 경고) */
+  lines: SysLine[];
+  pending: Pending[];
+  channel: Channel;
+  unread: Record<Channel, number>;
+  submittedByMe: boolean;
+  autoSubmitted: boolean;
+  ended: null | "submitted" | "timeout" | "failed" | "cancelled";
   replaced: boolean;
-  error: string | null;
+  /** 도구를 쓰는 중인 실행(run_id). "자료 찾는 중…" 표시 */
+  searching: string[];
+  /**
+   * 아직 서버에 저장되지 않은 편집(파트 번호·최종본 섹션 → 본문). 재연결 스냅샷이 서버 값으로 덮어도
+   * 이 값을 다시 얹어 입력을 잃지 않는다. 저장이 성공하면 같은 본문인 것만 지운다.
+   */
+  dirty: { parts: Record<number, string>; final: Record<number, string> };
+  /** 저장 성공 세대. 저장할 때마다 1씩 늘고, 재동기화는 조회 시작 시점의 값을 since로 넘긴다 */
+  saveSeq: number;
+  /** 마지막으로 저장에 성공한 본문과 그 세대. 조회 뒤에 저장된 것은 옛 스냅샷보다 최신이다 */
+  confirmed: {
+    parts: Record<number, { content: string; seq: number }>;
+    final: Record<number, { content: string; seq: number }>;
+  };
 };
 
 export type OfficeAction =
-  /** frames: /state를 조회하는 동안 도착한 프레임. 스냅샷 위에 순서대로 다시 적용한다 */
-  | { type: "snapshot"; state: StateSnapshot; now: number; frames?: ServerFrame[] }
+  /** frames: 조회하는 동안 도착해 이미 반영한 프레임. 스냅샷 위에 다시 얹어 잃지 않게 한다 */
+  /** since: 조회를 시작할 때의 saveSeq. 없으면 지금 받은 최신 스냅샷으로 본다 */
+  | { type: "snapshot"; state: StateSnapshot; frames?: ServerFrame[]; since?: number }
   | { type: "frame"; frame: ServerFrame }
-  | { type: "send"; outgoing: Outgoing }
-  | { type: "view"; channel: ChatChannel }
-  | { type: "edit"; part_no: number; content: string }
-  | { type: "saved"; part_no: number; content: string; revision: number }
-  | { type: "save_failed"; part_no: number }
-  | { type: "rejected"; part_no: number }
-  | { type: "task"; part_no: number; status: StateSnapshot["tasks"][number]["status"] }
-  | { type: "ask"; call_id: string; request: string }
-  | { type: "answer"; call_id: string; response: string | null; cited_docs: string[] }
-  | { type: "dismiss_notice"; id: string }
-  | { type: "opened"; doc_id: string }
-  | { type: "replaced" }
-  | { type: "error"; message: string | null };
-
-const ENDED_STATUSES = new Set(["completed", "report_ready", "approving", "reviewed", "failed"]);
-
-function deadlineOf(state: StateSnapshot, now: number) {
-  if (state.session.ends_at) return Date.parse(state.session.ends_at);
-  const seconds = state.session.remaining_seconds;
-  return seconds == null ? null : now + seconds * 1000;
-}
-
-/** 스냅샷의 active_runs(status=started)로 진행 표시를 복원한다. 이미 보던 단계는 이어 간다. */
-function runsFrom(
-  active: ActiveRun[],
-  previous: Record<string, RunView>,
-  runChannel: Record<string, ChatChannel>,
-) {
-  const runs: Record<string, RunView> = {};
-  for (const run of active) {
-    runs[run.run_id] = {
-      ...previous[run.run_id],
-      status: previous[run.run_id]?.status ?? "started",
-      actor: run.actor,
-      channel: runChannel[run.run_id],
-    };
-  }
-  return runs;
-}
-
-export function initialState(snapshot: StateSnapshot, now: number): OfficeState {
-  return reduce(
-    {
-      sessionId: snapshot.session.id,
-      status: snapshot.session.status,
-      deadline: null,
-      messages: [],
-      outgoing: [],
-      document: {},
-      rejected: [],
-      tasks: [],
-      documents: [],
-      fresh: [],
-      assistant: [],
-      runs: {},
-      runChannel: {},
-      persona: snapshot.persona,
-      channel: "team",
-      unread: { team: 0, dm: 0 },
-      notices: [],
-      ended: null,
-      replaced: false,
-      error: null,
-    },
-    { type: "snapshot", state: snapshot, now },
-  );
-}
-
-function isChat(channel: Channel): channel is ChatChannel {
-  return channel === "team" || channel === "dm";
-}
-
-/** 새로 알게 된 메시지를 채널별 안 읽음·알림 띠에 반영한다. */
-function arrive(state: OfficeState, incoming: Message[]): Pick<OfficeState, "unread" | "notices"> {
-  const unread = { ...state.unread };
-  const notices = [...state.notices];
-  for (const message of incoming) {
-    if (message.channel === "notice") notices.push(message.id);
-    else if (isChat(message.channel) && message.sender !== "candidate") {
-      if (message.channel !== state.channel) unread[message.channel] += 1;
+  | { type: "view"; channel: Channel }
+  | { type: "sending"; pending: Pending }
+  | { type: "doc_edit"; part_no: number; content: string }
+  | { type: "doc_saved"; part_no: number; content: string; revision: number; updated_at: string }
+  | { type: "final_saved"; sections: { part_no: number; content: string }[] }
+  /** 다른 창으로 옮겨 갔거나(4000) 접속이 거절됨(4403): 이 창의 쓰기를 잠근다 */
+  | { type: "stopped" }
+  | {
+      type: "shared";
+      part_no: number;
+      version: number;
+      message_id: string;
+      channel: "team" | "dm";
+      t_min: number;
     }
-  }
-  return { unread, notices };
-}
+  | { type: "final_edit"; part_no: number; content: string }
+  | { type: "final_section"; section: FinalSection }
+  | { type: "task_local"; task: Task }
+  | { type: "opened"; doc_id: string; version: number }
+  | { type: "assistant"; call: AssistantCall }
+  | { type: "line"; line: SysLine }
+  /** 제출 요청 직전. 응답보다 먼저 올 수 있는 session.reporting을 자동 제출로 오해하지 않게 한다 */
+  | { type: "submitting"; on: boolean }
+  | { type: "submitted"; deadline_at: string | null; status: string };
 
-function snapshot(
-  state: OfficeState,
-  snap: StateSnapshot,
-  now: number,
-  frames: ServerFrame[] = [],
-): OfficeState {
-  const known = new Set(state.messages.map((m) => m.id));
-  const first = state.messages.length === 0 && state.deadline === null;
-  // 첫 스냅샷은 지난 대화라 채널 안 읽음으로 세지 않는다(notice 알림 띠는 복원한다).
-  // 재접속이면 그사이 온 것만 센다
-  const incoming = first
-    ? snap.messages.filter((m) => m.channel === "notice")
-    : snap.messages.filter((m) => !known.has(m.id));
-  const document: Record<number, LocalPart> = {};
-  for (const [key, part] of Object.entries(snap.document)) {
-    const local = state.document[Number(key)];
-    // 아직 저장되지 않은 내 수정은 서버 값으로 덮지 않는다
-    document[Number(key)] = local?.dirty ? local : { ...part, dirty: false };
-  }
-  const delivered = new Set(snap.messages.map((m) => m.id));
-  const pendingAsks = state.assistant.filter(
-    (a) => a.pending && !snap.assistant.some((s) => s.call_id === a.call_id),
-  );
-  const base: OfficeState = {
-    ...state,
-    ...arrive(state, incoming),
-    sessionId: snap.session.id,
-    status: snap.session.status,
-    deadline: deadlineOf(snap, now),
-    messages: snap.messages,
-    outgoing: state.outgoing.filter((o) => !(o.message_id && delivered.has(o.message_id))),
-    document,
-    tasks: snap.tasks,
-    documents: snap.documents,
-    assistant: [...snap.assistant, ...pendingAsks],
-    runs: runsFrom(snap.active_runs, state.runs, state.runChannel),
-    persona: snap.persona,
-    ended: ENDED_STATUSES.has(snap.session.status) ? (state.ended ?? "submitted") : null,
+const ZERO: Record<Channel, number> = { team: 0, dm: 0, manager_dm: 0, notice: 0 };
+
+export function initialState(snap: StateSnapshot): OfficeState {
+  return {
+    snap,
+    lines: [],
+    pending: [],
+    channel: "team",
+    unread: { ...ZERO },
+    submittedByMe: false,
+    autoSubmitted: false,
+    ended: null,
+    replaced: false,
+    searching: [],
+    dirty: { parts: {}, final: {} },
+    saveSeq: 0,
+    confirmed: { parts: {}, final: {} },
   };
-  // 조회 중 도착한 증분을 다시 얹는다. 이미 화면에서 센 메시지는 안 읽음을 다시 세지 않는다
-  return frames.reduce((acc, f) => {
-    if (f.type === "message.new" && known.has(f.payload.id)) {
-      if (acc.messages.some((m) => m.id === f.payload.id)) return acc;
-      return { ...acc, messages: [...acc.messages, f.payload] };
-    }
-    return frame(acc, f);
-  }, base);
 }
 
-function frame(state: OfficeState, f: ServerFrame): OfficeState {
-  switch (f.type) {
-    case "message.ack": {
-      const { client_msg_id, message_id, run_id } = f.payload;
-      const out = state.outgoing.find((o) => o.client_msg_id === client_msg_id);
-      const runChannel = out ? { ...state.runChannel, [run_id]: out.channel } : state.runChannel;
-      const delivered = state.messages.some((m) => m.id === message_id);
+function without(record: Record<number, string>, key: number, content?: string) {
+  if (!(key in record) || (content !== undefined && record[key] !== content)) return record;
+  const next = { ...record };
+  delete next[key];
+  return next;
+}
+
+/**
+ * 스냅샷 위에 이 창이 더 최신으로 아는 본문을 다시 얹는다: 조회 뒤에 저장에 성공한 본문(since보다 큰 세대),
+ * 그다음 아직 저장 전인 편집. 제출 뒤에는 서버 값이 맞으므로 얹지 않는다.
+ */
+function withLocal(snap: StateSnapshot, state: OfficeState, since: number): StateSnapshot {
+  if (snap.session.status !== "in_progress") return snap;
+  const parts: Record<number, string> = {};
+  const final: Record<number, string> = {};
+  for (const [k, v] of Object.entries(state.confirmed.parts))
+    if (v.seq > since) parts[+k] = v.content;
+  for (const [k, v] of Object.entries(state.confirmed.final))
+    if (v.seq > since) final[+k] = v.content;
+  return withDirty(snap, {
+    parts: { ...parts, ...state.dirty.parts },
+    final: { ...final, ...state.dirty.final },
+  });
+}
+
+function withDirty(snap: StateSnapshot, dirty: OfficeState["dirty"]): StateSnapshot {
+  return {
+    ...snap,
+    my_documents: snap.my_documents.map((d) =>
+      d.part_no in dirty.parts ? { ...d, content: dirty.parts[d.part_no] } : d,
+    ),
+    final: {
+      ...snap.final,
+      sections: snap.final.sections.map((sec) =>
+        sec.part_no in dirty.final && sec.content !== dirty.final[sec.part_no]
+          ? { ...sec, content: dirty.final[sec.part_no], edited: true }
+          : sec,
+      ),
+    },
+  };
+}
+
+export function partTitles(snap: StateSnapshot): Record<number, string> {
+  const titles: Record<number, string> = {};
+  for (const s of snap.final.sections) titles[s.part_no] = s.title;
+  for (const d of snap.my_documents) titles[d.part_no] ??= d.title;
+  return titles;
+}
+
+/**
+ * 내가 바꾼 보드 카드의 줄. 담당·언제까지만 남긴다(상태·순서는 끌 때마다 생겨 대화를 덮는다).
+ * 분업 확정 전의 담당 지정은 "분업이 정해졌어요" 한 줄로 모이므로 남기지 않는다.
+ */
+export function boardLineFor(state: OfficeState, before: Task, after: Task): SysLine | null {
+  const assigneeChanged = before.assignee !== after.assignee;
+  if (!assigneeChanged && before.due_min === after.due_min) return null;
+  if (assigneeChanged && !state.snap.division) return null;
+  const text = boardLine(before, after, "candidate", state.snap.persona);
+  if (!text) return null;
+  return {
+    id: `board-me-${after.part_no}-${state.lines.length}`,
+    channel: "team",
+    t_min: nowMin(state.snap),
+    kind: "board",
+    text,
+  };
+}
+
+/** 시작 시각 기준 지금 분(스냅샷이 없으면 0) */
+export function nowMin(snap: StateSnapshot, now = Date.now()) {
+  const started = snap.session.started_at ? Date.parse(snap.session.started_at) : now;
+  return Math.max(0, Math.round(((now - started) / 60_000) * 100) / 100);
+}
+
+function minAt(snap: StateSnapshot, iso: string | null | undefined) {
+  if (!iso || !snap.session.started_at) return 0;
+  return (Date.parse(iso) - Date.parse(snap.session.started_at)) / 60_000;
+}
+
+function upsertMessage(messages: Message[], message: Message) {
+  return messages.some((m) => m.id === message.id) ? messages : [...messages, message];
+}
+
+function applyFrame(state: OfficeState, frame: ServerFrame): OfficeState {
+  const snap = state.snap;
+  switch (frame.type) {
+    case "message.ack":
       return {
         ...state,
-        runChannel,
-        outgoing: delivered
-          ? state.outgoing.filter((o) => o.client_msg_id !== client_msg_id)
-          : state.outgoing.map((o) =>
-              o.client_msg_id === client_msg_id ? { ...o, message_id } : o,
-            ),
+        pending: state.pending.filter((p) => p.client_msg_id !== frame.payload.client_msg_id),
       };
-    }
     case "message.new": {
-      const message = f.payload;
-      if (state.messages.some((m) => m.id === message.id)) return state;
+      const m = frame.payload;
+      const fresh = !snap.messages.some((x) => x.id === m.id);
+      const pending =
+        m.sender === "candidate"
+          ? state.pending.filter((p) => !(p.channel === m.channel && p.content === m.content))
+          : state.pending;
+      const unread =
+        fresh && m.sender !== "candidate" && m.channel !== state.channel
+          ? { ...state.unread, [m.channel]: state.unread[m.channel] + 1 }
+          : state.unread;
       return {
         ...state,
-        ...arrive(state, [message]),
-        messages: [...state.messages, message],
-        outgoing: state.outgoing.filter((o) => o.message_id !== message.id),
+        pending,
+        unread,
+        snap: { ...snap, messages: upsertMessage(snap.messages, m) },
       };
     }
     case "agent.progress": {
-      const { run_id, actor, status, tool } = f.payload;
-      const runs = { ...state.runs };
-      if (status === "finished" || status === "failed") delete runs[run_id];
-      else runs[run_id] = { actor, status, tool, channel: state.runChannel[run_id] };
-      return { ...state, runs };
+      const { run_id, actor, node, status } = frame.payload;
+      const runs = snap.active_runs.filter((r) => r.run_id !== run_id);
+      if (status !== "finished" && status !== "failed") runs.push({ run_id, actor, node });
+      const searching = state.searching.filter((id) => id !== run_id);
+      if (status === "tool_start") searching.push(run_id);
+      return { ...state, searching, snap: { ...snap, active_runs: runs } };
     }
-    case "document.released": {
-      const { doc_id, title } = f.payload;
-      const exists = state.documents.some((d) => d.doc_id === doc_id);
+    case "document.released":
       return {
         ...state,
-        documents: exists
-          ? state.documents.map((d) => (d.doc_id === doc_id ? { ...d, released: true } : d))
-          : [...state.documents, { doc_id, title, released: true }],
-        fresh: state.fresh.includes(doc_id) ? state.fresh : [...state.fresh, doc_id],
+        snap: {
+          ...snap,
+          documents: snap.documents.map((d) =>
+            d.doc_id === frame.payload.doc_id ? { ...d, released: true, release_at_min: null } : d,
+          ),
+        },
+      };
+    case "document.shared": {
+      const p = frame.payload;
+      const t = snap.messages.find((m) => m.id === p.message_id)?.t_min ?? nowMin(snap);
+      if (p.by === "candidate") {
+        return reduce(state, {
+          type: "shared",
+          part_no: p.part_no,
+          version: p.version,
+          message_id: p.message_id,
+          channel: p.channel,
+          t_min: t,
+        });
+      }
+      const titles = partTitles(snap);
+      const exists = snap.received.find((d) => d.doc_id === p.doc_id);
+      const version = {
+        version: p.version,
+        channel: p.channel,
+        message_id: p.message_id,
+        t_min: t,
+        opened: false,
+      };
+      const received = exists
+        ? snap.received.map((d) =>
+            d.doc_id === p.doc_id && !d.versions.some((v) => v.version === p.version)
+              ? { ...d, versions: [...d.versions, version] }
+              : d,
+          )
+        : [
+            ...snap.received,
+            {
+              doc_id: p.doc_id,
+              owner: "colleague" as const,
+              part_no: p.part_no,
+              title: titles[p.part_no] ?? "",
+              versions: [version],
+            },
+          ];
+      return { ...state, snap: { ...snap, received } };
+    }
+    case "task.updated": {
+      const { by, ...rest } = frame.payload;
+      const before = snap.tasks.find((t) => t.part_no === rest.part_no);
+      const after: Task = { ...rest, depends_on: rest.depends_on ?? before?.depends_on ?? [] };
+      // 내 변경의 줄은 낙관적 반영 때 화면이 직접 남긴다(boardLineFor). 여기서는 동료 변경만
+      const text = by === "colleague" ? boardLine(before, after, by, snap.persona) : null;
+      const lines = text
+        ? [
+            ...state.lines,
+            {
+              id: `board-${after.part_no}-${state.lines.length}`,
+              channel: "team" as const,
+              t_min: nowMin(snap),
+              kind: "board" as const,
+              text,
+            },
+          ]
+        : state.lines;
+      return {
+        ...state,
+        lines,
+        snap: { ...snap, tasks: snap.tasks.map((t) => (t.part_no === after.part_no ? after : t)) },
       };
     }
-    case "document.part_updated": {
-      const { part_no, content, revision, by } = f.payload;
-      const current = state.document[part_no];
-      if (current && current.revision >= revision) return state;
+    case "division.confirmed": {
+      const { parts, decided_by, t_min } = frame.payload;
+      const started = snap.session.started_at ? Date.parse(snap.session.started_at) : Date.now();
       return {
         ...state,
-        document: {
-          ...state.document,
-          [part_no]: { content, revision, updated_by: by, dirty: false },
+        snap: {
+          ...snap,
+          division: {
+            parts,
+            decided_by,
+            decided_at: new Date(started + t_min * 60_000).toISOString(),
+          },
+          tasks: snap.tasks.map((t) => ({
+            ...t,
+            assignee: parts[String(t.part_no)] ?? t.assignee,
+          })),
         },
       };
     }
-    case "task.updated": {
-      const task = f.payload;
-      const exists = state.tasks.some((t) => t.part_no === task.part_no);
-      const tasks = exists
-        ? state.tasks.map((t) => (t.part_no === task.part_no ? task : t))
-        : [...state.tasks, task].sort((a, b) => a.part_no - b.part_no);
-      return { ...state, tasks };
-    }
+    case "session.reporting":
+      return {
+        ...state,
+        autoSubmitted: !state.submittedByMe,
+        snap: {
+          ...snap,
+          session: { ...snap.session, status: "reporting", deadline_at: frame.payload.deadline_at },
+        },
+      };
     case "session.ended":
-      return { ...state, ended: f.payload.reason, runs: {} };
+      return {
+        ...state,
+        ended: frame.payload.reason,
+        snap: { ...snap, session: { ...snap.session, status: "completed" } },
+      };
     case "session.replaced":
       return { ...state, replaced: true };
     case "error":
-      return {
-        ...state,
-        error:
-          f.payload.code === "session_ending" ? "세션이 마무리되는 중이에요." : f.payload.message,
-      };
+      return state;
   }
 }
 
 export function reduce(state: OfficeState, action: OfficeAction): OfficeState {
+  const snap = state.snap;
   switch (action.type) {
-    case "snapshot":
-      return snapshot(state, action.state, action.now, action.frames);
+    case "snapshot": {
+      const ended =
+        state.ended ??
+        (["in_progress", "reporting"].includes(action.state.session.status) ? null : "submitted");
+      const live = action.state.session.status === "in_progress";
+      const base = {
+        ...state,
+        snap: withLocal(action.state, state, action.since ?? state.saveSeq),
+        dirty: live ? state.dirty : { parts: {}, final: {} },
+        ended,
+      };
+      return (action.frames ?? []).reduce((acc, frame) => {
+        // 안 읽음 수와 보드 줄은 처음 받았을 때 이미 반영했으므로 다시 더하지 않는다
+        const next = applyFrame(acc, frame);
+        return { ...next, unread: acc.unread, lines: acc.lines };
+      }, base);
+    }
     case "frame":
-      return frame(state, action.frame);
-    case "send":
-      return { ...state, outgoing: [...state.outgoing, action.outgoing], error: null };
+      return applyFrame(state, action.frame);
     case "view":
       return {
         ...state,
         channel: action.channel,
         unread: { ...state.unread, [action.channel]: 0 },
       };
-    case "edit": {
-      const part = state.document[action.part_no] ?? { revision: 0, updated_by: null };
+    case "sending":
+      return { ...state, pending: [...state.pending, action.pending] };
+    case "doc_edit":
       return {
         ...state,
-        document: {
-          ...state.document,
-          [action.part_no]: { ...part, content: action.content, dirty: true },
+        dirty: {
+          ...state.dirty,
+          parts: { ...state.dirty.parts, [action.part_no]: action.content },
+        },
+        snap: {
+          ...snap,
+          my_documents: snap.my_documents.map((d) =>
+            d.part_no === action.part_no ? { ...d, content: action.content } : d,
+          ),
         },
       };
-    }
-    case "saved": {
-      const part = state.document[action.part_no];
-      if (!part) return state;
-      // 저장하는 사이 더 고쳤으면 dirty를 유지한다
-      const dirty = part.content !== action.content;
+    case "doc_saved":
       return {
         ...state,
-        document: {
-          ...state.document,
-          [action.part_no]: {
-            ...part,
-            revision: action.revision,
-            updated_by: "candidate",
-            dirty,
-            failed: false,
+        // 저장하는 사이 더 고쳤으면 그 편집은 남겨 둔다
+        dirty: {
+          ...state.dirty,
+          parts: without(state.dirty.parts, action.part_no, action.content),
+        },
+        saveSeq: state.saveSeq + 1,
+        confirmed: {
+          ...state.confirmed,
+          parts: {
+            ...state.confirmed.parts,
+            [action.part_no]: { content: action.content, seq: state.saveSeq + 1 },
           },
         },
+        snap: {
+          ...snap,
+          my_documents: snap.my_documents.map((d) =>
+            d.part_no === action.part_no
+              ? { ...d, revision: action.revision, updated_at: action.updated_at }
+              : d,
+          ),
+        },
+      };
+    case "shared":
+      return {
+        ...state,
+        snap: {
+          ...snap,
+          my_documents: snap.my_documents.map((d) =>
+            d.part_no !== action.part_no || d.versions.some((v) => v.version === action.version)
+              ? d
+              : {
+                  ...d,
+                  versions: [
+                    ...d.versions,
+                    {
+                      version: action.version,
+                      revision: d.revision,
+                      channel: action.channel,
+                      message_id: action.message_id,
+                      t_min: action.t_min,
+                    },
+                  ],
+                },
+          ),
+        },
+      };
+    case "final_saved": {
+      let final = state.dirty.final;
+      const seq = state.saveSeq + 1;
+      const confirmed = { ...state.confirmed.final };
+      for (const sec of action.sections) {
+        final = without(final, sec.part_no, sec.content);
+        confirmed[sec.part_no] = { content: sec.content, seq };
+      }
+      return {
+        ...state,
+        dirty: { ...state.dirty, final },
+        saveSeq: seq,
+        confirmed: { ...state.confirmed, final: confirmed },
       };
     }
-    case "save_failed": {
-      const part = state.document[action.part_no];
-      if (!part) return state;
-      return {
-        ...state,
-        document: { ...state.document, [action.part_no]: { ...part, failed: true } },
-      };
-    }
-    case "rejected": {
-      // 서버 본문은 이어지는 스냅샷이 채운다. 저장된 것처럼 보이지 않게 dirty만 푼다
-      const part = state.document[action.part_no];
-      return {
-        ...state,
-        document: part
-          ? { ...state.document, [action.part_no]: { ...part, dirty: false, failed: false } }
-          : state.document,
-        rejected: state.rejected.includes(action.part_no)
-          ? state.rejected
-          : [...state.rejected, action.part_no],
-      };
-    }
-    case "task":
-      return {
-        ...state,
-        tasks: state.tasks.map((t) =>
-          t.part_no === action.part_no ? { ...t, status: action.status } : t,
-        ),
-      };
-    case "ask":
-      return {
-        ...state,
-        assistant: [
-          ...state.assistant,
-          {
-            call_id: action.call_id,
-            request: action.request,
-            response: null,
-            cited_docs: [],
-            t_min: null,
-            pending: true,
-          },
-        ],
-      };
-    case "answer":
-      return {
-        ...state,
-        assistant: state.assistant.map((a) =>
-          a.call_id === action.call_id
-            ? { ...a, response: action.response, cited_docs: action.cited_docs, pending: false }
-            : a,
-        ),
-      };
-    case "dismiss_notice":
-      return { ...state, notices: state.notices.filter((id) => id !== action.id) };
-    case "opened":
-      return { ...state, fresh: state.fresh.filter((id) => id !== action.doc_id) };
-    case "replaced":
+    case "stopped":
       return { ...state, replaced: true };
-    case "error":
-      return { ...state, error: action.message };
+    case "final_edit":
+      return {
+        ...state,
+        dirty: {
+          ...state.dirty,
+          final: { ...state.dirty.final, [action.part_no]: action.content },
+        },
+        snap: {
+          ...snap,
+          final: {
+            ...snap.final,
+            sections: snap.final.sections.map((s) =>
+              s.part_no === action.part_no && s.content !== action.content
+                ? { ...s, content: action.content, edited: true }
+                : s,
+            ),
+          },
+        },
+      };
+    case "final_section":
+      return {
+        ...state,
+        // 가져오기는 서버가 섹션을 덮어쓴 값이 정본이다(그 섹션의 미저장·확정 본문은 버린다)
+        dirty: { ...state.dirty, final: without(state.dirty.final, action.section.part_no) },
+        confirmed: {
+          ...state.confirmed,
+          final: Object.fromEntries(
+            Object.entries(state.confirmed.final).filter(([k]) => +k !== action.section.part_no),
+          ),
+        },
+        snap: {
+          ...snap,
+          final: {
+            ...snap.final,
+            sections: snap.final.sections.map((s) =>
+              s.part_no === action.section.part_no ? { ...s, ...action.section } : s,
+            ),
+          },
+        },
+      };
+    case "task_local":
+      return {
+        ...state,
+        snap: {
+          ...snap,
+          tasks: snap.tasks.map((t) => (t.part_no === action.task.part_no ? action.task : t)),
+        },
+      };
+    case "opened":
+      return {
+        ...state,
+        snap: {
+          ...snap,
+          received: snap.received.map((d) =>
+            d.doc_id === action.doc_id
+              ? {
+                  ...d,
+                  versions: d.versions.map((v) =>
+                    v.version === action.version ? { ...v, opened: true } : v,
+                  ),
+                }
+              : d,
+          ),
+        },
+      };
+    case "assistant":
+      return { ...state, snap: { ...snap, assistant: [...snap.assistant, action.call] } };
+    case "line":
+      return state.lines.some((l) => l.id === action.line.id)
+        ? state
+        : { ...state, lines: [...state.lines, action.line] };
+    case "submitting":
+      return {
+        ...state,
+        submittedByMe: action.on,
+        autoSubmitted: action.on ? false : state.autoSubmitted,
+      };
+    case "submitted":
+      return {
+        ...state,
+        submittedByMe: true,
+        snap: {
+          ...snap,
+          session: {
+            ...snap.session,
+            status: action.status === "completed" ? "completed" : "reporting",
+            deadline_at: action.deadline_at,
+          },
+        },
+        ended: action.status === "completed" ? "submitted" : state.ended,
+      };
   }
 }
 
-/** "이도현이 입력 중…"처럼 진행 중인 실행을 문장으로. channel을 주면 그 채널에 해당하는 것만. */
-export function progressLabels(state: OfficeState, channel?: ChatChannel): string[] {
-  const labels: string[] = [];
-  for (const run of Object.values(state.runs)) {
-    if (run.actor === "assistant") continue;
-    if (channel && run.channel && run.channel !== channel) continue;
-    const name = run.actor === "manager" ? state.persona.manager : state.persona.colleague;
-    const label = `${name}${josa(name)} ${run.status === "tool_start" ? "자료 찾는 중…" : "입력 중…"}`;
-    if (!labels.includes(label)) labels.push(label);
+// ── 화면이 읽는 값 ─────────────────────────────────────────
+
+export type TimelineItem =
+  | { kind: "message"; t_min: number; message: Message }
+  | { kind: "pending"; t_min: number; pending: Pending }
+  | { kind: "line"; t_min: number; line: SysLine };
+
+/** 스냅샷에서 다시 만들 수 있는 시스템 줄(재접속해도 같은 줄이 나온다) */
+export function derivedLines(state: OfficeState): SysLine[] {
+  const { snap } = state;
+  const lines: SysLine[] = [
+    {
+      id: "presence",
+      channel: "team",
+      t_min: -1,
+      kind: "presence",
+      text: PRESENCE_LINE(snap.persona),
+    },
+  ];
+  if (snap.division) {
+    lines.push({
+      id: "division",
+      channel: "team",
+      t_min: minAt(snap, snap.division.decided_at),
+      kind: "division",
+      text: divisionLine(snap.division.parts, snap.division.decided_by, snap.persona),
+    });
   }
-  return labels;
+  for (const [i, gap] of snap.connection_gaps.entries()) {
+    // 짧은 끊김은 재연결 토스트로만 알린다
+    if (gap.to_t_min - gap.from_t_min < GAP_LINE_MIN) continue;
+    lines.push({
+      id: `gap-${i}`,
+      channel: "all",
+      t_min: gap.from_t_min,
+      kind: "gap",
+      text: gapLine(gap.from_t_min, gap.to_t_min),
+    });
+  }
+  if (snap.session.status === "reporting") {
+    const at = snap.session.deadline_at ? minAt(snap, snap.session.deadline_at) - 5 : nowMin(snap);
+    const first = state.autoSubmitted ? AUTO_SUBMITTED_LINE : SUBMITTED_LINE;
+    lines.push({
+      id: "submitted",
+      channel: "all",
+      t_min: at + 0.001,
+      kind: "submitted",
+      text: first,
+    });
+    lines.push({
+      id: "waiting",
+      channel: "all",
+      t_min: at + 0.002,
+      kind: "submitted",
+      text: WAITING_LINE,
+    });
+  }
+  return lines;
 }
 
-/** 받침이 있으면 "이", 없으면 "가" */
-export function josa(name: string) {
-  const code = name.charCodeAt(name.length - 1) - 0xac00;
-  if (code < 0 || code > 11171) return "이";
-  return code % 28 === 0 ? "가" : "이";
+/** system이 보낸 메시지는 줄로 그린다. notice 채널의 카드 알림(event_id 있음)만 메시지로 그린다. */
+export function isSystemLine(m: Message) {
+  return m.sender === "system" && !(m.channel === "notice" && m.event_id);
 }
 
-export function assistantBusy(state: OfficeState) {
-  return (
-    state.assistant.some((a) => a.pending) ||
-    Object.values(state.runs).some((r) => r.actor === "assistant")
-  );
+export function timeline(state: OfficeState, channel: Channel): TimelineItem[] {
+  const items: TimelineItem[] = [];
+  for (const message of state.snap.messages) {
+    if (message.channel !== channel) continue;
+    if (isSystemLine(message)) {
+      items.push({
+        kind: "line",
+        t_min: message.t_min,
+        line: {
+          id: message.id,
+          channel,
+          t_min: message.t_min,
+          kind: message.channel === "notice" ? "release" : "report_guide",
+          text: message.content,
+        },
+      });
+    } else {
+      // 문서 카드의 "보냈어요"는 카드 메타(주인·버전)와 겹쳐 대화에는 두지 않는다(전체 기록에만 남는다)
+      items.push({ kind: "message", t_min: message.t_min, message });
+    }
+  }
+  for (const line of [...derivedLines(state), ...state.lines]) {
+    if (line.channel === channel || line.channel === "all")
+      items.push({ kind: "line", t_min: line.t_min, line });
+  }
+  const sorted = items.sort((a, b) => a.t_min - b.t_min);
+  // 보내는 중인 메시지는 항상 맨 아래
+  for (const pending of state.pending) {
+    if (pending.channel === channel)
+      sorted.push({ kind: "pending", t_min: pending.t_min, pending });
+  }
+  return sorted;
 }
 
-/** mm:ss. 60분을 넘으면 분이 두 자리를 넘는다(120:00). */
-export function formatRemaining(ms: number) {
-  const total = Math.max(0, Math.ceil(ms / 1000));
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+/** 입력 중 표시: 진행 중인 실행의 actor → 문구 */
+export function progressLabels(state: OfficeState) {
+  const { persona } = state.snap;
+  return state.snap.active_runs
+    .filter((r) => r.actor !== "assistant")
+    .map((r) => {
+      const who = r.actor === "manager" ? persona.manager.split(" ")[0] : persona.colleague;
+      return state.searching.includes(r.run_id)
+        ? `${who}님이 자료 찾는 중…`
+        : `${who}님이 입력 중…`;
+    });
+}
+
+/**
+ * 새 메시지 토스트(보낸 사람·첫 줄). 내 메시지·시스템 줄과 지금 가운데에 보이는 채널은 띄우지 않는다.
+ * 개인 알림은 놓치면 안 되므로 편집 여부와 상관없이, 그 밖은 오른쪽에서 편집 중일 때만 띄운다.
+ */
+export function shouldToast(
+  message: Message,
+  ctx: { editing: boolean; channel: Channel; docOpen: boolean },
+) {
+  if (message.sender === "candidate" || isSystemLine(message)) return false;
+  if (message.channel === ctx.channel && !ctx.docOpen) return false;
+  return message.channel === "notice" || ctx.editing;
+}
+
+export function firstLine(text: string, max = 60) {
+  const line = text.split("\n")[0];
+  return line.length > max ? `${line.slice(0, max)}…` : line;
+}
+
+/**
+ * 제출 뒤에는 문서·보드·가져오기·어시스턴트를 막는다(서버 409 session_ending). 메시지는 계속 열려 있다.
+ * 다른 창으로 옮겨 간 창(replaced)은 모든 쓰기를 막는다.
+ */
+export function locked(state: OfficeState) {
+  return state.snap.session.status !== "in_progress" || state.submittedByMe || state.replaced;
 }
