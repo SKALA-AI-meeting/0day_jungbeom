@@ -6,10 +6,10 @@
 
 - 공개 베이스: `http://api:8000` (web이 호출). 내부 베이스: `http://api:8001` (`/internal/*`만, compose 네트워크 안에서만 열림, 포트 미공개).
 - 응답 JSON. 오류는 `{"error": {"code": "...", "message": "..."}}`와 HTTP 4xx/5xx.
-- CORS: 공개 앱(8000)만 `WEB_ORIGIN`(쉼표 구분, 기본 `http://localhost:3000`)을 허용한다. 메서드 전부, 헤더 `Authorization`·`Content-Type`·`Idempotency-Key`. 내부 앱(8001)에는 두지 않는다.
+- CORS: 공개 앱(8000)만 `WEB_ORIGIN`(쉼표 구분, 기본 `http://localhost:3000`)을 허용한다. 메서드 전부, 헤더 `Authorization`·`Content-Type`. 내부 앱(8001)에는 두지 않는다.
 - 인증 헤더: `Authorization: Bearer <jwt>`. 내부: `X-Internal-Token: <secret>`.
 - 시각은 ISO 8601 UTC. 세션 상대 시각은 `t_min`(세션 시작 기준 분, 소수 허용)으로도 함께 준다.
-- 멱등: 변경 요청은 `Idempotency-Key` 헤더(선택)를 받으며 같은 키의 재요청은 같은 결과를 돌려준다. 내부 저장의 멱등 키: 메시지 `(session_id, run_id, seq)`, 문서 수정 `(session_id, part_no, run_id)`, 관찰 `(session_id, element, window_start)`. 같은 키의 재요청은 기존 행을 돌려준다.
+- 멱등: MVP는 `Idempotency-Key` 헤더를 쓰지 않는다. 멱등은 도메인 규칙(세션 전이, 리뷰 본문 비교, 아래 내부 저장 키)으로만 보장하며 화면은 채용 건·초대 생성 POST를 자동 재시도하지 않는다. 내부 저장의 멱등 키: 메시지 `(session_id, run_id, seq)`, 문서 수정 `(session_id, part_no, run_id)`, 관찰 `(session_id, element, window_start)`. 같은 키의 재요청은 기존 행을 돌려준다.
 
 ## 인증 생명주기
 
@@ -28,16 +28,18 @@
 
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
-| POST | /admin/auth/signup | {email, password, company_name} | {token} |
-| POST | /admin/auth/login | {email, password} | {token} |
+| POST | /admin/auth/signup | {email, password, company_name} | {token}. 이미 있는 이메일은 409 `conflict` |
+| POST | /admin/auth/login | {email, password} | {token}. 실패는 401 `unauthorized` |
 | GET | /admin/catalog | | {elements: [{id, name, situation_public, rubric: [{id, text, pilot_value}]}], timeline: {flow: [{card_id, at_fraction}], element_fraction_rule}, candidate_notice_template, session_minutes} (채용 건 생성 화면: 요소 설명·평가표 미리보기·선택 요소에 따른 타임라인(시각만)·지원자 안내 문안. pilot_value 항목은 툴팁 "시험 운영 기준") |
+
+`/admin/catalog` 필드 출처: `situation_public`=카탈로그 카드의 `situation`, `pilot_value`=항목에 없으면 false, `timeline.flow`=흐름 카드의 `at_fraction`, `element_fraction_rule`=배치 규칙 설명 문자열, `candidate_notice_template`=자리표시자 `{alias}`·`{virtual_company}`·`{expires_at}`·`{invite_url}`를 가진 문자열 상수. 분업 PUT(`/internal/.../division`)은 전 파트 지정을 요구하고 누락·`division_min` 위반은 422 `invalid_division`, 확정과 동시에 `tasks` 행을 만든다(한 트랜잭션). 같은 내용의 재요청은 저장된 값을 그대로 돌려준다. 내부 문서·task·분업 쓰기는 세션이 in_progress일 때만 받고 아니면 409 `conflict`(이미 저장된 run_id 재전달은 기존 결과).
 | GET | /admin/positions | | [{id, name, elements, candidate_count, created_at}] |
 | POST | /admin/positions | {name, elements: ["cooperation", ...]} (1~4개) | {id, name, elements, scenario, catalog_version} |
 | GET | /admin/positions/{id}/candidates | | [{session_id, alias, status, display_status, invited_at, report_ready_at, failed_stage?, failed_reason?, previous_session_id?, score?: {met, judged, no_record, source: "auto"∣"reviewer", by_element: [{element, met, judged}]}}] (display_status는 status에 만료(invited이고 expires_at 지남)·취소를 더한 표시값. report 없으면 score null, 정렬은 초대순) |
 | POST | /admin/positions/{id}/invites | {alias, email, previous_session_id?} | {session_id, invite_url, expires_at, notice_text}. 발송하지 않음. 화면은 링크 복사와 안내 문안 복사(2시간·PC 권장·중간 휴식 없음·72시간 만료·가상 회사 루프랩) 버튼. previous_session_id는 재응시 연결 |
 | POST | /admin/sessions/{id}/cancel | | {status: "cancelled"}. invited 상태에서만, 아니면 409 |
 | GET | /admin/sessions/{id}/report | | Report (아래) 또는 404(아직 없음) |
-| POST | /admin/sessions/{id}/review | {adjustments: [{item_id, value: 1∣0∣null, memo}], memo?} | {status: "approving"}. 생략한 항목은 자동 값. item_id가 이 채용 건 rubric에 없으면 400 `invalid_item`, 자동 값과 다른데 memo 없으면 400 `memo_required`. 이미 approving·reviewed이고 본문 동일이면 200 멱등, 다르면 409 `already_reviewed` |
+| POST | /admin/sessions/{id}/review | {adjustments: [{item_id, value: 1∣0∣null, memo}], memo?} | {status: "approving"}. 생략한 항목은 자동 값. item_id가 이 채용 건 rubric에 없으면 400 `invalid_item`, 자동 값과 다른데 memo 없으면 400 `memo_required`. 같은 item_id가 두 번이면 400 `duplicate_item`. 이미 approving·reviewed이고 본문 동일이면 200 멱등(현재 status를 돌려줌), 다르면 409 `already_reviewed`. **오류 우선순위**: 이미 제출된 세션은 `already_reviewed`(409)가 본문 검증 오류(400)보다 먼저다. report가 없거나 status가 report_ready·approving·reviewed가 아니면 409 `conflict` |
 
 `elements` 검증: 카탈로그 id만, 중복 없음, 1~4개. 위반 시 400 `invalid_elements`. 모든 조회는 JWT의 company_id로 필터.
 
@@ -64,7 +66,7 @@
  "generated_at":"...","reviewed_at":null}
 ```
 
-`stage`는 draft 또는 final. evidence 타입: message(quote), revision(part_no, summary), doc_view(doc_id), assistant_call(quote). `ai_usage.used=false`면 summary는 "사용하지 않음"이고 evidence는 빈 배열. 모든 evidence의 id는 같은 세션의 실제 행을 가리켜야 하며(워커가 검증), `rubric.auto`는 워커가 draft에 넣고 `reviewer`·`review`·`history`는 api가 GET 때 `rubric_adjustments`에서 병합한다. 해시 규칙은 저장된 `reports.content`(불변)에만 적용되고 GET 합성 응답과는 무관하다. `deliverable`은 api가 GET 때 붙이며 `{parts, division_decided_by, final_report_message: {id, t_min, content}}`를 포함한다. 각 요소 섹션에는 `no_record_reason`, `aux_facts`, `out_of_window_messages`(점수 무관), 근거마다 `context: {prev_persona_message, card_at_t_min}`, `event_fired: bool`(false면 "이벤트 미발생(조기 제출)")가 있다. `ai_usage`는 머리에 "판단 기준 없음, 면접 확인용"을 두고 위임·맥락·검증으로 나눠 보여 준다. 응답 시간 항목은 실제 분 값을 함께 보여 준다. `observed`·`note`·`summary` 텍스트 필드에는 합격·순위 표현과 평가표 밖의 점수 표현이 없어야 한다(워커 금지어 검사 범위는 텍스트 필드만).
+`rubric.elements[].items[]`는 `reviewer`·`memo`(조정된 항목만 값)와 `adjusted: bool`(null 조정과 무조정의 구분)을 갖고, 요소별 `reviewer {met, judged, no_record}`·`reviewer_total`·`review {memo, reviewed_at}`는 리뷰 제출(approving) 뒤에만 non-null이다. `history`는 `[{item_id, element, auto, reviewer, memo, created_at}]`. `stage`는 draft 또는 final. evidence 타입: message(quote), revision(part_no, summary), doc_view(doc_id), assistant_call(quote). `ai_usage.used=false`면 summary는 "사용하지 않음"이고 evidence는 빈 배열. 모든 evidence의 id는 같은 세션의 실제 행을 가리켜야 하며(워커가 검증), `rubric.auto`는 워커가 draft에 넣고 `reviewer`·`review`·`history`는 api가 GET 때 `rubric_adjustments`에서 병합한다. 해시 규칙은 저장된 `reports.content`(불변)에만 적용되고 GET 합성 응답과는 무관하다. `deliverable`은 api가 GET 때 붙이며 `{parts, division_decided_by, final_report_message: {id, t_min, content}}`를 포함한다. 각 요소 섹션에는 `no_record_reason`, `aux_facts`, `out_of_window_messages`(점수 무관), 근거마다 `context: {prev_persona_message, card_at_t_min}`, `event_fired: bool`(false면 "이벤트 미발생(조기 제출)")가 있다. `ai_usage`는 머리에 "판단 기준 없음, 면접 확인용"을 두고 위임·맥락·검증으로 나눠 보여 준다. 응답 시간 항목은 실제 분 값을 함께 보여 준다. `observed`·`note`·`summary` 텍스트 필드에는 합격·순위 표현과 평가표 밖의 점수 표현이 없어야 한다(워커 금지어 검사 범위는 텍스트 필드만).
 
 ## 지원자 REST (`/s`, `/sessions`, 포트 8000)
 
@@ -129,7 +131,7 @@
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
 | GET | /internal/sessions/{id} | | {id, status, position: {elements, scenario, catalog_version}, division, started_at, ends_at, t_min_now, current_element} |
-| GET | /internal/sessions/{id}/messages?since_t_min=&channel=&limit= | | [Message] |
+| GET | /internal/sessions/{id}/messages?since_t_min=&channel=&limit= | | [Message + `meta`] (내부 API 전용으로 `meta`(classification 포함)를 더함. 공개 API의 Message에는 meta가 없다. since_t_min은 소수 분) |
 | POST | /internal/sessions/{id}/messages | {channel, sender, content, event_id?, run_id, seq, meta?} | Message (같은 run_id+seq 재요청은 기존 행) |
 | GET | /internal/sessions/{id}/board | | {tasks} |
 | PUT | /internal/sessions/{id}/tasks/{part_no} | {status} | task. 동료 담당이 아니면 403 `forbidden`. 동료 카드는 분업 확정 시 doing, 리뷰 공유 시 done으로 그래프가 바꾼다 |
@@ -148,7 +150,7 @@
 | POST | /internal/sessions/{id}/report/draft | {content} | {status: "report_ready"} (멱등) |
 | POST | /internal/sessions/{id}/report/final | {content} | {status: "reviewed", reviewed_at}. content의 정규화 JSON 해시(`reports.content_hash`, 키 정렬·공백 제거)가 승인된 draft 해시와 다르면 409 `draft_mismatch`. 이미 reviewed이고 해시가 같으면 200 기존 값(재전달 멱등). draft가 없거나 status가 approving·reviewed가 아니면 409 |
 | POST | /internal/sessions/{id}/report_failed | {error} | {status: "failed"} |
-| POST | /internal/test/sessions | {elements, session_minutes, alias?} | {session_id, token, invite_url} (`ENABLE_TEST_API=1`일 때만) |
+| POST | /internal/test/sessions | {elements, session_minutes, alias?} | {session_id, token, invite_url} (`ENABLE_TEST_API=1`일 때만. `token`은 초대 토큰 원문이며 세션 JWT가 아니다. consent·start를 거쳐야 한다) |
 
 권한·상태 검증(담당자, 세션 상태, 문서 공개 여부)은 모두 api가 최종 판단한다. MCP는 전달만 한다.
 

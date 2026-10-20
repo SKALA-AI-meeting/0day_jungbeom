@@ -20,7 +20,7 @@ PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시�
 | observations | id, session_id, element, window_start, window_end, metrics jsonb, label, evidence jsonb, run_id, created_at | evidence는 `[{type: message∣revision∣doc_view∣assistant_call, id}]`, 같은 세션 행만(api가 검증). 창 경계는 카드 due_at. (session_id, element, window_start) unique |
 | assistant_calls | id, session_id, request_message_id, response_message_id, cited_doc_ids text[], created_at | |
 | assistant_reuse | call_id, part_no, reuse(verbatim·edited·none), ratio, computed_at | 제출 시 호출×파트별 계산. "반영 추정"이며 검증 행동의 증거는 아님 |
-| reports | session_id(pk), stage(draft·final), content jsonb, generated_at, reviewed_at, attempts, usage jsonb, auto_met·auto_judged·auto_no_record, reviewer_met·reviewer_judged·review_memo | 합계 컬럼은 목록 표시용. content.rubric.auto가 원천 |
+| reports | session_id(pk), stage(draft·final), content jsonb, generated_at, reviewed_at, attempts, usage jsonb, auto_met·auto_judged·auto_no_record, reviewer_met·reviewer_judged·review_memo | 합계 컬럼은 목록 표시용. reviewer_*·review_memo는 리뷰 제출(approving 전이) 트랜잭션에서 채운다. content.rubric.auto가 원천 |
 | rubric_adjustments | id, session_id, element, item_id, auto_value, reviewer_value, memo, admin_id, created_at | 담당자 항목 조정 이력(append-only). GET report 때 병합 |
 | checkpoints 등 | LangGraph PostgresSaver 기본 테이블 | api 에이전트 모듈(thread `session:{id}`, `assistant:{id}`)과 report-worker(thread `report:{id}`)가 각자 자기 thread만 접근 |
 | doc_chunks | id, doc_id, chunk_no, content, embedding vector(1024), model, catalog_version | rag-mcp만 접근 |

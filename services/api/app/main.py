@@ -8,6 +8,7 @@ import importlib
 import importlib.util
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -48,11 +49,20 @@ async def _http_error(_: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse(body, status_code=exc.status_code, headers=exc.headers)
 
 
+async def _invalid_input(_: Request, exc: RequestValidationError) -> JSONResponse:
+    message = "; ".join(
+        f"{'.'.join(str(part) for part in e['loc'])}: {e['msg']}" for e in exc.errors()
+    )
+    body = {"error": {"code": "invalid_input", "message": message}}
+    return JSONResponse(body, status_code=422)
+
+
 def _base(title: str, ctx: AppContext) -> FastAPI:
     app = FastAPI(title=title)
     app.state.ctx = ctx
     app.add_exception_handler(SessionError, _session_error)
     app.add_exception_handler(HTTPException, _http_error)
+    app.add_exception_handler(RequestValidationError, _invalid_input)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

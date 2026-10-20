@@ -61,3 +61,11 @@
 - `SCENARIOS_DIR`: 기본값(/scenarios)이 로컬에 없을 때만 저장소 `scenarios/`로 대체하고, 사용자가 지정한 경로가 없으면 설정 오류로 멈춘다. 이유: 잘못된 경로를 조용히 숨기지 않게.
 - 소유권 예외 3건 수용: `scenarios/catalog.yaml`의 두 줄 인용(값 불변), `ruff.toml`의 Markdown 제외, `apps/web/README.md` 실행법.
 - MVP 제외: 브로커가 발행을 확인한 뒤 큐가 유실된 경우의 복구(outbox는 `*_enqueued_at`이 비어 있는 세션만 재발행한다).
+
+## 2026-10-20 api-admin 리뷰 반영
+- 관찰 창(`current_element`): 가장 최근에 실행된 **요소 카드**의 요소다. 흐름 카드·결 메시지는 창을 닫지 않고, 마지막 요소 창은 제출 뒤 종료 실행이 끝날 때(completed 전)까지 열려 있다. 이유: 보고 단계의 지적도 창 안으로 봐야 한다. `scenario-model.md`·`agent/design.md`의 예전 "흐름 카드도 창을 닫음" 문구는 이 결정이 우선한다(문서 정합화는 오케스트레이터).
+- `Idempotency-Key` 헤더를 MVP 계약에서 뺀다. 멱등은 도메인 규칙(세션 전이, 내부 저장 키, 리뷰 본문 비교)으로만 보장하고 화면은 생성 POST를 자동 재시도하지 않는다. 이유: 초대 토큰 원문이 DB에 없어 키 기반 재응답을 복원할 수 없고 저장소를 더하는 비용이 크다. 대안: 멱등 키 테이블(제외).
+- 종료 뒤 쓰기: 내부 문서·task·분업 PUT은 세션이 in_progress일 때만 받는다(제출 직후 종료 실행 중에는 in_progress라 허용). 이미 저장된 run_id 재전달은 기존 결과를 돌려준다. 이유: 확정 리포트의 산출물이 바뀌지 않게.
+- tasks 생성 담당 정정: 위 "foundation 리뷰 반영"의 "tasks는 분업 확정 때 api-candidate가 만든다"를 **api-admin의 내부 division PUT**으로 바꾼다(division과 tasks를 한 트랜잭션). api-candidate의 sync_tasks는 그쪽 수정 라운드에서 제거한다.
+- 리뷰 오류 우선순위: 이미 제출된 세션은 `already_reviewed`(409)가 `memo_required`·`invalid_item`·`duplicate_item`(400)보다 먼저다.
+- 내부 메시지 응답(GET·POST·분류 PUT)은 `meta`를 포함한다(공개 API는 제외). 요청 본문 검증 실패는 두 앱 공통으로 422 `invalid_input`.
