@@ -1,18 +1,18 @@
 """평가표 계산. 순수 함수이고 LLM을 부르지 않는다. 규칙 정본은 docs/common/rubric.md.
 
-카드의 `rubric[].when`(조건 문법 label_in·metric eq/lte·all, 그리고 only_if)을 관찰 행의
-label·metrics에 대입해 항목마다 1(충족)·0(미충족)·None(기록 없음 + 사유)을 낸다.
+카드의 `rubric[].when`(조건 문법 label_in·metric eq/lte·all, 그리고 only_if)을 그 카드 관찰 행의
+label·metrics에 대입해 항목마다 1(충족)·0(미충족)·None(기록 없음 + 사유 코드)을 낸다.
 
 | 관찰 상태 | label_in 조건 | metric 조건 |
 |---|---|---|
 | 카드 레이블 | 조건대로 | 조건대로 |
-| unclassified·null(LLM 실패) | 기록 없음 classify_failed | 조건대로(값이 null이면 기록 없음) |
+| unclassified·null(LLM 실패) | classify_failed | aux 지표 classify_failed, 기록 지표 조건대로 |
 | no_evidence·관찰 행 없음 | 기록 없음 no_activity | 기록 없음 no_activity |
 
-카드 미발생은 event_not_fired, 창을 놓친 카드(전달 지연 또는 관찰의 `metrics.window_missed`)는
-window_missed, only_if 불충족은 not_applicable. aux 판정 지표(AUX_METRICS)가 null이면 레이블이
-정상이어도 classify_failed다. response_minutes가 null인데 창 안 활동이 있으면 0이다.
-근거는 충족 항목에만 붙인다.
+카드 미발생은 event_not_fired, 창을 놓친 카드는 window_missed, 카드가 보내야 할 동료 문서가 끝내
+전송되지 않았으면(이벤트 document_missing 또는 draft_delivered=false) document_missing, 그 밖의
+only_if 불충족은 not_applicable. aux에서 오는 지표(AUX_METRICS)가 null이면 classify_failed다.
+response_minutes가 null인데 창 안 활동이 있으면 0이다.
 """
 
 from typing import Any
@@ -22,11 +22,24 @@ CLASSIFY_FAILED = "classify_failed"
 EVENT_NOT_FIRED = "event_not_fired"
 NOT_APPLICABLE = "not_applicable"
 WINDOW_MISSED = "window_missed"
+DOCUMENT_MISSING = "document_missing"
 
 NO_EVIDENCE = "no_evidence"
-# LLM 분류의 aux에서 오는 지표. null이면 분류가 그 값을 내지 못한 것이다
-AUX_METRICS = frozenset({"response_specific", "proposes_alternative", "proposes_fix"})
 UNCLASSIFIED = "unclassified"
+# LLM 분류의 aux에서 오는 지표(rubric.md 지표 정의). null이면 분류가 그 값을 내지 못한 것이다
+AUX_METRICS = frozenset(
+    {
+        "mentions_colleague_impact",
+        "proposes_alternative",
+        "target_applied",
+        "mentions_scope_or_division",
+        "credits_colleague",
+        "claims_colleague_work",
+        "discloses_incomplete",
+    }
+)
+# only_if가 이 지표로 불충족이면 사유는 not_applicable이 아니라 document_missing이다
+DOCUMENT_METRICS = frozenset({"draft_delivered"})
 
 # (값, 기록 없음 사유, 근거 id). 값이 None일 때만 사유가 있다.
 Result = tuple[int | None, str | None, list[str]]
@@ -44,9 +57,9 @@ def label_state(card: dict[str, Any], observation: dict[str, Any] | None) -> str
     return UNCLASSIFIED
 
 
-def metric_value(observation: dict[str, Any], name: str) -> tuple[Any, list[str]]:
+def metric_value(observation: dict[str, Any] | None, name: str) -> tuple[Any, list[str]]:
     """metrics[name]은 observe가 남긴 {value, evidence_ids}. 값만 있는 행도 받는다."""
-    raw = (observation.get("metrics") or {}).get(name)
+    raw = ((observation or {}).get("metrics") or {}).get(name)
     if isinstance(raw, dict) and "value" in raw:
         return raw["value"], [str(i) for i in raw.get("evidence_ids") or []]
     return raw, []
@@ -75,6 +88,9 @@ def _atom(atom: dict[str, Any], card: dict[str, Any], observation: dict[str, Any
 
     name = atom["metric"]
     value, ids = metric_value(observation, name)
+    if state == UNCLASSIFIED and name in AUX_METRICS:
+        # aux는 레이블과 함께 나온 분류 결과다. 분류가 실패했으면 값이 남아 있어도 쓰지 않는다
+        return None, CLASSIFY_FAILED, []
     if value is None:
         if name == "response_minutes":
             return 0, None, []  # 창 안 활동은 있는데 관련 메시지가 없음
@@ -106,7 +122,10 @@ def evaluate_item(
     *,
     event_fired: bool = True,
     window_missed: bool = False,
+    document_missing: bool = False,
 ) -> dict[str, Any]:
+    """{id, auto, no_record_reason, evidence_ids}. 근거 id는 충족시킨 조건의 것."""
+
     def no_record(reason: str) -> dict[str, Any]:
         return {"id": item["id"], "auto": None, "no_record_reason": reason, "evidence_ids": []}
 
@@ -114,6 +133,8 @@ def evaluate_item(
         return no_record(EVENT_NOT_FIRED)
     if window_missed or missed_window(observation):
         return no_record(WINDOW_MISSED)
+    if document_missing:
+        return no_record(DOCUMENT_MISSING)
     if label_state(card, observation) in ("missing", NO_ACTIVITY):
         return no_record(NO_ACTIVITY)
     if item.get("only_if"):
@@ -121,7 +142,8 @@ def evaluate_item(
         if value is None:
             return no_record(reason)
         if value == 0:
-            return no_record(NOT_APPLICABLE)
+            used = {a.get("metric") for a in _atoms(item["only_if"])}
+            return no_record(DOCUMENT_MISSING if used & DOCUMENT_METRICS else NOT_APPLICABLE)
     value, reason, ids = _condition(item["when"], card, observation)
     return {"id": item["id"], "auto": value, "no_record_reason": reason, "evidence_ids": ids}
 
@@ -134,7 +156,7 @@ def missed_window(observation: dict[str, Any] | None) -> bool:
 def tally(values: list[int | None]) -> dict[str, int]:
     return {
         "met": sum(1 for v in values if v == 1),
-        "judged": sum(1 for v in values if v in (0, 1)),
+        "unmet": sum(1 for v in values if v == 0),
         "no_record": sum(1 for v in values if v is None),
     }
 
@@ -145,18 +167,22 @@ def evaluate(
     *,
     event_fired: bool = True,
     window_missed: bool = False,
-) -> dict[str, Any]:
-    """요소 하나의 항목 값과 합계.
-
-    {items: [{id, auto, no_record_reason, evidence_ids}], auto: {met, judged, no_record}}
-    """
-    items = [
-        evaluate_item(item, card, observation, event_fired=event_fired, window_missed=window_missed)
+    document_missing: bool = False,
+) -> list[dict[str, Any]]:
+    """카드 하나의 항목 값들."""
+    return [
+        evaluate_item(
+            item,
+            card,
+            observation,
+            event_fired=event_fired,
+            window_missed=window_missed,
+            document_missing=document_missing,
+        )
         for item in card.get("rubric") or []
     ]
-    return {"items": items, "auto": tally([i["auto"] for i in items])}
 
 
-def total(elements: list[dict[str, int]]) -> dict[str, int]:
-    """선택 요소 합계. 가중치·정규화 없음."""
-    return {key: sum(e[key] for e in elements) for key in ("met", "judged", "no_record")}
+def total(parts: list[dict[str, int]]) -> dict[str, int]:
+    """세 수 합계. 가중치·정규화 없음."""
+    return {key: sum(p[key] for p in parts) for key in ("met", "unmet", "no_record")}

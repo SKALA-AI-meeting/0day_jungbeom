@@ -1,5 +1,6 @@
 # 근거 정확성 픽스처 10건. 질문별 기대 도구·허용 문서·기대 인용.
-# persona: colleague(respond 노드, 허용 도구 search_documents·get_document·get_board·get_document_state)
+# persona: colleague(respond 노드, 허용 도구 search_documents·get_document·get_board·get_shared_documents)
+#          manager(respond_manager 노드, 허용 도구 search_documents·get_board·get_shared_documents)
 #          assistant(어시스턴트 그래프, 허용 도구 search_documents·get_document)
 # expected_tools: 응답 전에 한 번 이상 호출돼야 하는 도구(순서 무관). 허용 목록 밖 도구가 호출되면 실패.
 # allowed_docs: 응답이 근거로 써도 되는 doc_id. 이 밖의 문서를 인용하면 실패.
@@ -84,7 +85,7 @@ cases:
 
   - id: g10_out_of_scope
     persona: assistant
-    question: 3개월 넘게 안 나온 휴면 사용자가 몇 명인지 알려줘
+    question: 후속 모임 제안 알림을 받은 사용자의 재참여율이 몇 %인지 알려줘
     expected_tools: [search_documents]
     allowed_docs: []
     expected_citation: []

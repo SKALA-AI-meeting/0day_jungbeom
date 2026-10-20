@@ -1,0 +1,76 @@
+# 미션: 모아런 신규 기능 기획안. 코드는 이 폴더를 해석만 한다. 구조는 docs/common/scenario-model.md.
+# 채용 건 생성 시 이 폴더 전체의 해시(scenarios/version.py)를 catalog_version으로 고정하고 본문을 positions.scenario에 복사한다.
+id: planning
+name: 모아런 재참여율 개선 기획
+deliverable: 첫 참여자 재참여율 개선 기획 초안(섹션 5개, 1~2쪽)
+company:
+  name: 루프랩
+  product: 모아런
+  manager: { name: 한서윤, title: 프로덕트 팀장, display: 한서윤 팀장 }
+  colleague: { name: 이도현, title: 기획자, years: 2, display: 이도현 }
+candidate_role: primary          # 호칭 "주담당". 분업·재지시·최종본 통합·보고를 맡는 같은 팀원
+candidate_title: 주담당
+
+parts:
+  "1": { title: 문제 정의와 대상 사용자 }
+  "2": { title: 사용자 인터뷰에서 찾은 근거 }
+  "3": { title: 핵심 기능 제안, depends_on: [2] }
+  "4": { title: 비슷한 서비스 사례 }
+  "5": { title: 성공 지표와 출시 일정 }
+
+# 주담당이 다음 요소 카드까지 정하지 않을 때 동료가 채우는 기본안(decided_by=colleague_default)
+default_division: { "1": candidate, "2": candidate, "3": both, "4": colleague, "5": colleague }
+
+# 분업 최소 조건. 2번은 지원자, 3번(2번 의존)은 동료 또는 같이, 4·5번 중 하나 이상은 동료 단독.
+# 위반 시 동료가 의존 관계를 이유로 1회 되돌리고, 보드·division PUT은 422 invalid_division(아래 문장 포함).
+division_min:
+  "2": [candidate]
+  "3": [colleague, both]
+  any_colleague_only: [4, 5]
+division_min_messages:        # 422 invalid_division 문장. 시스템 규칙이 아니라 팀 사정으로 말한다
+  missing: 아직 담당이 정해지지 않은 파트가 있어요.
+  "2": 2번 인터뷰 근거는 인터뷰를 직접 보실 주담당님이 맡아야 3번까지 흐름이 이어져요.
+  "3": 3번은 2번 자료를 받아 이어 쓰는 파트라 도현님이 맡거나 같이 해야 일정이 맞아요.
+  any_colleague_only: 4·5번 중 하나는 도현님이 혼자 맡아야 일정이 맞아요.
+
+# 킥오프에서 팀장이 전달하는 최종본 골격. 최종본 탭에 그대로 보인다.
+final_template:
+  sections:
+    - { part_no: 1, title: 문제 정의와 대상 사용자 }
+    - { part_no: 2, title: 사용자 인터뷰에서 찾은 근거 }
+    - { part_no: 3, title: 핵심 기능 제안 }
+    - { part_no: 4, title: 비슷한 서비스 사례 }
+    - { part_no: 5, title: 성공 지표와 출시 일정 }
+  length: 섹션당 5~10줄, 1~2쪽
+
+# 킥오프 기본 가정. 반대 의견 카드의 대체 대상 ③(cards.yaml collab_disagree.target_rule).
+kickoff_assumption: 첫 참여자가 두 번째 모임에 나오지 않는 주원인은 다음 모임 일정을 놓쳐서라고 보고 시작한다.
+
+documents:
+  - { id: company_intro, title: 회사·서비스 소개, file: company_intro.md }
+  - { id: metrics, title: 지표 현황, file: metrics.md }
+  - { id: interview_summary, title: 사용자 인터뷰 요약, file: interview_summary.md }
+  - { id: policy, title: 운영 정책, file: policy.md }
+  - { id: meeting_notes, title: 지난주 회의록, file: meeting_notes.md }
+
+# 디브리핑 문안(GET /sessions/{id}/debrief). {colleague}·{manager}·{company}·{values}·{days}를 채운다
+debrief_texts:
+  persona_note: "{colleague}과 {manager}은 {company}이 바라는 동료 모습({values})으로 움직이는 AI였습니다."
+  scoring_notice: >-
+    점수는 보여 드리지 않습니다. 담당자가 근거를 확인해 조정하기 전의 값이라 그대로 보면 오해를 낳을 수 있고,
+    합격 여부를 정하는 값도 아니기 때문입니다. 최종 판단은 채용 담당자가 근거를 직접 확인해 합니다.
+    기업은 대화와 어시스턴트 요청 원문, 문서 주고받기 기록을 봅니다. 응답 시간 항목은 리모트 협업 맥락으로 읽힙니다.
+    연결이 끊긴 구간이 있었다면 담당자에게 알려 주세요.
+  retention_notice: 기록은 종료 후 {days}일 보관 뒤 삭제됩니다. 최종본 열람과 설문은 7일 동안 가능합니다.
+  failed_notice: 세션이 시스템 문제로 중단됐습니다. 담당자가 새 초대를 보내면 다시 응시할 수 있습니다.
+  values_short: [먼저 알리기, 근거로 말하기, 한 번 의견을 내고 결정을 따르기, 사용자 관점으로 돌아가기]
+
+# 관리자 화면 문안(GET /admin/catalog). 상황·시점·평가표는 넣지 않는다.
+candidate_notice_template: 안녕하세요 {alias}님, Day Zero 협업 시뮬레이션 안내입니다. 2시간 연속 진행되며 중간 휴식이 없습니다. PC를 권장하고 링크는 72시간 뒤 만료됩니다. 업무는 가상 회사 루프랩에서 진행됩니다. {invite_url}
+candidate_faq:               # 담당자용 FAQ(PRD F-02 4문항) + 지원자 안내 2문항
+  - { q: "AI가 평가하나요?", a: "AI는 행동을 기록하고 분류할 뿐입니다. 기본 점수는 공개된 평가표 규칙으로 센 값이고, 최종 판단은 담당자가 근거를 보고 조정합니다." }
+  - { q: "기록은 어디에 남나요?", a: "대화·문서·어시스턴트 기록과 리포트는 Day Zero에 저장되고 세션 종료 후 90일 뒤 삭제됩니다." }
+  - { q: "결과를 지원자에게 알려 주나요?", a: "점수는 지원자에게 보여 주지 않습니다. 지원자는 종료 직후 연출된 상황을 설명하는 디브리핑을 봅니다." }
+  - { q: "이의 제기는 어떻게 하나요?", a: "지원자는 디브리핑의 문의 창구(담당자 이메일)로 연락합니다. 담당자는 리포트의 근거와 전체 기록을 확인해 답합니다." }
+  - { q: "중간에 끊기면 어떻게 되나요?", a: "같은 링크로 다시 들어오면 이어집니다. 시간은 계속 흐릅니다." }
+  - { q: "외부 도구를 써도 되나요?", a: "막지 않습니다. 다만 안의 어시스턴트만 기록됩니다." }

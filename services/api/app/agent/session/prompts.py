@@ -1,8 +1,8 @@
 """프롬프트 조립과 페르소나별 컨텍스트 블록(scenarios/prompts/README.md "조립 방식").
 
 system = common_rules.md + 페르소나 파일. 실행 맥락은 이름 붙은 블록으로 사람 메시지에 넣는다.
-컨텍스트 허용 목록(harness.md Context): 동료 = 팀·DM 최근 30개 + 요약 + 보드·문서 상태 + 작업 기억
-+ 문서 검색 결과, 팀장 = 팀 채널 + 보드·문서 상태. notice·assistant 채널, 미래 카드, 관찰 레이블,
+컨텍스트 허용 목록(harness.md Context): 동료 = 팀·DM 최근 30개 + 요약 + 보드·문서 상태 + 작업 기억 +
+문서 검색 결과, 팀장 = 팀 채널 + 보드·문서 상태. notice·assistant 채널, 미래 카드, 관찰 레이블,
 미공개 문서는 어느 페르소나에도 넣지 않는다.
 """
 
@@ -25,7 +25,7 @@ def names(scenario: dict[str, Any]) -> dict[str, str]:
     colleague = (company.get("colleague") or {}).get("name", "동료")
     manager = (company.get("manager") or {}).get("name", "팀장")
     return {
-        "candidate": "리드",
+        "candidate": "주담당",
         "colleague": colleague,
         "manager": f"{manager} 팀장",
         "system": "시스템",
@@ -62,26 +62,35 @@ def board_block(
     scenario: dict[str, Any],
     division: dict[str, str] | None,
     board: dict[str, Any] | None,
-    document: dict[str, Any] | None,
+    shared: dict[str, Any] | None,
 ) -> str:
-    """보드(태스크)와 파트별 작성 상태. 조회에 실패한 쪽은 '확인 불가'로 둔다."""
-    who = {"candidate": "리드", "colleague": "나(동료)", "both": "같이"}
+    """보드(태스크)와 파트별로 보낸 문서(get_shared_documents). 조회에 실패한 쪽은 '확인 불가'로
+    둔다.
+
+    지원자 문서는 보낸 버전만 보인다(보내지 않은 문서 내용은 어느 페르소나에도 넣지 않는다).
+    """
+    who = {"candidate": "주담당", "colleague": "나(동료)", "both": "같이"}
+    owner = {"candidate": "주담당", "colleague": "나"}
     tasks = {str(t["part_no"]): t for t in (board or {}).get("tasks", [])}
+    sent: dict[str, list[str]] = {}
+    for doc in (shared or {}).get("documents", []):
+        latest = doc["versions"][-1]
+        preview = (latest.get("content") or "").strip()[:120]
+        sent.setdefault(str(doc["part_no"]), []).append(
+            f"{owner.get(doc['owner'], doc['owner'])} v{latest['version']}: {preview}"
+        )
     lines = []
     if division is None:
         lines.append("분업: 아직 정하지 않음")
-    for part_no, title in sorted((scenario.get("parts") or {}).items(), key=lambda p: int(p[0])):
+    for part_no, part in sorted((scenario.get("parts") or {}).items(), key=lambda p: int(p[0])):
         key = str(part_no)
+        title = part["title"] if isinstance(part, dict) else part
         assignee = who.get((division or {}).get(key, ""), "미정")
         status = tasks.get(key, {}).get("status", "-") if board is not None else "확인 불가"
-        if document is None:
+        if shared is None:
             written = "확인 불가"
         else:
-            part = document.get(key) or {}
-            content = (part.get("content") or "").strip()
-            written = f"{len(content)}자, rev {part.get('revision', 0)}" if content else "비어 있음"
-            if content:
-                written += f", 앞부분: {content[:120]}"
+            written = " / ".join(sent.get(key, [])) or "보낸 문서 없음"
         lines.append(f"{key}번 {title} | 담당 {assignee} | 보드 {status} | 문서 {written}")
     return "[보드·문서 상태]\n" + "\n".join(lines)
 

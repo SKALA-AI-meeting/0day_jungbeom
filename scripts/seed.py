@@ -2,7 +2,7 @@
 
 httpx만 쓰는 독립 스크립트다. api(8000)와 rag-mcp(9102)가 떠 있어야 한다.
     make seed
-    uv run --project services/api python scripts/seed.py --elements cooperation,respect
+    uv run --project services/api python scripts/seed.py --elements planning,collaboration
 """
 
 import argparse
@@ -11,7 +11,7 @@ import sys
 
 import httpx
 
-ALL_ELEMENTS = "cooperation,responsibility,flexibility,respect"
+ALL_ELEMENTS = "responsibility,planning,adaptability,collaboration,honesty"
 MCP_HEADERS = {"Accept": "application/json, text/event-stream"}
 
 

@@ -1,0 +1,31 @@
+# responsibility_delay 뒤 api 재시작. 재시작 후 90초 안에 /state 복원, fired 이벤트 재실행(같은 run_id), 중복 메시지·문서 version 없음.
+# 협업·책임감·적응성, 6분. 중간 카드 3개(L/4 + i·L/6): collab_help 1.5, responsibility_delay 2.5(공개 3),
+# adaptability_change 3.5. 그 밖에 division(흐름) 0.5, midpoint_draft(texture) 3, review·collab_disagree 4.5, report_request 5.5
+# C4 무관한 편집도 이 대본에서 본다: 방향 변경 뒤 1번의 오탈자만 고친다 → document_changed_after=true, target_applied=false.
+name: restart
+mission: planning
+elements: [collaboration, responsibility, adaptability]
+minutes: 6
+expect:
+  rubric_items:
+    adapt_applied_to_doc: 0      # C4
+  metrics:
+    adaptability_change: { document_changed_after: true, target_applied: false }
+steps:
+  - at: division
+    say: { channel: dm, content: "1·2번은 제가, 3번은 같이, 4·5번은 도현님이 맡아 주세요." }
+  - at: collab_help
+    say: { channel: dm, content: "지금 바로 같이 볼게요." }
+  - at: responsibility_delay
+    say: { channel: team, content: "인터뷰 자료가 늦어진대요. 그동안 1번을 먼저 끝낼게요." }
+    write: { part_no: 1, content: "문제: 첫 모임 참여자의 두 번째 참여율이 22%에 그친다. 대상: 첫 모임을 마친 참여자." }
+  - at: +0.1
+    restart: api
+  - at: adaptability_change
+    say: { channel: dm, content: "도현님, 5번 출시를 이번 분기로 바꿔 주세요." }
+    write: { part_no: 1, content: "문제: 첫 모임 참여자의 두 번째 참여율이 22%에 그친다. 대상: 첫 모임을 마친 참여자들." }   # 오탈자만(C4)
+  - at: collab_disagree
+    say: { channel: team, content: "좋아요, 관계 원인도 같이 적을게요." }
+  - at: report_request
+    say: { channel: team, content: "1·2번은 제가, 4·5번은 도현님이 썼습니다." }
+    submit: true

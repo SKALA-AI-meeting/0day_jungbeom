@@ -1,4 +1,4 @@
-"""완료 기준: estimate_reuse 예시 2개(verbatim 1.0, edited 0.5)."""
+"""완료 기준: estimate_reuse 예시 2개(붙여넣기 1.0 applied, 절반 0.5 applied, 미만은 아님)."""
 
 from app.services.reuse import Revision, estimate_reuse
 
@@ -21,9 +21,10 @@ def test_estimate_reuse_examples():
         Revision(part_no=2, revision=1, content="초안"),
         Revision(part_no=1, revision=3, content=f"배경 설명.\n{RESPONSE}\n끝."),
     ]
-    assert estimate_reuse(RESPONSE, pasted) == ("verbatim", 1.0, 1, 3)
+    assert estimate_reuse(RESPONSE, pasted) == (True, 1.0, 1, 3)
 
     half = [
         Revision(part_no=4, revision=2, content=f"제 생각은 이렇습니다. {FIRST[:30]} {FIRST[30:]}")
     ]
-    assert estimate_reuse(RESPONSE, half) == ("edited", 0.5, 4, 2)
+    assert estimate_reuse(RESPONSE, half) == (True, 0.5, 4, 2)
+    assert estimate_reuse(RESPONSE, [Revision("final", 1, "관련 없는 본문")])[0] is False

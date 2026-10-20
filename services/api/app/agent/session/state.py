@@ -1,7 +1,7 @@
 """세션 그래프 State(docs/agent/design.md "세션 그래프"). thread `session:{id}`에 체크포인트된다.
 
 설계의 필드를 모두 선언한다. 이번 단계(agent-min)는 respond 경로만 쓰므로 negotiate_round·division·
-current_element·window_start·summary 등은 기본값으로 둔다(M2 agent-session이 채운다).
+current_card·window_start·report_requested·summary 등은 기본값으로 둔다(M2 agent-session이 채운다).
 """
 
 from typing import Any, TypedDict
@@ -15,8 +15,9 @@ class SessionState(TypedDict, total=False):
     negotiate_round: int
     division: dict[str, str] | None  # {"1": "candidate", ...}. 확정 전 None
     scenario: dict[str, Any] | None  # 채용 건 고정 시나리오(회사 문서 본문 제외)
-    current_element: str | None  # 열린 관찰 창의 요소
-    window_start: float | None  # 열린 창의 시작(카드 due_at, 분)
+    current_card: str | None  # 열린 관찰 창의 카드 id(요소 카드만)
+    window_start: float | None  # 열린 창의 시작(카드 due_at, planning_division은 0, 분)
+    report_requested: bool  # 팀장 보고 요청이 이미 나갔는지
     stimulus: dict[str, Any]  # {type, message_id?, event_ids?, classification?}
     run_id: str
     seq: int  # 이번 실행에서 마지막으로 쓴 노드 슬롯(seq.py)
@@ -48,8 +49,9 @@ def defaults(session_id: str) -> SessionState:
         negotiate_round=0,
         division=None,
         scenario=None,
-        current_element=None,
+        current_card=None,
         window_start=None,
+        report_requested=False,
         stimulus={},
         run_id="",
         seq=0,

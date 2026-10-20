@@ -1,24 +1,27 @@
 """지원자 REST.
 
-/s/{token}: 입장·동의·재입장·시작. /sessions/{id}: 상태·문서·작업·열람·제출·디브리핑.
+/s/{token}: 입장·동의·재입장·시작. /sessions/{id}: 상태·내 문서·받은 문서·최종본·보드·회사
+문서·어시스턴트·제출·디브리핑.
 
-계약은 docs/common/contracts.md의 "지원자 REST"와 State 스냅샷이 정본이다.
-상태 전이는 SessionService만 하고, 이 라우터는 읽기와 지원자 문서 저장·열람 기록만 직접 쓴다.
-complete()는 세션 Lock을 잡으므로 Lock 밖에서 부른다(진행 중 실행이 끝난 뒤 종료가 돈다).
+계약은 docs/common/contracts.md의 "지원자 REST"와 State 스냅샷이 정본이다. 상태 전이는
+SessionService만 하고, 이 라우터는 읽기와 지원자 쓰기(문서·보드·열람 기록)를 한다. 지원자 쓰기는
+세션 Lock 안에서 해 제출 처리(같은 Lock)와 직렬화한다. 그래서 제출이 시작된 뒤에는 저장되지 않고 409
+session_ending이다. 내부 라우터는 Lock을 잡지 않는다(실행 중인 러너가 부르므로 잡으면 교착된다).
 """
 
 import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
-from difflib import SequenceMatcher
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app import scheduler
+from app.agent.runner import Stimulus
 from app.auth import (
     Bearer,
     Principal,
@@ -31,29 +34,42 @@ from app.auth import (
     session_token,
 )
 from app.models import (
+    Admin,
     AgentRun,
     AssistantCall,
     Company,
+    DebriefSurvey,
     DocumentRelease,
-    DocumentRevision,
-    DocumentState,
     DocView,
     Invite,
     Message,
     Position,
     Session,
     SessionEvent,
-    Task,
 )
+from app.services import board, documents, views
 from app.services.context import AppContext, get_context
-from app.services.messages import serialize
-from app.services.session import ORDER, SessionError
+from app.services.documents import DocumentError
+from app.services.messages import serialize, t_min_at
+from app.services.runs import start_run
+from app.services.states import ENDED_STATUSES, SessionError
 
 router = APIRouter()
 
-# 디브리핑·종료 안내를 보여 주는 상태(completed 이후와 failed)
-ENDED = {*ORDER[ORDER.index("completed") :], "failed"}
-CANDIDATE_TASKS = {"candidate", "both"}
+ASSISTANT_LIMIT = 60
+RETENTION_DAYS = 90
+SURVEY_QUESTIONS = [
+    {"q": "natural", "text": "대화와 상황이 실제 업무처럼 자연스러웠나요?"},
+    {"q": "fair", "text": "이 방식이 공정하다고 느꼈나요?"},
+]
+CHANNELS = {
+    "team": {"members": ["manager", "colleague", "candidate"]},
+    "dm": {"members": ["colleague", "candidate"]},
+    "manager_dm": {"members": ["manager", "candidate"]},
+    "notice": {"members": ["candidate"]},
+}
+# 디브리핑·종료 안내를 보여 주는 상태(보고 종료 이후와 failed)
+DEBRIEF_STATUSES = ENDED_STATUSES | {"failed"}
 
 
 async def get_db(ctx: Annotated[AppContext, Depends(get_context)]) -> AsyncIterator[AsyncSession]:
@@ -67,26 +83,16 @@ Candidate = Annotated[Principal, Depends(require_candidate)]
 DebriefReader = Annotated[Principal, Depends(require_debrief_reader)]
 
 
-class DocumentBody(BaseModel):
-    content: str
-
-
-class TaskBody(BaseModel):
-    status: Literal["todo", "doing", "done"]
-
-
 def _error(code: int, error_code: str, message: str) -> HTTPException:
     return HTTPException(code, detail={"error": {"code": error_code, "message": message}})
 
 
+def _doc_error(exc: DocumentError) -> HTTPException:
+    return _error(404 if exc.code == "not_found" else 403, exc.code, exc.message)
+
+
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
-
-
-def _t_min(value: datetime, session: Session) -> float | None:
-    if session.started_at is None:
-        return None
-    return round((value - session.started_at).total_seconds() / 60, 2)
 
 
 async def _by_token(db: AsyncSession, token: str) -> tuple[Invite, Session, Position]:
@@ -106,6 +112,7 @@ async def _load(db: AsyncSession, session_id: uuid.UUID) -> tuple[Session, Posit
             .join(Invite, Invite.id == Session.invite_id)
             .join(Position, Position.id == Invite.position_id)
             .where(Session.id == session_id)
+            .execution_options(populate_existing=True)
         )
     ).one_or_none()
     if row is None:
@@ -113,20 +120,24 @@ async def _load(db: AsyncSession, session_id: uuid.UUID) -> tuple[Session, Posit
     return row[0], row[1]
 
 
-def _ensure_writable(session: Session) -> None:
+async def _writable(db: AsyncSession, session_id: uuid.UUID) -> tuple[Session, Position]:
     """제출(또는 만료 처리) 시작 뒤에는 session_ending, 진행 중이 아니면 conflict."""
-    if session.submitted_at is not None:
+    session, position = await _load(db, session_id)
+    if session.submitted_at is not None or session.status in DEBRIEF_STATUSES - {"failed"}:
         raise SessionError("session_ending", "session already submitted")
     if session.status != "in_progress":
         raise SessionError("conflict", f"session is {session.status}")
+    return session, position
+
+
+def _ended_at(session: Session) -> datetime:
+    """디브리핑 기한의 기준: 보고 종료(completed_at), 진행 중 실패면 fail()이 당긴 ends_at."""
+    return session.completed_at or session.ends_at
 
 
 def _ensure_debrief_open(session: Session) -> datetime:
-    """종료 시각(제출, 없으면 ends_at — 진행 중 실패는 fail()이 실패 시각으로 당김) + 7일.
-
-    지나면 410 expired. 기한을 돌려줘 debrief_token의 exp로 쓴다.
-    """
-    deadline = debrief_deadline(session.submitted_at or session.ends_at)
+    """종료 시각 + 7일. 지나면 410 expired. 기한을 돌려줘 debrief_token의 exp로 쓴다."""
+    deadline = debrief_deadline(_ended_at(session))
     if datetime.now(UTC) >= deadline:
         raise SessionError("expired", "debrief period is over")
     return deadline
@@ -136,8 +147,14 @@ def _duration(minutes: int) -> str:
     return f"{minutes // 60}시간" if minutes % 60 == 0 else f"{minutes}분"
 
 
-def _element_cards(scenario: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    return {card["element"]: card for card in scenario["cards"] if card.get("element")}
+async def _contact_email(db: AsyncSession, position: Position) -> str:
+    """문의 창구: 채용 건 회사의 담당자 이메일(MVP는 회사당 계정 1개)."""
+    email = await db.scalar(
+        select(Admin.email)
+        .where(Admin.company_id == position.company_id)
+        .order_by(Admin.created_at)
+    )
+    return email or ""
 
 
 # ---- /s/{token} -------------------------------------------------------------------------
@@ -153,21 +170,25 @@ async def entry(token: str, db: Db) -> dict[str, Any]:
         raise SessionError("expired", "invite expired")
     scenario = position.scenario
     company = await db.get(Company, position.company_id)
-    cards = _element_cards(scenario)
+    contact = await _contact_email(db, position)
     minutes = scenario["session_minutes"]
     body: dict[str, Any] = {
         "company_name": company.name,
         "duration_minutes": minutes,
         "status": session.status,
-        "elements_names": [cards[e]["name"] for e in scenario["elements"]],
+        "elements_names": [e["name"] for e in scenario["element_meta"]],
         "entry_notice": (
-            f"한 번에 {_duration(minutes)} 연속으로 진행하며 중간 휴식은 없습니다. "
-            "PC 환경을 권장합니다. "
-            f"업무는 가상 회사 {scenario['company']['name']}에서 하며, "
-            "지원자는 이번 과제의 리드를 맡습니다."
+            f"{_duration(minutes)} 연속 진행되며 중간 휴식이 없습니다. PC를 권장합니다. "
+            f"업무는 가상 회사 {scenario['company']['name']}에서 진행되고, "
+            f"지원자는 이번 건의 {scenario['candidate_title']}으로 "
+            "파트를 나누고 최종본을 모아 보고합니다. "
+            "연결이 끊겨도 시간은 흐릅니다. "
+            "외부 도구 사용은 막지 않지만 안의 어시스턴트만 기록됩니다. "
+            f"문의: {contact}"
         ),
+        "contact_email": contact,
     }
-    if session.status in ENDED:
+    if session.status in DEBRIEF_STATUSES:
         body["debrief_token"] = debrief_token(session.id, _ensure_debrief_open(session))
     if session.status == "failed":
         body["failed_stage"] = session.failed_stage
@@ -184,9 +205,9 @@ async def consent(token: str, db: Db, ctx: Ctx) -> dict[str, str]:
 
 @router.post("/s/{token}/resume")
 async def resume(token: str, db: Db) -> dict[str, str]:
-    """진행 중인 세션에 링크만으로 다시 들어온다(저장된 JWT가 없어도 됨)."""
+    """진행 중·보고 대기 세션에 링크만으로 다시 들어온다(저장된 JWT가 없어도 됨)."""
     _, session, position = await _by_token(db, token)
-    if session.status != "in_progress":
+    if session.status not in ("in_progress", "reporting"):
         raise SessionError("conflict", f"cannot resume from {session.status}")
     return {"session_token": session_token(session.id, position.scenario["session_minutes"])}
 
@@ -207,43 +228,22 @@ async def start(token: str, creds: Bearer, db: Db, ctx: Ctx) -> dict[str, str | 
     }
 
 
-# ---- /sessions/{id} ---------------------------------------------------------------------
+# ---- /sessions/{id}: 상태 ----------------------------------------------------------------
 
 
 @router.get("/sessions/{session_id}/state")
 async def state(session_id: uuid.UUID, _: Candidate, db: Db) -> dict[str, Any]:
     """재접속 복구용 전체 스냅샷. WS는 이후 증분만 보낸다."""
     session, position = await _load(db, session_id)
+    invite = await db.get(Invite, session.invite_id)
     scenario = position.scenario
-    now = datetime.now(UTC)
-
     messages = (
-        (
-            await db.execute(
-                select(Message)
-                .where(Message.session_id == session_id, Message.channel != "assistant")
-                .order_by(Message.created_at, Message.seq)
-            )
+        await db.execute(
+            select(Message)
+            .where(Message.session_id == session_id, Message.channel != "assistant")
+            .order_by(Message.created_at, Message.seq)
         )
-        .scalars()
-        .all()
-    )
-    parts = (
-        (
-            await db.execute(
-                select(DocumentState)
-                .where(DocumentState.session_id == session_id)
-                .order_by(DocumentState.part_no)
-            )
-        )
-        .scalars()
-        .all()
-    )
-    tasks = (
-        (await db.execute(select(Task).where(Task.session_id == session_id).order_by(Task.part_no)))
-        .scalars()
-        .all()
-    )
+    ).scalars()
     request, response = aliased(Message), aliased(Message)
     calls = (
         await db.execute(
@@ -255,64 +255,67 @@ async def state(session_id: uuid.UUID, _: Candidate, db: Db) -> dict[str, Any]:
         )
     ).all()
     runs = (
-        (
-            await db.execute(
-                select(AgentRun)
-                .where(AgentRun.session_id == session_id, AgentRun.status == "started")
-                .order_by(AgentRun.started_at)
-            )
+        await db.execute(
+            select(AgentRun)
+            .where(AgentRun.session_id == session_id, AgentRun.status == "started")
+            .order_by(AgentRun.started_at)
         )
-        .scalars()
-        .all()
-    )
-    company = scenario["company"]
+    ).scalars()
     remaining = None
     if session.ends_at is not None:
-        remaining = max(0, int((session.ends_at - now).total_seconds()))
-
+        remaining = max(0, int((session.ends_at - datetime.now(UTC)).total_seconds()))
+    docs = await documents.my_documents(db, session)
+    final = docs["final"]
+    tasks = await board.load_tasks(db, session_id)
+    manager = scenario["company"]["manager"]
     return {
         "session": {
             "id": str(session.id),
+            "alias": invite.alias,
             "status": session.status,
             "started_at": _iso(session.started_at),
             "ends_at": _iso(session.ends_at),
             "remaining_seconds": remaining,
+            "deadline_at": _iso(session.deadline_at),
+            "completed_at": _iso(session.completed_at),
         },
+        "division": session.division,
         "messages": [serialize(m, session) for m in messages],
-        "document": {
-            str(p.part_no): {
-                "content": p.content,
-                "revision": p.revision,
-                "updated_by": p.updated_by,
-            }
-            for p in parts
+        "my_documents": docs["documents"],
+        "received": docs["received"],
+        "final": {
+            "sections": final["sections"],
+            "template": {"length": scenario["final_template"]["length"]},
         },
-        "tasks": [
-            {"part_no": t.part_no, "assignee": t.assignee, "status": t.status} for t in tasks
-        ],
-        "documents": await _documents(db, session_id, scenario),
+        "tasks": [board.task_json(t) for t in tasks],
+        "documents": await views.company_documents(db, session, scenario),
         "assistant": [
             {
                 "call_id": str(call.id),
                 "request": req,
                 "response": resp,
                 "cited_docs": list(call.cited_doc_ids),
-                "t_min": _t_min(call.created_at, session),
+                "t_min": t_min_at(call.created_at, session),
             }
             for call, req, resp in calls
         ],
         "active_runs": [await _run_view(db, run, scenario) for run in runs],
+        "connection_gaps": await views.connection_gaps(db, session),
+        "channels": CHANNELS,
         "persona": {
-            # "프로덕트 팀장" → "한서윤 팀장"
-            "manager": f"{company['manager']['name']} {company['manager']['title'].split()[-1]}",
-            "colleague": company["colleague"]["name"],
+            "manager": manager.get("display") or manager["name"],
+            "colleague": scenario["company"]["colleague"]["name"],
+            "candidate_role": scenario["candidate_title"],
         },
     }
 
 
 async def _run_view(db: AsyncSession, run: AgentRun, scenario: dict[str, Any]) -> dict[str, str]:
     """agent_runs에는 actor·node가 없어 자극 종류로 정한다. 카드 실행은 카드 actor."""
-    actor, node = "colleague", {"message": "respond", "event": "inject"}.get(run.stimulus, "end")
+    node = {"message": "respond", "event": "inject", "division": "division"}.get(
+        run.stimulus, "end"
+    )
+    actor = "colleague"
     if run.stimulus == "event" and run.ref_ids:
         card_id = await db.scalar(
             select(SessionEvent.card_id).where(SessionEvent.id == run.ref_ids[0])
@@ -322,111 +325,192 @@ async def _run_view(db: AsyncSession, run: AgentRun, scenario: dict[str, Any]) -
     return {"run_id": str(run.run_id), "actor": actor, "node": node}
 
 
-async def _documents(
-    db: AsyncSession, session_id: uuid.UUID, scenario: dict[str, Any]
-) -> list[dict[str, Any]]:
-    released = set(
-        (
-            await db.execute(
-                select(DocumentRelease.doc_id).where(
-                    DocumentRelease.session_id == session_id,
-                    DocumentRelease.released_at.is_not(None),
-                )
+# ---- 내 문서·받은 문서·최종본 -----------------------------------------------------------
+
+
+class DocumentBody(BaseModel):
+    content: str
+
+
+class SectionPatch(BaseModel):
+    part_no: int
+    content: str
+
+
+class FinalBody(BaseModel):
+    sections: list[SectionPatch]
+
+
+class ShareBody(BaseModel):
+    channel: Literal["team", "dm"]
+    note: str = ""  # 문서 카드에 함께 보내는 지원자 한마디(없으면 빈 본문)
+
+
+class OpenBody(BaseModel):
+    version: int
+
+
+class ImportBody(BaseModel):
+    source_doc_id: uuid.UUID
+    version: int | None  # null이면 보내지 않은 내 문서의 현재 저장본
+
+
+@router.get("/sessions/{session_id}/my-documents")
+async def my_documents(session_id: uuid.UUID, _: Candidate, db: Db) -> dict[str, Any]:
+    session, _ = await _load(db, session_id)
+    return await documents.my_documents(db, session)
+
+
+@router.get("/sessions/{session_id}/my-documents/final")
+async def my_final(session_id: uuid.UUID, _: Candidate, db: Db) -> dict[str, Any]:
+    session, _ = await _load(db, session_id)
+    return (await documents.my_documents(db, session))["final"]
+
+
+@router.get("/sessions/{session_id}/my-documents/{part_no}")
+async def my_document(session_id: uuid.UUID, part_no: int, _: Candidate, db: Db) -> dict[str, Any]:
+    session, _ = await _load(db, session_id)
+    docs = (await documents.my_documents(db, session))["documents"]
+    found = next((d for d in docs if d["part_no"] == part_no), None)
+    if found is None:
+        raise SessionError("not_found", f"part {part_no} not found")
+    return found
+
+
+@router.put("/sessions/{session_id}/my-documents/final")
+async def save_final(
+    session_id: uuid.UUID, body: FinalBody, _: Candidate, db: Db, ctx: Ctx
+) -> dict[str, Any]:
+    """최종본 직접 편집. 바뀐 섹션만 edited=true(출처는 유지)."""
+    async with ctx.locks(session_id):
+        await _writable(db, session_id)
+        try:
+            result = await documents.save_final(
+                db, session_id, [s.model_dump() for s in body.sections]
             )
-        ).scalars()
-    )
-    return [
-        {"doc_id": d["doc_id"], "title": d["title"], "released": d["doc_id"] in released}
-        for d in scenario["documents"]
-    ]
+        except DocumentError as exc:
+            raise _doc_error(exc) from exc
+        await db.commit()
+        return result
 
 
-@router.put("/sessions/{session_id}/document/{part_no}")
-async def put_document(
+@router.put("/sessions/{session_id}/my-documents/{part_no}")
+async def save_part(
     session_id: uuid.UUID, part_no: int, body: DocumentBody, _: Candidate, db: Db, ctx: Ctx
 ) -> dict[str, Any]:
-    """revision+1과 변경 로그(본문 스냅샷·길이·diff_ratio). 같은 본문 재요청은 그대로 돌려준다.
-
-    세션 Lock 안에서 저장해 complete()(같은 Lock)와 직렬화한다. 그래서 제출이 시작된 뒤에는
-    저장되지 않고 409 session_ending이다. Lock은 지원자 진입점만 잡는다. 내부 라우터가 잡으면
-    실행 중인 runner의 내부 API 호출이 자기 Lock을 기다려 교착된다.
-    """
+    """디바운스 저장(version을 만들지 않음). 저장마다 document_revisions에 스냅샷을 남긴다."""
     async with ctx.locks(session_id):
-        return await _save_part(db, session_id, part_no, body.content)
+        await _writable(db, session_id)
+        try:
+            result = await documents.save_part(db, session_id, part_no, body.content)
+        except DocumentError as exc:
+            raise _doc_error(exc) from exc
+        await db.commit()
+        return result
 
 
-async def _save_part(
-    db: AsyncSession, session_id: uuid.UUID, part_no: int, content: str
+@router.post("/sessions/{session_id}/my-documents/{part_no}/share")
+async def share(
+    session_id: uuid.UUID, part_no: int, body: ShareBody, _: Candidate, db: Db, ctx: Ctx
 ) -> dict[str, Any]:
-    session = await db.get(Session, session_id, populate_existing=True)
-    if session is None:
-        raise SessionError("not_found", "session not found")
-    _ensure_writable(session)
-    # 분업 전에는 리드가 어느 파트든 초안을 잡을 수 있다. 확정 뒤 동료 단독 파트는 읽기 전용
-    assignee = ((session.division or {}).get("parts") or {}).get(str(part_no))
-    if assignee == "colleague":
-        raise _error(status.HTTP_403_FORBIDDEN, "forbidden", "colleague part is read-only")
-    part = (
-        await db.execute(
-            select(DocumentState)
-            .where(DocumentState.session_id == session_id, DocumentState.part_no == part_no)
-            .with_for_update()
-        )
-    ).scalar_one_or_none()
-    if part is None:
-        raise SessionError("not_found", f"part {part_no} not found")
-    if part.content == content:
-        unchanged = {"updated_at": _iso(part.updated_at), "revision": part.revision}
-        await db.rollback()  # 행 잠금만 풀고 끝낸다
-        return unchanged
+    """현재 content로 새 version을 고정하고 채널에 문서 카드 메시지를 올린다."""
+    async with ctx.locks(session_id):
+        session, _ = await _writable(db, session_id)
+        try:
+            return await documents.share_part(
+                db, ctx.hub, session, part_no, body.channel, body.note
+            )
+        except DocumentError as exc:
+            raise _doc_error(exc) from exc
 
-    # DB 시각을 쓴다. 재사용 추정이 assistant_calls.created_at(DB 기본값)과 선후를 비교한다
-    now = await db.scalar(select(func.now()))
-    # diff_ratio: 직전 본문 대비 바뀐 비율(0 같음 ~ 1 전부 바뀜)
-    diff = 1 - SequenceMatcher(None, part.content, content, autojunk=False).ratio()
-    part.content = content
-    part.revision += 1
-    part.updated_by = "candidate"
-    part.updated_at = now
-    db.add(
-        DocumentRevision(
-            session_id=session_id,
-            part_no=part_no,
-            revision=part.revision,
-            by="candidate",
-            content=content,
-            length=len(content),
-            diff_ratio=round(diff, 4),
-            created_at=now,
-        )
-    )
-    await db.commit()
-    return {"updated_at": _iso(now), "revision": part.revision}
+
+@router.post("/sessions/{session_id}/documents/{doc_id}/open")
+async def open_document(
+    session_id: uuid.UUID, doc_id: uuid.UUID, body: OpenBody, _: Candidate, db: Db, ctx: Ctx
+) -> dict[str, Any]:
+    """동료가 보낸 버전만 연다(아니면 404). 열람은 document_opens에 남긴다."""
+    async with ctx.locks(session_id):
+        session, _ = await _writable(db, session_id)
+        try:
+            result = await documents.open_received(db, session, doc_id, body.version)
+        except DocumentError as exc:
+            raise _doc_error(exc) from exc
+        await db.commit()
+        return result
+
+
+@router.put("/sessions/{session_id}/final/sections/{part_no}/import")
+async def import_section(
+    session_id: uuid.UUID, part_no: int, body: ImportBody, _: Candidate, db: Db, ctx: Ctx
+) -> dict[str, Any]:
+    """그 버전으로 섹션을 덮어쓰고 출처를 남긴다(edited=false)."""
+    async with ctx.locks(session_id):
+        session, _ = await _writable(db, session_id)
+        try:
+            section = await documents.import_section(
+                db, session, part_no, body.source_doc_id, body.version
+            )
+        except DocumentError as exc:
+            raise _doc_error(exc) from exc
+        await db.commit()
+        return section
+
+
+# ---- 보드 -------------------------------------------------------------------------------
+
+
+class TaskBody(BaseModel):
+    assignee: Literal["candidate", "colleague", "both"] | None = None
+    status: Literal["todo", "doing", "done"] | None = None
+    order: int | None = Field(default=None, ge=1)
+    due_min: int | None = Field(default=None, ge=0)
 
 
 @router.put("/sessions/{session_id}/tasks/{part_no}")
 async def put_task(
-    session_id: uuid.UUID, part_no: int, body: TaskBody, _: Candidate, db: Db
+    session_id: uuid.UUID, part_no: int, body: TaskBody, _: Candidate, db: Db, ctx: Ctx
 ) -> dict[str, Any]:
-    """지원자 담당(candidate·both) 카드만 바꾼다. 동료 카드는 그래프가 내부 API로 바꾼다."""
-    session = await db.get(Session, session_id)
-    if session is None:
-        raise SessionError("not_found", "session not found")
-    _ensure_writable(session)
-    task = await db.get(Task, (session_id, part_no))
-    if task is None:
-        raise SessionError("not_found", f"task {part_no} not found")
-    if task.assignee not in CANDIDATE_TASKS:
-        raise _error(status.HTTP_403_FORBIDDEN, "forbidden", "not a candidate task")
-    task.status = body.status
-    await db.commit()
-    return {"part_no": task.part_no, "assignee": task.assignee, "status": task.status}
+    """모든 카드의 담당·상태·순서·언제까지를 바꾼다. 5행이 다 차고 division_min을 만족하는 순간
+    분업을 확정하고(division.confirmed) 동료에게 division 자극을 보낸다. 위반이면 422, 저장 안
+    함."""
+    changes = body.model_dump(exclude_unset=True)
+    async with ctx.locks(session_id):
+        session, position = await _writable(db, session_id)
+        try:
+            change = await board.candidate_update(db, session, position.scenario, part_no, changes)
+        except LookupError as exc:
+            raise SessionError("not_found", str(exc)) from exc
+        except board.InvalidDivision as exc:
+            await db.rollback()
+            raise _error(422, "invalid_division", str(exc)) from exc
+        run_id = None
+        if change.division_changed:
+            run_id = uuid.uuid4()
+            stimulus = Stimulus("division", task_event_ids=tuple(change.event_ids))
+            await start_run(db, session_id, stimulus, run_id)
+        await db.commit()
+        task = board.task_json(change.task)
+    await ctx.hub.broadcast(session_id, "task.updated", {**task, "by": "candidate"})
+    if change.confirmed:
+        payload = {
+            "parts": session.division["parts"],
+            "decided_by": session.division["decided_by"],
+            "t_min": t_min_at(datetime.now(UTC), session),
+        }
+        await ctx.hub.broadcast(session_id, "division.confirmed", payload)
+    if run_id is not None:
+        job = lambda: scheduler.run_stimulus(ctx, session_id, stimulus, run_id)  # noqa: E731
+        scheduler.spawn(run_id, job)
+    return task
+
+
+# ---- 회사 문서 ----------------------------------------------------------------------------
 
 
 @router.get("/sessions/{session_id}/documents")
 async def list_documents(session_id: uuid.UUID, _: Candidate, db: Db) -> list[dict[str, Any]]:
-    _, position = await _load(db, session_id)
-    return await _documents(db, session_id, position.scenario)
+    session, position = await _load(db, session_id)
+    return await views.company_documents(db, session, position.scenario)
 
 
 @router.get("/sessions/{session_id}/documents/{doc_id}")
@@ -444,70 +528,174 @@ async def get_document(session_id: uuid.UUID, doc_id: str, _: Candidate, db: Db)
     return {"doc_id": doc_id, "title": doc["title"], "content": doc["content"]}
 
 
+# ---- 어시스턴트 ---------------------------------------------------------------------------
+
+
+class AssistantBody(BaseModel):
+    prompt: str = Field(min_length=1)
+
+
+@router.post("/sessions/{session_id}/assistant")
+async def assistant(
+    session_id: uuid.UUID, body: AssistantBody, _: Candidate, db: Db, ctx: Ctx
+) -> dict[str, Any]:
+    """어시스턴트 훅(ctx.assistant). 요청·응답을 assistant 채널 메시지와 assistant_calls로 남긴다.
+
+    세션 그래프와 별개 thread라 세션 Lock을 잡지 않는다. 60회를 넘으면 429 assistant_limit.
+    """
+    await _writable(db, session_id)
+    used = await db.scalar(
+        select(func.count())
+        .select_from(AssistantCall)
+        .where(AssistantCall.session_id == session_id)
+    )
+    if used >= ASSISTANT_LIMIT:
+        raise _error(429, "assistant_limit", f"assistant limit {ASSISTANT_LIMIT} reached")
+    request = Message(
+        session_id=session_id, channel="assistant", sender="candidate", content=body.prompt
+    )
+    db.add(request)
+    await db.flush()
+    call = AssistantCall(session_id=session_id, request_message_id=request.id)
+    db.add(call)
+    await db.commit()
+    result = await ctx.assistant.answer(session_id, body.prompt, call.id)
+    response = Message(
+        session_id=session_id,
+        channel="assistant",
+        sender="assistant",
+        content=result.content,
+        meta={"usage": result.usage} if result.usage else {},
+    )
+    db.add(response)
+    await db.flush()
+    call.response_message_id = response.id
+    call.cited_doc_ids = list(result.cited_docs)
+    await db.commit()
+    return {
+        "call_id": str(call.id),
+        "message_id": str(response.id),
+        "content": result.content,
+        "cited_docs": list(result.cited_docs),
+    }
+
+
+# ---- 제출 --------------------------------------------------------------------------------
+
+
 @router.post("/sessions/{session_id}/submit")
-async def submit(session_id: uuid.UUID, _: Candidate, db: Db, ctx: Ctx) -> dict[str, str]:
-    """멱등. 종료 실행·재사용 추정·리포트 발행까지 끝난 뒤 돌려준다."""
-    await ctx.session_service(db).complete(session_id, "submitted")
-    return {"status": "completed"}
+async def submit(session_id: uuid.UUID, _: Candidate, db: Db, ctx: Ctx) -> dict[str, Any]:
+    """멱등. 보고 요청 카드가 아직이면 바로 실행하고 reporting(deadline_at) 또는 completed를
+    돌려준다.
+    """
+    session, _ = await _load(db, session_id)
+    if session.status == "in_progress":
+        session = await ctx.session_service(db).submit(session_id, "submitted")
+    body: dict[str, Any] = {"status": session.status}
+    if session.status == "reporting":
+        body["deadline_at"] = _iso(session.deadline_at)
+    return body
+
+
+# ---- 디브리핑 ----------------------------------------------------------------------------
 
 
 @router.get("/sessions/{session_id}/debrief")
 async def debrief(session_id: uuid.UUID, _: DebriefReader, db: Db) -> dict[str, Any]:
     """실제 실행된(done) 요소 카드만 설명한다. 세션 실패면 연출을 드러내지 않고 중단 안내만."""
     session, position = await _load(db, session_id)
-    if session.status not in ENDED:
+    if session.status not in DEBRIEF_STATUSES:
         raise SessionError("conflict", f"session is {session.status}")
-    _ensure_debrief_open(session)
+    deadline = _ensure_debrief_open(session)
+    texts = position.scenario["debrief_texts"]  # 문안은 미션 카탈로그가 정본
     if session.failed_stage == "session":
         return {
             "events": [],
             "persona_note": None,
-            "scoring_notice": (
-                "세션이 중간에 중단되어 평가가 진행되지 않았습니다. "
-                "채용 담당자가 다시 응시할 수 있도록 새 링크를 보내 드릴 수 있습니다."
-            ),
+            "scoring_notice": texts["failed_notice"],
+            "final": None,
+            "final_view_until": None,
+            "survey": {"submitted": False, "questions": []},
             "failed_stage": "session",
         }
     scenario = position.scenario
-    cards = _element_cards(scenario)
+    cards = {c["card_id"]: c for c in scenario["cards"] if c.get("element")}
     done = (
-        (
-            await db.execute(
-                select(SessionEvent.element)
-                .where(
-                    SessionEvent.session_id == session_id,
-                    SessionEvent.element.is_not(None),
-                    SessionEvent.status == "done",
-                )
-                .order_by(SessionEvent.due_at)
+        await db.execute(
+            select(SessionEvent.card_id)
+            .where(
+                SessionEvent.session_id == session_id,
+                SessionEvent.element.is_not(None),
+                SessionEvent.status == "done",
             )
+            .order_by(SessionEvent.due_at, SessionEvent.card_id)
         )
-        .scalars()
-        .all()
-    )
+    ).scalars()
+    final = await documents.final_view(db, session_id)
+    surveyed = await db.get(DebriefSurvey, session_id)
     colleague = scenario["company"]["colleague"]["name"]
-    values = scenario["persona"]["colleague"]["values"]
+    manager = (
+        scenario["company"]["manager"].get("display") or scenario["company"]["manager"]["name"]
+    )
     body: dict[str, Any] = {
         "events": [
             {
-                "element": element,
-                "name": cards[element]["name"],
-                "description": cards[element]["debrief"],
-                "rubric_items": [item["text"] for item in cards[element].get("rubric", [])],
+                "card_id": card_id,
+                "element": cards[card_id]["element"],
+                "name": cards[card_id]["name"],
+                "description": cards[card_id]["debrief"],
+                "rubric_items": [item["text"] for item in cards[card_id]["rubric"]],
             }
-            for element in done
+            for card_id in done
+            if card_id in cards
         ],
-        "persona_note": (
-            f"함께 일한 동료 {colleague}님은 회사가 원하는 인재상으로 설정된 AI 페르소나였습니다. "
-            f"이 동료는 다음 성향으로 일했습니다: {', '.join(values)}."
+        "persona_note": texts["persona_note"].format(
+            colleague=colleague,
+            manager=manager,
+            company=scenario["company"]["name"],
+            values=", ".join(texts["values_short"]),
         ),
-        "scoring_notice": (
-            "세션의 행동은 평가표 항목별 관찰 기록으로 남습니다. "
-            "AI가 행동을 분류한 결과를 입력으로 "
-            "미리 정해진 평가표 규칙이 기본 점수를 계산하고, 최종 점수와 판단은 채용 담당자가 "
-            "근거를 확인해 직접 조정합니다. 점수는 지원자에게 공개되지 않습니다."
+        "scoring_notice": texts["scoring_notice"],
+        "connection_gaps": await views.connection_gaps(db, session),
+        "retention_notice": texts["retention_notice"].format(days=RETENTION_DAYS),
+        "contact_email": await _contact_email(db, position),
+        "final": (
+            {
+                "sections": [
+                    {"part_no": s["part_no"], "title": s["title"], "content": s["content"]}
+                    for s in final.sections
+                ]
+            }
+            if final
+            else None
         ),
+        "final_view_until": _iso(deadline),
+        "survey": {"submitted": surveyed is not None, "questions": SURVEY_QUESTIONS},
     }
     if session.status == "failed":
         body["failed_stage"] = session.failed_stage
     return body
+
+
+class SurveyAnswer(BaseModel):
+    q: Literal["natural", "fair"]
+    value: int = Field(ge=1, le=5)
+
+
+class SurveyBody(BaseModel):
+    answers: list[SurveyAnswer]
+
+
+@router.post("/sessions/{session_id}/debrief/survey")
+async def survey(
+    session_id: uuid.UUID, body: SurveyBody, _: DebriefReader, db: Db
+) -> dict[str, bool]:
+    """종료 설문 2문항. 한 번만 저장하고 재요청은 기존 값을 둔다(멱등)."""
+    session, _ = await _load(db, session_id)
+    if session.status not in DEBRIEF_STATUSES or session.failed_stage == "session":
+        raise SessionError("conflict", f"session is {session.status}")
+    _ensure_debrief_open(session)
+    if await db.get(DebriefSurvey, session_id) is None:
+        db.add(DebriefSurvey(session_id=session_id, answers=[a.model_dump() for a in body.answers]))
+        await db.commit()
+    return {"submitted": True}

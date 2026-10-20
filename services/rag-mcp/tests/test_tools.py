@@ -1,4 +1,6 @@
-"""완료 기준: 도구 목록·설명, 검색 응답, 미공개 문서 차단, 재색인, 오류 매핑·재시도."""
+"""완료 기준: 도구 목록·설명, 검색 응답, 미공개 문서 차단, 재색인(미션 폴더 해시 키), 오류
+매핑·재시도.
+"""
 
 import shutil
 
@@ -100,7 +102,7 @@ async def test_reindex_idempotent_and_keeps_previous_version(
     assert await db.fetchval(count, old) == first["data"]["indexed"]
 
     v1_metrics = content("metrics", scenarios).strip()
-    doc = scenarios / "documents" / "metrics.md"
+    doc = scenarios / "missions" / "planning" / "documents" / "metrics.md"
     doc.write_text(doc.read_text(encoding="utf-8") + "\n| 신규 지표 | 1 |\n", encoding="utf-8")
     second = await call(mcp_client, "reindex_documents", {})
 

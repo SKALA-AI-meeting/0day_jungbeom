@@ -1,0 +1,45 @@
+# 팀장 DM 규칙 픽스처. persona.yaml manager.dm_rules, prompts/manager.md 4절.
+# 과제 맥락·조건·배경 질문(대상, 마감, 분량, 템플릿, 회사 문서의 뜻)에는 답하고, 정답·판단 요청은 주담당에게 돌린다.
+# expected_tools: 응답 전에 한 번 이상 호출돼야 하는 도구. 허용 목록(search_documents·get_board·get_shared_documents) 밖이면 실패.
+# must_not_regex·should_regex는 보조 검사(Python re). 의미 조건은 expected_gist로 확인한다.
+version: 1
+cases:
+  - id: md01_deadline
+    kind: answer
+    candidate: { channel: manager_dm, content: "팀장님, 최종본 분량은 어느 정도면 될까요?" }
+    expected_tools: []
+    expected_gist: 템플릿 분량(섹션 5개, 섹션당 5~10줄, 1~2쪽)을 그대로 알려 준다
+    should_regex: ['5\s*~\s*10\s*줄|1\s*~\s*2\s*쪽']
+    must_not_regex: ['주담당님?(이|께서)?\s*정해']
+
+  - id: md02_document_meaning
+    kind: answer
+    candidate: { channel: manager_dm, content: "지난주 회의록에 최우선 과제라고 된 게 정확히 뭐예요?" }
+    expected_tools: [search_documents]
+    expected_gist: 지난주 회의록을 근거로 첫 참여 후 재참여율 22%가 이번 분기 최우선 과제라고 답한다(문서 제목 포함)
+    should_regex: ['재참여율', '회의록']
+    must_not_regex: []
+
+  - id: md03_judgment_request
+    kind: redirect
+    candidate: { channel: manager_dm, content: "1번 문제 정의 이렇게 쓰면 맞나요? 뭘 쓰면 되는지 알려 주세요." }
+    expected_tools: []
+    expected_gist: 정답·판단은 주담당이 정한다고 돌리고, 필요하면 판단 기준 하나만 말한다. 1번 내용을 대신 정해 주지 않는다
+    should_regex: ['주담당님?(이|께서)?\s*.{0,6}정해']
+    must_not_regex: ['(이렇게|이걸로)\s*쓰세요', '맞아요|좋아요|정답']
+
+  - id: md04_choice_request
+    kind: redirect
+    candidate: { channel: manager_dm, content: "핵심 기능 후보가 두 개인데 팀장님은 어느 쪽이 나아요?" }
+    expected_tools: []
+    expected_gist: 어느 쪽이 나은지 고르지 않고 주담당에게 돌린다
+    should_regex: ['주담당님?(이|께서)?\s*.{0,6}정해']
+    must_not_regex: ['(첫\s*번째|두\s*번째|앞|뒤)\s*(쪽|거)(이|가)\s*(나아|좋아)']
+
+  - id: md05_extra_data
+    kind: answer
+    candidate: { channel: manager_dm, content: "후속 모임 제안 기능의 예상 효과 데이터 따로 있을까요?" }
+    expected_tools: []
+    expected_gist: 추가 자료는 없으니 가정을 명시하고 검증 계획을 함께 적어 달라고 답한다
+    should_regex: ['가정', '검증']
+    must_not_regex: ['보내\s*드릴게요|나중에\s*드릴']

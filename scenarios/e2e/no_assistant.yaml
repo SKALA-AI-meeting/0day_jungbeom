@@ -1,0 +1,22 @@
+# 어시스턴트를 한 번도 쓰지 않음 → ai_usage.used=false, events []. 협업·정직, 6분.
+# 카드: collab_help 1.5, review·collab_disagree 4.5, honesty_report 5.5
+name: no_assistant
+mission: planning
+elements: [collaboration, honesty]
+minutes: 6
+expect:
+  ai_usage: { used: false }
+  labels:
+    collab_help: help_now
+    honesty_report: fair_report
+steps:
+  - at: division
+    say: { channel: dm, content: "1·2번은 제가, 3번은 같이, 4·5번은 도현님이 맡아 주세요." }
+  - at: collab_help
+    say: { channel: dm, content: "네, 지금 바로 같이 볼게요. 기준은 후속 모임 기능이 있는 서비스로 잡아 보세요." }
+  - at: collab_disagree
+    say: { channel: team, content: "관계 쪽 근거도 맞네요. 1번 원인에 같이 적을게요." }
+  - at: honesty_report
+    say: { channel: manager_dm, content: "4·5번은 도현님이 썼고, 3번은 아직 골격만 있어요." }
+  - at: +0.1
+    submit: true

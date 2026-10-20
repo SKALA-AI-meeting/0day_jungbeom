@@ -1,0 +1,232 @@
+{
+  "session": {
+    "id": "sess-1",
+    "alias": "지원자A",
+    "status": "in_progress",
+    "started_at": "2026-10-20T01:00:00Z",
+    "ends_at": "2026-10-20T03:00:00Z",
+    "remaining_seconds": 7170,
+    "deadline_at": null,
+    "completed_at": null
+  },
+  "division": null,
+  "messages": [
+    {
+      "id": "m-1",
+      "channel": "team",
+      "sender": "manager",
+      "content": "안녕하세요, 이번 건 주담당은 지원자A님입니다. 모아런 재참여율 개선 기획 초안을 2시간 안에 모아 주세요. 최종본 템플릿은 오른쪽 탭에 있고 섹션당 5~10줄이면 됩니다. 인터뷰 요약은 01:00에 공유될 예정이에요.",
+      "event_id": "ev-1",
+      "run_id": "r-1",
+      "t_min": 0.0,
+      "created_at": "2026-10-20T01:00:00Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    }
+  ],
+  "my_documents": [
+    {
+      "doc_id": "doc-c1",
+      "part_no": 1,
+      "title": "문제 정의와 대상 사용자",
+      "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
+      "revision": 0,
+      "versions": []
+    },
+    {
+      "doc_id": "doc-c2",
+      "part_no": 2,
+      "title": "사용자 인터뷰에서 찾은 근거",
+      "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
+      "revision": 0,
+      "versions": []
+    },
+    {
+      "doc_id": "doc-c3",
+      "part_no": 3,
+      "title": "핵심 기능 제안",
+      "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
+      "revision": 0,
+      "versions": []
+    },
+    {
+      "doc_id": "doc-c4",
+      "part_no": 4,
+      "title": "비슷한 서비스 사례",
+      "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
+      "revision": 0,
+      "versions": []
+    },
+    {
+      "doc_id": "doc-c5",
+      "part_no": 5,
+      "title": "성공 지표와 출시 일정",
+      "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
+      "revision": 0,
+      "versions": []
+    }
+  ],
+  "received": [],
+  "final": {
+    "sections": [
+      {
+        "part_no": 1,
+        "title": "문제 정의와 대상 사용자",
+        "content": "",
+        "source_doc_id": null,
+        "source_version": null,
+        "edited": false
+      },
+      {
+        "part_no": 2,
+        "title": "사용자 인터뷰에서 찾은 근거",
+        "content": "",
+        "source_doc_id": null,
+        "source_version": null,
+        "edited": false
+      },
+      {
+        "part_no": 3,
+        "title": "핵심 기능 제안",
+        "content": "",
+        "source_doc_id": null,
+        "source_version": null,
+        "edited": false
+      },
+      {
+        "part_no": 4,
+        "title": "비슷한 서비스 사례",
+        "content": "",
+        "source_doc_id": null,
+        "source_version": null,
+        "edited": false
+      },
+      {
+        "part_no": 5,
+        "title": "성공 지표와 출시 일정",
+        "content": "",
+        "source_doc_id": null,
+        "source_version": null,
+        "edited": false
+      }
+    ],
+    "template": {
+      "length": "섹션당 5~10줄, 1~2쪽"
+    }
+  },
+  "tasks": [
+    {
+      "part_no": 1,
+      "assignee": null,
+      "status": "todo",
+      "order": 1,
+      "due_min": null,
+      "depends_on": []
+    },
+    {
+      "part_no": 2,
+      "assignee": null,
+      "status": "todo",
+      "order": 2,
+      "due_min": null,
+      "depends_on": []
+    },
+    {
+      "part_no": 3,
+      "assignee": null,
+      "status": "todo",
+      "order": 3,
+      "due_min": null,
+      "depends_on": [
+        2
+      ]
+    },
+    {
+      "part_no": 4,
+      "assignee": null,
+      "status": "todo",
+      "order": 4,
+      "due_min": null,
+      "depends_on": []
+    },
+    {
+      "part_no": 5,
+      "assignee": null,
+      "status": "todo",
+      "order": 5,
+      "due_min": null,
+      "depends_on": []
+    }
+  ],
+  "documents": [
+    {
+      "doc_id": "company_intro",
+      "title": "회사·서비스 소개",
+      "released": true,
+      "release_at_min": null
+    },
+    {
+      "doc_id": "metrics",
+      "title": "지표 현황",
+      "released": true,
+      "release_at_min": null
+    },
+    {
+      "doc_id": "interview_summary",
+      "title": "사용자 인터뷰 요약",
+      "released": false,
+      "release_at_min": 70
+    },
+    {
+      "doc_id": "policy",
+      "title": "운영 정책",
+      "released": true,
+      "release_at_min": null
+    },
+    {
+      "doc_id": "meeting_notes",
+      "title": "지난주 회의록",
+      "released": true,
+      "release_at_min": null
+    }
+  ],
+  "assistant": [],
+  "active_runs": [],
+  "connection_gaps": [],
+  "channels": {
+    "team": {
+      "members": [
+        "manager",
+        "colleague",
+        "candidate"
+      ]
+    },
+    "dm": {
+      "members": [
+        "colleague",
+        "candidate"
+      ]
+    },
+    "manager_dm": {
+      "members": [
+        "manager",
+        "candidate"
+      ]
+    },
+    "notice": {
+      "members": [
+        "candidate"
+      ]
+    }
+  },
+  "persona": {
+    "manager": "한서윤 팀장",
+    "colleague": "이도현",
+    "candidate_role": "주담당"
+  }
+}

@@ -1,7 +1,7 @@
 """완료 기준: guard 예문 48건(guard_patterns.yaml의 hit·miss 45건 + 안내문 3건).
 
-hit은 자기 그룹에 걸리고 apply 결과가 그 그룹의 안내문이 된다. miss와 안내문은 어느 그룹에도
-걸리지 않고 apply가 문장을 그대로 둔다(안내문이 다시 치환되지 않음).
+hit은 자기 그룹에 걸리고 apply 결과가 그 그룹의 안내문이 된다. miss와 안내문은 어느 그룹에도 걸리지
+않고 apply가 문장을 그대로 둔다(안내문이 다시 치환되지 않음).
 """
 
 import pytest
@@ -10,7 +10,9 @@ from app.agent.guard import Guard
 from app.config import REPO_ROOT
 
 SPEC = yaml.safe_load(
-    (REPO_ROOT / "scenarios" / "prompts" / "guard_patterns.yaml").read_text(encoding="utf-8")
+    (
+        REPO_ROOT / "scenarios" / "missions" / "planning" / "prompts" / "guard_patterns.yaml"
+    ).read_text(encoding="utf-8")
 )
 GUARD = Guard(SPEC)
 

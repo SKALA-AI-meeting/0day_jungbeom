@@ -1,4 +1,4 @@
-"""라우터 테스트 공용 도구: 앱·클라이언트 조립과 report 본문 팩토리."""
+"""라우터 테스트 공용 도구: 앱·클라이언트 조립과 워커 draft 본문 팩토리."""
 
 import uuid
 from typing import Any
@@ -25,12 +25,27 @@ def bearer(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _tally(values: list[int | None]) -> dict[str, int]:
+    return {
+        "met": sum(v == 1 for v in values),
+        "unmet": sum(v == 0 for v in values),
+        "no_record": sum(v is None for v in values),
+    }
+
+
 def make_report_content(scenario: dict[str, Any], autos: list[int | None]) -> dict[str, Any]:
-    """scenario의 평가표 항목을 순서대로 autos 값(부족하면 마지막 값 반복)으로 채운 draft 본문."""
-    elements, index = [], 0
+    """scenario의 평가표 항목을 순서대로 autos 값(부족하면 마지막 값 반복)으로 채운 워커 draft 본문.
+
+    형태는 contracts.md Report의 rubric(요소 → 카드 → 항목)·summary. 근거는 비운다.
+    """
+    elements: dict[str, dict[str, Any]] = {}
+    index = 0
     for card in scenario["cards"]:
         if not card.get("element"):
             continue
+        element = elements.setdefault(
+            card["element"], {"element": card["element"], "name": card["element"], "cards": []}
+        )
         items = []
         for rubric in card["rubric"]:
             auto = autos[min(index, len(autos) - 1)]
@@ -39,35 +54,26 @@ def make_report_content(scenario: dict[str, Any], autos: list[int | None]) -> di
                 {
                     "id": rubric["id"],
                     "text": rubric["text"],
+                    "basis": "label" if rubric["basis"] == "label" else "metric",
                     "auto": auto,
-                    "reviewer": None,
-                    "memo": None,
+                    "no_record_reason": None if auto is not None else "no_activity",
                     "evidence": [],
+                    # 응답 시간 항목만 실제 분 값을 갖는다(관련 메시지 없으면 null)
+                    **({"minutes": None} if "response_minutes" in str(rubric["when"]) else {}),
                 }
             )
-        elements.append(
-            {
-                "element": card["element"],
-                "name": card["name"],
-                "auto": _tally(items),
-                "items": items,
-            }
-        )
-    totals = _tally([i for e in elements for i in e["items"]])
+        element["cards"].append({"card_id": card["card_id"], "name": card["name"], "items": items})
+    for element in elements.values():
+        element["auto"] = _tally([i["auto"] for c in element["cards"] for i in c["items"]])
+    values = [i["auto"] for e in elements.values() for c in e["cards"] for i in c["items"]]
     return {
-        "stage": "draft",
-        "rubric": {"elements": elements, "auto_total": totals, "reviewer_total": None},
+        "summary": [
+            {"element": e["element"], "name": e["name"], "line": None, **e["auto"]}
+            for e in elements.values()
+        ],
+        "rubric": {"elements": list(elements.values()), "auto_total": _tally(values)},
         "sections": [],
-        "ai_usage": {"used": False, "summary": "사용하지 않음", "evidence": []},
-    }
-
-
-def _tally(items: list[dict[str, Any]]) -> dict[str, int]:
-    values = [i["auto"] for i in items]
-    return {
-        "met": sum(v == 1 for v in values),
-        "judged": sum(v is not None for v in values),
-        "no_record": sum(v is None for v in values),
+        "ai_usage": {"used": False, "events": []},
     }
 
 
@@ -75,10 +81,11 @@ AUTOS = [1, 0, None, 1, 1, 1, 0, None]
 
 
 async def to_report_ready(api, internal, db, service, position, invite_row, autos=AUTOS):
-    """초대 → 동의·시작·제출 → 워커 draft 저장까지 진행하고 (session_id, content)를 돌려준다."""
+    """초대 → 동의·시작·제출·보고 종료 → 워커 draft 저장까지 진행하고 (session_id, content)."""
     sid = uuid.UUID(invite_row["session_id"])
     await service.consent(sid)
     await service.start(sid)
+    await service.submit(sid)
     await service.complete(sid)
     content = make_report_content(position["scenario"], autos)
     res = await internal.post(f"/internal/sessions/{sid}/report/draft", json={"content": content})

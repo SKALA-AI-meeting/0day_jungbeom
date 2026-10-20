@@ -1,8 +1,9 @@
 """어시스턴트 응답의 반영 추정(docs/api/design.md "제출 처리").
 
 estimate_reuse는 순수 함수다. record_reuse는 SessionService.complete()의 reuse_estimator 훅으로,
-종료 실행 뒤 호출×파트별 결과를 assistant_reuse에 남긴다. 결과는 "반영 추정"이며 검증 행동의
-증거가 아니다.
+종료 실행 뒤 호출×지원자 문서(파트·최종본)별 결과를 assistant_reuse에 남긴다. 결과는 "어느 파트에
+반영됐는가"라는 사실 표시에만 쓰고(applied), 비율은 내부 값이라 응답·리포트에 싣지 않는다. 검증
+행동의 증거도 아니다.
 """
 
 import re
@@ -14,18 +15,17 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AssistantCall, AssistantReuse, DocumentRevision, Message
+from app.models import AssistantCall, AssistantReuse, Document, DocumentRevision, Message
 
 MIN_LENGTH = 20  # 정규화 길이와 공통 부분 문자열 모두 이 길이 이상만 센다
-VERBATIM = 0.8
-EDITED = 0.3
+APPLIED = 0.3
 
 _STRIP = re.compile(r"[\W_]+")
 
 
 @dataclass(frozen=True)
 class Revision:
-    part_no: int
+    part_no: int | str  # 최종본은 "final"
     revision: int
     content: str
 
@@ -44,25 +44,20 @@ def _ratio(response: str, content: str) -> float:
 
 def estimate_reuse(
     response: str, revisions: list[Revision]
-) -> tuple[str, float, int | None, int | None]:
-    """(reuse, ratio, part_no, revision). revisions는 호출 이후 지원자가 저장한 스냅샷들."""
+) -> tuple[bool, float, int | str | None, int | None]:
+    """(applied, ratio, part_no, revision). revisions는 호출 이후 지원자가 저장한 스냅샷들."""
     norm = normalize(response)
     if len(norm) < MIN_LENGTH or not revisions:
-        return "none", 0.0, None, None
+        return False, 0.0, None, None
     ratio, rev = max(
         ((_ratio(norm, normalize(r.content)), r) for r in revisions), key=lambda x: x[0]
     )
-    if ratio >= VERBATIM:
-        reuse = "verbatim"
-    elif ratio >= EDITED:
-        reuse = "edited"
-    else:
-        reuse = "none"
-    return reuse, ratio, rev.part_no, rev.revision
+    return ratio >= APPLIED, ratio, rev.part_no, rev.revision
 
 
 async def record_reuse(db: AsyncSession, session_id: uuid.UUID) -> None:
-    """호출마다, 그 호출 이후 지원자가 고친 파트별로 최대 ratio를 저장한다(재실행은 덮어씀).
+    """호출마다, 그 호출 이후 지원자가 저장한 문서별로 최대 ratio·applied를 저장한다(재실행은
+    덮어씀).
 
     커밋은 호출자(complete)가 한다.
     """
@@ -75,31 +70,30 @@ async def record_reuse(db: AsyncSession, session_id: uuid.UUID) -> None:
     ).all()
     if not calls:
         return
-    revisions = (
-        (
-            await db.execute(
-                select(DocumentRevision).where(
-                    DocumentRevision.session_id == session_id, DocumentRevision.by == "candidate"
-                )
+    rows = (
+        await db.execute(
+            select(DocumentRevision, Document)
+            .join(Document, Document.id == DocumentRevision.doc_id)
+            .where(
+                Document.session_id == session_id,
+                Document.owner == "candidate",
+                DocumentRevision.by == "candidate",
             )
         )
-        .scalars()
-        .all()
-    )
+    ).all()
     for call, response in calls:
-        later = [r for r in revisions if r.created_at > call.created_at]
-        for part_no in sorted({r.part_no for r in later}):
-            snapshots = [
-                Revision(r.part_no, r.revision, r.content) for r in later if r.part_no == part_no
-            ]
-            reuse, ratio, _, _ = estimate_reuse(response, snapshots)
+        later = [(r, d) for r, d in rows if r.created_at > call.created_at]
+        for doc in {d.id: d for _, d in later}.values():
+            part = "final" if doc.final else doc.part_no
+            snapshots = [Revision(part, r.revision, r.content) for r, d in later if d.id == doc.id]
+            applied, ratio, _, _ = estimate_reuse(response, snapshots)
             stmt = insert(AssistantReuse).values(
-                call_id=call.id, part_no=part_no, reuse=reuse, ratio=ratio
+                call_id=call.id, doc_id=doc.id, part_no=doc.part_no, ratio=ratio, applied=applied
             )
             await db.execute(
                 stmt.on_conflict_do_update(
-                    index_elements=["call_id", "part_no"],
-                    set_={"reuse": reuse, "ratio": ratio},
+                    index_elements=["call_id", "doc_id"],
+                    set_={"ratio": ratio, "applied": applied},
                 )
             )
     await db.flush()

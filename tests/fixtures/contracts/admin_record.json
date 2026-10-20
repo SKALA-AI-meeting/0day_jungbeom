@@ -39,7 +39,7 @@
     "t_min": 12.0,
     "type": "task_event",
     "by": "candidate",
-    "summary": "1번 카드 assignee 변경(12분)",
+    "summary": "1번 담당 → 지원자(12분)",
     "ref": {
       "type": "task_event",
       "id": "te-1",
@@ -50,7 +50,7 @@
     "t_min": 12.5,
     "type": "task_event",
     "by": "candidate",
-    "summary": "1번 카드 due_min 변경(12.5분)",
+    "summary": "1번 언제까지 → 40분(12.5분)",
     "ref": {
       "type": "task_event",
       "id": "te-6",

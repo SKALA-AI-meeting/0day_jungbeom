@@ -17,7 +17,7 @@ KINDS = ("question", "instruction", "redivide", "progress_query", "fix_request",
 # team 채널에서 이름·호칭이 없을 때 팀장에게 가는 주제: 과제 범위·마감·보고·대상 변경
 _MANAGER_TOPIC = re.compile(r"마감|기한|보고|범위|대상\s*(을|를|이|은)?\s*(바꾸|변경|바뀌)|일정")
 
-CLASSIFY_SYSTEM = """리드가 팀 채팅에 보낸 메시지 하나를 분류한다. JSON 객체 하나만 출력한다.
+CLASSIFY_SYSTEM = """주담당이 팀 채팅에 보낸 메시지 하나를 분류한다. JSON 객체 하나만 출력한다.
 형식: {"kind": "<kind>", "instruction": "<지시 요지 또는 null>", "part_no": <1~5 또는 null>}
 kind:
 - question: 정보·의견·사실을 묻는다
@@ -68,14 +68,14 @@ async def classify(
     *,
     usage: Usage,
     trace: Trace,
-    current_element: str | None,
+    current_card: str | None,
 ) -> tuple[dict[str, Any], bool]:
     """(classification, fallback_used)."""
     result: dict[str, Any] = {
         "recipient": recipient(channel, content, scenario),
         "kind": "other",
         "instruction": None,
-        "related_card": current_element,
+        "related_card": current_card,
     }
     try:
         message = await llm.ainvoke(

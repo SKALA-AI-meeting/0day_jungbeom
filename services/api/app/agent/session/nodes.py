@@ -167,7 +167,7 @@ async def classify_node(state: SessionState, runtime: Runtime[RunDeps]) -> dict[
         state["scenario"],
         usage=deps.usage,
         trace=deps.trace(state, "classify"),
-        current_element=state.get("current_element"),
+        current_card=state.get("current_card"),
     )
     deps.outcome.fallback_used |= fallback
     part_no = result.pop("part_no", None)
@@ -217,7 +217,7 @@ def _respond_messages(
     )
     channel = prompts.CHANNEL_NAME.get(message["channel"], message["channel"])
     me = prompts.names(scenario)[persona]
-    blocks.append(f"리드가 방금 {channel}으로 보낸 마지막 메시지에 {me}(으)로 답한다.")
+    blocks.append(f"주담당이 방금 {channel}으로 보낸 마지막 메시지에 {me}(으)로 답한다.")
     return [
         SystemMessage(prompts.system_prompt(scenario, persona)),
         HumanMessage("\n\n".join(blocks)),
@@ -299,7 +299,7 @@ async def respond(state: SessionState, runtime: Runtime[RunDeps]) -> dict[str, A
         text, slot, error = BUDGET_TEXT, seq.FALLBACK, "token_budget_exhausted"
     else:
         board = await deps.code.call("get_board")
-        document = await deps.code.call("get_document_state")
+        document = await deps.code.call("get_shared_documents")
         search = None
         if persona == "colleague":
             await deps.progress(persona, "respond", "tool_start", "search_documents")

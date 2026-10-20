@@ -6,12 +6,12 @@ hub·세션 Lock·스케줄러가 한 프로세스에 있어야 하므로 두 �
 
 import argparse
 import asyncio
-import importlib.util
 import logging
 from pathlib import Path
 
 import uvicorn
 
+from app import scheduler
 from app.main import create_internal_app, create_public_app
 from app.services.context import build_context
 
@@ -27,17 +27,17 @@ async def serve(host: str = "0.0.0.0") -> None:
         uvicorn.Server(uvicorn.Config(public, host=host, port=ctx.settings.public_port)),
         uvicorn.Server(uvicorn.Config(internal, host=host, port=ctx.settings.internal_port)),
     ]
-    tasks = []
-    # 스케줄러(api-candidate 트랙)가 생기면 같은 루프에서 돈다. 모듈의 run(ctx)를 찾는다.
-    if importlib.util.find_spec("app.scheduler") is not None:
-        from app import scheduler
-
-        tasks.append(asyncio.create_task(scheduler.run(ctx)))
+    # 실제 그래프 러너는 첫 실행 전에 체크포인터 풀을 연다(첫 카드가 초기화를 기다리지 않게)
+    if hasattr(ctx.runner, "graph"):
+        await ctx.runner.graph()
+    tasks = [asyncio.create_task(scheduler.run(ctx))]
     try:
         await asyncio.gather(*(server.serve() for server in servers))
     finally:
         for task in tasks:
             task.cancel()
+        if hasattr(ctx.runner, "aclose"):
+            await ctx.runner.aclose()
         await ctx.publisher.close()
         await ctx.engine.dispose()
 

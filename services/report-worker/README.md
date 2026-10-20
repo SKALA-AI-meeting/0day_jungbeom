@@ -4,10 +4,10 @@
 
 | 모듈 | 내용 |
 |---|---|
-| `rubric.py` | `evaluate(card, observation, event_fired=)` 순수 함수. 항목 1/0/None과 기록 없음 사유, 요소 합계 |
-| `report.py` | draft 조립(섹션·평가표·AI 활용 요약), 같은 세션 근거만 남김, 텍스트 필드 금지어 문장 제거 |
+| `rubric.py` | `evaluate(card, observation, event_fired=, window_missed=, document_missing=)` 순수 함수. 카드 항목 1/0/None과 기록 없음 사유, met·unmet·no_record 세 수 |
+| `report.py` | draft 조립(summary·카드 단위 평가표·섹션 window·근거 record_ref·flag·정직 facts·ai_usage.events). 문장은 카탈로그 label_texts라 LLM을 부르지 않는다. 같은 세션 근거만 남기고 텍스트 필드 금지어 문장 제거 |
 | `graph.py` | LangGraph 그래프와 thread 상태 판정(멈춤·완료) |
-| `consumer.py` | 메시지 처리 규칙(재시도 백오프 5·15·45초, attempt≥3 → DLQ, dlq는 api 복구까지 60초 간격 재시도)과 aio-pika 연결 |
+| `consumer.py` | 메시지 처리 규칙(final 뒤 completed면 재생성: thread 삭제 후 새 draft, 재시도 백오프 5·15·45초, attempt≥3 → DLQ, dlq는 api 복구까지 60초 간격 재시도)과 aio-pika 연결 |
 | `api.py` | 내부 REST 클라이언트(X-Internal-Token) |
 | `llm.py` | gpt-4o-mini temperature 0, 재시도 2회 뒤 고정 문장, 사용량 집계 |
 

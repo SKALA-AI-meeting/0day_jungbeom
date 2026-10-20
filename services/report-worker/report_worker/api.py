@@ -63,17 +63,25 @@ class InternalApi:
     async def collect(self, session_id: str) -> dict[str, Any]:
         """collect 노드의 입력 전부(docs/worker-infra/design.md 2단계)."""
         get = self._call
-        return {
-            "session": await get("GET", self._session(session_id)),
-            "observations": await get("GET", self._session(session_id, "/observations")),
-            "assistant_calls": await get("GET", self._session(session_id, "/assistant_calls")),
-            "assistant_reuse": await get("GET", self._session(session_id, "/assistant_reuse")),
-            "messages": await self.all_messages(session_id),
-            "document_revisions": await get(
-                "GET", self._session(session_id, "/document_revisions")
-            ),
-            "doc_views": await get("GET", self._session(session_id, "/doc_views")),
+        paths = {
+            "session": "",
+            "observations": "/observations",
+            "assistant_calls": "/assistant_calls",
+            "assistant_reuse": "/assistant_reuse",
+            "document_revisions": "/document_revisions",
+            "docs": "/docs",
+            "task_events": "/task_events",
+            "doc_views": "/doc_views",
+            "honesty_facts": "/honesty_facts",
         }
+        data = {
+            key: await get("GET", self._session(session_id, path)) for key, path in paths.items()
+        }
+        data["messages"] = await self.all_messages(session_id)
+        return data
+
+    async def session_status(self, session_id: str) -> str:
+        return (await self._call("GET", self._session(session_id)))["status"]
 
     async def all_messages(self, session_id: str) -> list[dict[str, Any]]:
         messages: list[dict[str, Any]] = []

@@ -1,13 +1,14 @@
 """관리자 REST (/admin/*, 포트 8000). 계약은 docs/common/contracts.md.
 
-모든 조회·변경은 JWT의 company_id로 positions를 거쳐 필터한다. 남의 회사 자원은 404다.
-상태 전이는 SessionService가 하고, 이 파일은 평가표 조정과 리포트 합성만 직접 다룬다.
+모든 조회·변경은 JWT의 company_id로 positions를 거쳐 필터한다. 남의 회사 자원은 404다. 상태 전이는
+SessionService가 하고, 이 파일은 평가표 조정·메모와 리포트 합성(산출물·조정·메모·끊김 병합)만 직접
+다룬다. 저장된 reports.content는 불변이고 GET 응답은 매번 합성한다.
 """
 
 import asyncio
 import copy
 import uuid
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,48 +17,45 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import (
-    Principal,
-    admin_token,
-    hash_password,
-    require_admin,
-    verify_password,
-)
+from app.auth import Principal, admin_token, hash_password, require_admin, verify_password
 from app.models import (
     Admin,
     Company,
-    DocumentState,
+    Document,
+    DocumentOpen,
+    DocumentShare,
+    DocumentVersion,
     Invite,
     Message,
     Position,
     Report,
+    ReportNote,
     RubricAdjustment,
     Session,
-    SessionEvent,
-    Task,
 )
+from app.services import documents, views
 from app.services import scenario as scenario_service
 from app.services.context import AppContext, get_context
-from app.services.messages import t_min
-from app.services.session import SessionError
+from app.services.messages import t_min_at
+from app.services.states import SessionError
 
 router = APIRouter(prefix="/admin")
 
-KST = timezone(timedelta(hours=9))
-
-# 지원자에게 전하는 안내 문안. 발송은 하지 않고 화면이 복사 버튼으로 보여 준다.
-CANDIDATE_NOTICE_TEMPLATE = (
-    "안녕하세요, {alias}님. 이번 전형은 가상 회사 {virtual_company}에서 AI 동료와 함께 "
-    "업무를 진행하는 시뮬레이션입니다.\n"
-    "- 2시간 연속으로 진행하며 중간 휴식은 없습니다.\n"
-    "- PC에서 진행하시길 권장합니다.\n"
-    "- 아래 링크는 발급 후 72시간({expires_at}까지) 유효합니다.\n"
-    "{invite_url}"
-)
-ELEMENT_FRACTION_RULE = (
-    "리뷰에 붙는 카드를 뺀 요소 카드가 n개일 때, n=1이면 세션의 1/4 지점, "
-    "n≥2이면 i번째(0부터)가 1/4 + i×(1/2)/n 지점이다. 흐름 카드는 고정 시점이다."
-)
+RETENTION = timedelta(days=90)
+# 목록의 다섯 묶음(화면 필터 키)
+GROUPS = {
+    "invited": "waiting",
+    "expired": "waiting",
+    "in_progress": "in_progress",
+    "reporting": "in_progress",
+    "completed": "in_progress",
+    "report_ready": "needs_review",
+    "approving": "done",
+    "reviewed": "done",
+    "failed": "problem",
+    "cancelled": "problem",
+}
+NEXT_ACTION = {"session": "새 초대를 만들어 보내세요", "report": "리포트를 다시 생성하세요"}
 
 
 def error(status: int, code: str, message: str) -> HTTPException:
@@ -124,32 +122,32 @@ async def login(body: Credentials, db: Db) -> dict[str, str]:
 
 @router.get("/catalog")
 async def catalog(ctx: Ctx, _: Admin_) -> dict[str, Any]:
-    data = scenario_service.load_catalog(ctx.settings.scenarios_dir)
+    """채용 건 생성 화면용. 요소의 뜻과 "이렇게 봅니다"만 주고 상황·시점·평가표는 주지 않는다."""
+    root = ctx.settings.scenarios_dir
+    missions = [
+        scenario_service.load_catalog(root, mission_id)
+        for mission_id in scenario_service.list_missions(root)
+    ]
+    default = scenario_service.load_catalog(root)
     return {
-        "elements": [
+        "missions": [
             {
-                "id": card["id"],
-                "name": card["name"],
-                "situation_public": card["situation"],
-                "rubric": [
-                    {
-                        "id": item["id"],
-                        "text": item["text"],
-                        "pilot_value": bool(item.get("pilot_value")),
-                    }
-                    for item in card["rubric"]
+                "id": m["mission"]["id"],
+                "name": m["mission"]["name"],
+                "company_name": m["mission"]["company"]["name"],
+                "deliverable": m["mission"]["deliverable"],
+                "documents": [
+                    {"doc_id": d["id"], "title": d["title"]} for d in m["mission"]["documents"]
                 ],
             }
-            for card in sorted(data["element_cards"], key=lambda c: c["order"])
+            for m in missions
         ],
-        "timeline": {
-            "flow": [
-                {"card_id": flow["id"], "at_fraction": flow["at_fraction"]}
-                for flow in data["flow_cards"]
-            ],
-            "element_fraction_rule": ELEMENT_FRACTION_RULE,
-        },
-        "candidate_notice_template": CANDIDATE_NOTICE_TEMPLATE,
+        "elements": [
+            {k: e[k] for k in ("id", "name", "meaning", "how_we_see", "if_unselected")}
+            for e in default["cards"]["elements"]
+        ],
+        "candidate_notice_template": default["mission"]["candidate_notice_template"],
+        "candidate_faq": default["mission"]["candidate_faq"],
         "session_minutes": 120,
     }
 
@@ -157,16 +155,20 @@ async def catalog(ctx: Ctx, _: Admin_) -> dict[str, Any]:
 class PositionIn(BaseModel):
     name: str = Field(min_length=1)
     elements: list[str]
+    mission_id: str = scenario_service.DEFAULT_MISSION
 
 
 @router.get("/positions")
 async def list_positions(db: Db, admin: Admin_) -> list[dict[str, Any]]:
-    count = (
-        select(Invite.position_id, func.count().label("n")).group_by(Invite.position_id).subquery()
+    # 지원자 수는 사람 수다. 재응시·재발행은 같은 별칭으로 이어지므로 별칭으로 센다
+    people = (
+        select(Invite.position_id, func.count(func.distinct(Invite.alias)).label("n"))
+        .group_by(Invite.position_id)
+        .subquery()
     )
     rows = await db.execute(
-        select(Position, func.coalesce(count.c.n, 0))
-        .outerjoin(count, count.c.position_id == Position.id)
+        select(Position, func.coalesce(people.c.n, 0))
+        .outerjoin(people, people.c.position_id == Position.id)
         .where(Position.company_id == admin.company_id)
         .order_by(Position.created_at)
     )
@@ -174,6 +176,7 @@ async def list_positions(db: Db, admin: Admin_) -> list[dict[str, Any]]:
         {
             "id": str(p.id),
             "name": p.name,
+            "mission_id": p.mission_id,
             "elements": p.elements,
             "candidate_count": n,
             "created_at": iso(p.created_at),
@@ -186,13 +189,16 @@ async def list_positions(db: Db, admin: Admin_) -> list[dict[str, Any]]:
 async def create_position(body: PositionIn, ctx: Ctx, db: Db, admin: Admin_) -> dict[str, Any]:
     try:
         scenario, version = scenario_service.build_scenario(
-            ctx.settings.scenarios_dir, body.elements, 120
+            ctx.settings.scenarios_dir, body.elements, 120, body.mission_id
         )
+    except scenario_service.InvalidMission as exc:
+        raise error(422, "invalid_mission", str(exc)) from exc
     except scenario_service.InvalidElements as exc:
-        raise error(400, "invalid_elements", str(exc)) from exc
+        raise error(422, "invalid_elements", str(exc)) from exc
     position = Position(
         company_id=admin.company_id,
         name=body.name,
+        mission_id=body.mission_id,
         elements=body.elements,
         session_minutes=120,
         catalog_version=version,
@@ -203,6 +209,7 @@ async def create_position(body: PositionIn, ctx: Ctx, db: Db, admin: Admin_) -> 
     return {
         "id": str(position.id),
         "name": position.name,
+        "mission_id": position.mission_id,
         "elements": position.elements,
         "scenario": scenario,
         "catalog_version": version,
@@ -231,6 +238,7 @@ async def own_session(
             .join(Invite, Session.invite_id == Invite.id)
             .join(Position, Invite.position_id == Position.id)
             .where(Session.id == session_id, Position.company_id == admin.company_id)
+            .execution_options(populate_existing=True)
         )
     ).first()
     if row is None:
@@ -244,9 +252,17 @@ async def own_session(
 def tally(values: list[int | None]) -> dict[str, int]:
     return {
         "met": sum(v == 1 for v in values),
-        "judged": sum(v is not None for v in values),
+        "unmet": sum(v == 0 for v in values),
         "no_record": sum(v is None for v in values),
     }
+
+
+def rubric_items(rubric: dict[str, Any]):
+    """(요소 id, 카드 id, 항목) 순회."""
+    for element in rubric.get("elements", []):
+        for card in element.get("cards", []):
+            for item in card["items"]:
+                yield element["element"], card["card_id"], item
 
 
 def _final_value(item: dict[str, Any], adjustments: dict[str, RubricAdjustment]) -> int | None:
@@ -258,54 +274,63 @@ def reviewer_scores(
     rubric: dict[str, Any], adjustments: dict[str, RubricAdjustment]
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """담당자 값(조정이 없으면 자동 값)으로 센 (요소별, 합계)."""
-    per_element, everything = [], []
-    for element in rubric.get("elements", []):
-        values = [_final_value(item, adjustments) for item in element["items"]]
-        per_element.append({"element": element["element"], **tally(values)})
-        everything += values
-    return per_element, tally(everything)
-
-
-def merge_rubric(
-    rubric: dict[str, Any],
-    adjustments: list[RubricAdjustment],
-    report: Report,
-    submitted: bool,
-) -> dict[str, Any]:
-    """저장된 draft의 rubric에 rubric_adjustments를 병합한 GET 응답용 사본."""
-    merged = copy.deepcopy(rubric)
-    by_item = {a.item_id: a for a in adjustments}
-    for element in merged.get("elements", []):
-        for item in element["items"]:
-            adjustment = by_item.get(item["id"])
-            item["reviewer"] = adjustment.reviewer_value if adjustment else None
-            item["memo"] = adjustment.memo if adjustment else None
-            item["adjusted"] = adjustment is not None
-        element["reviewer"] = None
-    merged["reviewer_total"] = None
-    merged["review"] = None
-    if submitted:
-        per_element, total = reviewer_scores(merged, by_item)
-        for element, score in zip(merged["elements"], per_element, strict=True):
-            element["reviewer"] = {k: score[k] for k in ("met", "judged", "no_record")}
-        merged["reviewer_total"] = total
-        merged["review"] = {"memo": report.review_memo, "reviewed_at": iso(report.reviewed_at)}
-    merged["history"] = [
-        {
-            "item_id": a.item_id,
-            "element": a.element,
-            "auto": a.auto_value,
-            "reviewer": a.reviewer_value,
-            "memo": a.memo,
-            "created_at": iso(a.created_at),
-        }
-        for a in sorted(adjustments, key=lambda a: a.created_at)
-    ]
-    return merged
+    per_element: dict[str, list[int | None]] = {}
+    for element, _, item in rubric_items(rubric):
+        per_element.setdefault(element, []).append(_final_value(item, adjustments))
+    everything = [v for values in per_element.values() for v in values]
+    return (
+        [{"element": e, **tally(values)} for e, values in per_element.items()],
+        tally(everything),
+    )
 
 
 def is_submitted(report: Report) -> bool:
     return report.reviewer_met is not None
+
+
+def merge_rubric(
+    rubric: dict[str, Any], adjustments: list[RubricAdjustment], report: Report
+) -> dict[str, Any]:
+    """저장된 draft의 rubric에 rubric_adjustments를 병합한 GET 응답용 사본."""
+    merged = copy.deepcopy(rubric)
+    by_item = {a.item_id: a for a in adjustments}
+    for _, _, item in rubric_items(merged):
+        adjustment = by_item.get(item["id"])
+        item["reviewer"] = adjustment.reviewer_value if adjustment else None
+        item["memo"] = adjustment.memo if adjustment else None
+        item["adjusted"] = adjustment is not None
+    merged["reviewer_total"] = None
+    merged["review"] = None
+    if is_submitted(report):
+        merged["reviewer_total"] = reviewer_scores(merged, by_item)[1]
+        merged["review"] = {
+            "memo": report.review_memo,
+            "reviewer_name": report.reviewer_name,
+            "reviewed_at": iso(report.reviewed_at),
+        }
+    return merged
+
+
+def score_fields(report: Report | None, adjustments: dict[str, RubricAdjustment]) -> dict[str, Any]:
+    """목록의 평탄화 점수. 리포트가 없으면 전부 null."""
+    if report is None:
+        return {k: None for k in ("met", "unmet", "no_record", "score_source", "by_element")}
+    rubric = report.content.get("rubric", {})
+    if is_submitted(report):
+        by_element, total = reviewer_scores(rubric, adjustments)
+        source = "reviewer"
+    else:
+        by_element = [
+            {"element": e["element"], **{k: e["auto"][k] for k in ("met", "unmet", "no_record")}}
+            for e in rubric.get("elements", [])
+        ]
+        total = rubric.get("auto_total") or tally([])
+        source = "auto"
+    return {
+        **{k: total[k] for k in ("met", "unmet", "no_record")},
+        "score_source": source,
+        "by_element": by_element,
+    }
 
 
 # ───────────── 지원자 목록·초대·취소 ─────────────
@@ -317,27 +342,8 @@ def display_status(session: Session, invite: Invite, now: datetime) -> str:
     return session.status
 
 
-def score_of(
-    report: Report | None, adjustments: dict[str, RubricAdjustment]
-) -> dict[str, Any] | None:
-    if report is None:
-        return None
-    rubric = report.content.get("rubric", {})
-    if is_submitted(report):
-        by_element, total = reviewer_scores(rubric, adjustments)
-        return {**total, "source": "reviewer", "by_element": by_element}
-    by_element = [
-        {"element": e["element"], "met": e["auto"]["met"], "judged": e["auto"]["judged"]}
-        for e in rubric.get("elements", [])
-    ]
-    total = rubric.get("auto_total") or {"met": 0, "judged": 0, "no_record": 0}
-    return {
-        "met": total["met"],
-        "judged": total["judged"],
-        "no_record": total["no_record"],
-        "source": "auto",
-        "by_element": by_element,
-    }
+def purge_at(session: Session) -> datetime | None:
+    return session.completed_at + RETENTION if session.completed_at else None
 
 
 @router.get("/positions/{position_id}/candidates")
@@ -352,31 +358,60 @@ async def candidates(position_id: uuid.UUID, db: Db, admin: Admin_) -> list[dict
             .order_by(Invite.created_at)
         )
     ).all()
+    session_ids = [s.id for _, s, _ in rows]
     adjustments: dict[uuid.UUID, dict[str, RubricAdjustment]] = {}
-    submitted = [s.id for _, s, r in rows if r is not None and is_submitted(r)]
-    if submitted:
-        found = await db.execute(
-            select(RubricAdjustment).where(RubricAdjustment.session_id.in_(submitted))
+    for a in (
+        await db.execute(
+            select(RubricAdjustment).where(RubricAdjustment.session_id.in_(session_ids))
         )
-        for adjustment in found.scalars():
-            adjustments.setdefault(adjustment.session_id, {})[adjustment.item_id] = adjustment
+    ).scalars():
+        adjustments.setdefault(a.session_id, {})[a.item_id] = a
+    activity = {
+        sid: (count, last)
+        for sid, count, last in (
+            await db.execute(
+                select(Message.session_id, func.count(), func.max(Message.created_at))
+                .where(Message.session_id.in_(session_ids), Message.sender == "candidate")
+                .group_by(Message.session_id)
+            )
+        ).all()
+    }
+    by_id = {s.id: (s, i) for i, s, _ in rows}
     now = datetime.now(UTC)
     result = []
     for invite, session, report in rows:
+        shown = display_status(session, invite, now)
+        count, last = activity.get(session.id, (0, None))
         row: dict[str, Any] = {
             "session_id": str(session.id),
             "alias": invite.alias,
+            "email": invite.email,
             "status": session.status,
-            "display_status": display_status(session, invite, now),
+            "display_status": shown,
+            "display_group": GROUPS[shown],
             "invited_at": iso(invite.created_at),
-            "report_ready_at": iso(report.generated_at) if report else None,
-            "score": score_of(report, adjustments.get(session.id, {})),
         }
+        optional = {
+            "started_at": iso(session.started_at),
+            "ends_at": iso(session.ends_at),
+            "last_activity_at": iso(last),
+        }
+        row.update({k: v for k, v in optional.items() if v is not None})
+        row["message_count"] = count
+        if report is not None:
+            row["report_ready_at"] = iso(report.generated_at)
+        if purge_at(session):
+            row["purge_at"] = iso(purge_at(session))
         if session.failed_stage:
             row["failed_stage"] = session.failed_stage
             row["failed_reason"] = session.failed_reason
+            row["next_action"] = NEXT_ACTION[session.failed_stage]
         if invite.previous_session_id:
             row["previous_session_id"] = str(invite.previous_session_id)
+            previous = by_id.get(invite.previous_session_id)
+            expired = previous is not None and display_status(*previous, now) == "expired"
+            row["previous_relation"] = "reissue" if expired else "retry"
+        row.update(score_fields(report, adjustments.get(session.id, {})))
         result.append(row)
     return result
 
@@ -391,18 +426,43 @@ class InviteIn(BaseModel):
 async def create_invite(
     position_id: uuid.UUID, body: InviteIn, ctx: Ctx, db: Db, admin: Admin_
 ) -> dict[str, Any]:
+    """같은 채용 건 안 같은 별칭은 409. 단 재응시·재발행(previous_session_id)은 이전 응시의 별칭을
+    잇는다.
+    """
     position = await own_position(db, admin, position_id)
+    previous_alias = None
     if body.previous_session_id is not None:
-        await own_session(db, admin, body.previous_session_id)
+        previous, previous_invite, previous_position = await own_session(
+            db, admin, body.previous_session_id
+        )
+        now = datetime.now(UTC)
+        eligible = (
+            (previous.status == "failed" and previous.failed_stage == "session")
+            or previous.status == "cancelled"
+            or display_status(previous, previous_invite, now) == "expired"
+        )
+        if not eligible or previous_position.id != position.id:
+            raise error(
+                422,
+                "invalid_previous_session",
+                "previous session must be failed(session), expired or cancelled in this position",
+            )
+        previous_alias = previous_invite.alias
+    # 같은 채용 건의 초대 생성을 직렬화한다(별칭 중복 검사와 생성 사이에 다른 요청이 끼지 않게).
+    # 잠금은 create_for_invite의 커밋에서 풀린다
+    await db.execute(select(Position.id).where(Position.id == position.id).with_for_update())
+    taken = await db.scalar(
+        select(Invite.id).where(Invite.position_id == position.id, Invite.alias == body.alias)
+    )
+    if taken is not None and body.alias != previous_alias:
+        raise error(409, "conflict", "alias already used in this position")
     session, invite, raw = await ctx.session_service(db).create_for_invite(
         position.id, body.alias, body.email, body.previous_session_id
     )
     invite_url = f"{ctx.settings.web_origins[0]}/s/{raw}"
-    notice = CANDIDATE_NOTICE_TEMPLATE.format(
-        alias=body.alias,
-        virtual_company=position.scenario["company"]["name"],
-        expires_at=invite.expires_at.astimezone(KST).strftime("%Y-%m-%d %H:%M KST"),
-        invite_url=invite_url,
+    template = scenario_service.load_catalog(ctx.settings.scenarios_dir, position.mission_id)
+    notice = template["mission"]["candidate_notice_template"].format(
+        alias=body.alias, invite_url=invite_url
     )
     return {
         "session_id": str(session.id),
@@ -422,71 +482,104 @@ async def cancel(session_id: uuid.UUID, ctx: Ctx, db: Db, admin: Admin_) -> dict
 # ───────────── 리포트 조회 ─────────────
 
 
-def _assignee(part_no: int, tasks: dict[int, str], division: dict[str, Any] | None) -> str | None:
-    if part_no in tasks:
-        return tasks[part_no]
-    parts = (division or {}).get("parts") or {}
-    return parts.get(str(part_no))
-
-
-async def _deliverable(db: AsyncSession, session: Session, position: Position) -> dict[str, Any]:
-    states = {
-        s.part_no: s
-        for s in (
-            await db.execute(select(DocumentState).where(DocumentState.session_id == session.id))
+async def deliverable(db: AsyncSession, session: Session) -> dict[str, Any]:
+    """최종본 섹션별 출처·편집 여부(편집한 동료 섹션은 원문 나란히)와 주고받은 문서 목록."""
+    docs = {
+        d.id: d
+        for d in (
+            await db.execute(select(Document).where(Document.session_id == session.id))
         ).scalars()
     }
-    tasks = {
-        t.part_no: t.assignee
-        for t in (await db.execute(select(Task).where(Task.session_id == session.id))).scalars()
-    }
-    parts = []
-    for key, title in sorted(position.scenario["parts"].items(), key=lambda kv: int(kv[0])):
-        part_no = int(key)
-        state = states.get(part_no)
-        content = state.content if state else ""
-        parts.append(
+    versions: dict[uuid.UUID, dict[int, DocumentVersion]] = {d: {} for d in docs}
+    for v in (
+        await db.execute(select(DocumentVersion).where(DocumentVersion.doc_id.in_(list(docs))))
+    ).scalars():
+        versions[v.doc_id][v.version] = v
+    shares: dict[uuid.UUID, list[DocumentShare]] = {d: [] for d in docs}
+    for s in (
+        await db.execute(
+            select(DocumentShare)
+            .where(DocumentShare.doc_id.in_(list(docs)))
+            .order_by(DocumentShare.created_at)
+        )
+    ).scalars():
+        shares[s.doc_id].append(s)
+    opened: dict[uuid.UUID, set[int]] = {d: set() for d in docs}
+    for o in (
+        await db.execute(select(DocumentOpen).where(DocumentOpen.doc_id.in_(list(docs))))
+    ).scalars():
+        opened[o.doc_id].add(o.version)
+
+    final = await documents.final_view(db, session.id)
+    sections = []
+    for s in final.sections if final else []:
+        source = docs.get(uuid.UUID(s["source_doc_id"])) if s["source_doc_id"] else None
+        original = None
+        if source is not None and source.owner == "colleague" and s["edited"]:
+            found = versions[source.id].get(s["source_version"])
+            original = found.content if found else None
+        sections.append(
             {
-                "part_no": part_no,
-                "title": title,
-                "assignee": _assignee(part_no, tasks, session.division),
-                "content": content,
-                "revisions": state.revision if state else 0,
-                "empty": not content.strip(),
+                **s,
+                "source_owner": source.owner if source else None,
+                "source_content": original,
             }
         )
+    final_doc = next((d for d in docs.values() if d.final), None)
+    submitted = max(versions[final_doc.id]) if final_doc and versions[final_doc.id] else None
+
+    listed = []
+    for d in sorted(
+        (d for d in docs.values() if not d.final), key=lambda d: (d.owner != "candidate", d.part_no)
+    ):
+        entry = {
+            "doc_id": str(d.id),
+            "owner": d.owner,
+            "part_no": d.part_no,
+            "title": d.title,
+            "versions": len(versions[d.id]),
+            "shares": [
+                {
+                    "version": s.version,
+                    "channel": s.channel,
+                    "t_min": t_min_at(s.created_at, session),
+                }
+                for s in shares[d.id]
+            ],
+        }
+        if d.owner == "candidate":
+            entry["empty"] = not d.content.strip()
+        else:
+            entry["opened_by_candidate"] = sorted(opened[d.id])
+        listed.append(entry)
     return {
-        "parts": parts,
+        "final": {"sections": sections, "submitted_version": submitted},
+        "documents": listed,
         "division_decided_by": (session.division or {}).get("decided_by"),
-        "final_report_message": await _final_report_message(db, session),
+        "final_report_message": await final_report_message(db, session),
     }
 
 
-async def _final_report_message(db: AsyncSession, session: Session) -> dict[str, Any] | None:
-    """보고 요청 카드 이후 지원자가 팀 채널에 남긴 마지막 메시지."""
-    due_at = await db.scalar(
-        select(SessionEvent.due_at).where(
-            SessionEvent.session_id == session.id, SessionEvent.card_id == "report_request"
+async def final_report_message(db: AsyncSession, session: Session) -> dict[str, Any] | None:
+    """보고로 분류된(kind=report) 첫 지원자 메시지(팀 채널 또는 팀장 DM)."""
+    message = await db.scalar(
+        select(Message)
+        .where(
+            Message.session_id == session.id,
+            Message.sender == "candidate",
+            Message.channel.in_(("team", "manager_dm")),
+            Message.meta["classification"]["kind"].astext == "report",
         )
+        .order_by(Message.created_at)
+        .limit(1)
     )
-    if due_at is None:
-        return None
-    message = (
-        await db.execute(
-            select(Message)
-            .where(
-                Message.session_id == session.id,
-                Message.sender == "candidate",
-                Message.channel == "team",
-                Message.created_at >= due_at,
-            )
-            .order_by(Message.created_at.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
     if message is None:
         return None
-    return {"id": str(message.id), "t_min": t_min(message, session), "content": message.content}
+    return {
+        "id": str(message.id),
+        "t_min": t_min_at(message.created_at, session),
+        "content": message.content,
+    }
 
 
 async def _adjustments(db: AsyncSession, session_id: uuid.UUID) -> list[RubricAdjustment]:
@@ -498,10 +591,27 @@ async def _adjustments(db: AsyncSession, session_id: uuid.UUID) -> list[RubricAd
     return list(rows.scalars())
 
 
+async def _notes(db: AsyncSession, session_id: uuid.UUID) -> list[dict[str, Any]]:
+    rows = await db.execute(
+        select(ReportNote)
+        .where(ReportNote.session_id == session_id)
+        .order_by(ReportNote.created_at)
+    )
+    return [
+        {
+            "id": str(n.id),
+            "text": n.text,
+            "reviewer_name": n.reviewer_name,
+            "created_at": iso(n.created_at),
+        }
+        for n in rows.scalars()
+    ]
+
+
 @router.get("/sessions/{session_id}/report")
 async def get_report(session_id: uuid.UUID, db: Db, admin: Admin_) -> dict[str, Any]:
     session, invite, position = await own_session(db, admin, session_id)
-    report = await db.get(Report, session_id)
+    report = await db.get(Report, session_id, populate_existing=True)
     if report is None:
         raise error(404, "not_found", "report not ready")
     content = copy.deepcopy(report.content)
@@ -510,22 +620,39 @@ async def get_report(session_id: uuid.UUID, db: Db, admin: Admin_) -> dict[str, 
             "session_id": str(session.id),
             "alias": invite.alias,
             "stage": report.stage,
-            "position": {"name": position.name, "elements": position.elements},
-            "deliverable": await _deliverable(db, session, position),
+            "position": {
+                "name": position.name,
+                "mission_id": position.mission_id,
+                "elements": position.elements,
+            },
+            "deliverable": await deliverable(db, session),
             "rubric": merge_rubric(
-                report.content.get("rubric", {}),
-                await _adjustments(db, session_id),
-                report,
-                is_submitted(report),
+                report.content.get("rubric", {}), await _adjustments(db, session_id), report
             ),
+            "notes": await _notes(db, session_id),
+            "connection_gaps": await views.connection_gaps(db, session),
             "generated_at": iso(report.generated_at),
             "reviewed_at": iso(report.reviewed_at),
+            "purge_at": iso(purge_at(session)),
         }
     )
     return content
 
 
-# ───────────── 리뷰(담당자 조정 + 검토 완료) ─────────────
+@router.post("/sessions/{session_id}/report/regenerate")
+async def regenerate(session_id: uuid.UUID, ctx: Ctx, db: Db, admin: Admin_) -> dict[str, str]:
+    await own_session(db, admin, session_id)
+    session = await ctx.session_service(db).regenerate_report(session_id)
+    return {"status": session.status}
+
+
+@router.get("/sessions/{session_id}/record")
+async def record(session_id: uuid.UUID, db: Db, admin: Admin_) -> list[dict[str, Any]]:
+    session, _, _ = await own_session(db, admin, session_id)
+    return await views.record(db, session)
+
+
+# ───────────── 리뷰(담당자 조정 + 검토 완료)·메모 ─────────────
 
 
 class Adjustment(BaseModel):
@@ -537,20 +664,20 @@ class Adjustment(BaseModel):
 class ReviewIn(BaseModel):
     adjustments: list[Adjustment] = []
     memo: str | None = None
+    reviewer_name: str = Field(min_length=1)
 
 
 def _auto_values(report: Report) -> dict[str, int | None]:
     return {
         item["id"]: item.get("auto")
-        for element in report.content.get("rubric", {}).get("elements", [])
-        for item in element["items"]
+        for _, _, item in rubric_items(report.content.get("rubric", {}))
     }
 
 
-def _scenario_elements(position: Position) -> dict[str, str]:
-    """평가표 item_id → 요소 id."""
+def _scenario_items(position: Position) -> dict[str, tuple[str, str]]:
+    """평가표 item_id → (요소 id, 카드 id)."""
     return {
-        item["id"]: card["element"]
+        item["id"]: (card["element"], card["card_id"])
         for card in position.scenario["cards"]
         if card.get("element")
         for item in card.get("rubric", [])
@@ -558,13 +685,13 @@ def _scenario_elements(position: Position) -> dict[str, str]:
 
 
 def _effective(
-    body: ReviewIn, autos: dict[str, int | None], elements: dict[str, str]
+    body: ReviewIn, autos: dict[str, int | None], items: dict[str, tuple[str, str]]
 ) -> dict[str, tuple[int | None, str]]:
     """자동 값과 다른 항목만 {item_id: (값, 메모)}로. 규칙 위반은 400."""
     seen: set[str] = set()
     changes: dict[str, tuple[int | None, str]] = {}
     for adjustment in body.adjustments:
-        if adjustment.item_id not in elements:
+        if adjustment.item_id not in items:
             raise error(400, "invalid_item", f"unknown item: {adjustment.item_id}")
         if adjustment.item_id in seen:
             raise error(400, "duplicate_item", f"duplicate item: {adjustment.item_id}")
@@ -596,30 +723,38 @@ async def review(
     if report is None or session.status not in ("report_ready", "approving", "reviewed"):
         raise SessionError("conflict", f"cannot review from {session.status}")
 
-    elements = _scenario_elements(position)
+    items = _scenario_items(position)
     autos = _auto_values(report)
     memo = (body.memo or "").strip()
+    name = body.reviewer_name.strip()
 
     if session.status != "report_ready":
         # 이미 제출된 리뷰: 본문 검증보다 already_reviewed(409)가 먼저다
         try:
-            changes = _effective(body, autos, elements)
+            changes = _effective(body, autos, items)
         except HTTPException:
             changes = None
         stored = {a.item_id: (a.reviewer_value, a.memo) for a in await _adjustments(db, session_id)}
-        if changes == stored and memo == (report.review_memo or ""):
+        same = (
+            changes == stored
+            and memo == (report.review_memo or "")
+            and name == (report.reviewer_name or "")
+        )
+        if same:
             return {"status": session.status}
         raise error(409, "already_reviewed", "review already submitted with different content")
-    changes = _effective(body, autos, elements)
+    changes = _effective(body, autos, items)
 
     rows = [
         RubricAdjustment(
             session_id=session_id,
-            element=elements[item_id],
+            element=items[item_id][0],
+            card_id=items[item_id][1],
             item_id=item_id,
             auto_value=autos.get(item_id),
             reviewer_value=value,
             memo=item_memo,
+            reviewer_name=name,
             admin_id=admin.subject,
         )
         for item_id, (value, item_memo) in changes.items()
@@ -627,7 +762,34 @@ async def review(
     db.add_all(rows)
     _, total = reviewer_scores(report.content.get("rubric", {}), {r.item_id: r for r in rows})
     report.reviewer_met = total["met"]
-    report.reviewer_judged = total["judged"]
+    report.reviewer_unmet = total["unmet"]
+    report.reviewer_no_record = total["no_record"]
     report.review_memo = memo or None
+    report.reviewer_name = name
     session = await ctx.session_service(db).approve(session_id)  # 한 번 커밋
     return {"status": session.status}
+
+
+class NoteIn(BaseModel):
+    text: str = Field(min_length=1)
+    reviewer_name: str = Field(min_length=1)
+
+
+@router.post("/sessions/{session_id}/report/notes")
+async def add_note(
+    session_id: uuid.UUID, body: NoteIn, db: Db, admin: Admin_
+) -> dict[str, list[dict[str, Any]]]:
+    """검토 완료 뒤(approving·reviewed) 메모 추가. 값은 바꾸지 않는다."""
+    session, _, _ = await own_session(db, admin, session_id)
+    if session.status not in ("approving", "reviewed"):
+        raise SessionError("conflict", f"cannot add notes from {session.status}")
+    db.add(
+        ReportNote(
+            session_id=session_id,
+            text=body.text.strip(),
+            reviewer_name=body.reviewer_name.strip(),
+            admin_id=admin.subject,
+        )
+    )
+    await db.commit()
+    return {"notes": await _notes(db, session_id)}

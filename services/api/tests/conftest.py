@@ -136,9 +136,12 @@ def service(db, hub, runner, publisher, locks) -> SessionService:
     return SessionService(db, hub=hub, runner=runner, publisher=publisher, locks=locks)
 
 
+ALL_FIVE = ["responsibility", "planning", "adaptability", "collaboration", "honesty"]
+
+
 @pytest.fixture
 def make_position(db: AsyncSession):
-    async def factory(elements: list[str], session_minutes: int = 120) -> Position:
+    async def factory(elements: list[str] = ALL_FIVE, session_minutes: int = 120) -> Position:
         scenario, version = build_scenario(SCENARIOS, elements, session_minutes)
         company = Company(name="테스트 회사")
         db.add(company)
@@ -146,6 +149,7 @@ def make_position(db: AsyncSession):
         position = Position(
             company_id=company.id,
             name="프로덕트 기획",
+            mission_id=scenario["mission_id"],
             elements=elements,
             session_minutes=session_minutes,
             catalog_version=version,
@@ -156,3 +160,24 @@ def make_position(db: AsyncSession):
         return position
 
     return factory
+
+
+@pytest.fixture
+def started_session(service, make_position):
+    """초대 → 동의 → 시작까지 진행한 세션(in_progress)."""
+
+    async def factory(elements: list[str] = ALL_FIVE, session_minutes: int = 120):
+        position = await make_position(elements, session_minutes)
+        session, _, _ = await service.create_for_invite(position.id, "지원자A", "a@example.com")
+        await service.consent(session.id)
+        return await service.start(session.id)
+
+    return factory
+
+
+async def to_completed(service: SessionService, session_id) -> None:
+    """제출(reporting) → 보고 없이 종료(completed). 보고 대기 상한을 기다리지 않고 complete를 바로
+    부른다.
+    """
+    await service.submit(session_id)
+    await service.complete(session_id, "submitted")

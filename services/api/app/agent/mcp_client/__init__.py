@@ -30,13 +30,14 @@ TOOL_SERVER: dict[str, str] = {
             "get_session",
             "list_messages",
             "get_board",
-            "get_document_state",
+            "get_shared_documents",
             "post_message",
             "set_division",
             "update_task",
-            "write_document_part",
+            "send_document",
             "release_document",
             "record_observation",
+            "update_observation",
         )
     },
     **{
@@ -45,10 +46,11 @@ TOOL_SERVER: dict[str, str] = {
     },
 }
 
-# 그래프별 허용 목록. reindex_documents는 어느 에이전트에도 열지 않는다.
-# respond는 페르소나별로 나눈다: 팀장 컨텍스트는 팀 채널·보드·문서 상태뿐이라 회사 문서 도구가 없다.
-RESPOND_TOOLS = frozenset({"search_documents", "get_document", "get_board", "get_document_state"})
-MANAGER_RESPOND_TOOLS = frozenset({"get_board", "get_document_state"})
+# 그래프별 허용 목록. reindex_documents는 어느 에이전트에도 열지 않는다. respond는 페르소나별로
+# 나눈다(contracts.md 허용 목록): 팀장은 회사 문서의 뜻 질문에 답하려고 search_documents만 쓰고
+# get_document는 없다.
+RESPOND_TOOLS = frozenset({"search_documents", "get_document", "get_board", "get_shared_documents"})
+MANAGER_RESPOND_TOOLS = frozenset({"search_documents", "get_board", "get_shared_documents"})
 PERSONA_TOOLS = {"colleague": RESPOND_TOOLS, "manager": MANAGER_RESPOND_TOOLS}
 ASSISTANT_TOOLS = frozenset({"search_documents", "get_document"})
 # 결정적 노드가 코드로 직접 부르는 도구(business-mcp 전부 + rag 조회)

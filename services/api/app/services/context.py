@@ -4,12 +4,12 @@ run.py가 한 번 만든다.
 """
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from starlette.requests import HTTPConnection
 
-from app.agent.runner import AgentRunner, FakeAgentRunner
+from app.agent.runner import AgentRunner, AssistantRunner, FakeAgentRunner, FakeAssistantRunner
 from app.config import Settings, get_settings
 from app.db import make_engine, make_session_factory
 from app.hub import Hub
@@ -28,6 +28,8 @@ class AppContext:
     locks: SessionLocks
     publisher: Publisher
     runner: AgentRunner
+    # 어시스턴트 훅. 기본은 고정 문장, agent-assistant 트랙이 그래프 구현으로 바꾼다
+    assistant: AssistantRunner = field(default_factory=FakeAssistantRunner)
 
     def session_service(self, db: AsyncSession) -> SessionService:
         return SessionService(
@@ -43,8 +45,8 @@ class AppContext:
 def build_context(settings: Settings | None = None) -> AppContext:
     """runner는 환경변수 AGENT_RUNNER로 고른다.
 
-    fake(기본): FakeAgentRunner(내부 저장을 직접 호출).
-    session: LangGraph 세션 그래프(gpt-4o-mini, business-mcp·rag-mcp 경유, PostgresSaver).
+    fake(기본): FakeAgentRunner(내부 저장을 직접 호출). session: LangGraph 세션 그래프(gpt-4o-mini,
+    business-mcp·rag-mcp 경유, PostgresSaver).
     """
     settings = settings or get_settings()
     engine = make_engine(settings.database_url)

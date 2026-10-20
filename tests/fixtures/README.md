@@ -29,6 +29,7 @@ id는 파일 사이에서 같은 행을 가리킨다: 메시지 `m-*`, 지원자
 | `candidate_entry.json`, `candidate_entry_completed.json` | GET /s/{token} (invited, completed + debrief_token) |
 | `candidate_session_token.json` | POST /s/{token}/consent·resume 응답 |
 | `candidate_start.json` | POST /s/{token}/start 응답 |
+| `state_start.json` | State 스냅샷(시작 직후: tasks 전부 null, 킥오프 메시지만) |
 | `state.json` | State 스냅샷(in_progress, 47.5분) |
 | `state_reporting.json` | State 스냅샷(reporting, deadline_at) |
 | `message.json` | Message (State의 첫 메시지) |

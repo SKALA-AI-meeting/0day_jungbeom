@@ -1,7 +1,8 @@
 """완료 기준(docs/worker-infra/design.md):
 - draft 생성 후 그래프가 멈춤 → approve로 같은 thread 재개 → final 저장(draft와 동일 해시)
 - 중복 approve 멱등, final 저장 후 ack 전 재전달은 200 기존 값
-- LLM 사용량 기록, 금지어·타 세션 근거 id 제거
+- 재생성: final 뒤 세션이 completed로 돌아오면 thread를 지우고 새 draft
+- 사용량은 LLM 호출 없이 기록(리포트 문장은 카탈로그에서 온다)
 """
 
 import uuid
@@ -78,11 +79,10 @@ async def test_draft_pauses_then_approve_resumes_with_same_hash(api, fake_api, c
     assert fake_api.status == "report_ready"
     draft = fake_api.posts("/report/draft")[0]["content"]
     assert draft["stage"] == "draft"
-    assert draft["rubric"]["auto_total"] == {"met": 8, "judged": 8, "no_record": 0}
+    assert draft["rubric"]["auto_total"] == {"met": 18, "unmet": 2, "no_record": 0}
 
     # generate 재전달: 멈춘 thread는 collect·draft를 다시 돌지 않고 draft 저장만 한다
     await worker.handle("report.generate", body, worker.generate)
-    assert llm.calls == 1
     assert len(fake_api.posts("/report/draft")) == 2
 
     fake_api.status = "approving"  # 담당자 검토 완료(api)
@@ -91,7 +91,7 @@ async def test_draft_pauses_then_approve_resumes_with_same_hash(api, fake_api, c
     final = fake_api.posts("/report/final")[0]["content"]
     assert content_hash(final) == content_hash(draft)
     assert fake_api.status == "reviewed"
-    assert llm.calls == 1  # 재개 때 draft 노드(LLM 요약)는 다시 돌지 않는다
+    assert llm.calls == 0
 
 
 async def test_duplicate_approve_is_idempotent(api, fake_api):
@@ -125,6 +125,25 @@ async def test_redelivery_after_final_before_ack_returns_existing(api, fake_api)
     assert is_done(state) and state.values["final"]["status"] == "reviewed"  # 200 기존 값
 
 
+async def test_regenerate_after_final_starts_new_thread(api, fake_api, checkpointer):
+    """리포트 재생성: final 뒤 api가 draft를 지우고 completed로 되돌리면 이전 승인 체크포인트를
+    이어받지 않고 다시 모은 데이터로 새 draft를 만든다."""
+    worker, graph, _, _ = make_worker(api, checkpointer)
+    body = {"session_id": fake_api.session_id, "attempt": 1}
+    await worker.handle("report.generate", body, worker.generate)
+    fake_api.status = "approving"
+    await worker.handle("report.approve", body, worker.approve)
+
+    fake_api.status, fake_api.report = "completed", None
+    row = next(o for o in fake_api.data["observations"] if o["card_id"] == "adaptability_change")
+    row["label"] = "no_evidence"
+    await worker.handle("report.generate", body, worker.generate)
+    assert is_paused(await graph.aget_state(thread_config(fake_api.session_id)))
+    drafts = fake_api.posts("/report/draft")
+    assert len(drafts) == 2 and fake_api.status == "report_ready"
+    assert drafts[1]["content"]["rubric"]["auto_total"] == {"met": 15, "unmet": 1, "no_record": 4}
+
+
 async def test_usage_recorded_with_draft(api, fake_api):
     worker, _, _, _ = make_worker(api, InMemorySaver())
     await worker.handle(
@@ -132,39 +151,4 @@ async def test_usage_recorded_with_draft(api, fake_api):
     )
     usage = fake_api.posts("/report/draft")[0]["usage"]
     assert usage["model"] == "gpt-4o-mini"
-    assert (usage["llm_calls"], usage["tokens_in"], usage["tokens_out"]) == (1, 120, 40)
-
-
-async def test_forbidden_words_and_foreign_evidence_removed(api, fake_api, ids_map):
-    coop = fake_api.data["session"]["position"]["scenario"]["cards"][0]
-    coop["label_texts"]["negotiate_timing"] = (
-        "도울 시점을 제안함. 상위 10% 응답으로 합격권임. 응답 속도는 1위다."
-    )
-    quote = "우선순위상 1위인 제 파트 먼저 하고 15분 뒤에 봐요."  # 원문 인용은 지우지 않는다
-    next(m for m in fake_api.data["messages"] if m["id"] == ids_map["c1"])["content"] = quote
-    llm = FakeLLM(
-        "재참여율 지표 요약을 맡겼다. 이 지원자는 채용을 추천할 만하다. AI 활용은 만점이다. "
-        "검증 누락은 감점, 출처 확인은 가산점이다. 동료 중 2등이다. "
-        "작업 우선순위를 먼저 물었다."
-    )
-    worker, _, _, _ = make_worker(api, InMemorySaver(), llm)
-    await worker.handle(
-        "report.generate", {"session_id": fake_api.session_id, "attempt": 1}, worker.generate
-    )
-    draft = fake_api.posts("/report/draft")[0]["content"]
-
-    section = draft["sections"][0]
-    assert section["observed"] == "도울 시점을 제안함."
-    assert (
-        draft["ai_usage"]["summary"] == "재참여율 지표 요약을 맡겼다. 작업 우선순위를 먼저 물었다."
-    )
-    assert section["evidence"][0]["quote"] == quote
-    assert draft["rubric"]["auto_total"]["met"] == 8  # 평가표 숫자는 검사 대상이 아님
-
-    foreign = {ids_map["foreign1"], ids_map["foreign2"]}
-    section_ids = {e["id"] for e in section["evidence"]}
-    item_ids = {
-        e["id"] for item in draft["rubric"]["elements"][0]["items"] for e in item["evidence"]
-    }
-    assert section_ids == {ids_map["c1"]} and not foreign & item_ids
-    assert ids_map["c1"] in item_ids
+    assert (usage["llm_calls"], usage["tokens_in"], usage["tokens_out"]) == (0, 0, 0)

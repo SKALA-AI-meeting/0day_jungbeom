@@ -28,7 +28,15 @@ from sqlalchemy import select
 from websockets.asyncio.client import connect
 
 GROUNDING = yaml.safe_load(
-    (REPO_ROOT / "scenarios" / "prompts" / "fixtures" / "grounding.yaml").read_text("utf-8")
+    (
+        REPO_ROOT
+        / "scenarios"
+        / "missions"
+        / "planning"
+        / "prompts"
+        / "fixtures"
+        / "grounding.yaml"
+    ).read_text("utf-8")
 )
 G05 = next(c for c in GROUNDING["cases"] if c["id"] == "g05_interview_not_released")
 INTERVIEW_LINE = (
@@ -40,7 +48,7 @@ def classified(kind: str = "question") -> str:
     return json.dumps({"kind": kind, "instruction": None, "part_no": None})
 
 
-async def start_session(service, make_position, elements=("cooperation",)) -> uuid.UUID:
+async def start_session(service, make_position, elements=("collaboration",)) -> uuid.UUID:
     position = await make_position(list(elements))
     session, _, _ = await service.create_for_invite(position.id, "A", "a@example.com")
     await service.consent(session.id)
@@ -150,7 +158,7 @@ async def test_tool_outside_allowlist_is_rejected(stack, service, make_position,
         ),
         tool_call("reindex_documents"),
         tool_call("get_board", session_id=str(other)),  # 허용 도구: session_id는 덮어쓴다
-        tool_call("get_document_state"),  # 상한(3회) 뒤에도 도구를 고르면 루프를 끝내고 폴백
+        tool_call("get_shared_documents"),  # 상한(3회) 뒤에도 도구를 고르면 루프를 끝내고 폴백
     ]
     async with stack.ctx.session_factory() as session_db:
         message, run_id, _ = await accept_candidate_message(
@@ -179,15 +187,17 @@ async def test_tool_outside_allowlist_is_rejected(stack, service, make_position,
         "forbidden",
         None,
     ]
-    assert tool_results[2] == {"ok": True, "data": {"tasks": []}}
+    board = tool_results[2]["data"]["tasks"]
+    assert [(t["part_no"], t["assignee"]) for t in board] == [(n, None) for n in range(1, 6)]
     assert [(m.sender, m.content) for m in await persona_messages(db, session_id)] == [
         ("colleague", FALLBACK_TEXT)
     ]
     async with McpClient({RAG: stack.servers.mcp_urls[RAG]}, session_id) as mcp:
         manager = mcp.scope(PERSONA_TOOLS["manager"])
-        assert (await manager.call("search_documents", {"query": "지표"}))["error"]["code"] == (
-            "forbidden"
-        )
+        # 팀장은 회사 문서 뜻 질문에 search_documents만 쓴다(contracts.md 허용 목록). 전문 조회는
+        # 없다
+        denied = await manager.call("get_document", {"doc_id": "metrics"})
+        assert denied["error"]["code"] == "forbidden"
 
 
 async def test_unreleased_document_question_answers_not_shared(stack, service, make_position, db):

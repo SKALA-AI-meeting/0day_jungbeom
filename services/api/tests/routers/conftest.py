@@ -2,6 +2,7 @@ import pytest
 from app.config import get_settings
 from app.services.context import AppContext
 
+from tests.conftest import ALL_FIVE
 from tests.routers.support import bearer, build_clients
 
 
@@ -63,7 +64,7 @@ async def other_admin(signup):
 
 @pytest.fixture
 def new_position(api, admin):
-    async def make(elements=("cooperation", "responsibility"), headers=None) -> dict:
+    async def make(elements=tuple(ALL_FIVE), headers=None) -> dict:
         res = await api.post(
             "/admin/positions",
             json={"name": "프로덕트 기획", "elements": list(elements)},
@@ -90,8 +91,8 @@ def invite(api, admin):
 
 
 @pytest.fixture
-def started_session(service):
-    """초대 토큰으로 consent·start까지 진행시킨다. (session_id) → in_progress."""
+def start_invited(service):
+    """초대된 세션을 consent·start까지 진행시킨다. (session_id) → in_progress."""
     import uuid
 
     async def make(session_id: str):

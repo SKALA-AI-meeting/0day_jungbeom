@@ -329,7 +329,24 @@
                 "memo": null,
                 "adjusted": false,
                 "no_record_reason": null,
-                "evidence": []
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-31",
+                    "t_min": 62.0,
+                    "channel": "team",
+                    "quote": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
+                    "context": {
+                      "prev_persona_message": "리서치 담당 · 60분: 사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
+                      "card_at_t_min": 60.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-31",
+                      "t_min": 62.0
+                    }
+                  }
+                ]
               },
               {
                 "id": "resp_told_manager",
@@ -392,7 +409,7 @@
                     "t_min": 12.0,
                     "part_no": 1,
                     "field": "assignee",
-                    "summary": "1번 카드 assignee 변경(12분)",
+                    "summary": "1번 담당 → 지원자(12분)",
                     "context": {
                       "prev_persona_message": null,
                       "card_at_t_min": 10.0
@@ -437,7 +454,7 @@
                     "t_min": 12.5,
                     "part_no": 1,
                     "field": "due_min",
-                    "summary": "1번 카드 due_min 변경(12.5분)",
+                    "summary": "1번 언제까지 → 40분(12.5분)",
                     "context": {
                       "prev_persona_message": null,
                       "card_at_t_min": 10.0
@@ -615,6 +632,20 @@
                       "id": "m-36",
                       "t_min": 77.0
                     }
+                  },
+                  {
+                    "type": "document",
+                    "id": "rev-3",
+                    "t_min": 80.0,
+                    "doc_id": "doc-c1",
+                    "part_no": 1,
+                    "revision": 2,
+                    "summary": "1번 파트 편집(80분)",
+                    "context": {
+                      "prev_persona_message": null,
+                      "card_at_t_min": 75.0
+                    },
+                    "record_ref": null
                   }
                 ]
               },
@@ -655,7 +686,24 @@
                 "memo": null,
                 "adjusted": false,
                 "no_record_reason": null,
-                "evidence": []
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-36",
+                    "t_min": 77.0,
+                    "channel": "dm",
+                    "quote": "도현님, 3번은 48시간 후속 모임 제안 기능 하나로 좁혀 주시고 5번 일정은 이번 분기 기준으로 바꿔 주세요. 사례는 그대로 두셔도 돼요.",
+                    "context": {
+                      "prev_persona_message": "한서윤 팀장 · 75분: 대표님과 이야기해 보니 핵심 기능을 '첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고, 출시 일정은 다음 분기에서 이번 분기로 당겨 주세요. 대상 사용자·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요.",
+                      "card_at_t_min": 75.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-36",
+                      "t_min": 77.0
+                    }
+                  }
+                ]
               }
             ]
           }
@@ -912,6 +960,10 @@
           "situation": "담당 파트에 필요한 인터뷰 자료 지연",
           "event_fired": true,
           "card_at_t_min": 60.0,
+          "window": {
+            "start_min": 60.0,
+            "end_min": 75.0
+          },
           "observed": "공개 전에 지연과 3번 파트 영향을 팀 채널에 알림",
           "no_record_reason": null,
           "note": null,
@@ -959,6 +1011,10 @@
           "situation": "동료가 파트를 어떻게 나눌지 묻는다",
           "event_fired": true,
           "card_at_t_min": 10.0,
+          "window": {
+            "start_min": 0.0,
+            "end_min": 30.0
+          },
           "observed": "파트 5개의 담당을 직접 정하고 보드에 순서와 마감을 적음",
           "no_record_reason": null,
           "note": null,
@@ -985,7 +1041,7 @@
               "t_min": 12.0,
               "part_no": 1,
               "field": "assignee",
-              "summary": "1번 카드 assignee 변경(12분)",
+              "summary": "1번 담당 → 지원자(12분)",
               "context": {
                 "prev_persona_message": null,
                 "card_at_t_min": 10.0
@@ -1002,7 +1058,7 @@
               "t_min": 12.5,
               "part_no": 1,
               "field": "due_min",
-              "summary": "1번 카드 due_min 변경(12.5분)",
+              "summary": "1번 언제까지 → 40분(12.5분)",
               "context": {
                 "prev_persona_message": null,
                 "card_at_t_min": 10.0
@@ -1021,6 +1077,10 @@
           "situation": "동료가 초안 v1을 보내며 진행을 묻는다",
           "event_fired": true,
           "card_at_t_min": 45.0,
+          "window": {
+            "start_min": 45.0,
+            "end_min": 60.0
+          },
           "observed": "4번 초안을 열어 보고 방향에 대한 의견을 남김",
           "no_record_reason": null,
           "note": null,
@@ -1072,6 +1132,10 @@
           "situation": "팀장이 핵심 기능 범위와 출시 일정을 바꾼다(마감 그대로)",
           "event_fired": true,
           "card_at_t_min": 75.0,
+          "window": {
+            "start_min": 75.0,
+            "end_min": 90.0
+          },
           "observed": "바뀐 핵심 기능을 1번 문서에 반영하고 동료에게 3·5번 변경점을 정리해 줌",
           "no_record_reason": null,
           "note": null,
@@ -1138,6 +1202,10 @@
           "situation": "바쁜 시점에 동료가 10분만 같이 봐 달라고 한다",
           "event_fired": true,
           "card_at_t_min": 30.0,
+          "window": {
+            "start_min": 30.0,
+            "end_min": 45.0
+          },
           "observed": null,
           "no_record_reason": "no_activity",
           "evidence": [],
@@ -1149,6 +1217,10 @@
           "situation": "리뷰 때 동료가 근거를 들어 지원자 결정에 다른 의견을 낸다",
           "event_fired": true,
           "card_at_t_min": 90.5,
+          "window": {
+            "start_min": 90.0,
+            "end_min": 110.0
+          },
           "observed": "동료 의견을 인정하면서 지표 근거로 자기 결정을 설명함",
           "no_record_reason": null,
           "note": null,
@@ -1183,6 +1255,10 @@
           "situation": "팀장이 \"다 됐다고 전해도 되죠?\"와 함께 보고를 요청한다",
           "event_fired": true,
           "card_at_t_min": 110.0,
+          "window": {
+            "start_min": 110.0,
+            "end_min": 115.0
+          },
           "observed": "동료 몫을 동료 것으로 말하고 5번 미완료를 밝힘",
           "no_record_reason": null,
           "note": null,

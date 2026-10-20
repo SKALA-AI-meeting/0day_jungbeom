@@ -1,5 +1,5 @@
-"""rag-mcp 도구 4개. 공개 여부와 색인 버전은 api 내부 `GET /internal/sessions/{id}/documents`가
-최종 판단하고, rag-mcp는 그 목록으로 거르기만 한다.
+"""rag-mcp 도구 4개. 공개 여부와 색인 버전은 api 내부 `GET /internal/sessions/{id}/documents`가 최종
+판단하고, rag-mcp는 그 목록으로 거르기만 한다.
 
 반환은 `{ok, data}` 또는 `{ok:false, error:{code, message, retryable}}`.
 """
@@ -34,8 +34,8 @@ async def search_documents(
 ) -> dict[str, Any]:
     """이 세션에 공개된 회사 문서에서 질문과 가까운 문단을 찾는다.
 
-    세션의 카탈로그 버전으로 색인된 청크 중 공개된 문서만 코사인 유사도 순으로 돌려준다.
-    결과는 [{doc_id, title, chunk, score}]. 해당 버전 색인이 없으면 upstream_unavailable.
+    세션의 카탈로그 버전으로 색인된 청크 중 공개된 문서만 코사인 유사도 순으로 돌려준다. 결과는
+    [{doc_id, title, chunk, score}]. 해당 버전 색인이 없으면 upstream_unavailable.
     """
     listed = await _session_documents(session_id)
     if not listed["ok"]:
@@ -71,9 +71,9 @@ async def search_documents(
 async def get_document(doc_id: DocId, session_id: SessionId) -> dict[str, Any]:
     """공개된 회사 문서 하나의 전문을 읽는다. 결과는 {doc_id, title, content}.
 
-    본문은 세션의 카탈로그 버전으로 색인된 내용이라 같은 채용 건의 지원자는 같은 문서를 본다.
-    아직 공개되지 않은 문서는 not_released, 없는 문서는 not_found,
-    해당 버전 색인이 없으면 upstream_unavailable.
+    본문은 세션의 카탈로그 버전으로 색인된 내용이라 같은 채용 건의 지원자는 같은 문서를 본다. 아직
+    공개되지 않은 문서는 not_released, 없는 문서는 not_found, 해당 버전 색인이 없으면
+    upstream_unavailable.
     """
     listed = await _session_documents(session_id)
     if not listed["ok"]:
@@ -106,18 +106,25 @@ async def list_documents(session_id: SessionId) -> dict[str, Any]:
 
 
 @mcp.tool
-async def reindex_documents() -> dict[str, Any]:
-    """현재 카탈로그 버전으로 고정 회사 문서를 400자 청크로 나눠 다시 색인한다(관리용).
+async def reindex_documents(
+    mission_id: Annotated[
+        str, Field(min_length=1, description="색인할 미션 ID(기본 planning)")
+    ] = documents.DEFAULT_MISSION,
+) -> dict[str, Any]:
+    """미션의 현재 카탈로그 버전으로 회사 문서를 400자 청크로 나눠 다시 색인한다(관리용).
 
-    같은 버전은 덮어써서 몇 번 불러도 결과가 같고, 다른 버전의 청크는 지우지 않아
-    진행 중인 채용 건이 자기 버전으로 계속 검색할 수 있다.
-    결과는 {indexed: 색인된 청크 수, model, dim, catalog_version}. 에이전트에는 노출하지 않는다.
+    같은 버전은 덮어써서 몇 번 불러도 결과가 같고, 다른 버전의 청크는 지우지 않아 진행 중인 채용
+    건이 자기 버전으로 계속 검색할 수 있다. 결과는 {indexed: 색인된 청크 수, model, dim,
+    catalog_version}. 에이전트에는 노출하지 않는다.
     """
     conf = client.current_settings()
-    version = documents.catalog_version(conf.scenarios_dir)
+    try:
+        version = documents.catalog_version(conf.scenarios_dir, mission_id)
+    except FileNotFoundError:
+        return fail("not_found", f"mission {mission_id} not found")
     pieces = [
         (doc.doc_id, no, text)
-        for doc in documents.load_documents(conf.scenarios_dir)
+        for doc in documents.load_documents(conf.scenarios_dir, mission_id)
         for no, text in enumerate(documents.chunk(doc.content))
     ]
     embedder = get_embedder(conf.embedding_model)

@@ -2,7 +2,9 @@
 
 모두 prefetch 1, manual ack. 메시지 처리 규칙:
 - generate: thread 상태 조회 → (멈춤이면 건너뜀) 그래프 실행 → interrupt에서 멈춤
-  → POST /report/draft → ack. 체크포인트 → draft 저장 → ack 순서라 ack 뒤 승인에도 재개 대상이 있다.
+  → POST /report/draft → ack. thread가 이미 끝났는데 세션이 completed면 리포트 재생성이라
+  thread를 지우고 처음부터 만든다(이전 승인 체크포인트를 이어받지 않음).
+  체크포인트 → draft 저장 → ack 순서라 ack 뒤 승인에도 재개 대상이 있다.
 - approve: 멈춘 thread를 Command(resume=True)로 재개 → finalize(POST /report/final) → ack.
   이미 끝났으면 ack만(중복 approve 멱등). 체크포인트가 없으면 nack 없이 15초 뒤 재발행.
 - 실패: attempt+1로 재발행(백오프 5·15·45초 대기 후, 브로커 확인) → 원본 ack.
@@ -83,9 +85,14 @@ class ReportWorker:
         session_id = body["session_id"]
         config = thread_config(session_id)
         snapshot = await self.graph.aget_state(config)
-        if is_done(snapshot):
-            log.info("report %s already final, ack only", session_id)
-            return
+        if is_done(snapshot) or snapshot.next == ("finalize",):
+            if await self.api.session_status(session_id) != "completed":
+                log.info("report %s already final, ack only", session_id)
+                return
+            # 리포트 재생성(regenerate): api가 draft를 지우고 completed로 되돌렸다. 이전 승인
+            # 체크포인트를 이어받지 않도록 thread를 지우고 처음부터 다시 만든다
+            await self.graph.checkpointer.adelete_thread(config["configurable"]["thread_id"])
+            snapshot = await self.graph.aget_state(config)
         if not is_paused(snapshot):
             # 체크포인트가 중간에 멈춰 있으면(None 입력) 거기서 이어서, 없으면 처음부터
             start = None if has_checkpoint(snapshot) else {"session_id": session_id}

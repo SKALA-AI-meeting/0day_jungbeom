@@ -29,6 +29,6 @@ lint:
 	@if [ -f apps/web/package.json ]; then (cd apps/web && pnpm lint) || exit 1; fi
 
 e2e:             ## 전체 compose가 떠 있어야 한다
-	uv run --project services/api python tests/e2e/run.py --script scenarios/e2e/all_four.yaml
+	uv run --project services/api python tests/e2e/run.py --script scenarios/e2e/all_five.yaml
 
 .PHONY: infra-up infra-down up seed test test-live lint e2e

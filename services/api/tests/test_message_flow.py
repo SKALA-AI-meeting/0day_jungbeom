@@ -13,7 +13,7 @@ from tests.conftest import FakeSocket
 async def test_candidate_message_runs_agent_and_broadcasts(
     db, service, make_position, hub, runner, locks
 ):
-    position = await make_position(["cooperation"])
+    position = await make_position(["collaboration"])
     session, _, _ = await service.create_for_invite(position.id, "A", "a@example.com")
     await service.consent(session.id)
     await service.start(session.id)
