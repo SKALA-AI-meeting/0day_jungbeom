@@ -4,11 +4,11 @@
 
 ## 현재 상태 (2026-10-20)
 
-- M0 완료. 문서·계약·카탈로그·회사 문서·대본·compose·스키마·Makefile·ruff 설정이 `main`에 있다. 앱 코드는 아직 없다(각 `services/*`, `apps/web`은 README만).
-- Codex 설계 리뷰 1차 반영 완료(커밋 4aa8eca). 재검토 결과는 아래 "리뷰 상태".
+- M0 완료. 문서·계약·카탈로그·회사 문서·대본·프롬프트 폴더(README만)·compose·스키마·Makefile·ruff 설정이 `main`에 있다. 앱 코드는 아직 없다(각 `services/*`, `apps/web`은 README만).
+- 설계 리뷰 5라운드(Codex 4, Claude UX 1) 전부 반영 완료. 마지막 반영 커밋은 `git log`의 최신. 설계는 확정 상태이며 **다음 단계는 W0 foundation 개발 착수**다.
 - 환경: `infra/.env`에 OpenAI·LangSmith 키가 들어 있다(git 무시). `infra/.env.local`은 아직 없다(foundation이 만든다).
 - 저장소: GitHub `SKALA-AI-meeting/Day-0_zaeho`, main 단일 브랜치. worktree 없음.
-- Herdr: 리뷰 pane `design-reviewer`(w1J:p4, Codex)는 재검토가 끝나면 닫는다.
+- Herdr: 열려 있는 리뷰·개발 pane 없음. Claude pane은 처음 보는 폴더(worktree)에서 폴더 신뢰 확인에 멈추므로, worktree를 만든 뒤 사용자에게 한 번 "Yes, I trust"를 눌러 달라고 한다. Claude pane의 긴 출력은 `herdr agent read`로 다 못 읽으므로 결과를 파일로 저장하게 시킨다.
 
 ## 다음 행동
 
@@ -65,4 +65,4 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 
 ## 결정 요약 (자세한 것은 docs/decisions.md)
 
-요소 선택은 채용 건 단위 1~4개. 에이전트는 api 모듈. 관찰은 규칙+레이블 분류. Recovery는 재시도 2회 후 폴백, 대체 모델 없음. 사람 승인은 리포트 그래프 interrupt. 시계는 접속과 무관하게 흐름. 임베딩 BGE-M3 로컬. MVP 제외 목록은 plan.md. 동시 pane 4개, 인프라만 docker.
+요소 선택은 채용 건 단위 1~4개. 지원자는 리드(분업 결정·재지시·보고). 동료는 회사 인재상 페르소나(성향 자유 + 의무 카드 + 선점 금지, 카탈로그 `persona`). 평가표는 요소당 4항목, AI 분류를 입력으로 규칙이 1/0/기록 없음 산출, 담당자가 조정해 확정(`docs/common/rubric.md`). 리포트는 산출물 + 관찰·평가표 + AI 활용. 에이전트는 api 모듈, 작업 기억 `work_notes`, 중간 초안 texture. 관찰은 규칙 지표 + 레이블 분류, 창은 다음 요소 카드까지. Recovery는 재시도 2회 후 폴백, 대체 모델 없음. 사람 승인은 리포트 그래프 interrupt(검토 완료 = 평가표 조정 확정). 시계는 접속과 무관하게 흐름. 임베딩 BGE-M3 로컬. MVP 제외 목록은 plan.md. 동시 pane 4개, 인프라만 docker.
