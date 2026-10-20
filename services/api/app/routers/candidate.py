@@ -33,6 +33,7 @@ from app.auth import (
     require_debrief_reader,
     session_token,
 )
+from app.masking import mask
 from app.models import (
     Admin,
     AgentRun,
@@ -542,7 +543,11 @@ async def assistant(
     """어시스턴트 훅(ctx.assistant). 요청·응답을 assistant 채널 메시지와 assistant_calls로 남긴다.
 
     세션 그래프와 별개 thread라 세션 Lock을 잡지 않는다. 60회를 넘으면 429 assistant_limit.
+    한도 확인과 assistant_calls INSERT는 세션 행 잠금(FOR UPDATE)으로 직렬화해 동시 요청이 한도를
+    넘지 못하게 한다(커밋까지 잠금 유지, 프로세스가 여러 개여도 유효). 요청 본문은 저장·그래프
+    입력 모두 마스킹한 값이다.
     """
+    await db.execute(select(Session.id).where(Session.id == session_id).with_for_update())
     await _writable(db, session_id)
     used = await db.scalar(
         select(func.count())
@@ -551,15 +556,16 @@ async def assistant(
     )
     if used >= ASSISTANT_LIMIT:
         raise _error(429, "assistant_limit", f"assistant limit {ASSISTANT_LIMIT} reached")
+    prompt = mask(body.prompt)
     request = Message(
-        session_id=session_id, channel="assistant", sender="candidate", content=body.prompt
+        session_id=session_id, channel="assistant", sender="candidate", content=prompt
     )
     db.add(request)
     await db.flush()
     call = AssistantCall(session_id=session_id, request_message_id=request.id)
     db.add(call)
     await db.commit()
-    result = await ctx.assistant.answer(session_id, body.prompt, call.id)
+    result = await ctx.assistant.answer(session_id, prompt, call.id)
     response = Message(
         session_id=session_id,
         channel="assistant",

@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import scheduler
 from app.auth import require_internal
 from app.models import (
+    Admin,
     AssistantCall,
     AssistantReuse,
     Company,
@@ -782,6 +783,10 @@ class TestSessionIn(BaseModel):
     session_minutes: int = 120
     mission_id: str = scenario_service.DEFAULT_MISSION
     alias: str = "e2e"
+    # 둘 중 하나로 회사를 지정하면 그 회사의 채용 건으로 만든다(관리자 화면에서 보이게).
+    # 둘 다 오면 company_id 우선, 없는 회사면 404. 빈 문자열은 지정 실수라 422
+    company_id: uuid.UUID | None = None
+    admin_email: str | None = Field(default=None, min_length=1)
 
 
 @router.post("/test/sessions")
@@ -797,7 +802,18 @@ async def create_test_session(body: TestSessionIn, ctx: Ctx, db: Db) -> dict[str
         raise error(422, "invalid_mission", str(exc)) from exc
     except scenario_service.InvalidElements as exc:
         raise error(422, "invalid_elements", str(exc)) from exc
-    company = await db.scalar(select(Company).where(Company.name == E2E_COMPANY))
+    if body.company_id is not None:
+        company = await db.get(Company, body.company_id)
+    elif body.admin_email is not None:
+        company = await db.scalar(
+            select(Company)
+            .join(Admin, Admin.company_id == Company.id)
+            .where(Admin.email == body.admin_email)
+        )
+    else:
+        company = await db.scalar(select(Company).where(Company.name == E2E_COMPANY))
+    if company is None and (body.company_id is not None or body.admin_email is not None):
+        raise error(404, "not_found", "company not found")
     if company is None:
         company = Company(name=E2E_COMPANY)
         db.add(company)

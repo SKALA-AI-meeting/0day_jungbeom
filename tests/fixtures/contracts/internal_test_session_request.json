@@ -1,0 +1,8 @@
+{
+  "elements": ["planning", "collaboration"],
+  "session_minutes": 120,
+  "mission_id": "planning",
+  "alias": "e2e",
+  "company_id": "company-1",
+  "admin_email": "admin@example.com"
+}

@@ -27,17 +27,31 @@ async def serve(host: str = "0.0.0.0") -> None:
         uvicorn.Server(uvicorn.Config(public, host=host, port=ctx.settings.public_port)),
         uvicorn.Server(uvicorn.Config(internal, host=host, port=ctx.settings.internal_port)),
     ]
-    # 실제 그래프 러너는 첫 실행 전에 체크포인터 풀을 연다(첫 카드가 초기화를 기다리지 않게)
-    if hasattr(ctx.runner, "graph"):
-        await ctx.runner.graph()
-    tasks = [asyncio.create_task(scheduler.run(ctx))]
+    runners = [ctx.runner, ctx.assistant]
+    tasks: list[asyncio.Task] = []
     try:
+        # 실제 그래프 러너는 첫 실행 전에 체크포인터 풀을 연다(첫 카드·첫 질문이 초기화를 기다리지
+        # 않게, 체크포인터 setup의 CREATE INDEX CONCURRENTLY가 요청 중 열린 트랜잭션에 막히지
+        # 않게). warm-up은 최적화라 실패해도 기동은 계속한다(graph()는 첫 사용 때 다시 시도).
+        # Fake 러너에는 graph·aclose가 없어 건너뛴다.
+        for runner in runners:
+            if hasattr(runner, "graph"):
+                try:
+                    await runner.graph()
+                except Exception:
+                    log.exception("runner warm-up failed: %s", type(runner).__name__)
+        tasks.append(asyncio.create_task(scheduler.run(ctx)))
         await asyncio.gather(*(server.serve() for server in servers))
     finally:
         for task in tasks:
             task.cancel()
-        if hasattr(ctx.runner, "aclose"):
-            await ctx.runner.aclose()
+        # 한 러너의 종료 실패가 나머지 정리(다른 러너·publisher·engine)를 막지 않게 한다
+        for runner in runners:
+            if hasattr(runner, "aclose"):
+                try:
+                    await runner.aclose()
+                except Exception:
+                    log.exception("runner aclose failed: %s", type(runner).__name__)
         await ctx.publisher.close()
         await ctx.engine.dispose()
 
