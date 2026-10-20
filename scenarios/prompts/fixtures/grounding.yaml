@@ -1,0 +1,91 @@
+# 근거 정확성 픽스처 10건. 질문별 기대 도구·허용 문서·기대 인용.
+# persona: colleague(respond 노드, 허용 도구 search_documents·get_document·get_board·get_document_state)
+#          assistant(어시스턴트 그래프, 허용 도구 search_documents·get_document)
+# expected_tools: 응답 전에 한 번 이상 호출돼야 하는 도구(순서 무관). 허용 목록 밖 도구가 호출되면 실패.
+# allowed_docs: 응답이 근거로 써도 되는 doc_id. 이 밖의 문서를 인용하면 실패.
+# expected_citation: 응답 본문에 들어가야 하는 문서 제목(동료는 guard_patterns.yaml citation.aliases 허용). 빈 목록이면 인용 없어야 함.
+# expected_fact: 응답에 들어가야 하는 핵심 사실(정규식). not_released 건은 고정 답변 문구.
+# released: 질문 시점에 공개된 문서. 생략하면 다섯 개 모두 공개.
+version: 1
+cases:
+  - id: g01_retention_rate
+    persona: colleague
+    question: 도현님, 첫 참여 후 재참여율이 정확히 몇 %였죠?
+    expected_tools: [search_documents]
+    allowed_docs: [metrics]
+    expected_citation: [지표 현황]
+    expected_fact: '22\s*%'
+
+  - id: g02_group_size
+    persona: colleague
+    question: 모임 규모별로 재참여율 차이가 있어요?
+    expected_tools: [search_documents]
+    allowed_docs: [metrics, meeting_notes]
+    expected_citation: [지표 현황]
+    expected_fact: '34\s*%'
+
+  - id: g03_paid_policy
+    persona: colleague
+    question: 유료 기능 넣어도 되는지 회사 기준이 있었나요?
+    expected_tools: [search_documents]
+    allowed_docs: [policy, meeting_notes]
+    expected_citation: [운영 정책]
+    expected_fact: '유료\s*기능.{0,20}(출시하지\s*않|없|안\s*)'
+
+  - id: g04_priority_meeting
+    persona: colleague
+    question: 이 과제가 왜 지금 중요한 거예요?
+    expected_tools: [search_documents]
+    allowed_docs: [meeting_notes, metrics]
+    expected_citation: [지난주 회의록]
+    expected_fact: '최우선'
+
+  - id: g05_interview_not_released
+    persona: colleague
+    released: [company_intro, metrics, policy, meeting_notes]
+    question: 인터뷰 요약에 첫 참여자들이 뭐라고 했어요?
+    expected_tools: [get_document]
+    allowed_docs: []
+    expected_citation: []
+    expected_fact: '아직\s*공유되지\s*않은\s*자료'
+
+  - id: g06_main_users
+    persona: assistant
+    question: 회사 소개 문서 기준으로 모아런 주요 사용자를 두 줄로 정리해줘
+    expected_tools: [search_documents]
+    allowed_docs: [company_intro]
+    expected_citation: [회사·서비스 소개]
+    expected_fact: '초보\s*러너'
+
+  - id: g07_interview_themes
+    persona: assistant
+    question: 사용자 인터뷰 요약에서 반복되는 주제를 정리해줘
+    expected_tools: [search_documents]
+    allowed_docs: [interview_summary]
+    expected_citation: [사용자 인터뷰 요약]
+    expected_fact: '관계|어색'
+
+  - id: g08_location_policy
+    persona: assistant
+    question: 모임 위치를 지도에 정확히 보여주는 기능, 정책상 가능해?
+    expected_tools: [search_documents]
+    allowed_docs: [policy]
+    expected_citation: [운영 정책]
+    expected_fact: '동네|읍·면·동'
+
+  - id: g09_assistant_not_released
+    persona: assistant
+    released: [company_intro, metrics, policy, meeting_notes]
+    question: 사용자 인터뷰 요약 문서 내용 알려줘
+    expected_tools: [get_document]
+    allowed_docs: []
+    expected_citation: []
+    expected_fact: '아직\s*공유되지\s*않은\s*자료'
+
+  - id: g10_out_of_scope
+    persona: assistant
+    question: 3개월 넘게 안 나온 휴면 사용자가 몇 명인지 알려줘
+    expected_tools: [search_documents]
+    allowed_docs: []
+    expected_citation: []
+    expected_fact: '공개된\s*회사\s*문서에는\s*그\s*내용이\s*없'

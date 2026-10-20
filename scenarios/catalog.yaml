@@ -74,12 +74,12 @@ flow_cards:
     at_fraction: 0.75
     actor: colleague
     channel: team
-    brief: 동료가 확정된 분업에서 자기 담당 파트를 공유 문서에 쓰고 팀 채널에 공유하며 리드의 리뷰를 요청한다.
+    brief: 동료가 확정된 분업에서 자기 담당 파트의 완성본을 공유 문서에 쓰고, 팀 채널에 "제 파트 올렸어요, 리뷰 부탁드려요" 정도로 공유하며 리드의 리뷰를 요청한다. 중간 초안 뒤 바뀐 점은 묻기 전에 늘어놓지 않는다.
   - id: report_request
     at_fraction: 0.9167
     actor: manager
     channel: team
-    brief: 마감 전 리드에게 팀 전체 결과 보고를 요청한다. 지원자의 보고에 답한다.
+    brief: 마감 전 리드에게 팀 전체 결과(누가 무엇을 맡았고 어디까지 됐는지)를 팀 채널로 보고해 달라고 요청한다. 지원자의 보고에는 받았다는 확인과 업무 질문·코멘트 하나로 답하고, 결과나 사람을 판정하지 않는다.
 
 element_cards:
   - id: cooperation
@@ -90,12 +90,12 @@ element_cards:
     brief: 자기가 맡은 파트 중 번호가 가장 작은 파트({colleague_first_part})를 정리하는데 기준이 헷갈린다며 10분만 같이 봐 줄 수 있는지 묻는다. 지원자가 바쁜 시점이다.   # {colleague_first_part}는 확정 division으로 치환
     brief_note: 지원자가 "N분 뒤에 봐요"라고 하면 "그럼 그때 말씀 주세요"로 기대를 분명히 하고 먼저 다시 찾아가지 않는다(지원자가 약속을 지키는지가 관찰).
     labels: [help_now, negotiate_timing, decline, acknowledge_only, ignore]
-    label_texts:
+    label_texts:   # 판정 우선순위와 예시는 prompts/observe_labels.md
       help_now: 자기 일을 멈추고 바로 도움
       negotiate_timing: 자기 일정을 설명하고 도울 시점을 제안함
       decline: 이유를 말하고 거절함
-      acknowledge_only: 답은 했지만 돕는지·언제인지·왜 못 돕는지가 없음
-      ignore: 요청에 답하지 않음
+      acknowledge_only: 답은 했지만 도울지, 언제 도울지, 못 돕는 이유를 말하지 않음
+      ignore: 다른 활동은 있었지만 도움 요청에는 답하지 않음
     metrics: [response_minutes, first_recipient, responded_to_request, response_specific]
     rubric:
       - { id: coop_replied, text: 동료의 도움 요청에 답함, when: { metric: responded_to_request, eq: true }, evidence_types: [message] }
@@ -103,7 +103,7 @@ element_cards:
       - { id: coop_offered_help, text: 바로 돕거나 도울 시점을 제시함, when: { label_in: [help_now, negotiate_timing] }, evidence_types: [message] }
       - { id: coop_specific_response, text: 돕는 방식·시점 또는 거절 이유를 구체적으로 말함, when: { metric: response_specific, eq: true }, only_if: { metric: responded_to_request, eq: true }, evidence_types: [message] }
     situation: 내 일이 바쁠 때 동료의 도움 요청
-    debrief: 00:30 무렵 동료가 도움을 요청한 것은 협력 태도를 보기 위한 연출이었습니다.
+    debrief: 바쁜 시점에 동료가 10분만 같이 봐 달라고 도움을 요청한 것은 협력 태도를 보기 위한 연출이었습니다.
   - id: responsibility
     name: 책임감
     order: 2
@@ -116,11 +116,11 @@ element_cards:
     unselected:
       release_at_start: interview_summary
     labels: [notify_with_alternative, notify_only, silent, ask_colleague]
-    label_texts:
-      notify_with_alternative: 마감 전에 지연을 팀에 알리고 대안을 제시함
-      notify_only: 지연 사실만 알림
-      silent: 알리지 않고 진행함
-      ask_colleague: 동료에게 자료나 도움을 요청함
+    label_texts:   # 판정 우선순위와 예시는 prompts/observe_labels.md
+      notify_with_alternative: 지연을 팀이나 동료에게 알리고 대안을 제시함
+      notify_only: 지연 사실만 알리고 대안은 제시하지 않음
+      silent: 지연을 누구에게도 알리지 않고 진행함
+      ask_colleague: 지연을 풀기 위해 동료에게 자료나 도움을 요청함
     metrics: [response_minutes, first_recipient, notified_before_release, notified_in_team, proposes_alternative, doc_opened_after_release]
     rubric:
       - { id: resp_notified_before_release, text: 자료가 공개되기 전에 지연을 팀이나 동료에게 알림, when: { metric: notified_before_release, eq: true }, evidence_types: [message] }
@@ -128,7 +128,7 @@ element_cards:
       - { id: resp_told_team, text: 팀 채널(팀장이 보는 곳)에 지연을 알림, when: { metric: notified_in_team, eq: true }, evidence_types: [message] }
       - { id: resp_opened_after_release, text: 공개된 인터뷰 요약을 열람함, when: { metric: doc_opened_after_release, eq: true }, evidence_types: [doc_view] }
     situation: 담당 파트에 필요한 인터뷰 자료 지연
-    debrief: 인터뷰 자료가 늦게 도착한 것은 책임감을 보기 위한 연출이었습니다.
+    debrief: 담당 파트에 필요한 인터뷰 자료가 늦어진다는 알림이 지원자님에게만 온 것은 책임감을 보기 위한 연출이었습니다.
   - id: flexibility
     name: 유연성
     order: 3
@@ -138,9 +138,9 @@ element_cards:
     labels: [replan_and_apply, apply_silently, complain_then_apply, refuse_or_ignore]
     label_texts:   # 상호 배타. 판정 우선순위: 문서 미반영이면 refuse_or_ignore → 반영했고 범위·분담 언급이면 replan_and_apply → 반영했고 불만 표현이면 complain_then_apply → 반영했고 메시지 없음/언급 없음이면 apply_silently
       replan_and_apply: 범위·분담을 다시 정하자고 제안하고 기획안에 반영함
-      apply_silently: 말없이 기획안에 반영함
+      apply_silently: 범위·분담·불만 언급 없이 바뀐 대상을 기획안에 반영함
       complain_then_apply: 불만을 표현한 뒤 반영함
-      refuse_or_ignore: 기획안에 반영하지 않음 (말했든 안 했든)
+      refuse_or_ignore: 바뀐 대상을 기획안에 반영하지 않음 (말했든 안 했든)
     metrics: [response_minutes, document_changed_after, mentions_scope_or_division, redirected_colleague]
     rubric:
       - { id: flex_applied_to_doc, text: 바뀐 대상을 기획안에 반영함, when: { metric: document_changed_after, eq: true }, evidence_types: [revision] }
@@ -148,7 +148,7 @@ element_cards:
       - { id: flex_raised_scope, text: 범위·일정·분담을 다시 정하자고 말함, when: { metric: mentions_scope_or_division, eq: true }, evidence_types: [message] }
       - { id: flex_redirected_colleague, text: 동료에게 분담 변경이나 방향 전환을 지시함 (리드), when: { metric: redirected_colleague, eq: true }, evidence_types: [message] }
     situation: 막판 요구사항 변경
-    debrief: 팀장이 대상 사용자를 바꾼 것은 유연성을 보기 위한 연출이었습니다.
+    debrief: 마감은 그대로인 채 팀장이 대상 사용자를 바꾼 것은 유연성을 보기 위한 연출이었습니다.
   - id: respect
     name: 존중·소통
     order: 4
@@ -160,11 +160,11 @@ element_cards:
       review_without_violation: true
     requires_docs: [policy]
     labels: [point_out_with_evidence, point_out_blaming, point_out_vague, not_noticed]
-    label_texts:
+    label_texts:   # 판정 우선순위와 예시는 prompts/observe_labels.md
       point_out_with_evidence: 오류를 알아채고 근거(운영 정책)를 들어 해결 중심으로 지적함
       point_out_blaming: 오류를 지적하되 비난 중심임
       point_out_vague: 오류를 언급하지만 근거가 없음
-      not_noticed: 오류를 알아채지 못함
+      not_noticed: 유료 멤버십 문제를 언급하지 않음
     metrics: [policy_doc_opened, response_minutes, mentions_policy, proposes_fix, colleague_revised_after_feedback]
     rubric:
       - { id: respect_raised_issue, text: 동료 파트의 유료 멤버십 내용을 언급함, when: { label_in: [point_out_with_evidence, point_out_blaming, point_out_vague] }, evidence_types: [message] }
@@ -173,7 +173,7 @@ element_cards:
       - { id: respect_no_blame, text: 지적할 때 비난 중심이 아님, when: { label_in: [point_out_with_evidence, point_out_vague] }, only_if: { label_in: [point_out_with_evidence, point_out_blaming, point_out_vague] }, evidence_types: [message] }   # 언급 자체가 없으면 기록 없음
     aux_facts: [colleague_revised_after_feedback, policy_doc_opened]   # 점수에 쓰지 않고 리포트에 사실로만 표시
     situation: AI 동료의 실수
-    debrief: 동료 파트에 유료 멤버십이 들어 있던 것은 존중·소통을 보기 위한 연출이었습니다.
+    debrief: 동료 파트에 운영 정책과 어긋나는 유료 멤버십이 들어 있던 것은 존중·소통을 보기 위한 연출이었습니다.
 
 rubric_rules:   # 평가표 공통 규칙. 자세한 설명은 docs/common/rubric.md
   item_values: [1, 0, null]        # 충족 / 미충족 / 기록 없음(분모 제외). 기록 없음에는 사유(no_activity·classify_failed·event_not_fired·window_missed)를 붙인다

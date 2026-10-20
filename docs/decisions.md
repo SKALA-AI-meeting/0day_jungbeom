@@ -69,3 +69,10 @@
 - tasks 생성 담당 정정: 위 "foundation 리뷰 반영"의 "tasks는 분업 확정 때 api-candidate가 만든다"를 **api-admin의 내부 division PUT**으로 바꾼다(division과 tasks를 한 트랜잭션). api-candidate의 sync_tasks는 그쪽 수정 라운드에서 제거한다.
 - 리뷰 오류 우선순위: 이미 제출된 세션은 `already_reviewed`(409)가 `memo_required`·`invalid_item`·`duplicate_item`(400)보다 먼저다.
 - 내부 메시지 응답(GET·POST·분류 PUT)은 `meta`를 포함한다(공개 API는 제외). 요청 본문 검증 실패는 두 앱 공통으로 422 `invalid_input`.
+
+## 2026-10-20 prompts 리뷰 반영
+- `silent`(와 `apply_silently`)의 evidence는 문서 revision만 쓴다. 창 안에 지원자 revision이 없으면 silent로 분류하지 않고 `label: null`(→ unclassified)로 둔다. 이유: agent/design.md의 evidence 계약을 유지해 트랙마다 다른 의미의 관찰이 저장되지 않게. 대안: 다른 활동 id 허용(계약 완화, 기각).
+- observe 책임감 입력: `[카드]` 블록에 코드가 계산한 `release_at`(실제 공개 시각, 분)과 `released_before_message`(지원자 메시지 id별 공개 전/후 bool)를 넣는다. LLM은 알림 본문의 "약 15분"으로 공개 시각을 추정하지 않는다. 이유: 실제 지연은 세션 길이에 따라 달라(6분 세션 0.75분) 본문으로 추정하면 오분류한다. 이 값은 observe 전용이고 페르소나 컨텍스트에는 넣지 않는다.
+- 관찰 창 종료: 흐름 카드(report_request 포함)는 창을 닫지 않고, 마지막 요소 창은 제출(세션 종료)까지다. agent/design.md 전이표와 scenario-model.md의 "흐름 카드 포함" 문장을 observe 절에 맞춰 고쳤다. 이유: 마감 보고 메시지의 첫 지적도 존중 창에 들어가게. 대안: report_request에서 닫기(보고 속 지적 누락).
+- 책임감 레이블은 공개 전후와 무관하게 알린 내용으로 고른다. `notify_only`는 "지연 사실만 알리고 대안 없음", `notify_with_alternative`도 시간 조건 없이 "알리고 대안 제시"다. 공개 전 알림 여부는 지표 `notified_before_release`(항목 `resp_notified_before_release`)가 따로 센다. 이유: 레이블과 지표가 같은 사실을 이중으로 세지 않게, 공개 뒤 알림이 null로 빠지지 않게.
+- guard 판정 패턴은 지원자·리드·응답에 대한 평가나 진행 중인 평가 운영 문맥으로 좁히고, 숫자 점수는 별도 `score` 그룹(업무 지표 문장은 `unless`로 보존)으로 막는다. 컨텍스트 유출 픽스처(`scenarios/prompts/fixtures/context_leak.yaml`, 미래 유도 3건·역할 사칭 2건)는 prompts 트랙 담당이다.

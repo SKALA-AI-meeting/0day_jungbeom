@@ -67,7 +67,7 @@ phase: `kickoff → negotiate → work → review → submit → done`
 | negotiate·work | event texture `midpoint_draft` (같은 시각 요소 카드 뒤에 실행) | draft_part | division이 있으면 동료 담당 파트 초안을 `write_document_part`(work_notes 반영, 공개 문서 인용), 보드 doing 유지, 팀 채널에 한 줄 공유(event_id=texture 행). division이 없으면 공유 메시지만. **observe 없음**, 창 경계에도 영향 없음 | 유지 |
 | work | event review | review → observe | 확정 division에서 동료 담당 파트 완성본을 write_document_part(초안 + work_notes.instructions 반영), 보드 done, 공유 메시지 post(both 파트·지원자 파트에 코멘트는 성향에 맡김). respect 행이 있으면 동료 담당 첫 파트에 정책 위반 삽입 → 직전 창 닫기, current_element=respect | review |
 | review·submit | message (kind=fix_request) | fix_part (결정적) | `violation_pointed_out`이면 동료가 인정하고 **자기 파트만** `write_document_part`(코드가 호출, respond 허용 목록은 그대로 조회 4개)로 고친 뒤 알림. 지적 전의 "문장 다듬어 줘" 요청은 문장만 다듬고 정책 위반은 그대로 둔다 | 유지 |
-| review | event report_request | request_report → observe(흐름 카드도 열린 창을 닫음) | 팀장 보고 요청 post | submit |
+| review | event report_request | request_report | 팀장 보고 요청 post. 흐름 카드라 열린 창을 닫지 않는다(마지막 요소 창은 제출·세션 종료까지) | submit |
 | submit | message | respond / respond_report | dm은 동료 respond, team은 팀장 respond_report | submit |
 | any | end | observe → close | 열린 창 닫기(window_end=ends_at 또는 submitted_at) → phase done | done |
 
