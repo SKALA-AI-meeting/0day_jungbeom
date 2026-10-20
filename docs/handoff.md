@@ -95,7 +95,7 @@
 | W2 | worker | 병합 완료 | Codex 차단 7 반영 | 2ed126f |
 | W3 | agent-min (agent-session 1단계) | 병합 완료 | Codex 4건 반영, live 1회 실패(M2에서 해결) | 07f82f3 |
 | P0 | redesign-docs | 문서 완료·커밋됨(track/redesign-docs 0a374d4). Claude Opus가 마무리·병합 완료(`briefs/brief-p0-finish.md`) | Codex 설계·계획 리뷰 + Claude 관점 2종 반영 | 960981e |
-| P1 | web-redesign | 대기 (P0 기준 커밋). 관문: UI/UX 리뷰 → Codex → 사용자 mock 확인 | | |
+| P1 | web-redesign | 병합 완료 (사용자 mock 확인은 생략, 나중에 일괄 수정) | UI/UX 페르소나 차단 8·권장 31 반영, Codex 차단 6 + 경합 3 반영(`reviews/review-uiux-view.md`, 보고서 `reports/web-redesign-report.md`) | 2019069 |
 | P1 | scenario-redesign | 대기 (P0 기준 커밋). 내부 관문 3개 | | |
 | P2 | agent-session M2 | 대기 (scenario 병합 + 사용자 mock 확인) | | |
 | P2 | agent-assistant | 대기 (scenario 병합, 라우터 훅, 인터페이스 동결) | | |
