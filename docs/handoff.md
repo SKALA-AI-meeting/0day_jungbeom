@@ -2,14 +2,14 @@
 
 다음 오케스트레이터(에이전트 세션, **다른 로컬 머신일 수 있음**)가 이 문서만 읽고 바로 이어가기 위한 상태 기록이다. 읽는 순서: 이 문서 → `AGENTS.md` → `docs/plan.md` → `docs/dev-process.md` → `docs/decisions.md`의 2026-10-20 절들 → 필요한 역할 문서.
 
-## 현재 상태 (2026-10-21 새벽, P0 완료·개발 직전)
+## 현재 상태 (2026-10-21 07:40, P3 중간 마무리 — 다른 머신에서 이어감)
 
-- **코드**: W0·W1·W2와 agent-min까지 main에 병합(코드는 아직 **옛 설계**: 요소 4개·공유 문서·`scenarios/catalog.yaml`). 테스트 api 82, business-mcp 11, rag-mcp 10, report-worker 17, web 16 통과, `make lint` 통과.
-- **기획·설계 전환(P0) 완료**: 2026-10-20 사용자가 초점을 "같이 일하기 좋은 사람인가"로 재정의. 인성 5요소(책임감/성실성, 계획성/꼼꼼함, 적응성/유연성, 협업/조율, 정직/공정한 보고), 요소당 카드 최대 2장(7장), **문서 주고받기** 협업 모델(각자 문서를 보내고 받아 열어 보고 피드백, 주담당이 최종본 통합), 미션 단위 카탈로그, 호칭 "주담당", 제출 → 팀장 보고 → 종료, 관리자 생성 화면은 요소 뜻만, 전체 기록 화면·근거→기록 링크, 샘플 리포트·인쇄, AI 활용 라벨 없음. PRD·docs/common·서비스 설계·프론트 문서·계획·결정 전부 반영됐고 **개발 전 리뷰 4종**(Codex 설계·계획, Claude 지원자·담당자 관점)을 반영했다. 브랜치 `track/redesign-docs`를 main에 병합한 커밋: 960981e.
-- **정본**: 기획 PRD.md → 설계 docs/common(이름은 `contracts.md`가 정본, 고정됨) → 역할 문서. 전환의 배경·결정은 `docs/prd-change-proposals.md` 재설계 절, `docs/decisions.md` 2026-10-20 절들, 리뷰 반영 지시서 `docs/handoff/reviews/review-redesign-triage.md`, 계획 리뷰 `review-plan.md`.
-- **P0 마무리는 Claude Opus가 마무리·병합 완료**(2026-10-21, `docs/handoff/briefs/brief-p0-finish.md`): 공용 픽스처 `tests/fixtures/contracts/`를 contracts.md 최종본과 검수해 커밋하고 main에 squash 병합했다. 깨지는 기존 테스트는 `services/api/tests/test_candidate.py` 1개(옛 State 키)이며 목록·contracts 어긋남 4건·`make lint`의 로컬 `apps/web/.agents/` prettier 경고는 `docs/handoff/reports/fixtures-align-report.md`에 있다. 테스트는 scenario-redesign이 코드와 함께 고친다.
-- **열린 worktree·탭 없음.** 이 머신의 Herdr 탭 "review-redesign"은 P0에서 닫았다. mock 서버(`apps/web`, 3000 포트)가 떠 있을 수 있으니 `lsof -ti:3000 -sTCP:LISTEN | xargs kill`로 정리한다.
-- **사용자가 채울 것**: `infra/.env`·`.env.local`의 `OPENAI_API_KEY_PERSONAL`, `GEMINI_API_KEY`(역할별 `MODEL_*`는 비워 둠, 상향 규칙은 decisions.md).
+- **main 최신**: P0·P1·P2 전부 병합(web-redesign·scenario-redesign·web-polish·agent-assistant·agent-session M2·web-integrate 1·2라운드·api-fix) + P3의 fix-p3(결함 5건)와 e2e-runner(러너·단언·픽스처 mock 완성, 실 스택 2단계 **중간**). 테스트: `make test` 전부 통과(api 166·business-mcp 9·rag-mcp 10·report-worker 27·web 13), `make test-e2e`(mock) 통과, `make lint` 통과. catalog_version **`80517d9fb102c7df`**(fix-p3가 팀장 문구를 바꿈).
+- **실 스택으로 확인된 것**: web-integrate 2라운드가 실제 세션 그래프·어시스턴트 그래프·실 LLM으로 한 세션(카드 7장·실제 분류 종료·리포트 근거 83개 일치)을 브라우저 자동화로 통과(`apps/web/e2e/session.mjs`, 30단계·99 checks). e2e-runner는 all_five(세션 failed → 결함 1·2·3)와 division_refuse(통과) 2개만 실 실행.
+- **남은 일(다른 머신)**: ① e2e 2단계 재개(`reports/e2e-runner-report.md` "다른 머신에서 재개" 절) → 찍힌 결함을 fix 트랙으로(아래 "P3에서 모인 fix 요청"과 e2e 보고서 결함 1~4: review 카드 v2 실패가 세션 전체를 failed로, 중간 점검 재촉 위반, 관찰 근거 선택) ② P5 docs-final ∥ docs-service(캡처는 `node apps/web/e2e/session.mjs`로 재생성) ③ P4 파일럿(사용자 일정). 개발은 Codex pane, 리뷰는 Claude Opus 1회(사용자 결정).
+- **열린 pane·worktree 없음**(이 머신). 공용 DB `dayzero`는 새 스키마에 e2e 세션 데이터가 들어 있음(다른 머신은 빈 DB에서 시작). rag-mcp는 재설계 코드로 재빌드돼 있음(다른 머신은 첫 `make infra-up`에 빌드).
+- **사용자가 할 것**: `infra/.env`·`.env.local` 두 파일을 새 머신 `infra/`에 복사(값은 이 머신에서 복사해 둠). 직접 돌려보기는 아래 "직접 서비스 돌려보기".
+- 알려진 미처리: 6k 토큰 요약 접기(agent-session), active_runs·progress 채널 계약, fix-p3 리뷰 참고 3건, 사용자 mock 확인(건너뜀, 나중에 일괄 수정).
 
 ## 다른 머신에서 시작하기
 
@@ -147,7 +147,7 @@
 | P2 | web-polish | 병합 완료. B2(최종본 저장 실패 표시 유지)는 web-integrate 필수 후속 | Codex 차단 1·권장 2 반영 | fb788aa |
 | P2 보충 | api-fix | 병합 완료(어시스턴트 마스킹·60회 직렬화·run.py 수명주기·테스트 세션 회사 지정) | codex exec 리뷰 필수 2 반영 | 7bd2b86 |
 | P3 | fix-p3 | 병합 완료(결함 5건 수정, 6번 채널 계약은 보류). catalog_version `80517d9fb102c7df` | Opus 가벼운 리뷰 차단 0·참고 3 | 95c64bd |
-| P3 | e2e-runner | 진행 중(1단계 러너·단언·픽스처 mock 작성). 실 스택 사용권은 web-integrate 2라운드 뒤 | | |
+| P3 | e2e-runner | 1단계 병합 + 2단계 중간(all_five failed·division_refuse 통과) 병합. 재개는 보고서 절 | 리뷰 생략(테스트 코드, 사용자 결정) | 43b9f7f |
 | P4 | pilot | 대기 | | |
 | P5 | docs-final ∥ docs-service | 대기 (최종 기준점, 캡처 묶음) | | |
 | W4 | docs-final | 대기 | | |

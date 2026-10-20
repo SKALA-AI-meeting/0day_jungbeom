@@ -106,7 +106,7 @@ make test       # api 162 · business-mcp 9 · rag-mcp 10 · report-worker 27 pa
 ### 다른 머신에서 재개
 
 ```
-git checkout track/e2e-runner && git rebase main
+git checkout main && git pull   # e2e-runner는 main에 병합됨(43b9f7f). 새 작업은 sh scripts/worktree.sh e2e-runner 로 다시 브랜치
 make infra-up                                  # postgres·rabbitmq·rag-mcp
 (cd services/api && AGENT_RUNNER=session ASSISTANT_RUNNER=graph ENABLE_TEST_API=1 uv run python -m app.run) &
 (cd services/business-mcp && uv run python -m business_mcp) &
