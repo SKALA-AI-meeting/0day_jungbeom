@@ -37,7 +37,7 @@
    ```
    python scripts/make_session.py --minutes 6 --elements responsibility,planning,adaptability,collaboration,honesty
    ```
-   출력의 `invite_token`으로 http://localhost:3000/s/<invite_token> 입장, `admin_email`로 관리자 로그인(비밀번호는 스크립트가 만든 계정 — 출력 참고)하면 그 세션의 리포트·전체 기록이 보인다. 카드 7장은 120분 비율로 6분에 압축돼 나온다(분업 0.5분, 도움 1.5분, 중간 점검 2.25분, 지연 3분·공개 3.5분, 변경 3.75분, 리뷰 4.5분, 보고 요청 5.5분).
+   출력의 `invite_token`으로 http://localhost:3000/s/<invite_token> 입장, `admin_email`로 관리자 로그인(비밀번호는 스크립트 고정값 `e2e-password-1234`, `scripts/make_session.py`의 PASSWORD)하면 그 세션의 리포트·전체 기록이 보인다. 카드 7장은 120분 비율로 6분에 압축돼 나온다(분업 0.5분, 도움 1.5분, 중간 점검 2.25분, 지연 3분·공개 3.5분, 변경 3.75분, 리뷰 4.5분, 보고 요청 5.5분).
 7. 브라우저 자동 한 세션: `cd apps/web && node e2e/session.mjs`(스크린샷 `apps/web/e2e/shots/`). 대본 e2e: `make test-e2e`(mock) / 실 스택은 `tests/e2e/README.md`.
 8. 끝나면 네 앱 종료: `lsof -ti:8000,8001,9101,3000 -sTCP:LISTEN | xargs kill; pkill -f report_worker`.
 
