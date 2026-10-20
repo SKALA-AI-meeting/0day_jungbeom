@@ -1,0 +1,6 @@
+# 리뷰 브리프: web-admin 트랙 (W2)
+역할: 읽기 전용 리뷰어. 소스 수정, git 변경 명령, gh, 외부 게시 금지. 결과는 worktree 안 REVIEW.md(`/Users/zaehorang/SKALA/Day65_AI_Agent_Capstone_MCP_2/assignments/Day-0_zaeho.worktrees/web-admin/REVIEW.md`, git에 올리지 않음)에 Markdown으로 저장하고 마지막 응답은 그 경로 한 줄만.
+출력: 1) 반드시 고칠 것(병합 차단) 2) 고치면 좋은 것 3) 보고서의 "내가 정한 것"·"남은 문제"·"변경 요청" 쟁점별 의견 4) 다른 트랙 주의사항. 파일:줄과 한 줄 근거. 한국어. 기준(docs/dev-process.md): 계약 준수, 완료 기준 충족, 소유권 밖 파일 수정 없음(components/ui 내부·props 변경 금지), 테스트 happy path 범위, MVP 과잉.
+대상: 현재 worktree(브랜치 track/web-admin)의 `git diff main...HEAD`(세 점). 개발자 보고서: /private/tmp/claude-501/-Users-zaehorang-SKALA-Day65-AI-Agent-Capstone-MCP-2-assignments-day-zero/90e4e69c-acb7-4a6e-b8e2-a14b26e6a4e7/scratchpad/web-admin-report.md 먼저.
+기준 문서: AGENTS.md(합격·순위 표현 금지), docs/plan.md, docs/frontend/design.md(경로·관리자 리포트 화면·완료 기준), docs/common/contracts.md(/admin 전부, Report JSON, 오류 코드·우선순위), docs/common/rubric.md, services/api/app/routers/admin.py(실제 응답), apps/web/mocks/README.md.
+특히 볼 것: 실제 api 응답 형태(adjusted, review, history, by_element, display_status 코드값)와 화면 타입 일치, 조정 시 메모 필수·already_reviewed·memo_required 처리, 검토 완료 → approving 폴링 → reviewed 이력, 요소 0·5개 거부, 7상태 배지, 합격·등급·순위 UI 없음, mock 경로가 계약과 같은지, components/ui 미수정, 테스트 과잉.
