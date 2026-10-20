@@ -3,6 +3,7 @@
 run.py가 한 번 만든다.
 """
 
+import os
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -40,21 +41,22 @@ class AppContext:
 
 
 def build_context(settings: Settings | None = None) -> AppContext:
-    """기본 runner는 FakeAgentRunner(내부 저장을 직접 호출).
+    """runner는 환경변수 AGENT_RUNNER로 고른다.
 
-    에이전트 트랙이 실제 runner로 바꾼다.
+    fake(기본): FakeAgentRunner(내부 저장을 직접 호출).
+    session: LangGraph 세션 그래프(gpt-4o-mini, business-mcp·rag-mcp 경유, PostgresSaver).
     """
-    from app.services.messages import save_internal_message
-
     settings = settings or get_settings()
     engine = make_engine(settings.database_url)
     factory = make_session_factory(engine)
     hub = Hub()
-
-    async def post_message(**kwargs):
-        async with factory() as db:
-            message, _ = await save_internal_message(db, hub, **kwargs)
-            return message
+    kind = os.environ.get("AGENT_RUNNER", "fake")
+    if kind == "session":
+        runner = _session_runner(settings, factory, hub)
+    elif kind == "fake":
+        runner = _fake_runner(factory, hub)
+    else:
+        raise ValueError(f"AGENT_RUNNER must be session or fake: {kind}")
 
     return AppContext(
         settings=settings,
@@ -63,7 +65,35 @@ def build_context(settings: Settings | None = None) -> AppContext:
         hub=hub,
         locks=SessionLocks(),
         publisher=RabbitPublisher(settings.rabbitmq_url),
-        runner=FakeAgentRunner(post_message, hub.broadcast),
+        runner=runner,
+    )
+
+
+def _fake_runner(factory: async_sessionmaker[AsyncSession], hub: Hub) -> AgentRunner:
+    from app.services.messages import save_internal_message
+
+    async def post_message(**kwargs):
+        async with factory() as db:
+            message, _ = await save_internal_message(db, hub, **kwargs)
+            return message
+
+    return FakeAgentRunner(post_message, hub.broadcast)
+
+
+def _session_runner(
+    settings: Settings, factory: async_sessionmaker[AsyncSession], hub: Hub
+) -> AgentRunner:
+    from app.agent.llm import OpenAILLM
+    from app.agent.mcp_client import BUSINESS, RAG
+    from app.agent.session.runner import SessionAgentRunner
+    from app.agent.session.store import DbAgentStore
+
+    return SessionAgentRunner(
+        llm=OpenAILLM(settings.openai_api_key, settings.openai_model),
+        mcp_urls={BUSINESS: settings.business_mcp_url, RAG: settings.rag_mcp_url},
+        store=DbAgentStore(factory),
+        database_url=settings.database_url,
+        broadcast=hub.broadcast,
     )
 
 
