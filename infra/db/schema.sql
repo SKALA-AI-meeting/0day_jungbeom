@@ -69,6 +69,7 @@ CREATE TABLE session_events (
   done_at timestamptz,
   attempts int NOT NULL DEFAULT 0,
   run_id uuid,                              -- fired 시 생성, 재실행에서 재사용
+  texture boolean NOT NULL DEFAULT false,   -- 결 메시지(midpoint_draft): 관찰 창에 안 들어감
   UNIQUE (session_id, card_id)
 );
 CREATE INDEX ON session_events (due_at) WHERE status = 'pending';

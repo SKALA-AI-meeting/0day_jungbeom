@@ -125,7 +125,7 @@
 | GET | /internal/sessions/{id}/messages?since_t_min=&channel=&limit= | | [Message] |
 | POST | /internal/sessions/{id}/messages | {channel, sender, content, event_id?, run_id, seq, meta?} | Message (같은 run_id+seq 재요청은 기존 행) |
 | GET | /internal/sessions/{id}/board | | {tasks} |
-| PUT | /internal/sessions/{id}/tasks/{part_no} | {status} | task. 동료 담당이 아니면 403 `forbidden` |
+| PUT | /internal/sessions/{id}/tasks/{part_no} | {status} | task. 동료 담당이 아니면 403 `forbidden`. 동료 카드는 분업 확정 시 doing, 리뷰 공유 시 done으로 그래프가 바꾼다 |
 | PUT | /internal/sessions/{id}/division | {parts, decided_by: "candidate"∣"colleague_default"} | {division}. in_progress가 아니면 409. 최소 조건(2번 candidate, 4·5 중 하나 이상 colleague 단독) 위반은 422 |
 | GET | /internal/sessions/{id}/document | | {"1": {content, revision, updated_by}, ...} |
 | PUT | /internal/sessions/{id}/document/{part_no} | {content, by: "colleague", run_id} | {updated_at, revision}. 같은 part_no+run_id 재요청은 기존 revision. 동료 담당이 아니면 403 |

@@ -18,7 +18,7 @@ MVP는 인성 요소 4개만 둔다. 카드 하나의 필드:
 | `unselected` | 미선택 시 처리. 예: 책임감 `release_at_start: interview_summary`, 존중 `review_without_violation` |
 | `requires_docs` | 필요한 회사 문서 id |
 
-흐름 카드(`kickoff`, `division`, `review`, `report_request`)는 `flow: true`로 항상 포함된다. 존중 카드는 `attach_to: review`로 리뷰와 같은 시점에 실행된다.
+흐름 카드(`kickoff`, `division`, `review`, `report_request`)는 `flow: true`로 항상 포함된다. `texture` 항목(`midpoint_draft`, L/2)도 session_events 행으로 예약되지만 요소가 없어 관찰 창 경계에 들어가지 않는다. 존중 카드는 `attach_to: review`로 리뷰와 같은 시점에 실행된다.
 
 ## 조립 (`positions.scenario`)
 
@@ -45,6 +45,7 @@ L=120, 3개(협력·책임·유연): 30, 50, 70. L=6, 4개: 1.5, 2.5, 3.5, 4.5�
   {"card_id":"division","at_min":10},
   {"card_id":"cooperation","at_min":30},
   {"card_id":"responsibility","at_min":50,"effects":{"release_document":"interview_summary","at_min":65}},
+  {"card_id":"midpoint_draft","at_min":60,"texture":true},
   {"card_id":"flexibility","at_min":70},
   {"card_id":"review","at_min":90},
   {"card_id":"respect","at_min":90,"element":"respect","attach_to":"review"},

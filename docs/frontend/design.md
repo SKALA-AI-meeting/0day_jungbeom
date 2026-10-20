@@ -30,7 +30,7 @@ Next.js App Router + Tailwind. 상태 관리는 React 상태와 fetch로 충분�
 ```
 
 - 메시지 전송은 `client_msg_id`를 붙이고 `message.ack`로 확정 표시. `message.new`로 추가. `agent.progress`는 run_id별로 started→(tool_start/tool_end)→finished/failed를 따라 "이도현이 입력 중…", "자료 찾는 중…"을 표시. 재접속 시 `/state`의 `active_runs`로 복원.
-- 기획안 문서: 파트 5개 textarea. 1초 디바운스 후 PUT. 동료 파트는 읽기 전용이고 `document.part_updated`로 채워짐.
+- 기획안 문서: 파트 5개 textarea. 1초 디바운스 후 PUT. 동료 파트는 읽기 전용이고 `document.part_updated`로 채워짐(60분 초안, 90분 완성본). 제출 전 대기 중인 PUT을 끝낸다.
 - 보드: 파트 카드 5개, 담당자 배지, 지원자 카드만 상태 select.
 - 회사 문서: 목록과 본문. `released=false`면 잠금 표시, `document.released`로 열림.
 - 어시스턴트: 요청·응답 목록, 인용 문서명 표시. POST 후 응답 대기 표시.

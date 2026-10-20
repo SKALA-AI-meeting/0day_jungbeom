@@ -35,7 +35,7 @@ persona:   # 동료는 "회사가 원하는 인재상"으로 설정된 한 사�
     - 아직 오지 않은 카드 암시
     - 미공개 문서 내용
 texture:   # 카드가 아닌 가벼운 결 메시지. 관찰 근거로 쓰이지 않는다. 생략 가능
-  - { id: midpoint_share, at_fraction: 0.5, actor: colleague, channel: team, brief: 자기 파트 진행 상황을 한 줄 공유한다 }
+  - { id: midpoint_draft, at_fraction: 0.5, actor: colleague, channel: team, brief: 자기 담당 파트의 초안을 공유 문서에 쓰고 팀 채널에 "초안 올렸어요, 방향 괜찮은지 봐 주세요" 한 줄을 남긴다. 분업이 없으면 진행 상황만 한 줄. }   # session_events 행으로 예약되지만 element 없음·관찰 없음
 parts:
   1: 문제 정의와 대상 사용자
   2: 사용자 인터뷰에서 찾은 근거

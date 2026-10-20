@@ -9,7 +9,7 @@ PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시�
 | positions | id, company_id, name, elements text[], session_minutes int default 120, catalog_version text, scenario jsonb, created_at | 생성 시 카탈로그 카드와 문서 내용을 scenario에 복사해 고정. 수정·삭제 없음 |
 | invites | id, position_id, alias, email, token_hash, expires_at, used_at | 토큰 원문은 링크에만 |
 | sessions | id, invite_id(unique), status, consented_at, started_at, ends_at, division jsonb({parts, decided_by: candidate∣colleague_default, decided_at}), submitted_at, llm_failures int, report_enqueued_at, approve_enqueued_at, failed_stage, failed_reason, token_usage jsonb | **초대와 동시에 생성**(status invited). status: invited·in_progress·completed·report_ready·approving·reviewed·failed |
-| session_events | id, session_id, card_id, element, due_at, status(pending·fired·done·failed), fired_at, done_at, attempts, run_id | respect는 review와 같은 due_at의 별도 행. (session_id, card_id) unique. run_id는 fired 시 생성해 재실행에서도 재사용 |
+| session_events | id, session_id, card_id, element, due_at, status(pending·fired·done·failed), fired_at, done_at, attempts, run_id, texture bool | respect는 review와 같은 due_at의 별도 행. texture 행(midpoint_draft)은 관찰 없음. (session_id, card_id) unique. run_id는 fired 시 생성해 재실행에서도 재사용 |
 | messages | id, session_id, channel, sender, content, event_id, run_id, seq, client_msg_id, meta jsonb, created_at | (session_id, run_id, seq) unique로 멱등. 지원자 메시지는 (session_id, client_msg_id) unique. meta에 토큰·지연·모델 |
 | agent_runs | run_id(pk), session_id, stimulus, ref_ids, status(started·finished·failed), usage jsonb, started_at, finished_at | 실행 기록. /state의 active_runs 원천. started 120초 초과는 스케줄러가 재실행. usage로 세션 비용 합산 |
 | document_states | session_id, part_no(1~5), content, revision, updated_by, updated_at | 현재 내용 |
