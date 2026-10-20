@@ -108,3 +108,19 @@ test("리포트 draft → 검토 완료 → final 메모, 기록 하이라이트
   await get(); // 확정이 다시 돌아 폴링 뒤 final
   expect(phaseOf(await get())).toBe("final");
 });
+
+test("1분 미만 연결 끊김은 접어서 세고 펼친 내용은 초 단위로 표시한다", async () => {
+  const report = await get();
+  report.connection_gaps = [
+    { from_t_min: 31.2, to_t_min: 46 },
+    { from_t_min: 30.1, to_t_min: 30.6 },
+    { from_t_min: 90, to_t_min: 90.01 },
+  ];
+  const html = renderToStaticMarkup(<ReportView report={report} recordHref={href} />);
+  expect(html).toContain("연결 끊김 00:31~00:46");
+  expect(html).toContain("짧은 끊김 2회");
+  expect(html).toMatch(/<details[^>]*><summary[^>]*>짧은 끊김 2회<\/summary>/);
+  expect(html).toContain("00:30:06~00:30:36 (30초)");
+  expect(html).toContain("01:30:00~01:30:01 (1초)");
+  expect(html).toContain("이 구간 연결 끊김 00:30~00:30");
+});

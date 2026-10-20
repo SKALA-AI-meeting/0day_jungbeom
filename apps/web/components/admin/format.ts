@@ -58,3 +58,13 @@ export function sessionClock(t: number) {
   const total = Math.max(0, Math.floor(t));
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
+
+/** 짧은 연결 끊김의 시작·종료와 길이를 초 단위로 표시한다. */
+export function shortGapText(gap: { from_t_min: number; to_t_min: number }) {
+  const clock = (t: number) => {
+    const seconds = Math.max(0, Math.round(t * 60));
+    return `${sessionClock(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+  };
+  const duration = Math.max(1, Math.round((gap.to_t_min - gap.from_t_min) * 60));
+  return `${clock(gap.from_t_min)}~${clock(gap.to_t_min)} (${duration}초)`;
+}

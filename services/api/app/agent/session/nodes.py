@@ -25,7 +25,7 @@ from app.agent.guard import guard_for
 from app.agent.llm import LLMUnavailable
 from app.agent.mcp_client import PERSONA_TOOLS, error_code, fail, for_model
 from app.agent.session import drafts, prompts, seq
-from app.agent.session.classify import classify, saved
+from app.agent.session.classify import classify, recipient, saved
 from app.agent.session.common import (
     SPEAKER_PREFIX,
     Outcome,
@@ -128,6 +128,9 @@ async def classify_node(
     if message is None:
         deps.outcome.fail("message_not_found")
         return Command(goto=END, update={**resume, "last_error": deps.outcome.error})
+    # 분류 LLM을 기다리는 동안에도 입력 중 표시가 보이게 한다.
+    actor = recipient(message["channel"], message["content"], state["scenario"])
+    await deps.progress(actor, "respond", "started", None)
     _, shared = await board_and_shared(deps)
     reply = _doc_ref(message.get("reply_to_doc"), shared)
     result, fallback = await classify(
@@ -458,7 +461,6 @@ async def respond(state: SessionState, runtime: Runtime[RunDeps]) -> dict[str, A
     if saved_reply:
         return _restore(deps, state, saved_reply, persona)
 
-    await deps.progress(persona, "respond", "started", None)
     used_before = deps.usage.tool_calls
     slot, error, update = seq.RESPOND, None, dict(resume)
     board, shared = await board_and_shared(deps)
@@ -548,12 +550,10 @@ async def respond(state: SessionState, runtime: Runtime[RunDeps]) -> dict[str, A
         meta=meta,
     )
     if not ok:
-        await deps.progress(persona, "respond", "failed", None)
         return {
             **update,
             "last_error": deps.outcome.error,
         }
-    await deps.progress(persona, "respond", "finished", None)
     if error in LLM_FALLBACKS:
         handled.append(fallback_key(stimulus["message_id"]))
     return {
@@ -568,4 +568,9 @@ async def respond(state: SessionState, runtime: Runtime[RunDeps]) -> dict[str, A
 async def account(state: SessionState, runtime: Runtime[RunDeps]) -> dict[str, Any]:
     """실행 끝: 이번 실행의 모든 LLM 사용량(분류·페르소나·문서·관찰, 재시도 포함)을 세션 예산에서
     뺀다."""
-    return {"token_budget_left": max(0, runtime.context.budget_left(state))}
+    deps = runtime.context
+    if state["stimulus"]["type"] == "message":
+        # respond와 분업 응답 모두 저장을 마친 뒤 같은 실행을 끝낸다.
+        actor = state["stimulus"]["classification"]["recipient"]
+        await deps.progress(actor, "respond", "finished" if deps.outcome.ok else "failed", None)
+    return {"token_budget_left": max(0, deps.budget_left(state))}

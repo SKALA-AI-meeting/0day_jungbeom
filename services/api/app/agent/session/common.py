@@ -6,6 +6,7 @@ RunDeps는 LangGraph Runtime context라 체크포인트되지 않는다. route�
 
 import logging
 import re
+import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -215,7 +216,7 @@ async def context_blocks(
     return blocks
 
 
-PAGE = 50  # list_messages 한 번에(계약 상한)
+PAGE = 50  # 메시지 한 페이지
 MAX_PAGES = 5
 RECENT_KEEP = 80  # State에 남기는 최근 메시지(페르소나별로 다시 30개로 거른다)
 PERSONA_CHANNELS = ("team", "dm", "manager_dm")  # notice·assistant는 State에도 넣지 않는다
@@ -224,7 +225,7 @@ SCENARIO_SKIP = ("documents",)
 
 
 def _slim(message: dict[str, Any]) -> dict[str, Any]:
-    keys = ("id", "channel", "sender", "content", "t_min", "run_id", "event_id")
+    keys = ("id", "channel", "sender", "content", "t_min", "created_at", "run_id", "event_id")
     slim = {k: message.get(k) for k in keys}
     slim["slot"] = (message.get("meta") or {}).get("slot")
     slim["reply_to_doc"] = message.get("reply_to_doc")
@@ -234,27 +235,23 @@ def _slim(message: dict[str, Any]) -> dict[str, Any]:
 
 
 async def refresh_messages(
-    code: ToolScope, recent: list[dict[str, Any]]
+    store: AgentStore, session_id: uuid.UUID, recent: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], str | None]:
-    """마지막으로 본 시각부터 이어 읽어 State의 최근 메시지를 갱신한다(조회 상한 50개씩)."""
-    merged = list(recent)
+    """(created_at, id) 커서로 최근 메시지를 갱신한다. 상한 소진은 불완전 조회로 실패한다."""
+    # 이전 체크포인트에 정확한 시각이 없으면 처음부터 읽어 새 커서를 만든다.
+    after = recent[-1] if recent and recent[-1].get("created_at") else None
+    merged = list(recent) if after else []
     known = {m["id"] for m in merged}
-    last = merged[-1]["t_min"] if merged and merged[-1].get("t_min") is not None else None
-    # t_min은 0.01분 단위라 경계의 메시지를 놓치지 않게 조금 앞에서 읽고 id로 중복을 거른다
-    since = None if last is None else last - 0.02
     for _ in range(MAX_PAGES):
-        result = await code.call("list_messages", {"since_t_min": since, "limit": PAGE})
-        if not result.get("ok"):
-            return merged[-RECENT_KEEP:], error_code(result)
-        page = result["data"]
+        page = await store.messages_page(session_id, after, PAGE)
         for message in page:
             if message["id"] not in known and message["channel"] in PERSONA_CHANNELS:
                 merged.append(_slim(message))
                 known.add(message["id"])
         if len(page) < PAGE:
-            break
-        since = page[-1]["t_min"] - 0.02
-    return merged[-RECENT_KEEP:], None
+            return merged[-RECENT_KEEP:], None
+        after = page[-1]
+    return merged[-RECENT_KEEP:], "page_limit_exceeded"
 
 
 async def prepare(deps: RunDeps, state: SessionState) -> dict[str, Any] | None:
@@ -276,7 +273,9 @@ async def prepare(deps: RunDeps, state: SessionState) -> dict[str, Any] | None:
     # 보드 확정은 division 자극이 작업 기억과 함께 반영한다(그 전에는 State를 앞지르지 않는다)
     if state["stimulus"]["type"] != "division" and division:
         update["division"] = division.get("parts")
-    recent, error = await refresh_messages(deps.code, state.get("recent_messages") or [])
+    recent, error = await refresh_messages(
+        deps.store, uuid.UUID(state["session_id"]), state.get("recent_messages") or []
+    )
     update["recent_messages"] = recent
     if error:
         deps.outcome.fail(f"list_messages:{error}")

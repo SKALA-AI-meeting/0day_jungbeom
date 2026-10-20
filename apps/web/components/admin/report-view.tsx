@@ -23,6 +23,7 @@ import {
   NO_RECORD_TEXT,
   purgeText,
   sessionClock,
+  shortGapText,
 } from "./format";
 import {
   allItems,
@@ -874,6 +875,8 @@ export function ReportView(props: ReportViewProps) {
       ?.items.map((i) => items.get(i.id)!) ?? [];
   const purge = purgeText(report.purge_at);
   const review = report.rubric.review;
+  const shortGaps = report.connection_gaps.filter((g) => g.to_t_min - g.from_t_min < 1);
+  const longGaps = report.connection_gaps.filter((g) => g.to_t_min - g.from_t_min >= 1);
 
   return (
     <article className="flex flex-col gap-8">
@@ -898,7 +901,7 @@ export function ReportView(props: ReportViewProps) {
             인쇄
           </Button>
         </div>
-        <p className="flex flex-wrap gap-x-4 text-sm text-muted">
+        <div className="flex flex-wrap gap-x-4 text-sm text-muted">
           <span>생성 {formatDateTime(report.generated_at)}</span>
           {review && (
             <span>
@@ -907,16 +910,27 @@ export function ReportView(props: ReportViewProps) {
             </span>
           )}
           {purge && !sample && <span>{purge}</span>}
-          {report.connection_gaps.length > 0 && (
+          {longGaps.length > 0 && (
             <span>
               연결 끊김{" "}
-              {report.connection_gaps
+              {longGaps
                 .map((g) => `${sessionClock(g.from_t_min)}~${sessionClock(g.to_t_min)}`)
                 .join(", ")}{" "}
               (점수 무관)
             </span>
           )}
-        </p>
+          {shortGaps.length > 0 && (
+            <details open={printing || undefined}>
+              <summary className="cursor-pointer">짧은 끊김 {shortGaps.length}회</summary>
+              <ul>
+                {shortGaps.map((g, i) => (
+                  <li key={i}>{shortGapText(g)}</li>
+                ))}
+              </ul>
+              <span>(점수 무관)</span>
+            </details>
+          )}
+        </div>
         <div className="flex flex-col gap-0.5 rounded-md bg-surface-sunken px-4 py-3 text-sm">
           {REPORT_NOTICE_LINES.map((line) => (
             <p key={line}>{line}</p>

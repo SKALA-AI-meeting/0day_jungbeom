@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
-from sqlalchemy import select
+from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agent.observe import Inputs
@@ -32,11 +32,16 @@ from app.models import (
     TaskEvent,
 )
 from app.services import documents
+from app.services.messages import serialize
 
 REPORT_CHANNELS = ("team", "manager_dm")
 
 
 class AgentStore(Protocol):
+    async def messages_page(
+        self, session_id: uuid.UUID, after: dict[str, Any] | None, limit: int
+    ) -> list[dict[str, Any]]: ...
+
     async def save_classification(
         self, session_id: uuid.UUID, message_id: uuid.UUID, classification: dict[str, Any]
     ) -> None: ...
@@ -94,6 +99,21 @@ class _ReportMarker:
 class DbAgentStore:
     def __init__(self, factory: async_sessionmaker[AsyncSession]) -> None:
         self._factory = factory
+
+    async def messages_page(
+        self, session_id: uuid.UUID, after: dict[str, Any] | None, limit: int
+    ) -> list[dict[str, Any]]:
+        """반올림하지 않은 시각과 id로 이어 읽는다. 같은 시각의 메시지도 빠뜨리지 않는다."""
+        async with self._factory() as db:
+            session = await db.get(Session, session_id)
+            query = select(Message).where(Message.session_id == session_id)
+            if after is not None:
+                query = query.where(
+                    tuple_(Message.created_at, Message.id)
+                    > (datetime.fromisoformat(after["created_at"]), uuid.UUID(after["id"]))
+                )
+            rows = await db.scalars(query.order_by(Message.created_at, Message.id).limit(limit))
+            return [{**serialize(m, session), "meta": m.meta or {}} for m in rows]
 
     async def save_classification(
         self, session_id: uuid.UUID, message_id: uuid.UUID, classification: dict[str, Any]

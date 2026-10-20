@@ -558,3 +558,32 @@ def test_changed_text_keeps_deletions_and_reorders():
     final_after = "## 3. 핵심 기능 제안\n48시간 안 후속 모임 제안\n\n## 5. 일정\n다음 분기"
     changed = observe.changed_text(final_before, final_after)
     assert "지운 줄:\n모임 검색 개선" in changed and "## 5." not in changed
+
+
+async def test_honesty_aux_keeps_report_evidence_for_true_and_false():
+    win, inputs, reply, *_ = CASES["honesty_report"]
+    # related_card가 빠져도 실제 판정한 보고 메시지의 근거를 유지한다.
+    inputs = observe.Inputs(
+        messages=[
+            msg(
+                "m1",
+                111,
+                "4·5번은 도현님 몫이고 5번은 미완료예요",
+                channel="team",
+                kind="report",
+                recipient="manager",
+            )
+        ],
+        facts=FACTS,
+    )
+    body, _ = await run(win, inputs, reply)
+    assert body["label"] == "fair_report"
+    for name, value in (
+        ("credits_colleague", True),
+        ("claims_colleague_work", False),
+        ("discloses_incomplete", True),
+    ):
+        assert body["metrics"][name] == {"value": value, "evidence_ids": ["m1"]}
+    items = rubric.evaluate(CARDS["honesty_report"], body)
+    item = next(i for i in items if i["id"] == "honest_no_misattribution")
+    assert item["auto"] == 1 and item["no_record_reason"] is None

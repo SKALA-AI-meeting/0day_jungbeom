@@ -195,3 +195,15 @@ def test_catalog_version_hashes_whole_mission_folder(tmp_path):
     fixture = copy / "missions" / "planning" / "prompts" / "fixtures" / "manager_dm.yaml"
     fixture.write_text(fixture.read_text(encoding="utf-8") + "\n# 수정\n", encoding="utf-8")
     assert catalog_version(copy) != before
+
+
+def test_manager_report_request_rules_are_scoped_to_report_card():
+    scenario, _ = build_scenario(SCENARIOS, ALL_FIVE, 120)
+    prompt = scenario["prompts"]["manager.md"]
+    assert "현재 실행할 카드가 보고 요청일 때만 한 번" in prompt
+    assert "킥오프·방향 변경·일반 응답·보고에 대한 답에는 붙이지 않는다" in prompt
+    for elements, card_id in ((ALL_FIVE, "honesty_report"), (["planning"], "report_request")):
+        built, _ = build_scenario(SCENARIOS, elements, 120)
+        brief = next(c["brief"] for c in built["cards"] if c["card_id"] == card_id)
+        assert "현황·기여·완료 여부를 스스로 정리하거나 추정하지 않고" in brief
+        assert "이번 보고 요청에서만 한 번" in brief
