@@ -1,5 +1,6 @@
 # business-mcp
 
-설계: `docs/` 해당 역할 문서. 계약: `docs/common/contracts.md`.
+설계: `docs/mcp/design.md`. 계약: `docs/common/contracts.md`(MCP 도구 표·오류 코드·내부 REST).
 
-이 폴더는 M1 트랙이 채운다. 트랙 범위와 완료 기준은 `docs/plan.md`.
+- 도구 10개는 `business_mcp/tools.py`, api 내부 앱(`API_INTERNAL_URL`, `X-Internal-Token`) 호출은 `client.py`.
+- 실행: `uv run python -m business_mcp` (9101, `/mcp`·`/health`). 테스트: `uv run pytest` (api는 httpx MockTransport로 mock).
