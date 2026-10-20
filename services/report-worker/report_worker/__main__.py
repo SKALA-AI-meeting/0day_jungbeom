@@ -1,18 +1,39 @@
-"""`python -m report_worker`. 지금은 heartbeat만 돈다.
-
-큐 소비자는 worker 트랙이 같은 루프에 붙인다.
-"""
+"""`python -m report_worker`. heartbeat 루프와 큐 소비자 3개를 같은 asyncio 루프에서 돌린다."""
 
 import asyncio
 import logging
 
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
 from report_worker import heartbeat
+from report_worker.api import InternalApi
+from report_worker.config import load_settings
+from report_worker.consumer import RabbitConsumer, ReportWorker
+from report_worker.graph import build_graph
+from report_worker.llm import OpenAILLM
 
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    logging.getLogger("report_worker").info("heartbeat at %s", heartbeat.heartbeat_path())
-    await heartbeat.run()
+    log = logging.getLogger("report_worker")
+    settings = load_settings()
+    beating = asyncio.create_task(heartbeat.run())
+    log.info("heartbeat at %s", heartbeat.heartbeat_path())
+
+    api = InternalApi(settings.api_internal_url, settings.internal_token)
+    consumer = RabbitConsumer(settings.rabbitmq_url)
+    # 워커는 thread report:{session_id}만 접근한다. 테이블은 api 에이전트 모듈과 같은 기본 테이블
+    async with AsyncPostgresSaver.from_conn_string(settings.database_url) as saver:
+        await saver.setup()
+        graph = build_graph(api, OpenAILLM(settings.openai_model), saver)
+        await consumer.connect()
+        await consumer.consume(ReportWorker(graph, api, consumer.publish))
+        log.info("consuming report.generate, report.approve, report.dlq")
+        try:
+            await beating  # heartbeat는 끝나지 않는다. 소비는 aio-pika 콜백으로 돈다
+        finally:
+            await consumer.close()
+            await api.close()
 
 
 if __name__ == "__main__":

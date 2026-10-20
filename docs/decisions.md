@@ -86,3 +86,12 @@
 - 시작 공개 문서는 `SessionService.start()`가 시작 트랜잭션에서 released_at을 바로 기록한다. 이유: 첫 tick(최대 5초)까지 423이 되는 공백 제거, 지원자·내부·rag가 같은 시점부터 같은 상태를 봄.
 - assistant_reuse의 revision 컬럼은 보류: 현재 내부 REST·워커 소비 계약에 revision이 없어 컬럼만 추가하는 효과가 없다. 순수 함수 반환값에만 revision을 둔다.
 - `submitted_at` 이후 message.send는 상태와 무관하게 session_ending(접수 함수가 submitted_at을 status보다 먼저 검사).
+
+## 2026-10-20 worker 리뷰 반영 (Codex)
+- 리포트 워커 산출 형태를 web-admin이 읽는 형태로 확정: 근거 `context.prev_persona_message`는 문자열 "<보낸이> · <t>분: <본문>", `context.card_at_t_min`은 실제 카드 메시지 시각, 섹션 `aux_facts`는 문장 배열, `out_of_window_messages`는 `[{t_min, channel, quote}]`, 항목 `minutes`(응답 시간 항목만, 관련 메시지 없으면 null)·`no_record_reason`, AI 활용 근거 `category`(delegate·context·verify, 규칙 부여). 이유: 객체 맵·객체 맥락이 관리자 화면 렌더를 깨뜨렸다. 실제 워커 출력 `services/report-worker/tests/fixtures/report_sample.json`을 기준 예시로 둔다. 대안: 화면이 객체를 풀어 읽음(화면 트랙 재작업).
+- usage: draft 본문에 `usage`를 받아 `reports.usage`에 저장(재전달은 최초 값). 해시는 content에만. 이유: 세션 비용 = agent_runs.usage + reports.usage 합(harness Observability).
+- events: `GET /internal/sessions/{id}`에 `events: [{id, card_id, element, status, due_at, fired_at}]`. 워커는 카드 발생(status fired·done), 실제 카드 시각(같은 event_id의 첫 메시지), 전달 지연(예정보다 90초 초과 → window_missed)을 이걸로 판단하고 메시지 시각 기반 대용 추정은 지웠다. 이유: review와 respect처럼 같은 시각의 다른 카드를 구별 못 했다. `id`는 메시지 event_id와 맞추려고 넣었다.
+- messages `offset`: 정렬에 id를 더하고 offset 쿼리를 둔다. 워커는 limit 500으로 끝까지 읽는다. 이유: 1,000건 이후 근거가 수집되지 않아 정상 근거까지 제거됐다. 대안: since_t_min 커서(반올림 경계 누락).
+- null 지표 사유: aux 판정 지표(response_specific·proposes_alternative·proposes_fix)가 null이면 레이블이 정상이어도 `classify_failed`. 그 밖의 null은 레이블 unclassified·null이면 classify_failed, 아니면 no_activity. `window_missed`는 관찰 `metrics.window_missed: {value: true, evidence_ids: []}`(bool 허용)로 확정.
+- 소유권 예외: worker `pyproject.toml`·`uv.lock` 변경 승인(런타임 `psycopg[binary]`: slim 이미지에 libpq가 없음, dev `pyyaml`: 테스트가 카탈로그를 읽음). 이 라운드에 한해 worker 트랙이 `services/api/app/routers/internal.py`(events·offset·usage)와 해당 테스트, `contracts.md`·`decisions.md`를 고쳤다.
+- 금지어 보강: 1위·N위·N등·만점·감점·가산점·상위/하위 N%·등수. 업무 "우선순위", 근거 원문 quote, 평가표 숫자는 검사하지 않는다. 설정은 OPENAI_MODEL이 gpt-4o-mini가 아니면 시작 시 오류.

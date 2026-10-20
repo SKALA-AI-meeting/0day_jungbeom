@@ -68,6 +68,23 @@
 
 `rubric.elements[].items[]`는 `reviewer`·`memo`(조정된 항목만 값)와 `adjusted: bool`(null 조정과 무조정의 구분)을 갖고, 요소별 `reviewer {met, judged, no_record}`·`reviewer_total`·`review {memo, reviewed_at}`는 리뷰 제출(approving) 뒤에만 non-null이다. `history`는 `[{item_id, element, auto, reviewer, memo, created_at}]`. `stage`는 draft 또는 final. evidence 타입: message(quote), revision(part_no, summary), doc_view(doc_id), assistant_call(quote). `ai_usage.used=false`면 summary는 "사용하지 않음"이고 evidence는 빈 배열. 모든 evidence의 id는 같은 세션의 실제 행을 가리켜야 하며(워커가 검증), `rubric.auto`는 워커가 draft에 넣고 `reviewer`·`review`·`history`는 api가 GET 때 `rubric_adjustments`에서 병합한다. 해시 규칙은 저장된 `reports.content`(불변)에만 적용되고 GET 합성 응답과는 무관하다. `deliverable`은 api가 GET 때 붙이며 `{parts, division_decided_by, final_report_message: {id, t_min, content}}`를 포함한다. 각 요소 섹션에는 `no_record_reason`, `aux_facts`, `out_of_window_messages`(점수 무관), 근거마다 `context: {prev_persona_message, card_at_t_min}`, `event_fired: bool`(false면 "이벤트 미발생(조기 제출)")가 있다. `ai_usage`는 머리에 "판단 기준 없음, 면접 확인용"을 두고 위임·맥락·검증으로 나눠 보여 준다. 응답 시간 항목은 실제 분 값을 함께 보여 준다. `observed`·`note`·`summary` 텍스트 필드에는 합격·순위 표현과 평가표 밖의 점수 표현이 없어야 한다(워커 금지어 검사 범위는 텍스트 필드만).
 
+워커 산출 필드 형태 (2026-10-20 worker 리뷰 반영, 실제 출력 예: `services/report-worker/tests/fixtures/report_sample.json`):
+
+| 위치 | 필드 | 형태 |
+|---|---|---|
+| 섹션 | `event_fired` | bool. 세션 조회 `events`에서 그 카드 행의 status가 fired·done이면 true |
+| 섹션 | `no_record_reason` | `no_activity`∣`classify_failed`∣`event_not_fired`∣`window_missed`∣null |
+| 섹션 | `note` | 기록 없음·미분류·미발생일 때만 문장 |
+| 섹션 | `aux_facts` | string[] (점수 무관 사실 문장, 빈 배열 허용). 예 "운영 정책 문서를 열람함" |
+| 섹션 | `out_of_window_messages` | `[{t_min, channel, quote}]` (related_card가 이 카드인데 관찰 창 밖인 지원자 메시지) |
+| 섹션 근거 | `context.prev_persona_message` | 문자열 `"<보낸이 이름> · <t>분: <본문>"`(근거 직전의 동료·팀장 메시지), 없으면 null |
+| 섹션 근거 | `context.card_at_t_min` | 실제 카드 메시지 시각(분). 그 이벤트 id의 첫 메시지 시각이며 지연 전달이면 지연된 시각 |
+| 섹션 근거 | revision `summary`·`change_ratio`, doc_view `doc_id`·`summary` | `"n번 파트 수정(t분)"`·diff_ratio, `"<문서명> 열람(t분)"` |
+| 평가표 항목 | `no_record_reason` | auto가 null일 때 사유(`not_applicable` 포함), 아니면 null |
+| 평가표 항목 | `minutes` | 응답 시간(response_minutes) 항목에만. 실제 분, 관련 메시지가 없으면 null(0점 처리와 구분) |
+| AI 활용 근거 | `category` | `delegate`∣`context`∣`verify`. 규칙: 재사용 행(verbatim·edited) → delegate, 요청문에 검토·확인·맞는지·검증 류 표현 → verify, 그 외 호출 → context |
+| AI 활용 근거 | 재사용 행 | `{call_id, t_min, part_no, reuse, ratio, category}` |
+
 ## 지원자 REST (`/s`, `/sessions`, 포트 8000)
 
 | 메서드 | 경로 | 요청 | 응답 |
@@ -148,8 +165,8 @@
 
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
-| GET | /internal/sessions/{id} | | {id, status, position: {elements, scenario, catalog_version}, division, started_at, ends_at, t_min_now, current_element} |
-| GET | /internal/sessions/{id}/messages?since_t_min=&channel=&limit= | | [Message + `meta`] (내부 API 전용으로 `meta`(classification 포함)를 더함. 공개 API의 Message에는 meta가 없다. since_t_min은 소수 분) |
+| GET | /internal/sessions/{id} | | {id, status, position: {elements, scenario, catalog_version}, division, started_at, ends_at, t_min_now, current_element, events: [{id, card_id, element, status, due_at, fired_at}]} (events는 session_events 전 행, due_at 순. 워커가 카드 발생·실제 카드 시각(같은 event_id의 메시지)·전달 지연을 판단) |
+| GET | /internal/sessions/{id}/messages?since_t_min=&channel=&limit=&offset= | | [Message + `meta`] (내부 API 전용으로 `meta`(classification 포함)를 더함. 공개 API의 Message에는 meta가 없다. since_t_min은 소수 분. 정렬 created_at·seq·id, limit 기본 200·최대 1000, offset 기본 0. 워커는 limit 500으로 offset 페이지를 끝까지 읽는다) |
 | POST | /internal/sessions/{id}/messages | {channel, sender, content, event_id?, run_id, seq, meta?} | Message (같은 run_id+seq 재요청은 기존 행) |
 | GET | /internal/sessions/{id}/board | | {tasks} |
 | PUT | /internal/sessions/{id}/tasks/{part_no} | {status} | task. 동료 담당이 아니면 403 `forbidden`. 동료 카드는 분업 확정 시 doing, 리뷰 공유 시 done으로 그래프가 바꾼다 |
@@ -158,14 +175,14 @@
 | PUT | /internal/sessions/{id}/document/{part_no} | {content, by: "colleague", run_id} | {updated_at, revision}. 같은 part_no+run_id 재요청은 기존 revision. 동료 담당이 아니면 403 |
 | GET | /internal/sessions/{id}/documents | | {catalog_version, documents: [{doc_id, title, released}]} (rag-mcp가 공개 여부와 색인 버전 확인에 사용) |
 | POST | /internal/sessions/{id}/releases/{doc_id} | | {released_at} (멱등) |
-| POST | /internal/sessions/{id}/observations | {element, window_start, window_end, metrics, label, evidence: [{type: message∣revision∣doc_view∣assistant_call, id}], run_id} | {id}. 같은 element+window_start 재요청은 기존 행. evidence의 각 id가 이 세션의 해당 테이블 행이 아니면 422 |
+| POST | /internal/sessions/{id}/observations | {element, window_start, window_end, metrics, label, evidence: [{type: message∣revision∣doc_view∣assistant_call, id}], run_id} | {id}. 같은 element+window_start 재요청은 기존 행. evidence의 각 id가 이 세션의 해당 테이블 행이 아니면 422. metrics는 `{<지표>: {value, evidence_ids}}`. 카드 메시지 전달이 늦어 창을 놓쳤으면 `metrics.window_missed: {value: true, evidence_ids: []}`(bool true도 허용)를 남기고, 워커는 그 요소 항목 전부를 사유 window_missed로 둔다 |
 | GET | /internal/sessions/{id}/observations | | [...] |
 | GET | /internal/sessions/{id}/assistant_calls | | [{id, request_message_id, response_message_id, cited_doc_ids, created_at}] |
 | PUT | /internal/sessions/{id}/messages/{message_id}/classification | {recipient, kind, instruction?, related_card?} | Message. 그래프가 respond 앞 분류 결과를 저장(meta.classification). 멱등 |
 | GET | /internal/sessions/{id}/assistant_reuse | | [{call_id, part_no, reuse, ratio}] (제출 후에만 값이 있음) |
 | GET | /internal/sessions/{id}/document_revisions | | [{id, part_no, revision, by, content, length, diff_ratio, created_at}] |
 | GET | /internal/sessions/{id}/doc_views | | [{id, doc_id, viewed_at}] |
-| POST | /internal/sessions/{id}/report/draft | {content} | {status: "report_ready"} (멱등) |
+| POST | /internal/sessions/{id}/report/draft | {content, usage?} | {status: "report_ready"} (멱등). usage(워커 LLM 사용량 `{model, llm_calls, retries, tokens_in, tokens_out, latency_ms, fallback_used}`)는 `reports.usage`에 저장, 재전달은 최초 값 유지. 해시는 content에만 |
 | POST | /internal/sessions/{id}/report/final | {content} | {status: "reviewed", reviewed_at}. content의 정규화 JSON 해시(`reports.content_hash`, 키 정렬·공백 제거)가 승인된 draft 해시와 다르면 409 `draft_mismatch`. 이미 reviewed이고 해시가 같으면 200 기존 값(재전달 멱등). draft가 없거나 status가 approving·reviewed가 아니면 409 |
 | POST | /internal/sessions/{id}/report_failed | {error} | {status: "failed"} |
 | POST | /internal/test/sessions | {elements, session_minutes, alias?} | {session_id, token, invite_url} (`ENABLE_TEST_API=1`일 때만. `token`은 초대 토큰 원문이며 세션 JWT가 아니다. consent·start를 거쳐야 한다) |
@@ -224,4 +241,4 @@
 | report.approve | {session_id, attempt} | api `/admin/sessions/{id}/review`. 미발행(approve_enqueued_at null)은 스케줄러가 60초마다 재발행 | 워커. final 저장 성공 후 ack |
 | report.dlq | 원본 + error | 워커(attempt ≥ 3) | 워커의 dlq 소비자가 `POST /internal/.../report_failed`를 호출한 뒤 ack(api가 내려가 있으면 ack하지 않고 60초 뒤 재시도). 메시지는 사람이 확인할 때까지 관리 UI에 남지 않으므로 error는 워커 로그에도 남김 |
 
-메시지는 persistent, 발행은 publisher confirm을 켜고 브로커 확인을 받은 뒤에야 `*_enqueued_at`을 기록하거나(api) 원본을 ack한다(워커 재발행). 소비는 manual ack, 같은 session_id의 중복 메시지는 stage로 멱등 처리. 재시도는 nack 없이 `attempt+1`로 재발행(확인 후) → 원본 ack(지연은 워커의 백오프 대기). RabbitMQ 데이터는 `rabbitdata` 볼륨에 남고, 브로커를 재생성해 큐가 비면 api 스케줄러의 outbox 재탐색이 미처리 세션을 다시 발행한다.
+메시지는 persistent, 발행은 publisher confirm을 켜고 브로커 확인을 받은 뒤에야 `*_enqueued_at`을 기록하거나(api) 원본을 ack한다(워커 재발행). 소비는 manual ack, 같은 session_id의 중복 메시지는 stage로 멱등 처리. 재시도는 nack 없이 `attempt+1`로 재발행(확인 후) → 원본 ack(지연은 워커의 백오프 대기: attempt 1·2·3 실패 뒤 각 5·15·45초, 3 실패는 대기 뒤 DLQ). RabbitMQ 데이터는 `rabbitdata` 볼륨에 남고, 브로커를 재생성해 큐가 비면 api 스케줄러의 outbox 재탐색이 미처리 세션을 다시 발행한다.

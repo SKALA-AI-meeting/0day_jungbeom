@@ -133,6 +133,18 @@ async def get_session(session_id: uuid.UUID, db: Db) -> dict[str, Any]:
         "ends_at": iso(session.ends_at),
         "t_min_now": minutes,
         "current_element": current_element(list(events), session.status),
+        # 워커가 카드별 발생 여부와 실제 카드 시각(같은 event_id의 메시지)을 판단한다
+        "events": [
+            {
+                "id": str(e.id),
+                "card_id": e.card_id,
+                "element": e.element,
+                "status": e.status,
+                "due_at": iso(e.due_at),
+                "fired_at": iso(e.fired_at),
+            }
+            for e in sorted(events, key=lambda e: (e.due_at, e.card_id))
+        ],
     }
 
 
@@ -143,6 +155,7 @@ async def list_messages(
     since_t_min: float | None = None,
     channel: Channel | None = None,
     limit: Annotated[int, Query(ge=1, le=1000)] = 200,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[dict[str, Any]]:
     session = await load_session(db, session_id)
     query = select(Message).where(Message.session_id == session_id)
@@ -151,7 +164,9 @@ async def list_messages(
     if since_t_min is not None and session.started_at is not None:
         since = session.started_at + timedelta(minutes=since_t_min)
         query = query.where(Message.created_at > since)
-    rows = await db.execute(query.order_by(Message.created_at, Message.seq).limit(limit))
+    # id까지 정렬해 offset 페이지가 겹치거나 빠지지 않게 한다(워커의 전체 수집)
+    query = query.order_by(Message.created_at, Message.seq, Message.id)
+    rows = await db.execute(query.offset(offset).limit(limit))
     return [with_meta(m, session) for m in rows.scalars()]
 
 
@@ -621,6 +636,8 @@ def content_hash(content: dict[str, Any]) -> str:
 
 class ReportIn(BaseModel):
     content: dict[str, Any]
+    # 워커 LLM 사용량(reports.usage). 해시는 content에만 적용한다
+    usage: dict[str, Any] | None = None
 
 
 @router.post("/sessions/{session_id}/report/draft")
@@ -638,6 +655,7 @@ async def save_draft(session_id: uuid.UUID, body: ReportIn, ctx: Ctx, db: Db) ->
             stage="draft",
             content=body.content,
             content_hash=content_hash(body.content),
+            usage=body.usage or {},
             auto_met=total.get("met"),
             auto_judged=total.get("judged"),
             auto_no_record=total.get("no_record"),

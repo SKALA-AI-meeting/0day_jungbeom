@@ -1,0 +1,469 @@
+{
+  "session_id": "ae3ca15e-c5f2-4dda-b55d-4cc966a858da",
+  "stage": "draft",
+  "position": {
+    "elements": [
+      "cooperation",
+      "responsibility",
+      "flexibility",
+      "respect"
+    ]
+  },
+  "rubric": {
+    "elements": [
+      {
+        "element": "cooperation",
+        "name": "협력 태도",
+        "auto": {
+          "met": 4,
+          "judged": 4,
+          "no_record": 0
+        },
+        "reviewer": null,
+        "items": [
+          {
+            "id": "coop_replied",
+            "text": "동료의 도움 요청에 답함",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "89e4f191-682f-4402-b648-199dc5e56c1c",
+                "t_min": 32
+              }
+            ]
+          },
+          {
+            "id": "coop_replied_within_5m",
+            "text": "요청 후 5분 안에 답함",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "89e4f191-682f-4402-b648-199dc5e56c1c",
+                "t_min": 32
+              }
+            ],
+            "minutes": 2.0
+          },
+          {
+            "id": "coop_offered_help",
+            "text": "바로 돕거나 도울 시점을 제시함",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "89e4f191-682f-4402-b648-199dc5e56c1c",
+                "t_min": 32
+              }
+            ]
+          },
+          {
+            "id": "coop_specific_response",
+            "text": "돕는 방식·시점 또는 거절 이유를 구체적으로 말함",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "89e4f191-682f-4402-b648-199dc5e56c1c",
+                "t_min": 32
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "element": "responsibility",
+        "name": "책임감",
+        "auto": {
+          "met": 4,
+          "judged": 4,
+          "no_record": 0
+        },
+        "reviewer": null,
+        "items": [
+          {
+            "id": "resp_notified_before_release",
+            "text": "자료가 공개되기 전에 지연을 팀이나 동료에게 알림",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "6e6dfa63-429a-4b64-8985-c08ffb3fe473",
+                "t_min": 62
+              }
+            ]
+          },
+          {
+            "id": "resp_proposed_alternative",
+            "text": "지연 동안 먼저 할 작업이나 대안을 제시함",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "6e6dfa63-429a-4b64-8985-c08ffb3fe473",
+                "t_min": 62
+              }
+            ]
+          },
+          {
+            "id": "resp_told_team",
+            "text": "팀 채널(팀장이 보는 곳)에 지연을 알림",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "6e6dfa63-429a-4b64-8985-c08ffb3fe473",
+                "t_min": 62
+              }
+            ]
+          },
+          {
+            "id": "resp_opened_after_release",
+            "text": "공개된 인터뷰 요약을 열람함",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "doc_view",
+                "id": "d4a8fe1c-bf1b-40db-9984-22a20a1db254",
+                "t_min": 76.0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "element": "flexibility",
+        "name": "유연성",
+        "auto": {
+          "met": 4,
+          "judged": 4,
+          "no_record": 0
+        },
+        "reviewer": null,
+        "items": [
+          {
+            "id": "flex_applied_to_doc",
+            "text": "바뀐 대상을 기획안에 반영함",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "revision",
+                "id": "243baeee-f613-473a-a6bc-c4731cf83d34",
+                "t_min": 82.0
+              }
+            ]
+          },
+          {
+            "id": "flex_replied_within_10m",
+            "text": "변경 공지 후 10분 안에 관련 메시지를 보냄",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "c175a5a0-85bb-416b-a06d-42ae9fca141f",
+                "t_min": 79
+              }
+            ],
+            "minutes": 4.0
+          },
+          {
+            "id": "flex_raised_scope",
+            "text": "범위·일정·분담을 다시 정하자고 말함",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "c175a5a0-85bb-416b-a06d-42ae9fca141f",
+                "t_min": 79
+              }
+            ]
+          },
+          {
+            "id": "flex_redirected_colleague",
+            "text": "동료에게 분담 변경이나 방향 전환을 지시함 (리드)",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "c175a5a0-85bb-416b-a06d-42ae9fca141f",
+                "t_min": 79
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "element": "respect",
+        "name": "존중·소통",
+        "auto": {
+          "met": 4,
+          "judged": 4,
+          "no_record": 0
+        },
+        "reviewer": null,
+        "items": [
+          {
+            "id": "respect_raised_issue",
+            "text": "동료 파트의 유료 멤버십 내용을 언급함",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "d5516223-c108-4400-ad64-a08b39da652e",
+                "t_min": 93
+              }
+            ]
+          },
+          {
+            "id": "respect_cited_policy",
+            "text": "운영 정책을 근거로 언급함",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "d5516223-c108-4400-ad64-a08b39da652e",
+                "t_min": 93
+              }
+            ]
+          },
+          {
+            "id": "respect_proposed_fix",
+            "text": "수정 방향을 함께 제시함",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "d5516223-c108-4400-ad64-a08b39da652e",
+                "t_min": 93
+              }
+            ]
+          },
+          {
+            "id": "respect_no_blame",
+            "text": "지적할 때 비난 중심이 아님",
+            "auto": 1,
+            "no_record_reason": null,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "d5516223-c108-4400-ad64-a08b39da652e",
+                "t_min": 93
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "auto_total": {
+      "met": 16,
+      "judged": 16,
+      "no_record": 0
+    },
+    "reviewer_total": null,
+    "review": null,
+    "history": []
+  },
+  "sections": [
+    {
+      "element": "cooperation",
+      "name": "협력 태도",
+      "situation": "내 일이 바쁠 때 동료의 도움 요청",
+      "observed": "자기 일정을 설명하고 도울 시점을 제안함",
+      "evidence": [
+        {
+          "type": "message",
+          "id": "89e4f191-682f-4402-b648-199dc5e56c1c",
+          "t_min": 32,
+          "channel": "dm",
+          "quote": "제 파트 마무리하고 15분 뒤에 봐요.",
+          "context": {
+            "prev_persona_message": "이도현 · 30분: 10분만 같이 봐 주실 수 있어요?",
+            "card_at_t_min": 30
+          }
+        }
+      ],
+      "event_fired": true,
+      "no_record_reason": null,
+      "aux_facts": [],
+      "out_of_window_messages": [
+        {
+          "t_min": 95,
+          "channel": "dm",
+          "quote": "아까 말한 기준 지금 같이 봐요."
+        }
+      ]
+    },
+    {
+      "element": "responsibility",
+      "name": "책임감",
+      "situation": "담당 파트에 필요한 인터뷰 자료 지연",
+      "observed": "지연을 팀이나 동료에게 알리고 대안을 제시함",
+      "evidence": [
+        {
+          "type": "message",
+          "id": "6e6dfa63-429a-4b64-8985-c08ffb3fe473",
+          "t_min": 62,
+          "channel": "team",
+          "quote": "인터뷰 요약이 늦어서 지표 문서로 먼저 잡을게요.",
+          "context": {
+            "prev_persona_message": "이도현 · 61분: 저는 4번 사례 정리 중이에요.",
+            "card_at_t_min": 60
+          }
+        },
+        {
+          "type": "revision",
+          "id": "2fd8744c-9a55-405b-9b12-b5ffd4b2fec1",
+          "t_min": 70.0,
+          "part_no": 2,
+          "summary": "2번 파트 수정(70.0분)",
+          "change_ratio": 1.0,
+          "context": {
+            "prev_persona_message": "이도현 · 61분: 저는 4번 사례 정리 중이에요.",
+            "card_at_t_min": 60
+          }
+        }
+      ],
+      "event_fired": true,
+      "no_record_reason": null,
+      "aux_facts": [],
+      "out_of_window_messages": []
+    },
+    {
+      "element": "flexibility",
+      "name": "유연성",
+      "situation": "막판 요구사항 변경",
+      "observed": "범위·분담을 다시 정하자고 제안하고 기획안에 반영함",
+      "evidence": [
+        {
+          "type": "message",
+          "id": "c175a5a0-85bb-416b-a06d-42ae9fca141f",
+          "t_min": 79,
+          "channel": "team",
+          "quote": "대상이 바뀌어서 범위를 다시 나눌게요. 도현님은 5번 지표를 휴면 기준으로 바꿔 주세요.",
+          "context": {
+            "prev_persona_message": "한서윤 · 75분: 대상을 3개월 넘게 안 나온 사용자로 바꿔 주세요. 마감은 그대로예요.",
+            "card_at_t_min": 75
+          }
+        },
+        {
+          "type": "revision",
+          "id": "243baeee-f613-473a-a6bc-c4731cf83d34",
+          "t_min": 82.0,
+          "part_no": 1,
+          "summary": "1번 파트 수정(82.0분)",
+          "change_ratio": 0.6,
+          "context": {
+            "prev_persona_message": "한서윤 · 75분: 대상을 3개월 넘게 안 나온 사용자로 바꿔 주세요. 마감은 그대로예요.",
+            "card_at_t_min": 75
+          }
+        }
+      ],
+      "event_fired": true,
+      "no_record_reason": null,
+      "aux_facts": [],
+      "out_of_window_messages": []
+    },
+    {
+      "element": "respect",
+      "name": "존중·소통",
+      "situation": "AI 동료의 실수",
+      "observed": "오류를 알아채고 근거(운영 정책)를 들어 해결 중심으로 지적함",
+      "evidence": [
+        {
+          "type": "message",
+          "id": "d5516223-c108-4400-ad64-a08b39da652e",
+          "t_min": 93,
+          "channel": "team",
+          "quote": "운영 정책에 올해 유료 기능이 없어서 멤버십은 무료 혜택으로 바꾸면 좋겠어요.",
+          "context": {
+            "prev_persona_message": "이도현 · 90.05분: 4번 파트에 재참여 할인 멤버십을 넣었어요",
+            "card_at_t_min": 90.05
+          }
+        }
+      ],
+      "event_fired": true,
+      "no_record_reason": null,
+      "aux_facts": [
+        "지원자 지적 뒤 동료가 위반 파트를 고침",
+        "운영 정책 문서를 열람함"
+      ],
+      "out_of_window_messages": []
+    }
+  ],
+  "ai_usage": {
+    "used": true,
+    "summary": "지원자는 재참여율 지표 요약을 맡기고 결과를 2번 파트에 고쳐 썼다.",
+    "evidence": [
+      {
+        "call_id": "1ba7e85c-3f87-4fd3-b80d-5ce0f711ff94",
+        "t_min": 41,
+        "quote": "재참여율 지표를 요약해 줘",
+        "category": "context"
+      },
+      {
+        "call_id": "93d1b59e-f312-4ea2-b9ad-cafa902cd414",
+        "t_min": 80,
+        "quote": "이 문단 수치가 지표 문서와 맞는지 확인해 줘",
+        "category": "verify"
+      },
+      {
+        "call_id": "1ba7e85c-3f87-4fd3-b80d-5ce0f711ff94",
+        "t_min": 41,
+        "part_no": 2,
+        "reuse": "edited",
+        "ratio": 0.4,
+        "category": "delegate"
+      }
+    ]
+  },
+  "generated_at": "2026-10-20T02:05:00+00:00",
+  "reviewed_at": null
+}

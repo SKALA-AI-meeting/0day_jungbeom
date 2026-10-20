@@ -15,7 +15,7 @@ from app.services.messages import accept_candidate_message
 from sqlalchemy import select, update
 
 from tests.conftest import FakeSocket
-from tests.routers.support import make_report_content, to_report_ready
+from tests.routers.support import AUTOS, make_report_content
 
 
 @pytest.fixture
@@ -51,6 +51,9 @@ async def test_session_context_and_message_save_is_idempotent(internal, running,
     assert ctx["position"]["scenario"]["session_minutes"] == 120
     assert ctx["division"] is None and ctx["started_at"] and ctx["ends_at"]
     assert 0 <= ctx["t_min_now"] < 1 and ctx["current_element"] is None
+    cards = {e["card_id"]: e for e in ctx["events"]}
+    assert cards["cooperation"]["status"] == "pending" and cards["cooperation"]["fired_at"] is None
+    assert "respect" not in cards  # 선택하지 않은 요소 카드는 펼치지 않는다
 
     # 요소 카드가 실행된 뒤에는 흐름 카드(report_request)가 나와도 그 요소 창이 열려 있다
     started = datetime.fromisoformat(ctx["started_at"])
@@ -89,6 +92,8 @@ async def test_session_context_and_message_save_is_idempotent(internal, running,
     assert [m["content"] for m in dm_only] == ["DM"]
     limited = (await internal.get(url(sid, "/messages"), params={"limit": 1})).json()
     assert len(limited) == 1
+    page2 = await internal.get(url(sid, "/messages"), params={"limit": 1, "offset": 1})
+    assert [m["content"] for m in page2.json()] == ["DM"]
     assert all(m["meta"] == {} or "classification" not in m["meta"] for m in all_messages)
     # 소수 분 필터: 시작 직후 1.5분 이후 메시지는 아직 없고, 0.0분 이후는 전부
     later = await internal.get(url(sid, "/messages"), params={"since_t_min": 1.5})
@@ -328,8 +333,16 @@ async def test_report_draft_final_follow_approval(
     early = await internal.post(url(sid, "/report/draft"), json={"content": {}})
     assert early.status_code == 409
 
-    sid, content = await to_report_ready(api, internal, db, service, position, created)
+    sid = uuid.UUID(created["session_id"])
+    await service.consent(sid)
+    await service.start(sid)
+    await service.complete(sid)
+    content = make_report_content(position["scenario"], AUTOS)
+    usage = {"model": "gpt-4o-mini", "llm_calls": 1, "tokens_in": 120, "tokens_out": 40}
+    res = await internal.post(url(sid, "/report/draft"), json={"content": content, "usage": usage})
+    assert res.json() == {"status": "report_ready"}
     stored = (await db.execute(select(Report))).scalar_one()
+    assert stored.usage == usage  # reports.usage. 해시는 content만
     canonical = json.dumps(content, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     assert stored.content_hash == hashlib.sha256(canonical.encode()).hexdigest()
     assert (stored.stage, stored.auto_met, stored.auto_judged, stored.auto_no_record) == (
@@ -339,8 +352,12 @@ async def test_report_draft_final_follow_approval(
         2,
     )
     # 같은 draft를 다시 받아도 그대로(멱등)
-    again = await internal.post(url(sid, "/report/draft"), json={"content": content})
+    again = await internal.post(
+        url(sid, "/report/draft"), json={"content": content, "usage": {"llm_calls": 9}}
+    )
     assert again.json() == {"status": "report_ready"}
+    await db.refresh(stored)
+    assert stored.usage == usage  # 재전달은 최초 값 유지
 
     # 승인 전 final은 409
     res = await internal.post(url(sid, "/report/final"), json={"content": content})
