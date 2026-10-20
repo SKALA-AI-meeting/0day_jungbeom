@@ -78,6 +78,7 @@
 - **observe/worker**: `honest_no_misattribution`(claims_colleague_work=false 같은 "하지 않음" aux)이 근거 없음으로 늘 classify_failed → 결정: 관찰이 판정한 보고 메시지 id를 aux 지표의 evidence_ids에 넣는다(true·false 모두). 담당 agent-session 영역.
 - **대본**: `one_element`의 "끝내 미전달" 기대값은 삭제(카드 3회 실패 → 세션 failed → 리포트 없음이 설계). 결정 2026-10-21.
 - **agent-session**: 메시지 실행의 `agent.progress started`를 분류 LLM 앞에 보내고 응답 저장 뒤 `finished`(지금은 응답 직전에 와서 "입력 중"이 안 보임). `refresh_messages` 페이징을 (created_at, id) 커서로(같은 t_min에 50개 넘으면 다음 메시지 유실). 보고 요청 카드에서 팀장이 스스로 현황을 정리하거나 킥오프 끝에 "다 됐다고 전해도 되죠?"가 붙는 문구 문제(prompts).
+- **계약(미처리, P3 뒤)**: State.active_runs·agent.progress에 `channel`(team∣dm∣manager_dm) 추가 → 화면이 열린 채널의 실행만 "입력 중"으로 표시. 영향: contracts.md·픽스처·candidate.py `_run_view`·세션 실행기 progress·web types/reducer/office-view(fix-p3 변경 요청 6).
 - **web**: 리포트 머리 "연결 끊김" 목록에서 1분 미만은 접어 "짧은 끊김 n회"로(결정 2026-10-21, 점수 무관 표시). "입력 중…" 표시는 채널 구분(DM 응답 중이면 DM에만).
 - 인증 경계: 타 기업 접근은 404 유지(testing.md 수정), "동료 문서 PUT"은 내부 docs/send에 지원자 doc_id → 403으로 정의.
 
