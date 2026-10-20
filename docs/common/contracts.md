@@ -228,7 +228,7 @@
 | POST | /internal/sessions/{id}/report/draft | {content, usage?} | {status: "report_ready"} (멱등). usage(워커 LLM 사용량 `{model, llm_calls, retries, tokens_in, tokens_out, latency_ms, fallback_used}`)는 `reports.usage`에 저장, 재전달은 최초 값 유지. 해시는 content에만 |
 | POST | /internal/sessions/{id}/report/final | {content} | {status: "reviewed", reviewed_at}. content의 정규화 JSON 해시(`reports.content_hash`, 키 정렬·공백 제거)가 승인된 draft 해시와 다르면 409 `draft_mismatch`. 이미 reviewed이고 해시가 같으면 200 기존 값(재전달 멱등). draft가 없거나 status가 approving·reviewed가 아니면 409 |
 | POST | /internal/sessions/{id}/report_failed | {error} | {status: "failed"} |
-| POST | /internal/test/sessions | {elements, session_minutes, mission_id?, alias?} | {session_id, token, invite_url} (`ENABLE_TEST_API=1`일 때만. `token`은 초대 토큰 원문이며 세션 JWT가 아니다. consent·start를 거쳐야 한다) |
+| POST | /internal/test/sessions | {elements, session_minutes, mission_id?, alias?, company_id?, admin_email?} | {session_id, token, invite_url} (`ENABLE_TEST_API=1`일 때만. `token`은 초대 토큰 원문이며 세션 JWT가 아니다. consent·start를 거쳐야 한다) `company_id` 또는 `admin_email`을 주면 그 회사의 채용 건으로 만든다(둘 다면 company_id 우선, 없는 회사면 404 not_found). 둘 다 없으면 고정 테스트 회사. |
 
 권한·상태 검증(담당자, 세션 상태, 문서 공개 여부)은 모두 api가 최종 판단한다. MCP는 전달만 한다. 내부 문서·task·분업 쓰기는 세션이 in_progress일 때만 받고 아니면 409 `conflict`(이미 저장된 run_id 재전달은 기존 결과).
 

@@ -78,6 +78,7 @@ id는 파일 사이에서 같은 행을 가리킨다: 메시지 `m-*`, 지원자
 | `internal_report_draft.json`, `internal_report_usage.json` | POST /report/draft 응답, usage 형태 |
 | `internal_report_final.json`, `internal_report_failed.json` | POST /report/final, /report_failed 응답 |
 | `internal_test_session.json` | POST /internal/test/sessions 응답 |
+| `internal_test_session_request.json` | POST /internal/test/sessions 요청(company_id·admin_email 선택) |
 
 ## MCP·큐
 
