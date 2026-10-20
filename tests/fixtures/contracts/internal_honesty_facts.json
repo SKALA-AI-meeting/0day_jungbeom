@@ -1,0 +1,148 @@
+{
+  "shares": [
+    {
+      "doc_id": "doc-c1",
+      "owner": "candidate",
+      "part_no": 1,
+      "versions": [
+        {
+          "version": 1,
+          "channel": "team",
+          "t_min": 25.0
+        },
+        {
+          "version": 2,
+          "channel": "team",
+          "t_min": 84.0
+        }
+      ]
+    },
+    {
+      "doc_id": "doc-c2",
+      "owner": "candidate",
+      "part_no": 2,
+      "versions": [
+        {
+          "version": 1,
+          "channel": "dm",
+          "t_min": 73.0
+        }
+      ]
+    },
+    {
+      "doc_id": "doc-k3",
+      "owner": "colleague",
+      "part_no": 3,
+      "versions": [
+        {
+          "version": 1,
+          "channel": "team",
+          "t_min": 45.0
+        },
+        {
+          "version": 2,
+          "channel": "team",
+          "t_min": 90.0
+        }
+      ]
+    },
+    {
+      "doc_id": "doc-k4",
+      "owner": "colleague",
+      "part_no": 4,
+      "versions": [
+        {
+          "version": 1,
+          "channel": "team",
+          "t_min": 45.0
+        },
+        {
+          "version": 2,
+          "channel": "team",
+          "t_min": 90.0
+        }
+      ]
+    },
+    {
+      "doc_id": "doc-k5",
+      "owner": "colleague",
+      "part_no": 5,
+      "versions": [
+        {
+          "version": 1,
+          "channel": "team",
+          "t_min": 45.0
+        },
+        {
+          "version": 2,
+          "channel": "team",
+          "t_min": 90.0
+        }
+      ]
+    }
+  ],
+  "final_sections": [
+    {
+      "part_no": 1,
+      "source_doc_id": "doc-c1",
+      "source_version": 2,
+      "edited": true
+    },
+    {
+      "part_no": 2,
+      "source_doc_id": "doc-c2",
+      "source_version": 1,
+      "edited": false
+    },
+    {
+      "part_no": 3,
+      "source_doc_id": "doc-k3",
+      "source_version": 2,
+      "edited": true
+    },
+    {
+      "part_no": 4,
+      "source_doc_id": "doc-k4",
+      "source_version": 2,
+      "edited": false
+    },
+    {
+      "part_no": 5,
+      "source_doc_id": "doc-k5",
+      "source_version": 2,
+      "edited": false
+    }
+  ],
+  "tasks": [
+    {
+      "part_no": 1,
+      "assignee": "candidate",
+      "status": "done"
+    },
+    {
+      "part_no": 2,
+      "assignee": "candidate",
+      "status": "done"
+    },
+    {
+      "part_no": 3,
+      "assignee": "both",
+      "status": "done"
+    },
+    {
+      "part_no": 4,
+      "assignee": "colleague",
+      "status": "done"
+    },
+    {
+      "part_no": 5,
+      "assignee": "colleague",
+      "status": "doing"
+    }
+  ],
+  "empty_sections": [],
+  "tasks_not_done": [
+    5
+  ],
+  "changed_after_adaptability": true
+}

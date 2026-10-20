@@ -1,0 +1,5 @@
+{
+  "session_id": "sess-1",
+  "token": "inv-tok-1",
+  "invite_url": "http://localhost:3000/s/inv-tok-1"
+}

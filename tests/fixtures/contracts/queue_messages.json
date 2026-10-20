@@ -1,0 +1,15 @@
+{
+  "report.generate": {
+    "session_id": "sess-1",
+    "attempt": 1
+  },
+  "report.approve": {
+    "session_id": "sess-1",
+    "attempt": 1
+  },
+  "report.dlq": {
+    "session_id": "sess-1",
+    "attempt": 3,
+    "error": "llm_failed: retries exhausted"
+  }
+}

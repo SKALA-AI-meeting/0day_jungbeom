@@ -1,0 +1,257 @@
+{
+  "id": "sess-1",
+  "status": "completed",
+  "position": {
+    "mission_id": "planning",
+    "elements": [
+      "responsibility",
+      "planning",
+      "adaptability",
+      "collaboration",
+      "honesty"
+    ],
+    "scenario": {
+      "mission_id": "planning",
+      "session_minutes": 120,
+      "cards": [
+        {
+          "card_id": "kickoff",
+          "at_min": 0,
+          "flow": true
+        },
+        {
+          "card_id": "planning_division",
+          "element": "planning",
+          "at_min": 10,
+          "window_start_min": 0
+        },
+        {
+          "card_id": "collab_help",
+          "element": "collaboration",
+          "at_min": 30
+        },
+        {
+          "card_id": "planning_checkin",
+          "element": "planning",
+          "at_min": 45,
+          "sends_document": {
+            "parts": "colleague_all",
+            "version": 1
+          }
+        },
+        {
+          "card_id": "responsibility_delay",
+          "element": "responsibility",
+          "at_min": 60,
+          "effects": {
+            "release_document": "interview_summary",
+            "release_at_min": 70
+          }
+        },
+        {
+          "card_id": "adaptability_change",
+          "element": "adaptability",
+          "at_min": 75
+        },
+        {
+          "card_id": "review",
+          "at_min": 90,
+          "flow": true,
+          "sends_document": {
+            "parts": "colleague_all",
+            "version": 2
+          }
+        },
+        {
+          "card_id": "collab_disagree",
+          "element": "collaboration",
+          "at_min": 90,
+          "attach_to": "review"
+        },
+        {
+          "card_id": "honesty_report",
+          "element": "honesty",
+          "at_min": 110,
+          "or_on_submit": true
+        }
+      ],
+      "parts": {
+        "1": {
+          "title": "문제 정의와 대상 사용자"
+        },
+        "2": {
+          "title": "사용자 인터뷰에서 찾은 근거"
+        },
+        "3": {
+          "title": "핵심 기능 제안",
+          "depends_on": [
+            2
+          ]
+        },
+        "4": {
+          "title": "비슷한 서비스 사례"
+        },
+        "5": {
+          "title": "성공 지표와 출시 일정"
+        }
+      },
+      "division_min": {
+        "2": [
+          "candidate"
+        ],
+        "3": [
+          "colleague",
+          "both"
+        ],
+        "any_colleague_only": [
+          4,
+          5
+        ]
+      },
+      "final_template": {
+        "sections": [
+          {
+            "part_no": 1,
+            "title": "문제 정의와 대상 사용자"
+          },
+          {
+            "part_no": 2,
+            "title": "사용자 인터뷰에서 찾은 근거"
+          },
+          {
+            "part_no": 3,
+            "title": "핵심 기능 제안"
+          },
+          {
+            "part_no": 4,
+            "title": "비슷한 서비스 사례"
+          },
+          {
+            "part_no": 5,
+            "title": "성공 지표와 출시 일정"
+          }
+        ],
+        "length": "섹션당 5~10줄, 1~2쪽"
+      },
+      "vars": {
+        "interview_expected_time": "01:00",
+        "release_time": "01:10"
+      },
+      "releases_at_start": [
+        "company_intro",
+        "metrics",
+        "policy",
+        "meeting_notes"
+      ]
+    },
+    "catalog_version": "a3f9c2e1d4b5"
+  },
+  "division": {
+    "parts": {
+      "1": "candidate",
+      "2": "candidate",
+      "3": "both",
+      "4": "colleague",
+      "5": "colleague"
+    },
+    "decided_by": "candidate",
+    "decided_at": "2026-10-20T01:12:12Z"
+  },
+  "started_at": "2026-10-20T01:00:00Z",
+  "ends_at": "2026-10-20T03:00:00Z",
+  "submitted_at": "2026-10-20T02:51:00Z",
+  "reported_at": "2026-10-20T02:52:00Z",
+  "completed_at": "2026-10-20T02:52:00Z",
+  "deadline_at": "2026-10-20T02:56:00Z",
+  "t_min_now": 112.0,
+  "current_card": null,
+  "connection_gaps": [
+    {
+      "from_t_min": 31.2,
+      "to_t_min": 46.0
+    }
+  ],
+  "events": [
+    {
+      "id": "ev-1",
+      "card_id": "kickoff",
+      "element": null,
+      "status": "done",
+      "due_at": "2026-10-20T01:00:00Z",
+      "fired_at": "2026-10-20T01:00:00Z",
+      "document_missing": false
+    },
+    {
+      "id": "ev-2",
+      "card_id": "planning_division",
+      "element": "planning",
+      "status": "done",
+      "due_at": "2026-10-20T01:10:00Z",
+      "fired_at": "2026-10-20T01:10:00Z",
+      "document_missing": false
+    },
+    {
+      "id": "ev-3",
+      "card_id": "collab_help",
+      "element": "collaboration",
+      "status": "done",
+      "due_at": "2026-10-20T01:30:00Z",
+      "fired_at": "2026-10-20T01:30:00Z",
+      "document_missing": false
+    },
+    {
+      "id": "ev-4",
+      "card_id": "planning_checkin",
+      "element": "planning",
+      "status": "done",
+      "due_at": "2026-10-20T01:45:00Z",
+      "fired_at": "2026-10-20T01:45:00Z",
+      "document_missing": false
+    },
+    {
+      "id": "ev-5",
+      "card_id": "responsibility_delay",
+      "element": "responsibility",
+      "status": "done",
+      "due_at": "2026-10-20T02:00:00Z",
+      "fired_at": "2026-10-20T02:00:00Z",
+      "document_missing": false
+    },
+    {
+      "id": "ev-6",
+      "card_id": "adaptability_change",
+      "element": "adaptability",
+      "status": "done",
+      "due_at": "2026-10-20T02:15:00Z",
+      "fired_at": "2026-10-20T02:15:00Z",
+      "document_missing": false
+    },
+    {
+      "id": "ev-7",
+      "card_id": "review",
+      "element": null,
+      "status": "done",
+      "due_at": "2026-10-20T02:30:00Z",
+      "fired_at": "2026-10-20T02:30:00Z",
+      "document_missing": false
+    },
+    {
+      "id": "ev-8",
+      "card_id": "collab_disagree",
+      "element": "collaboration",
+      "status": "done",
+      "due_at": "2026-10-20T02:30:00Z",
+      "fired_at": "2026-10-20T02:30:00Z",
+      "document_missing": false
+    },
+    {
+      "id": "ev-9",
+      "card_id": "honesty_report",
+      "element": "honesty",
+      "status": "done",
+      "due_at": "2026-10-20T02:50:00Z",
+      "fired_at": "2026-10-20T02:50:00Z",
+      "document_missing": false
+    }
+  ]
+}

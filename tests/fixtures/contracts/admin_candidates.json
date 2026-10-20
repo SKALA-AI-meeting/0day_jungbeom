@@ -1,0 +1,91 @@
+[
+  {
+    "session_id": "sess-1",
+    "alias": "지원자A",
+    "email": "a@example.com",
+    "status": "report_ready",
+    "display_status": "report_ready",
+    "display_group": "needs_review",
+    "invited_at": "2026-10-16T01:00:00Z",
+    "started_at": "2026-10-20T01:00:00Z",
+    "ends_at": "2026-10-20T03:00:00Z",
+    "last_activity_at": "2026-10-20T02:52:00Z",
+    "message_count": 11,
+    "report_ready_at": "2026-10-20T02:53:00Z",
+    "purge_at": "2027-01-18T02:52:00Z",
+    "met": 16,
+    "unmet": 2,
+    "no_record": 2,
+    "score_source": "auto",
+    "by_element": [
+      {
+        "element": "responsibility",
+        "met": 3,
+        "unmet": 1,
+        "no_record": 0
+      },
+      {
+        "element": "planning",
+        "met": 4,
+        "unmet": 0,
+        "no_record": 0
+      },
+      {
+        "element": "adaptability",
+        "met": 3,
+        "unmet": 1,
+        "no_record": 0
+      },
+      {
+        "element": "collaboration",
+        "met": 2,
+        "unmet": 0,
+        "no_record": 2
+      },
+      {
+        "element": "honesty",
+        "met": 4,
+        "unmet": 0,
+        "no_record": 0
+      }
+    ]
+  },
+  {
+    "session_id": "sess-2",
+    "alias": "지원자B",
+    "email": "b@example.com",
+    "status": "failed",
+    "display_status": "failed",
+    "display_group": "problem",
+    "invited_at": "2026-10-16T01:00:00Z",
+    "started_at": "2026-10-18T01:00:00Z",
+    "ends_at": "2026-10-18T03:00:00Z",
+    "last_activity_at": "2026-10-18T01:40:00Z",
+    "message_count": 3,
+    "failed_stage": "session",
+    "failed_reason": "agent run exceeded retry budget",
+    "next_action": "새 초대를 만들어 보내세요",
+    "met": null,
+    "unmet": null,
+    "no_record": null,
+    "score_source": null,
+    "by_element": null
+  },
+  {
+    "session_id": "sess-3",
+    "alias": "지원자B",
+    "email": "b@example.com",
+    "status": "invited",
+    "display_status": "invited",
+    "display_group": "waiting",
+    "invited_at": "2026-10-19T01:00:00Z",
+    "message_count": 0,
+    "previous_session_id": "sess-2",
+    "previous_relation": "retry",
+    "met": null,
+    "unmet": null,
+    "no_record": null,
+    "score_source": null,
+    "by_element": null
+  }
+]

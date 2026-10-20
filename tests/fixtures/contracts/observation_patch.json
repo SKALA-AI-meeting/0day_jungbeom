@@ -1,0 +1,11 @@
+{
+  "card_id": "collab_help",
+  "window_start": 30.0,
+  "metrics_patch": {
+    "promise_kept": {
+      "value": null,
+      "evidence_ids": []
+    }
+  },
+  "run_id": "r-62"
+}

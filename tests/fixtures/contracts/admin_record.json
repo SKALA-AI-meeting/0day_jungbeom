@@ -1,0 +1,284 @@
+[
+  {
+    "t_min": 0.0,
+    "type": "message",
+    "channel": "team",
+    "by": "manager",
+    "summary": "안녕하세요, 이번 건 주담당은 지원자A님입니다. 모아런 재참여율 개선 기획 초안을 2시간 안에 모아 주세요. 최종본 템플릿은 오른쪽 탭에 있고 섹션당 5~10줄이면 됩니다. 인터뷰 요약은 01:00에 공유될 예정이에요.",
+    "ref": {
+      "type": "message",
+      "id": "m-1",
+      "t_min": 0.0
+    }
+  },
+  {
+    "t_min": 10.0,
+    "type": "message",
+    "channel": "team",
+    "by": "colleague",
+    "summary": "파트는 어떻게 나눌까요? 3번은 2번 자료가 필요해서 그 순서만 신경 쓰면 될 것 같아요.",
+    "ref": {
+      "type": "message",
+      "id": "m-10",
+      "t_min": 10.0
+    }
+  },
+  {
+    "t_min": 11.0,
+    "type": "message",
+    "channel": "team",
+    "by": "candidate",
+    "summary": "제가 1·2번, 도현님이 4·5번, 3번은 같이 보죠. 2번 자료 나오는 대로 3번 골격부터 잡을게요. 보드에도 적어 둘게요.",
+    "ref": {
+      "type": "message",
+      "id": "m-11",
+      "t_min": 11.0
+    }
+  },
+  {
+    "t_min": 12.0,
+    "type": "task_event",
+    "by": "candidate",
+    "summary": "1번 카드 assignee 변경(12분)",
+    "ref": {
+      "type": "task_event",
+      "id": "te-1",
+      "t_min": 12.0
+    }
+  },
+  {
+    "t_min": 12.5,
+    "type": "task_event",
+    "by": "candidate",
+    "summary": "1번 카드 due_min 변경(12.5분)",
+    "ref": {
+      "type": "task_event",
+      "id": "te-6",
+      "t_min": 12.5
+    }
+  },
+  {
+    "t_min": 25.0,
+    "type": "share",
+    "channel": "team",
+    "by": "candidate",
+    "summary": "1번 파트 v1 보냄(25분)",
+    "ref": {
+      "type": "share",
+      "id": "sh-1",
+      "t_min": 25.0
+    }
+  },
+  {
+    "t_min": 30.0,
+    "type": "message",
+    "channel": "dm",
+    "by": "colleague",
+    "summary": "4번 사례 고르는 기준이 헷갈려서요. 채팅으로 기준 두세 개만 10분 정도 같이 봐 줄 수 있을까요?",
+    "ref": {
+      "type": "message",
+      "id": "m-15",
+      "t_min": 30.0
+    }
+  },
+  {
+    "t_min": 31.2,
+    "type": "connection_gap",
+    "by": "system",
+    "summary": "00:31~00:46 연결 끊김",
+    "ref": {
+      "type": "connection_gap",
+      "id": "gap-1",
+      "t_min": 31.2
+    }
+  },
+  {
+    "t_min": 45.0,
+    "type": "message",
+    "channel": "team",
+    "by": "colleague",
+    "summary": "4번 초안 v1 보냅니다. 방향 봐 주세요.",
+    "ref": {
+      "type": "message",
+      "id": "m-21",
+      "t_min": 45.0
+    }
+  },
+  {
+    "t_min": 45.0,
+    "type": "share",
+    "channel": "team",
+    "by": "colleague",
+    "summary": "동료 4번 파트 v1 보냄(45분)",
+    "ref": {
+      "type": "share",
+      "id": "ksh-4-1",
+      "t_min": 45.0
+    }
+  },
+  {
+    "t_min": 46.5,
+    "type": "open",
+    "by": "candidate",
+    "summary": "동료 4번 v1 열람(46.5분)",
+    "ref": {
+      "type": "open",
+      "id": "op-1",
+      "t_min": 46.5
+    }
+  },
+  {
+    "t_min": 47.0,
+    "type": "message",
+    "channel": "team",
+    "by": "candidate",
+    "summary": "4번 사례 방향 좋아요. 두 번째 사례는 지표 문서의 재참여율과 연결해 주세요. 2번은 인터뷰 요약 나오면 바로 채울게요.",
+    "ref": {
+      "type": "message",
+      "id": "m-24",
+      "t_min": 47.0
+    }
+  },
+  {
+    "t_min": 47.5,
+    "type": "assistant_call",
+    "by": "candidate",
+    "summary": "재참여율 22%가 낮은 편인지 비슷한 서비스 기준으로 알려 줘",
+    "ref": {
+      "type": "assistant_call",
+      "id": "ac-1",
+      "t_min": 47.5
+    }
+  },
+  {
+    "t_min": 60.0,
+    "type": "notice",
+    "channel": "notice",
+    "by": "system",
+    "summary": "사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
+    "ref": {
+      "type": "message",
+      "id": "m-30",
+      "t_min": 60.0
+    }
+  },
+  {
+    "t_min": 62.0,
+    "type": "message",
+    "channel": "team",
+    "by": "candidate",
+    "summary": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
+    "ref": {
+      "type": "message",
+      "id": "m-31",
+      "t_min": 62.0
+    }
+  },
+  {
+    "t_min": 72.0,
+    "type": "assistant_call",
+    "by": "candidate",
+    "summary": "인터뷰 요약에서 두 번째 모임에 안 온 이유만 뽑아 줘",
+    "ref": {
+      "type": "assistant_call",
+      "id": "ac-2",
+      "t_min": 72.0
+    }
+  },
+  {
+    "t_min": 73.0,
+    "type": "share",
+    "channel": "dm",
+    "by": "candidate",
+    "summary": "2번 파트 v1 보냄(73분)",
+    "ref": {
+      "type": "share",
+      "id": "sh-2",
+      "t_min": 73.0
+    }
+  },
+  {
+    "t_min": 75.0,
+    "type": "message",
+    "channel": "team",
+    "by": "manager",
+    "summary": "대표님과 이야기해 보니 핵심 기능을 '첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고, 출시 일정은 다음 분기에서 이번 분기로 당겨 주세요. 대상 사용자·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요.",
+    "ref": {
+      "type": "message",
+      "id": "m-35",
+      "t_min": 75.0
+    }
+  },
+  {
+    "t_min": 77.0,
+    "type": "message",
+    "channel": "dm",
+    "by": "candidate",
+    "summary": "도현님, 3번은 48시간 후속 모임 제안 기능 하나로 좁혀 주시고 5번 일정은 이번 분기 기준으로 바꿔 주세요. 사례는 그대로 두셔도 돼요.",
+    "ref": {
+      "type": "message",
+      "id": "m-36",
+      "t_min": 77.0
+    }
+  },
+  {
+    "t_min": 84.0,
+    "type": "share",
+    "channel": "team",
+    "by": "candidate",
+    "summary": "1번 파트 v2 보냄(84분)",
+    "ref": {
+      "type": "share",
+      "id": "sh-3",
+      "t_min": 84.0
+    }
+  },
+  {
+    "t_min": 90.5,
+    "type": "message",
+    "channel": "team",
+    "by": "colleague",
+    "summary": "주담당 파트도 보내 주시면 볼게요. 그리고 1번에서 '다음 모임 일정을 놓쳐서'가 주원인이라고 쓰셨는데, 인터뷰 8명 중 5명은 '아는 사람이 없어 어색해서'를 먼저 말해서 저는 그쪽이 주원인에 가깝다고 봐요.",
+    "ref": {
+      "type": "message",
+      "id": "m-53",
+      "t_min": 90.5
+    }
+  },
+  {
+    "t_min": 93.0,
+    "type": "message",
+    "channel": "team",
+    "by": "candidate",
+    "summary": "인터뷰 기준으론 어색함이 더 많이 나오는 게 맞아요. 다만 지표 문서의 이탈 시점이 일정 놓친 직후라서 둘 다 쓰고 일정 쪽을 먼저 두는 걸로 할게요.",
+    "ref": {
+      "type": "message",
+      "id": "m-54",
+      "t_min": 93.0
+    }
+  },
+  {
+    "t_min": 110.0,
+    "type": "message",
+    "channel": "team",
+    "by": "manager",
+    "summary": "마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
+    "ref": {
+      "type": "message",
+      "id": "m-60",
+      "t_min": 110.0
+    }
+  },
+  {
+    "t_min": 112.0,
+    "type": "message",
+    "channel": "team",
+    "by": "candidate",
+    "summary": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
+    "ref": {
+      "type": "message",
+      "id": "m-62",
+      "t_min": 112.0
+    }
+  }
+]

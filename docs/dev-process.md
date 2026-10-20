@@ -26,6 +26,8 @@ cd apps/web && pnpm dev                                   # 3000
 - `infra/docker-compose.dev.yml`(override)이 인프라 포트를 로컬에 바인딩하고, 컨테이너 안의 rag-mcp가 호스트의 api 내부 포트를 보도록 `API_INTERNAL_URL=http://host.docker.internal:8001`을 준다.
 - `infra/.env`를 각 서비스가 `python-dotenv`로 읽는다. 로컬에서는 호스트명을 `localhost`로 바꾼 `infra/.env.local`을 우선 읽는다(둘 다 git 무시).
 - `app.run`은 uvicorn `Server` 두 개를 같은 asyncio 루프에서 띄운다. hub·세션 Lock·스케줄러가 한 프로세스에 있어야 하므로 두 앱을 별도 프로세스로 띄우지 않는다. foundation 산출물.
+- **테스트 격리.** api는 임시 DB, worker는 임시 스키마·큐, rag-mcp는 임시 DB를 쓴다(각 트랙 보고서에 기록된 방식). 그래서 `schema.sql` 수정이 다른 worktree의 격리 테스트를 깨지 않는다. 격리를 깨는 테스트는 넣지 않는다.
+- **실제 스택 사용권.** 공용 postgres·rabbitmq·실행 중 앱은 한 번에 한 작업만 쓴다. 사용권에는 사용자·worktree·커밋·DB/schema·큐·catalog_version을 적고, 스택 재기동·스키마 적용·seed·색인은 사용권 보유 작업에서만 한다.
 - **실행 중인 통합 스택은 한 번에 하나**다. 트랙 pane은 단위 테스트(mock)로 개발하고, 실제 스택이 필요하면 공용 인프라(`make infra-up`은 main 저장소에서 한 번)에 자기 worktree의 앱을 붙인다. api를 두 개 띄우면 스케줄러와 Lock 전제가 깨지므로 금지. 포트 오프셋은 두지 않는다.
 - 전체 compose 기동은 M0.5 완료 기준과 M3 통합에서만 한다.
 
@@ -39,7 +41,7 @@ cd apps/web && pnpm dev                                   # 3000
 ## 브랜치·커밋·리뷰
 
 - `main`은 항상 기동 가능. 트랙은 `track/<이름>` 브랜치, worktree `../Day-0_zaeho.worktrees/<이름>`.
-- 트랙 완료 → 자기 완료 기준 실행·보고 → Codex 리뷰 pane(읽기 전용) → 지적 반영 → 오케스트레이터가 트랙 브랜치를 `main` 위로 rebase하고 **그 브랜치에서** `make test`·`make lint` 통과 확인 → `main`에 **squash 병합** → worktree 제거.
+- 트랙은 Herdr 탭 하나(cwd=worktree)에서 개발 pane(Claude)과 리뷰 pane(Codex, `-s workspace-write -a never`, 소스 수정·git 변경 금지, 결과는 `REVIEW.md`)을 좌우로 띄운다. 트랙 완료 → 자기 완료 기준 실행·보고 → 같은 탭의 Codex 리뷰 pane → 지적 반영 → 오케스트레이터가 트랙 브랜치를 `main` 위로 rebase하고 **그 브랜치에서** `make test`·`make lint` 통과 확인 → `main`에 **squash 병합** → worktree 제거.
 - 커밋 메시지는 한국어 한 문장. 본문에 실행한 테스트 명령을 적는다.
 - 리뷰 기준: 계약 준수, 완료 기준 충족, 소유권 밖 파일 수정 없음, 테스트가 happy path 범위를 넘지 않음.
 

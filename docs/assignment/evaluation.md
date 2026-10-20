@@ -6,9 +6,9 @@
 |---|---|---|---|---|
 | Biz. 아이템 | 참신한 B2B·B2B2C 아이템. 상용화 효용성이 크면 팀 프로젝트 연속성 유지 가능(운영진·교수진 동의 시) | 10 | 리모트 스타트업이 구매하고 지원자가 사용하는 B2B2C. 채용 실패 비용이라는 구매 이유. 기업이 요소를 고르는 맞춤 평가. 담당자가 바로 쓰는 산출물: 산출물 + 규칙 산출 평가표 + 담당자 조정(사람 판단이 실제 입력) | PRD 1~4, 9, 12~14장 |
 | 아키텍처 설계 | 전체 AI 아키텍처, ISO/IEC 25010 품질 고려 | 10 | 구성도·논리·런타임·배포·연결·Harness 뷰. 품질 특성 8개 대응표 | `common/architecture.md`, 최종 보고서 |
-| AI Agent 설계 | State 구조, Graph 흐름(Node·분기·반복), Agentic 요소 | 15 | State 16필드(work_notes 포함), 노드 11개, 분기(route·수신자·분업 결정), 반복(분업 조정·inject→observe), respond의 도구 선택, 인재상 페르소나(성향·의무·금지) | `agent/design.md` |
+| AI Agent 설계 | State 구조, Graph 흐름(Node·분기·반복), Agentic 요소 | 15 | State 18필드(work_notes 포함), 노드 11개, 분기(route·수신자·분업 결정), 반복(분업 조정·inject→observe·종료 finalize의 관찰 갱신), respond의 도구 선택, 인재상 페르소나(성향·의무·금지) | `agent/design.md` |
 | AI Agent 구현 | Graph가 코드에 반영, 모델이 도구를 선택해 근거와 함께 답함, 상태 저장·재개, 진행 이벤트, Agentic 요소 | 15 | 그래프 코드, 문서명 인용, PostgresSaver 재개, WS `agent.progress`(tool_start·tool_end·finished), 실제 모델로 돌린 근거 정확성 픽스처 기록과 trace(단언 3b, eval-live) | `services/api/app/agent/`, e2e 기록 |
-| MCP 설계·구현 | business-mcp·rag-mcp가 조회·변경 도구와 설명을 갖추고 Agent가 연결해 호출. 오류·예외 처리 | 20 | 도구 14개(business 조회 4·변경 6, rag 조회 3·변경 1), 그래프별 허용 목록과 호출 주체 표(contracts.md), e2e 기록의 run_id별 도구 호출, 통일 오류 형식, 공개 전 문서 차단, upstream 장애 코드 | `common/contracts.md`, `mcp/design.md` |
+| MCP 설계·구현 | business-mcp·rag-mcp가 조회·변경 도구와 설명을 갖추고 Agent가 연결해 호출. 오류·예외 처리 | 20 | 도구 15개(business 조회 4·변경 7(update_observation 포함), rag 조회 3·변경 1), 그래프별 허용 목록과 호출 주체 표(contracts.md. 동료 4·팀장 3·어시스턴트 2), e2e 기록의 run_id별 도구 호출, 통일 오류 형식, 공개 전 문서 차단, upstream 장애 코드 | `common/contracts.md`, `mcp/design.md` |
 | Harness | 주요 구성 요소의 적절한 적용 | 20 | 8요소 매핑표 | `common/harness.md` |
 | 인증 | 사용자 인증 처리 | 10 | 관리자 JWT, 지원자 세션 JWT, 디브리핑 읽기 토큰, 내부 시크릿, 기업 간 격리. e2e 단언 8의 인증 경계 기록 | `api/design.md`, e2e `auth.md` |
 | 가산점 (대기열) | RabbitMQ·Kafka 같은 큐로 작업 처리, 실패 재시도 | 10 | 리포트 생성 큐, 재시도 3회, DLQ | `worker-infra/design.md` |

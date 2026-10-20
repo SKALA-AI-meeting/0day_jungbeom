@@ -1,49 +1,892 @@
 {
-  "session_id": "...",
+  "session_id": "sess-1",
   "alias": "지원자A",
   "stage": "draft",
   "position": {
-    "name": "...",
+    "name": "PM 인턴 2026 하반기",
+    "mission_id": "planning",
     "elements": [
-      "cooperation",
-      "responsibility"
+      "responsibility",
+      "planning",
+      "adaptability",
+      "collaboration",
+      "honesty"
     ]
   },
+  "summary": [
+    {
+      "element": "responsibility",
+      "name": "책임감/성실성",
+      "line": "공개 전에 지연과 3번 파트 영향을 팀 채널에 알림",
+      "met": 3,
+      "unmet": 1,
+      "no_record": 0
+    },
+    {
+      "element": "planning",
+      "name": "계획성/꼼꼼함",
+      "line": "파트 5개의 담당을 직접 정하고 보드에 순서와 마감을 적음. 4번 초안을 열어 보고 방향에 대한 의견을 남김",
+      "met": 4,
+      "unmet": 0,
+      "no_record": 0
+    },
+    {
+      "element": "adaptability",
+      "name": "적응성/유연성",
+      "line": "바뀐 핵심 기능을 1번 문서에 반영하고 동료에게 3·5번 변경점을 정리해 줌",
+      "met": 3,
+      "unmet": 1,
+      "no_record": 0
+    },
+    {
+      "element": "collaboration",
+      "name": "협업/조율",
+      "line": "동료 의견을 인정하면서 지표 근거로 자기 결정을 설명함",
+      "met": 2,
+      "unmet": 0,
+      "no_record": 2
+    },
+    {
+      "element": "honesty",
+      "name": "정직/공정한 보고",
+      "line": "동료 몫을 동료 것으로 말하고 5번 미완료를 밝힘",
+      "met": 4,
+      "unmet": 0,
+      "no_record": 0
+    }
+  ],
   "deliverable": {
-    "parts": [
+    "final": {
+      "sections": [
+        {
+          "part_no": 1,
+          "title": "문제 정의와 대상 사용자",
+          "content": "모아런 첫 참여자가 두 번째 모임에 오지 않는 문제. 대상은 첫 모임을 마친 지 2주 안의 참여자. 주원인 가정: 다음 모임 일정을 놓쳐서. 핵심 기능은 48시간 안 후속 모임 제안 한 가지로 좁힘.",
+          "source_doc_id": "doc-c1",
+          "source_owner": "candidate",
+          "source_version": 2,
+          "edited": true,
+          "source_content": null
+        },
+        {
+          "part_no": 2,
+          "title": "사용자 인터뷰에서 찾은 근거",
+          "content": "인터뷰 8명 중 5명이 '아는 사람이 없어 어색했다', 6명이 '다음 일정을 몰랐다'고 답함.",
+          "source_doc_id": "doc-c2",
+          "source_owner": "candidate",
+          "source_version": 1,
+          "edited": false,
+          "source_content": null
+        },
+        {
+          "part_no": 3,
+          "title": "핵심 기능 제안",
+          "content": "핵심 기능: 첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능 하나. 알림은 모임 종료 다음 날 오전 1회, 2번 인터뷰의 '일정을 몰랐다' 응답에 대응.",
+          "source_doc_id": "doc-k3",
+          "source_owner": "colleague",
+          "source_version": 2,
+          "edited": true,
+          "source_content": "핵심 기능: 첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능. 알림은 모임 종료 다음 날 오전에 1회."
+        },
+        {
+          "part_no": 4,
+          "title": "비슷한 서비스 사례",
+          "content": "사례 1: 독서 모임 앱 A의 후속 모임 알림(재참여율 22%→31%). 사례 2: 러닝 크루 B의 첫 참여자 전용 채널.",
+          "source_doc_id": "doc-k4",
+          "source_owner": "colleague",
+          "source_version": 2,
+          "edited": false,
+          "source_content": null
+        },
+        {
+          "part_no": 5,
+          "title": "성공 지표와 출시 일정",
+          "content": "성공 지표: 2회차 참여율 22%→30%. 출시: 이번 분기 말, 알림 기능 먼저.",
+          "source_doc_id": "doc-k5",
+          "source_owner": "colleague",
+          "source_version": 2,
+          "edited": false,
+          "source_content": null
+        }
+      ],
+      "submitted_version": 1
+    },
+    "documents": [
       {
+        "doc_id": "doc-c1",
+        "owner": "candidate",
         "part_no": 1,
         "title": "문제 정의와 대상 사용자",
-        "assignee": "candidate",
-        "content": "...",
-        "revisions": 4,
+        "versions": 2,
+        "shares": [
+          {
+            "version": 1,
+            "channel": "team",
+            "t_min": 25.0
+          },
+          {
+            "version": 2,
+            "channel": "team",
+            "t_min": 84.0
+          }
+        ],
         "empty": false
+      },
+      {
+        "doc_id": "doc-c2",
+        "owner": "candidate",
+        "part_no": 2,
+        "title": "사용자 인터뷰에서 찾은 근거",
+        "versions": 1,
+        "shares": [
+          {
+            "version": 1,
+            "channel": "dm",
+            "t_min": 73.0
+          }
+        ],
+        "empty": false
+      },
+      {
+        "doc_id": "doc-c3",
+        "owner": "candidate",
+        "part_no": 3,
+        "title": "핵심 기능 제안",
+        "versions": 0,
+        "shares": [],
+        "empty": true
+      },
+      {
+        "doc_id": "doc-c4",
+        "owner": "candidate",
+        "part_no": 4,
+        "title": "비슷한 서비스 사례",
+        "versions": 0,
+        "shares": [],
+        "empty": true
+      },
+      {
+        "doc_id": "doc-c5",
+        "owner": "candidate",
+        "part_no": 5,
+        "title": "성공 지표와 출시 일정",
+        "versions": 0,
+        "shares": [],
+        "empty": true
+      },
+      {
+        "doc_id": "doc-k3",
+        "owner": "colleague",
+        "part_no": 3,
+        "title": "핵심 기능 제안",
+        "versions": 2,
+        "shares": [
+          {
+            "version": 1,
+            "channel": "team",
+            "t_min": 45.0
+          },
+          {
+            "version": 2,
+            "channel": "team",
+            "t_min": 90.0
+          }
+        ],
+        "opened_by_candidate": [
+          2
+        ]
+      },
+      {
+        "doc_id": "doc-k4",
+        "owner": "colleague",
+        "part_no": 4,
+        "title": "비슷한 서비스 사례",
+        "versions": 2,
+        "shares": [
+          {
+            "version": 1,
+            "channel": "team",
+            "t_min": 45.0
+          },
+          {
+            "version": 2,
+            "channel": "team",
+            "t_min": 90.0
+          }
+        ],
+        "opened_by_candidate": [
+          1,
+          2
+        ]
+      },
+      {
+        "doc_id": "doc-k5",
+        "owner": "colleague",
+        "part_no": 5,
+        "title": "성공 지표와 출시 일정",
+        "versions": 2,
+        "shares": [
+          {
+            "version": 1,
+            "channel": "team",
+            "t_min": 45.0
+          },
+          {
+            "version": 2,
+            "channel": "team",
+            "t_min": 90.0
+          }
+        ],
+        "opened_by_candidate": [
+          2
+        ]
       }
-    ]
+    ],
+    "division_decided_by": "candidate",
+    "final_report_message": {
+      "id": "m-62",
+      "t_min": 112.0,
+      "content": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다."
+    }
   },
   "rubric": {
     "elements": [
       {
         "element": "responsibility",
-        "name": "책임감",
+        "name": "책임감/성실성",
         "auto": {
           "met": 3,
-          "judged": 4,
+          "unmet": 1,
           "no_record": 0
         },
-        "reviewer": null,
-        "items": [
+        "cards": [
           {
-            "id": "resp_notified_before_release",
-            "text": "자료가 공개되기 전에 지연을 팀에 알림",
-            "auto": 1,
-            "reviewer": null,
-            "memo": null,
-            "evidence": [
+            "card_id": "responsibility_delay",
+            "name": "내 자료 지연",
+            "items": [
               {
-                "type": "message",
-                "id": "...",
-                "t_min": 52
+                "id": "resp_notified_before_release",
+                "text": "자료가 공개되기 전에 지연을 팀이나 동료에게 알림",
+                "basis": "metric",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-31",
+                    "t_min": 62.0,
+                    "channel": "team",
+                    "quote": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
+                    "context": {
+                      "prev_persona_message": "리서치 담당 · 60분: 사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
+                      "card_at_t_min": 60.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-31",
+                      "t_min": 62.0
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "resp_mentioned_impact",
+                "text": "지연이 동료 파트(3번은 2번에 의존)에 미치는 영향을 말함",
+                "basis": "label",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-31",
+                    "t_min": 62.0,
+                    "channel": "team",
+                    "quote": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
+                    "context": {
+                      "prev_persona_message": "리서치 담당 · 60분: 사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
+                      "card_at_t_min": 60.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-31",
+                      "t_min": 62.0
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "resp_proposed_alternative",
+                "text": "지연 동안 먼저 할 작업이나 대안을 제시함",
+                "basis": "label",
+                "auto": 0,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": []
+              },
+              {
+                "id": "resp_told_manager",
+                "text": "팀장이 보는 곳(팀 채널 또는 팀장 DM)에 지연을 알림",
+                "basis": "metric",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-31",
+                    "t_min": 62.0,
+                    "channel": "team",
+                    "quote": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
+                    "context": {
+                      "prev_persona_message": "리서치 담당 · 60분: 사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
+                      "card_at_t_min": 60.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-31",
+                      "t_min": 62.0
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "element": "planning",
+        "name": "계획성/꼼꼼함",
+        "auto": {
+          "met": 4,
+          "unmet": 0,
+          "no_record": 0
+        },
+        "cards": [
+          {
+            "card_id": "planning_division",
+            "name": "파트 나누기",
+            "items": [
+              {
+                "id": "plan_assigned_all_parts",
+                "text": "파트 전부의 담당을 직접 정함",
+                "basis": "metric",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "task_event",
+                    "id": "te-1",
+                    "t_min": 12.0,
+                    "part_no": 1,
+                    "field": "assignee",
+                    "summary": "1번 카드 assignee 변경(12분)",
+                    "context": {
+                      "prev_persona_message": null,
+                      "card_at_t_min": 10.0
+                    },
+                    "record_ref": {
+                      "type": "task_event",
+                      "id": "te-1",
+                      "t_min": 12.0
+                    }
+                  },
+                  {
+                    "type": "message",
+                    "id": "m-11",
+                    "t_min": 11.0,
+                    "channel": "team",
+                    "quote": "제가 1·2번, 도현님이 4·5번, 3번은 같이 보죠. 2번 자료 나오는 대로 3번 골격부터 잡을게요. 보드에도 적어 둘게요.",
+                    "context": {
+                      "prev_persona_message": "이도현 · 10분: 파트는 어떻게 나눌까요? 3번은 2번 자료가 필요해서 그 순서만 신경 쓰면 될 것 같아요.",
+                      "card_at_t_min": 10.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-11",
+                      "t_min": 11.0
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "plan_stated_schedule",
+                "text": "누가·언제까지·어떤 순서인지 말하거나 보드에 적음",
+                "basis": "metric",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "task_event",
+                    "id": "te-6",
+                    "t_min": 12.5,
+                    "part_no": 1,
+                    "field": "due_min",
+                    "summary": "1번 카드 due_min 변경(12.5분)",
+                    "context": {
+                      "prev_persona_message": null,
+                      "card_at_t_min": 10.0
+                    },
+                    "record_ref": {
+                      "type": "task_event",
+                      "id": "te-6",
+                      "t_min": 12.5
+                    }
+                  },
+                  {
+                    "type": "message",
+                    "id": "m-11",
+                    "t_min": 11.0,
+                    "channel": "team",
+                    "quote": "제가 1·2번, 도현님이 4·5번, 3번은 같이 보죠. 2번 자료 나오는 대로 3번 골격부터 잡을게요. 보드에도 적어 둘게요.",
+                    "context": {
+                      "prev_persona_message": "이도현 · 10분: 파트는 어떻게 나눌까요? 3번은 2번 자료가 필요해서 그 순서만 신경 쓰면 될 것 같아요.",
+                      "card_at_t_min": 10.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-11",
+                      "t_min": 11.0
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "card_id": "planning_checkin",
+            "name": "중간 점검",
+            "items": [
+              {
+                "id": "plan_opened_draft",
+                "text": "동료가 보낸 초안을 열어 봄",
+                "basis": "metric",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "open",
+                    "id": "op-1",
+                    "t_min": 46.5,
+                    "doc_id": "doc-k4",
+                    "version": 1,
+                    "summary": "동료 4번 v1 열람(46.5분)",
+                    "context": {
+                      "prev_persona_message": null,
+                      "card_at_t_min": 45.0
+                    },
+                    "record_ref": {
+                      "type": "open",
+                      "id": "op-1",
+                      "t_min": 46.5
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "plan_responded_draft",
+                "text": "초안에 대해 반응(의견·확인)을 남김",
+                "basis": "label",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-24",
+                    "t_min": 47.0,
+                    "channel": "team",
+                    "quote": "4번 사례 방향 좋아요. 두 번째 사례는 지표 문서의 재참여율과 연결해 주세요. 2번은 인터뷰 요약 나오면 바로 채울게요.",
+                    "context": {
+                      "prev_persona_message": "이도현 · 45.1분: 주담당 쪽은 어느 정도 진행됐어요? 2번 자료는 언제쯤 볼 수 있을까요? 3번 골격 잡으려면 필요해서요.",
+                      "card_at_t_min": 45.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-24",
+                      "t_min": 47.0
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "element": "adaptability",
+        "name": "적응성/유연성",
+        "auto": {
+          "met": 3,
+          "unmet": 1,
+          "no_record": 0
+        },
+        "cards": [
+          {
+            "card_id": "adaptability_change",
+            "name": "방향 변경",
+            "items": [
+              {
+                "id": "adapt_applied_to_doc",
+                "text": "바뀐 대상을 내 문서(파트 또는 최종본)에 반영함",
+                "basis": "label",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "document",
+                    "id": "rev-3",
+                    "t_min": 80.0,
+                    "doc_id": "doc-c1",
+                    "part_no": 1,
+                    "revision": 2,
+                    "summary": "1번 파트 편집(80분)",
+                    "context": {
+                      "prev_persona_message": null,
+                      "card_at_t_min": 75.0
+                    },
+                    "record_ref": null
+                  },
+                  {
+                    "type": "share",
+                    "id": "sh-3",
+                    "t_min": 84.0,
+                    "doc_id": "doc-c1",
+                    "part_no": 1,
+                    "version": 2,
+                    "summary": "1번 파트 v2 보냄(84분)",
+                    "context": {
+                      "prev_persona_message": null,
+                      "card_at_t_min": 75.0
+                    },
+                    "record_ref": {
+                      "type": "share",
+                      "id": "sh-3",
+                      "t_min": 84.0
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "adapt_no_complaint_to_colleague",
+                "text": "불만을 동료에게 쏟지 않음",
+                "basis": "label",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-36",
+                    "t_min": 77.0,
+                    "channel": "dm",
+                    "quote": "도현님, 3번은 48시간 후속 모임 제안 기능 하나로 좁혀 주시고 5번 일정은 이번 분기 기준으로 바꿔 주세요. 사례는 그대로 두셔도 돼요.",
+                    "context": {
+                      "prev_persona_message": "한서윤 팀장 · 75분: 대표님과 이야기해 보니 핵심 기능을 '첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고, 출시 일정은 다음 분기에서 이번 분기로 당겨 주세요. 대상 사용자·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요.",
+                      "card_at_t_min": 75.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-36",
+                      "t_min": 77.0
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "adapt_redirected_colleague",
+                "text": "동료 파트에 무엇이 바뀌는지 다시 정리해 줌",
+                "basis": "metric",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-36",
+                    "t_min": 77.0,
+                    "channel": "dm",
+                    "quote": "도현님, 3번은 48시간 후속 모임 제안 기능 하나로 좁혀 주시고 5번 일정은 이번 분기 기준으로 바꿔 주세요. 사례는 그대로 두셔도 돼요.",
+                    "context": {
+                      "prev_persona_message": "한서윤 팀장 · 75분: 대표님과 이야기해 보니 핵심 기능을 '첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고, 출시 일정은 다음 분기에서 이번 분기로 당겨 주세요. 대상 사용자·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요.",
+                      "card_at_t_min": 75.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-36",
+                      "t_min": 77.0
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "adapt_raised_scope",
+                "text": "범위·일정·분담 재조정을 말함",
+                "basis": "label",
+                "auto": 0,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "element": "collaboration",
+        "name": "협업/조율",
+        "auto": {
+          "met": 2,
+          "unmet": 0,
+          "no_record": 2
+        },
+        "cards": [
+          {
+            "card_id": "collab_help",
+            "name": "도움 요청",
+            "items": [
+              {
+                "id": "collab_help_offered",
+                "text": "바로 돕거나 도울 시점을 제시함",
+                "basis": "label",
+                "auto": null,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": "no_activity",
+                "evidence": []
+              },
+              {
+                "id": "collab_help_kept_promise",
+                "text": "제안한 시점에 실제로 동료를 찾아감",
+                "basis": "metric",
+                "auto": null,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": "no_activity",
+                "evidence": []
+              }
+            ]
+          },
+          {
+            "card_id": "collab_disagree",
+            "name": "반대 의견",
+            "items": [
+              {
+                "id": "collab_disagree_answered",
+                "text": "동료의 다른 의견에 답함",
+                "basis": "metric",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-54",
+                    "t_min": 93.0,
+                    "channel": "team",
+                    "quote": "인터뷰 기준으론 어색함이 더 많이 나오는 게 맞아요. 다만 지표 문서의 이탈 시점이 일정 놓친 직후라서 둘 다 쓰고 일정 쪽을 먼저 두는 걸로 할게요.",
+                    "context": {
+                      "prev_persona_message": "이도현 · 90.5분: 주담당 파트도 보내 주시면 볼게요. 그리고 1번에서 '다음 모임 일정을 놓쳐서'가 주원인이라고 쓰셨는데, 인터뷰 8명 중 5명은 '아는 사람이 없어 어색해서'를 먼저 말해서 저는 그쪽이 주원인에 가깝다고 봐요.",
+                      "card_at_t_min": 90.5
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-54",
+                      "t_min": 93.0
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "collab_disagree_reasoned_or_accepted",
+                "text": "근거로 설명하거나 수용함(무시·강행·비난 아님)",
+                "basis": "label",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-54",
+                    "t_min": 93.0,
+                    "channel": "team",
+                    "quote": "인터뷰 기준으론 어색함이 더 많이 나오는 게 맞아요. 다만 지표 문서의 이탈 시점이 일정 놓친 직후라서 둘 다 쓰고 일정 쪽을 먼저 두는 걸로 할게요.",
+                    "context": {
+                      "prev_persona_message": "이도현 · 90.5분: 주담당 파트도 보내 주시면 볼게요. 그리고 1번에서 '다음 모임 일정을 놓쳐서'가 주원인이라고 쓰셨는데, 인터뷰 8명 중 5명은 '아는 사람이 없어 어색해서'를 먼저 말해서 저는 그쪽이 주원인에 가깝다고 봐요.",
+                      "card_at_t_min": 90.5
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-54",
+                      "t_min": 93.0
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "element": "honesty",
+        "name": "정직/공정한 보고",
+        "auto": {
+          "met": 4,
+          "unmet": 0,
+          "no_record": 0
+        },
+        "cards": [
+          {
+            "card_id": "honesty_report",
+            "name": "마감 보고",
+            "items": [
+              {
+                "id": "honest_credited_colleague",
+                "text": "동료가 한 일을 동료 것으로 말함",
+                "basis": "label",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-62",
+                    "t_min": 112.0,
+                    "channel": "team",
+                    "quote": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
+                    "context": {
+                      "prev_persona_message": "한서윤 팀장 · 110분: 마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
+                      "card_at_t_min": 110.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-62",
+                      "t_min": 112.0
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "honest_disclosed_incomplete",
+                "text": "안 된 것을 숨기지 않음",
+                "basis": "label",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-62",
+                    "t_min": 112.0,
+                    "channel": "team",
+                    "quote": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
+                    "context": {
+                      "prev_persona_message": "한서윤 팀장 · 110분: 마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
+                      "card_at_t_min": 110.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-62",
+                      "t_min": 112.0
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "honest_no_misattribution",
+                "text": "동료가 쓴 파트를 자기 것으로 말하지 않음",
+                "basis": "label",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-62",
+                    "t_min": 112.0,
+                    "channel": "team",
+                    "quote": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
+                    "context": {
+                      "prev_persona_message": "한서윤 팀장 · 110분: 마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
+                      "card_at_t_min": 110.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-62",
+                      "t_min": 112.0
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "honest_reported_within_10m",
+                "text": "요청 후 10분 안에 보고함 (pilot_value)",
+                "basis": "metric",
+                "auto": 1,
+                "reviewer": null,
+                "memo": null,
+                "adjusted": false,
+                "no_record_reason": null,
+                "evidence": [
+                  {
+                    "type": "message",
+                    "id": "m-62",
+                    "t_min": 112.0,
+                    "channel": "team",
+                    "quote": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
+                    "context": {
+                      "prev_persona_message": "한서윤 팀장 · 110분: 마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
+                      "card_at_t_min": 110.0
+                    },
+                    "record_ref": {
+                      "type": "message",
+                      "id": "m-62",
+                      "t_min": 112.0
+                    }
+                  }
+                ],
+                "minutes": 2.0
               }
             ]
           }
@@ -51,63 +894,502 @@
       }
     ],
     "auto_total": {
-      "met": 9,
-      "judged": 14,
+      "met": 16,
+      "unmet": 2,
       "no_record": 2
     },
     "reviewer_total": null,
-    "review": null,
-    "history": []
+    "review": null
   },
   "sections": [
     {
       "element": "responsibility",
-      "name": "책임감",
-      "situation": "담당 파트에 필요한 인터뷰 자료 지연",
-      "observed": "마감 전에 지연을 먼저 알리고 대안을 제시함",
-      "evidence": [
+      "name": "책임감/성실성",
+      "cards": [
         {
-          "type": "message",
-          "id": "...",
-          "t_min": 52,
-          "channel": "team",
-          "quote": "인터뷰 자료가 늦어서..."
-        },
-        {
-          "type": "revision",
-          "id": "...",
-          "t_min": 74,
-          "part_no": 1,
-          "summary": "1번 파트 수정(대상을 휴면 참여자로)"
+          "card_id": "responsibility_delay",
+          "name": "내 자료 지연",
+          "situation": "담당 파트에 필요한 인터뷰 자료 지연",
+          "event_fired": true,
+          "card_at_t_min": 60.0,
+          "observed": "공개 전에 지연과 3번 파트 영향을 팀 채널에 알림",
+          "no_record_reason": null,
+          "note": null,
+          "evidence": [
+            {
+              "type": "message",
+              "id": "m-31",
+              "t_min": 62.0,
+              "channel": "team",
+              "quote": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
+              "context": {
+                "prev_persona_message": "리서치 담당 · 60분: 사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
+                "card_at_t_min": 60.0
+              },
+              "record_ref": {
+                "type": "message",
+                "id": "m-31",
+                "t_min": 62.0
+              }
+            },
+            {
+              "type": "doc_view",
+              "id": "dv-2",
+              "t_min": 71.0,
+              "doc_id": "interview_summary",
+              "summary": "사용자 인터뷰 요약 열람(71분)",
+              "flag": "aux_fact",
+              "context": {
+                "prev_persona_message": null,
+                "card_at_t_min": 60.0
+              },
+              "record_ref": null
+            }
+          ]
         }
       ]
     },
     {
-      "element": "cooperation",
-      "name": "협력 태도",
-      "situation": "...",
-      "observed": null,
-      "evidence": [],
-      "note": "해당 상황에서 관련 행동이 기록되지 않음"
+      "element": "planning",
+      "name": "계획성/꼼꼼함",
+      "cards": [
+        {
+          "card_id": "planning_division",
+          "name": "파트 나누기",
+          "situation": "동료가 파트를 어떻게 나눌지 묻는다",
+          "event_fired": true,
+          "card_at_t_min": 10.0,
+          "observed": "파트 5개의 담당을 직접 정하고 보드에 순서와 마감을 적음",
+          "no_record_reason": null,
+          "note": null,
+          "evidence": [
+            {
+              "type": "message",
+              "id": "m-11",
+              "t_min": 11.0,
+              "channel": "team",
+              "quote": "제가 1·2번, 도현님이 4·5번, 3번은 같이 보죠. 2번 자료 나오는 대로 3번 골격부터 잡을게요. 보드에도 적어 둘게요.",
+              "context": {
+                "prev_persona_message": "이도현 · 10분: 파트는 어떻게 나눌까요? 3번은 2번 자료가 필요해서 그 순서만 신경 쓰면 될 것 같아요.",
+                "card_at_t_min": 10.0
+              },
+              "record_ref": {
+                "type": "message",
+                "id": "m-11",
+                "t_min": 11.0
+              }
+            },
+            {
+              "type": "task_event",
+              "id": "te-1",
+              "t_min": 12.0,
+              "part_no": 1,
+              "field": "assignee",
+              "summary": "1번 카드 assignee 변경(12분)",
+              "context": {
+                "prev_persona_message": null,
+                "card_at_t_min": 10.0
+              },
+              "record_ref": {
+                "type": "task_event",
+                "id": "te-1",
+                "t_min": 12.0
+              }
+            },
+            {
+              "type": "task_event",
+              "id": "te-6",
+              "t_min": 12.5,
+              "part_no": 1,
+              "field": "due_min",
+              "summary": "1번 카드 due_min 변경(12.5분)",
+              "context": {
+                "prev_persona_message": null,
+                "card_at_t_min": 10.0
+              },
+              "record_ref": {
+                "type": "task_event",
+                "id": "te-6",
+                "t_min": 12.5
+              }
+            }
+          ]
+        },
+        {
+          "card_id": "planning_checkin",
+          "name": "중간 점검",
+          "situation": "동료가 초안 v1을 보내며 진행을 묻는다",
+          "event_fired": true,
+          "card_at_t_min": 45.0,
+          "observed": "4번 초안을 열어 보고 방향에 대한 의견을 남김",
+          "no_record_reason": null,
+          "note": null,
+          "evidence": [
+            {
+              "type": "open",
+              "id": "op-1",
+              "t_min": 46.5,
+              "doc_id": "doc-k4",
+              "version": 1,
+              "summary": "동료 4번 v1 열람(46.5분)",
+              "context": {
+                "prev_persona_message": null,
+                "card_at_t_min": 45.0
+              },
+              "record_ref": {
+                "type": "open",
+                "id": "op-1",
+                "t_min": 46.5
+              }
+            },
+            {
+              "type": "message",
+              "id": "m-24",
+              "t_min": 47.0,
+              "channel": "team",
+              "quote": "4번 사례 방향 좋아요. 두 번째 사례는 지표 문서의 재참여율과 연결해 주세요. 2번은 인터뷰 요약 나오면 바로 채울게요.",
+              "context": {
+                "prev_persona_message": "이도현 · 45.1분: 주담당 쪽은 어느 정도 진행됐어요? 2번 자료는 언제쯤 볼 수 있을까요? 3번 골격 잡으려면 필요해서요.",
+                "card_at_t_min": 45.0
+              },
+              "record_ref": {
+                "type": "message",
+                "id": "m-24",
+                "t_min": 47.0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "element": "adaptability",
+      "name": "적응성/유연성",
+      "cards": [
+        {
+          "card_id": "adaptability_change",
+          "name": "방향 변경",
+          "situation": "팀장이 핵심 기능 범위와 출시 일정을 바꾼다(마감 그대로)",
+          "event_fired": true,
+          "card_at_t_min": 75.0,
+          "observed": "바뀐 핵심 기능을 1번 문서에 반영하고 동료에게 3·5번 변경점을 정리해 줌",
+          "no_record_reason": null,
+          "note": null,
+          "evidence": [
+            {
+              "type": "message",
+              "id": "m-36",
+              "t_min": 77.0,
+              "channel": "dm",
+              "quote": "도현님, 3번은 48시간 후속 모임 제안 기능 하나로 좁혀 주시고 5번 일정은 이번 분기 기준으로 바꿔 주세요. 사례는 그대로 두셔도 돼요.",
+              "context": {
+                "prev_persona_message": "한서윤 팀장 · 75분: 대표님과 이야기해 보니 핵심 기능을 '첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고, 출시 일정은 다음 분기에서 이번 분기로 당겨 주세요. 대상 사용자·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요.",
+                "card_at_t_min": 75.0
+              },
+              "record_ref": {
+                "type": "message",
+                "id": "m-36",
+                "t_min": 77.0
+              }
+            },
+            {
+              "type": "document",
+              "id": "rev-3",
+              "t_min": 80.0,
+              "doc_id": "doc-c1",
+              "part_no": 1,
+              "revision": 2,
+              "summary": "1번 파트 편집(80분)",
+              "context": {
+                "prev_persona_message": null,
+                "card_at_t_min": 75.0
+              },
+              "record_ref": null
+            },
+            {
+              "type": "share",
+              "id": "sh-3",
+              "t_min": 84.0,
+              "doc_id": "doc-c1",
+              "part_no": 1,
+              "version": 2,
+              "summary": "1번 파트 v2 보냄(84분)",
+              "context": {
+                "prev_persona_message": null,
+                "card_at_t_min": 75.0
+              },
+              "record_ref": {
+                "type": "share",
+                "id": "sh-3",
+                "t_min": 84.0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "element": "collaboration",
+      "name": "협업/조율",
+      "cards": [
+        {
+          "card_id": "collab_help",
+          "name": "도움 요청",
+          "situation": "바쁜 시점에 동료가 10분만 같이 봐 달라고 한다",
+          "event_fired": true,
+          "card_at_t_min": 30.0,
+          "observed": null,
+          "no_record_reason": "no_activity",
+          "evidence": [],
+          "note": "지원자 활동 없음"
+        },
+        {
+          "card_id": "collab_disagree",
+          "name": "반대 의견",
+          "situation": "리뷰 때 동료가 근거를 들어 지원자 결정에 다른 의견을 낸다",
+          "event_fired": true,
+          "card_at_t_min": 90.5,
+          "observed": "동료 의견을 인정하면서 지표 근거로 자기 결정을 설명함",
+          "no_record_reason": null,
+          "note": null,
+          "evidence": [
+            {
+              "type": "message",
+              "id": "m-54",
+              "t_min": 93.0,
+              "channel": "team",
+              "quote": "인터뷰 기준으론 어색함이 더 많이 나오는 게 맞아요. 다만 지표 문서의 이탈 시점이 일정 놓친 직후라서 둘 다 쓰고 일정 쪽을 먼저 두는 걸로 할게요.",
+              "context": {
+                "prev_persona_message": "이도현 · 90.5분: 주담당 파트도 보내 주시면 볼게요. 그리고 1번에서 '다음 모임 일정을 놓쳐서'가 주원인이라고 쓰셨는데, 인터뷰 8명 중 5명은 '아는 사람이 없어 어색해서'를 먼저 말해서 저는 그쪽이 주원인에 가깝다고 봐요.",
+                "card_at_t_min": 90.5
+              },
+              "record_ref": {
+                "type": "message",
+                "id": "m-54",
+                "t_min": 93.0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "element": "honesty",
+      "name": "정직/공정한 보고",
+      "cards": [
+        {
+          "card_id": "honesty_report",
+          "name": "마감 보고",
+          "situation": "팀장이 \"다 됐다고 전해도 되죠?\"와 함께 보고를 요청한다",
+          "event_fired": true,
+          "card_at_t_min": 110.0,
+          "observed": "동료 몫을 동료 것으로 말하고 5번 미완료를 밝힘",
+          "no_record_reason": null,
+          "note": null,
+          "evidence": [
+            {
+              "type": "message",
+              "id": "m-62",
+              "t_min": 112.0,
+              "channel": "team",
+              "quote": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
+              "context": {
+                "prev_persona_message": "한서윤 팀장 · 110분: 마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
+                "card_at_t_min": 110.0
+              },
+              "record_ref": {
+                "type": "message",
+                "id": "m-62",
+                "t_min": 112.0
+              }
+            }
+          ],
+          "facts": {
+            "shares": [
+              {
+                "doc_id": "doc-c1",
+                "owner": "candidate",
+                "part_no": 1,
+                "versions": [
+                  {
+                    "version": 1,
+                    "channel": "team",
+                    "t_min": 25.0
+                  },
+                  {
+                    "version": 2,
+                    "channel": "team",
+                    "t_min": 84.0
+                  }
+                ]
+              },
+              {
+                "doc_id": "doc-c2",
+                "owner": "candidate",
+                "part_no": 2,
+                "versions": [
+                  {
+                    "version": 1,
+                    "channel": "dm",
+                    "t_min": 73.0
+                  }
+                ]
+              },
+              {
+                "doc_id": "doc-k3",
+                "owner": "colleague",
+                "part_no": 3,
+                "versions": [
+                  {
+                    "version": 1,
+                    "channel": "team",
+                    "t_min": 45.0
+                  },
+                  {
+                    "version": 2,
+                    "channel": "team",
+                    "t_min": 90.0
+                  }
+                ]
+              },
+              {
+                "doc_id": "doc-k4",
+                "owner": "colleague",
+                "part_no": 4,
+                "versions": [
+                  {
+                    "version": 1,
+                    "channel": "team",
+                    "t_min": 45.0
+                  },
+                  {
+                    "version": 2,
+                    "channel": "team",
+                    "t_min": 90.0
+                  }
+                ]
+              },
+              {
+                "doc_id": "doc-k5",
+                "owner": "colleague",
+                "part_no": 5,
+                "versions": [
+                  {
+                    "version": 1,
+                    "channel": "team",
+                    "t_min": 45.0
+                  },
+                  {
+                    "version": 2,
+                    "channel": "team",
+                    "t_min": 90.0
+                  }
+                ]
+              }
+            ],
+            "final_sections": [
+              {
+                "part_no": 1,
+                "source_doc_id": "doc-c1",
+                "source_version": 2,
+                "edited": true
+              },
+              {
+                "part_no": 2,
+                "source_doc_id": "doc-c2",
+                "source_version": 1,
+                "edited": false
+              },
+              {
+                "part_no": 3,
+                "source_doc_id": "doc-k3",
+                "source_version": 2,
+                "edited": true
+              },
+              {
+                "part_no": 4,
+                "source_doc_id": "doc-k4",
+                "source_version": 2,
+                "edited": false
+              },
+              {
+                "part_no": 5,
+                "source_doc_id": "doc-k5",
+                "source_version": 2,
+                "edited": false
+              }
+            ],
+            "tasks": [
+              {
+                "part_no": 1,
+                "assignee": "candidate",
+                "status": "done"
+              },
+              {
+                "part_no": 2,
+                "assignee": "candidate",
+                "status": "done"
+              },
+              {
+                "part_no": 3,
+                "assignee": "both",
+                "status": "done"
+              },
+              {
+                "part_no": 4,
+                "assignee": "colleague",
+                "status": "done"
+              },
+              {
+                "part_no": 5,
+                "assignee": "colleague",
+                "status": "doing"
+              }
+            ],
+            "empty_sections": [],
+            "tasks_not_done": [
+              5
+            ],
+            "changed_after_adaptability": true
+          }
+        }
+      ]
     }
   ],
   "ai_usage": {
     "used": true,
-    "summary": "...",
-    "evidence": [
+    "events": [
       {
-        "call_id": "...",
-        "t_min": 41,
-        "quote": "..."
+        "call_id": "ac-1",
+        "t_min": 47.5,
+        "request_quote": "재참여율 22%가 낮은 편인지 비슷한 서비스 기준으로 알려 줘",
+        "response_quote": "지표 현황 문서 기준으로 재참여율은 22%이고, 회의록에서 최우선 과제로 정한 수치입니다. 외부 기준 수치는 문서에 없습니다.",
+        "cited_doc_ids": [
+          "metrics",
+          "meeting_notes"
+        ],
+        "applied_part": null
       },
       {
-        "call_id": "...",
-        "t_min": 47,
-        "part_no": 4,
-        "reuse": "edited"
+        "call_id": "ac-2",
+        "t_min": 72.0,
+        "request_quote": "인터뷰 요약에서 두 번째 모임에 안 온 이유만 뽑아 줘",
+        "response_quote": "인터뷰 요약 문서에 따르면 8명 중 5명이 '아는 사람이 없어 어색했다', 6명이 '다음 일정을 몰랐다'고 답했습니다.",
+        "cited_doc_ids": [
+          "interview_summary"
+        ],
+        "applied_part": 2
       }
     ]
   },
-  "generated_at": "...",
-  "reviewed_at": null
+  "notes": [],
+  "connection_gaps": [
+    {
+      "from_t_min": 31.2,
+      "to_t_min": 46.0
+    }
+  ],
+  "generated_at": "2026-10-20T02:53:00Z",
+  "reviewed_at": null,
+  "purge_at": "2027-01-18T02:52:00Z"
 }

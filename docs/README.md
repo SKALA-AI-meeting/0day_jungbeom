@@ -7,7 +7,7 @@ PRD(`../PRD.md`)를 구현 가능한 수준으로 구체화한 문서다. `revie
 | 역할 | 먼저 | 그다음 |
 |---|---|---|
 | 모두 | `common/architecture.md`, `common/scenario-model.md`, `plan.md` | `decisions.md` |
-| 프론트 | `common/contracts.md` | `frontend/design.md` |
+| 프론트 | `common/contracts.md`, `frontend/design-direction.md` | `frontend/design-system.md`, `frontend/design.md` |
 | api(서버) | `common/contracts.md`, `common/data-model.md` | `api/design.md` |
 | 에이전트 | `common/harness.md`, `common/contracts.md` | `agent/design.md` |
 | MCP | `common/contracts.md`, `common/data-model.md` | `mcp/design.md` |
@@ -28,7 +28,7 @@ PRD(`../PRD.md`)를 구현 가능한 수준으로 구체화한 문서다. `revie
 - `dev-process.md`: 도구, 로컬 실행, TDD 범위, 브랜치·리뷰·병합 규칙
 - `handoff.md`: 다음 오케스트레이터가 바로 이어가기 위한 현재 상태·다음 행동·진행 표. `handoff/{briefs,reports,reviews}/`에 트랙별 브리프·완료 보고·Codex 리뷰 원문
 - `share/`: 팀 공유용 아키텍처 한 장(HTML)과 기획 보고서(HTML·PDF)
-- `frontend/`, `api/`, `agent/`, `mcp/`, `worker-infra/`: 역할별 상세 설계와 완료 기준
+- `frontend/`, `api/`, `agent/`, `mcp/`, `worker-infra/`: 역할별 상세 설계와 완료 기준. 프론트는 `frontend/design-direction.md`(오피스 형태·협업 모델) → `design-system.md`(토큰·컴포넌트) → `design.md`(화면 규칙) 순
 - `assignment/evaluation.md`: 평가표와 항목별 근거, 레퍼런스와의 차이
 - `assignment/reference-architecture.md`: 과제 레퍼런스 아키텍처의 뷰·표기·표 구성과 보고서 적용 방법
 - `decisions.md`, `prd-change-proposals.md`, `review/`

@@ -1,69 +1,476 @@
 {
   "session": {
-    "id": "...",
+    "id": "sess-1",
     "status": "in_progress",
     "started_at": "2026-10-20T01:00:00Z",
     "ends_at": "2026-10-20T03:00:00Z",
-    "remaining_seconds": 5400
+    "remaining_seconds": 4350,
+    "deadline_at": null,
+    "completed_at": null
+  },
+  "division": {
+    "parts": {
+      "1": "candidate",
+      "2": "candidate",
+      "3": "both",
+      "4": "colleague",
+      "5": "colleague"
+    },
+    "decided_by": "candidate",
+    "decided_at": "2026-10-20T01:12:12Z"
   },
   "messages": [
     {
-      "id": "...",
+      "id": "m-1",
       "channel": "team",
       "sender": "manager",
-      "content": "...",
-      "event_id": null,
-      "run_id": "...",
+      "content": "안녕하세요, 이번 건 주담당은 지원자A님입니다. 모아런 재참여율 개선 기획 초안을 2시간 안에 모아 주세요. 최종본 템플릿은 오른쪽 탭에 있고 섹션당 5~10줄이면 됩니다. 인터뷰 요약은 01:00에 공유될 예정이에요.",
+      "event_id": "ev-1",
+      "run_id": "r-1",
       "t_min": 0.0,
-      "created_at": "2026-10-20T01:00:00Z"
+      "created_at": "2026-10-20T01:00:00Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    },
+    {
+      "id": "m-2",
+      "channel": "team",
+      "sender": "candidate",
+      "content": "네, 확인했습니다.",
+      "event_id": null,
+      "run_id": null,
+      "t_min": 1.2,
+      "created_at": "2026-10-20T01:01:12Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    },
+    {
+      "id": "m-3",
+      "channel": "team",
+      "sender": "colleague",
+      "content": "지표 문서 보니까 재참여율이 22%라서, 그 숫자부터 잡아 볼게요.",
+      "event_id": null,
+      "run_id": "r-2",
+      "t_min": 1.3,
+      "created_at": "2026-10-20T01:01:18Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    },
+    {
+      "id": "m-10",
+      "channel": "team",
+      "sender": "colleague",
+      "content": "파트는 어떻게 나눌까요? 3번은 2번 자료가 필요해서 그 순서만 신경 쓰면 될 것 같아요.",
+      "event_id": "ev-2",
+      "run_id": "r-10",
+      "t_min": 10.0,
+      "created_at": "2026-10-20T01:10:00Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    },
+    {
+      "id": "m-11",
+      "channel": "team",
+      "sender": "candidate",
+      "content": "제가 1·2번, 도현님이 4·5번, 3번은 같이 보죠. 2번 자료 나오는 대로 3번 골격부터 잡을게요. 보드에도 적어 둘게요.",
+      "event_id": null,
+      "run_id": null,
+      "t_min": 11.0,
+      "created_at": "2026-10-20T01:11:00Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    },
+    {
+      "id": "m-12",
+      "channel": "team",
+      "sender": "colleague",
+      "content": "좋아요. 4·5번 시작할게요.",
+      "event_id": null,
+      "run_id": "r-12",
+      "t_min": 12.5,
+      "created_at": "2026-10-20T01:12:30Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    },
+    {
+      "id": "m-13",
+      "channel": "team",
+      "sender": "candidate",
+      "content": "1번 초안 v1 공유합니다.",
+      "event_id": null,
+      "run_id": null,
+      "t_min": 25.0,
+      "created_at": "2026-10-20T01:25:00Z",
+      "reply_to_doc": null,
+      "shared_doc": {
+        "doc_id": "doc-c1",
+        "version": 1
+      }
+    },
+    {
+      "id": "m-15",
+      "channel": "dm",
+      "sender": "colleague",
+      "content": "4번 사례 고르는 기준이 헷갈려서요. 채팅으로 기준 두세 개만 10분 정도 같이 봐 줄 수 있을까요?",
+      "event_id": "ev-3",
+      "run_id": "r-15",
+      "t_min": 30.0,
+      "created_at": "2026-10-20T01:30:00Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    },
+    {
+      "id": "m-20",
+      "channel": "team",
+      "sender": "colleague",
+      "content": "3번 초안 v1 보냅니다. 방향 봐 주세요.",
+      "event_id": "ev-4",
+      "run_id": "r-20",
+      "t_min": 45.0,
+      "created_at": "2026-10-20T01:45:00Z",
+      "reply_to_doc": null,
+      "shared_doc": {
+        "doc_id": "doc-k3",
+        "version": 1
+      }
+    },
+    {
+      "id": "m-21",
+      "channel": "team",
+      "sender": "colleague",
+      "content": "4번 초안 v1 보냅니다. 방향 봐 주세요.",
+      "event_id": "ev-4",
+      "run_id": "r-20",
+      "t_min": 45.0,
+      "created_at": "2026-10-20T01:45:00Z",
+      "reply_to_doc": null,
+      "shared_doc": {
+        "doc_id": "doc-k4",
+        "version": 1
+      }
+    },
+    {
+      "id": "m-22",
+      "channel": "team",
+      "sender": "colleague",
+      "content": "5번 초안 v1 보냅니다. 방향 봐 주세요.",
+      "event_id": "ev-4",
+      "run_id": "r-20",
+      "t_min": 45.0,
+      "created_at": "2026-10-20T01:45:00Z",
+      "reply_to_doc": null,
+      "shared_doc": {
+        "doc_id": "doc-k5",
+        "version": 1
+      }
+    },
+    {
+      "id": "m-23",
+      "channel": "team",
+      "sender": "colleague",
+      "content": "주담당 쪽은 어느 정도 진행됐어요? 2번 자료는 언제쯤 볼 수 있을까요? 3번 골격 잡으려면 필요해서요.",
+      "event_id": "ev-4",
+      "run_id": "r-20",
+      "t_min": 45.1,
+      "created_at": "2026-10-20T01:45:06Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    },
+    {
+      "id": "m-24",
+      "channel": "team",
+      "sender": "candidate",
+      "content": "4번 사례 방향 좋아요. 두 번째 사례는 지표 문서의 재참여율과 연결해 주세요. 2번은 인터뷰 요약 나오면 바로 채울게요.",
+      "event_id": null,
+      "run_id": null,
+      "t_min": 47.0,
+      "created_at": "2026-10-20T01:47:00Z",
+      "reply_to_doc": {
+        "doc_id": "doc-k4",
+        "version": 1
+      },
+      "shared_doc": null
     }
   ],
-  "document": {
-    "1": {
-      "content": "...",
-      "revision": 3,
-      "updated_by": "candidate"
+  "my_documents": [
+    {
+      "doc_id": "doc-c1",
+      "part_no": 1,
+      "title": "문제 정의와 대상 사용자",
+      "content": "모아런 첫 참여자가 두 번째 모임에 오지 않는 문제. 대상은 첫 모임을 마친 지 2주 안의 참여자.",
+      "updated_at": "2026-10-20T01:18:00Z",
+      "revision": 1,
+      "versions": [
+        {
+          "version": 1,
+          "revision": 1,
+          "channel": "team",
+          "message_id": "m-13",
+          "t_min": 25.0
+        }
+      ]
     },
-    "2": {
+    {
+      "doc_id": "doc-c2",
+      "part_no": 2,
+      "title": "사용자 인터뷰에서 찾은 근거",
       "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
       "revision": 0,
-      "updated_by": null
+      "versions": []
+    },
+    {
+      "doc_id": "doc-c3",
+      "part_no": 3,
+      "title": "핵심 기능 제안",
+      "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
+      "revision": 0,
+      "versions": []
+    },
+    {
+      "doc_id": "doc-c4",
+      "part_no": 4,
+      "title": "비슷한 서비스 사례",
+      "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
+      "revision": 0,
+      "versions": []
+    },
+    {
+      "doc_id": "doc-c5",
+      "part_no": 5,
+      "title": "성공 지표와 출시 일정",
+      "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
+      "revision": 0,
+      "versions": []
+    }
+  ],
+  "received": [
+    {
+      "doc_id": "doc-k3",
+      "owner": "colleague",
+      "part_no": 3,
+      "title": "핵심 기능 제안",
+      "versions": [
+        {
+          "version": 1,
+          "channel": "team",
+          "message_id": "m-20",
+          "t_min": 45.0,
+          "opened": false
+        }
+      ]
+    },
+    {
+      "doc_id": "doc-k4",
+      "owner": "colleague",
+      "part_no": 4,
+      "title": "비슷한 서비스 사례",
+      "versions": [
+        {
+          "version": 1,
+          "channel": "team",
+          "message_id": "m-21",
+          "t_min": 45.0,
+          "opened": true
+        }
+      ]
+    },
+    {
+      "doc_id": "doc-k5",
+      "owner": "colleague",
+      "part_no": 5,
+      "title": "성공 지표와 출시 일정",
+      "versions": [
+        {
+          "version": 1,
+          "channel": "team",
+          "message_id": "m-22",
+          "t_min": 45.0,
+          "opened": false
+        }
+      ]
+    }
+  ],
+  "final": {
+    "sections": [
+      {
+        "part_no": 1,
+        "title": "문제 정의와 대상 사용자",
+        "content": "",
+        "source_doc_id": null,
+        "source_version": null,
+        "edited": false
+      },
+      {
+        "part_no": 2,
+        "title": "사용자 인터뷰에서 찾은 근거",
+        "content": "",
+        "source_doc_id": null,
+        "source_version": null,
+        "edited": false
+      },
+      {
+        "part_no": 3,
+        "title": "핵심 기능 제안",
+        "content": "",
+        "source_doc_id": null,
+        "source_version": null,
+        "edited": false
+      },
+      {
+        "part_no": 4,
+        "title": "비슷한 서비스 사례",
+        "content": "",
+        "source_doc_id": null,
+        "source_version": null,
+        "edited": false
+      },
+      {
+        "part_no": 5,
+        "title": "성공 지표와 출시 일정",
+        "content": "",
+        "source_doc_id": null,
+        "source_version": null,
+        "edited": false
+      }
+    ],
+    "template": {
+      "length": "섹션당 5~10줄, 1~2쪽"
     }
   },
   "tasks": [
     {
       "part_no": 1,
       "assignee": "candidate",
-      "status": "doing"
+      "status": "doing",
+      "order": 1,
+      "due_min": 40,
+      "depends_on": []
+    },
+    {
+      "part_no": 2,
+      "assignee": "candidate",
+      "status": "todo",
+      "order": 2,
+      "due_min": null,
+      "depends_on": []
+    },
+    {
+      "part_no": 3,
+      "assignee": "both",
+      "status": "doing",
+      "order": 3,
+      "due_min": null,
+      "depends_on": [
+        2
+      ]
+    },
+    {
+      "part_no": 4,
+      "assignee": "colleague",
+      "status": "doing",
+      "order": 4,
+      "due_min": null,
+      "depends_on": []
+    },
+    {
+      "part_no": 5,
+      "assignee": "colleague",
+      "status": "doing",
+      "order": 5,
+      "due_min": null,
+      "depends_on": []
     }
   ],
   "documents": [
     {
+      "doc_id": "company_intro",
+      "title": "루프랩·모아런 소개",
+      "released": true,
+      "release_at_min": null
+    },
+    {
       "doc_id": "metrics",
       "title": "지표 현황",
-      "released": true
+      "released": true,
+      "release_at_min": null
+    },
+    {
+      "doc_id": "interview_summary",
+      "title": "사용자 인터뷰 요약",
+      "released": false,
+      "release_at_min": 70
+    },
+    {
+      "doc_id": "policy",
+      "title": "운영 정책",
+      "released": true,
+      "release_at_min": null
+    },
+    {
+      "doc_id": "meeting_notes",
+      "title": "회의록",
+      "released": true,
+      "release_at_min": null
     }
   ],
   "assistant": [
     {
-      "call_id": "...",
-      "request": "...",
-      "response": "...",
+      "call_id": "ac-1",
+      "request": "재참여율 22%가 낮은 편인지 비슷한 서비스 기준으로 알려 줘",
+      "response": "지표 현황 문서 기준으로 재참여율은 22%이고, 회의록에서 최우선 과제로 정한 수치입니다. 외부 기준 수치는 문서에 없습니다.",
       "cited_docs": [
-        "metrics"
+        "metrics",
+        "meeting_notes"
       ],
-      "t_min": 41.2
+      "t_min": 47.5
     }
   ],
   "active_runs": [
     {
-      "run_id": "...",
+      "run_id": "r-24",
       "actor": "colleague",
       "node": "respond"
     }
   ],
+  "connection_gaps": [
+    {
+      "from_t_min": 31.2,
+      "to_t_min": 46.0
+    }
+  ],
+  "channels": {
+    "team": {
+      "members": [
+        "manager",
+        "colleague",
+        "candidate"
+      ]
+    },
+    "dm": {
+      "members": [
+        "colleague",
+        "candidate"
+      ]
+    },
+    "manager_dm": {
+      "members": [
+        "manager",
+        "candidate"
+      ]
+    },
+    "notice": {
+      "members": [
+        "candidate"
+      ]
+    }
+  },
   "persona": {
     "manager": "한서윤 팀장",
-    "colleague": "이도현"
+    "colleague": "이도현",
+    "candidate_role": "주담당"
   }
 }

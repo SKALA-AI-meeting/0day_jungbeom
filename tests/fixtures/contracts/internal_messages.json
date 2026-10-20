@@ -1,0 +1,62 @@
+[
+  {
+    "id": "m-30",
+    "channel": "notice",
+    "sender": "system",
+    "content": "사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
+    "event_id": "ev-5",
+    "run_id": "r-30",
+    "t_min": 60.0,
+    "created_at": "2026-10-20T02:00:00Z",
+    "reply_to_doc": null,
+    "shared_doc": null,
+    "meta": {
+      "tokens": 212,
+      "latency_ms": 1840,
+      "model": "gpt-4o-mini"
+    }
+  },
+  {
+    "id": "m-31",
+    "channel": "team",
+    "sender": "candidate",
+    "content": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
+    "event_id": null,
+    "run_id": null,
+    "t_min": 62.0,
+    "created_at": "2026-10-20T02:02:00Z",
+    "reply_to_doc": null,
+    "shared_doc": null,
+    "meta": {
+      "classification": {
+        "recipient": "colleague",
+        "kind": "instruction",
+        "instruction": "3번 골격을 지표 기준으로 먼저 잡기",
+        "related_card": "responsibility_delay"
+      }
+    }
+  },
+  {
+    "id": "m-33",
+    "channel": "dm",
+    "sender": "candidate",
+    "content": "2번 v1 보냅니다. 3번에 바로 쓰실 수 있을 거예요.",
+    "event_id": null,
+    "run_id": null,
+    "t_min": 73.0,
+    "created_at": "2026-10-20T02:13:00Z",
+    "reply_to_doc": null,
+    "shared_doc": {
+      "doc_id": "doc-c2",
+      "version": 1
+    },
+    "meta": {
+      "classification": {
+        "recipient": "colleague",
+        "kind": "progress_query",
+        "instruction": null,
+        "related_card": "responsibility_delay"
+      }
+    }
+  }
+]

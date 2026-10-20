@@ -2,55 +2,65 @@
 
 다음 오케스트레이터(에이전트 세션, **다른 로컬 머신일 수 있음**)가 이 문서만 읽고 바로 이어가기 위한 상태 기록이다. 읽는 순서: 이 문서 → `AGENTS.md` → `docs/plan.md` → `docs/dev-process.md` → `docs/decisions.md`의 2026-10-20 절들 → 필요한 역할 문서.
 
-## 현재 상태 (2026-10-20 저녁)
+## 현재 상태 (2026-10-21 새벽, P0 완료·개발 직전)
 
-- **W0·W1·W2 전부 병합 완료, W3의 1단계 agent-min까지 병합 완료.** main 최신은 `git log`로 확인. 테스트: api 82, business-mcp 11, rag-mcp 10, report-worker 17, web 16 통과. `make lint` 통과.
-- 모든 트랙은 Codex 리뷰(gpt-6.1-sol high) → 수정 → rebase → `make test`·`make lint` → squash 병합을 거쳤다. 트랙별 브리프·보고서·리뷰 원문은 **`docs/handoff/{briefs,reports,reviews}/`** 에 있다(다른 머신에서도 읽을 수 있게 저장소에 넣음).
-- 열린 worktree·pane·탭 없음. 다음 세션은 깨끗한 main에서 시작한다.
-- 팀 공유 문서: `docs/share/architecture.html`, `docs/share/plan-report.html|pdf`.
+- **코드**: W0·W1·W2와 agent-min까지 main에 병합(코드는 아직 **옛 설계**: 요소 4개·공유 문서·`scenarios/catalog.yaml`). 테스트 api 82, business-mcp 11, rag-mcp 10, report-worker 17, web 16 통과, `make lint` 통과.
+- **기획·설계 전환(P0) 완료**: 2026-10-20 사용자가 초점을 "같이 일하기 좋은 사람인가"로 재정의. 인성 5요소(책임감/성실성, 계획성/꼼꼼함, 적응성/유연성, 협업/조율, 정직/공정한 보고), 요소당 카드 최대 2장(7장), **문서 주고받기** 협업 모델(각자 문서를 보내고 받아 열어 보고 피드백, 주담당이 최종본 통합), 미션 단위 카탈로그, 호칭 "주담당", 제출 → 팀장 보고 → 종료, 관리자 생성 화면은 요소 뜻만, 전체 기록 화면·근거→기록 링크, 샘플 리포트·인쇄, AI 활용 라벨 없음. PRD·docs/common·서비스 설계·프론트 문서·계획·결정 전부 반영됐고 **개발 전 리뷰 4종**(Codex 설계·계획, Claude 지원자·담당자 관점)을 반영했다. 브랜치 `track/redesign-docs`를 main에 병합한 커밋: (병합 후 기입).
+- **정본**: 기획 PRD.md → 설계 docs/common(이름은 `contracts.md`가 정본, 고정됨) → 역할 문서. 전환의 배경·결정은 `docs/prd-change-proposals.md` 재설계 절, `docs/decisions.md` 2026-10-20 절들, 리뷰 반영 지시서 `docs/handoff/reviews/review-redesign-triage.md`, 계획 리뷰 `review-plan.md`.
+- **P0의 마지막 조각은 Codex가 인수했다**: `docs/handoff/briefs/brief-p0-finish.md`. 공용 픽스처 `tests/fixtures/contracts/`를 contracts.md에 맞추는 작업이 작업 트리에 미커밋 상태로 중단되어 있고(2026-10-21 새벽, 사용자 지시로 Claude 세션 중단), Codex가 마무리·커밋·main 병합·이 문서의 병합 커밋 기입까지 한다. 깨지는 기존 테스트 목록은 `docs/handoff/reports/fixtures-align-report.md`에 남기고 scenario-redesign이 코드와 함께 고친다.
+- **열린 worktree·탭 없음.** 이 머신의 Herdr 탭 "review-redesign"은 P0에서 닫았다. mock 서버(`apps/web`, 3000 포트)가 떠 있을 수 있으니 `lsof -ti:3000 -sTCP:LISTEN | xargs kill`로 정리한다.
+- **사용자가 채울 것**: `infra/.env`·`.env.local`의 `OPENAI_API_KEY_PERSONAL`, `GEMINI_API_KEY`(역할별 `MODEL_*`는 비워 둠, 상향 규칙은 decisions.md).
 
 ## 다른 머신에서 시작하기
 
 1. `git clone` 후 **`infra/.env`를 먼저 만든다. 이 파일은 git에 없다.** 사용자가 이전 머신의 `infra/.env` 전체 내용을 메모장에 복사해 두었으니, 새 머신에서 `infra/.env`에 그대로 붙여넣는다(OpenAI·LangSmith 키, 64바이트 `JWT_SECRET`, `INTERNAL_TOKEN`, `AGENT_RUNNER=fake` 포함). 메모장 사본이 없으면 `infra/.env.example`을 복사해 키를 직접 채운다. **키 값은 어떤 pane 브리프·로그·대화에도 출력하지 않는다.**
 2. `infra/.env.local`을 만든다: `.env`를 복사해 호스트명 `postgres`·`rabbitmq`·`api`·`business-mcp`·`rag-mcp`를 `localhost`로 바꾼 것. `API_INTERNAL_URL=http://localhost:8001`, `AGENT_RUNNER=fake`(실제 그래프를 쓰려면 `session`).
-3. 도구: Python 3.12 + `uv`, Node 22 + `pnpm`, Docker. `make infra-up`(postgres·rabbitmq·rag-mcp만 docker). rag-mcp 이미지는 3.4GB이고 첫 기동 때 BGE-M3(약 2.3GB)를 `/models` 볼륨에 받는다.
+3. 도구: Python 3.12 + `uv`, Node 22 + `pnpm`, Docker, **libpq**(`brew install libpq && brew link --force libpq`, 없으면 api 테스트가 psycopg import에서 전부 실패). `make infra-up`(postgres·rabbitmq·rag-mcp만 docker). rag-mcp 이미지는 3.4GB이고 첫 기동 때 BGE-M3(약 2.3GB)를 `/models` 볼륨에 받는다.
 4. 각 서비스에서 `uv sync`, `apps/web`에서 `pnpm install`. 루트에서 `make test`·`make lint`가 통과하는지 확인한다(공용 postgres·rabbitmq가 떠 있어야 api·worker 테스트가 돈다).
 5. worktree마다 `infra/.env`·`.env.local`을 복사해 줘야 한다(git 무시 파일이라 worktree에 없다).
-6. Herdr를 쓴다면 `~/.claude/skills/herdr-dispatch`와 `~/.agents/skills/herdr`가 있어야 한다. 없으면 pane 대신 일반 터미널·에이전트로 같은 절차를 따른다.
+6. Herdr를 쓴다면 `~/.agents/skills/herdr`와 플러그인 `dev@horang-skills`(herdr-dispatch 포함, 마켓플레이스 `zaehorang/horang-skills` GitHub 소스)가 있어야 한다. 디자인 스킬은 `cd apps/web && npx -y skills@latest add emilkowalski/skills --yes`(git 무시).
 
-## 다음 행동 (W3 나머지 → W4)
+## 다음 행동: P1 개발 시작 (사용자 승인 뒤)
 
-파도 표(`docs/plan.md`)대로 동시 4개까지. 트랙마다 worktree + 탭(작업 pane + 리뷰 pane).
+사용자가 "P0까지 끝내고 멈춰라"고 했으므로 **P1은 사용자가 시작하라고 할 때** 띄운다. 파도·소유권·관문은 `docs/plan.md`(P0~P5 표, 테스트 6건 배정, 공용 파일 담당), 절차는 `docs/dev-process.md`, 체크리스트는 아래 "오케스트레이터 체크리스트".
 
-1. **agent-session M2** (브랜치 `track/agent-session` 새로 생성, 전 단계 agent-min의 구조 메모는 `docs/handoff/reports/agent-min-report.md` "다음 라운드를 위해 정한 구조" 절). 범위: 전이표 전체(kickoff→negotiate→work→review→submit→done), kickoff 분업 제안·재지시 1회 제한, draft_part(texture)·review 완성본·respect 위반 삽입·fix_part, observe(창 계산·규칙 지표·레이블 분류·`metrics.window_missed {value, evidence_ids}`·aux null→classify_failed), 복구(LLM 실패 3회→세션 failed), work_notes. 반드시 넣을 것: **미공개 문서 판정을 코드가 결정적으로**(agent-min live 실패 원인: 모델이 get_document를 안 불러 짐작 답변), 책임감 observe 입력에 `release_at`·`released_before_message`(prompts 결정), report_request는 창을 닫지 않음.
-2. **agent-assistant** (agent-min 병합됐으므로 시작 가능): `app/agent/assistant/`, `POST /sessions/{id}/assistant`(api-candidate 라우터 소유라 소유권 예외 승인 필요, 응답 `{call_id, message_id, content, cited_docs}`, 429 `assistant_limit`), 공개 문서만 인용, assistant_calls·response_message_id 저장 순서(reuse 계산 전제).
-3. **web-polish**: `components/ui/` 내부·globals.css 소유권 이관. 좁은 화면, 메시지 도착 스크롤, 모션 4종, break-ui. worker 보고의 "items[].minutes null이면 빈칸" 수정도 여기서.
-4. **e2e-runner**: `tests/e2e/`, `scenarios/e2e/*.yaml`, `scripts/make_session.py`. 보고서들의 "e2e-runner에 알릴 것" 절을 모아 대본에 반영. 통합 스택은 한 번에 하나.
-5. **W4 docs-final** + 파일럿.
+### P1 기동 절차
+1. **브리프 2개 작성** → `docs/handoff/briefs/brief-web-redesign.md`, `brief-scenario-redesign.md`. 아래 템플릿대로 기준 커밋(main 최신), 계약 커밋(같은 값), catalog_version(scenario가 새로 발급), 허용 파일(plan.md 소유권 행), 사전 승인 공용 변경, 테스트 격리명, 검증 방식을 적는다. 읽을 것에 반드시: AGENTS.md, PRD.md, `docs/common/contracts.md`·`scenario-model.md`·`rubric.md`·`data-model.md`, 역할 문서(`docs/frontend/design-direction.md`·`design-system.md`·`design.md` / `docs/api/design.md`·`mcp`·`worker-infra`·`agent`), `docs/handoff/reviews/review-redesign-triage.md`, `review-plan.md` 3·4절, `docs/handoff/reports/fixtures-align-report.md`.
+2. **worktree 2개**: `sh scripts/worktree.sh web-redesign`, `sh scripts/worktree.sh scenario-redesign`. 각 worktree에 `infra/.env`·`.env.local` 복사.
+3. **탭 2개**(트랙마다 하나): `herdr tab create --workspace $HERDR_WORKSPACE_ID --cwd <worktree> --label <트랙>` → 루트 pane에 `herdr pane run <pane> "cd <worktree>"` → `herdr agent start <트랙> --kind claude --pane <pane> -- --permission-mode auto`(폴더 신뢰 확인에 멈추면 `agent send-keys enter`) → `herdr agent prompt <트랙> "<브리프 경로>를 읽고 시작"`. 리뷰 pane은 같은 탭 오른쪽에 `pane split --direction right`로 만들고 Codex(`-m gpt-6.1-sol -c model_reasoning_effort=high -s workspace-write -a never -c features.fast_mode=false`)를 띄워 완료 보고 뒤 리뷰 브리프를 보낸다. 결과는 worktree의 `REVIEW.md`.
+4. **web-redesign 관문**: 구현 완료 → UI/UX 전문가 페르소나 리뷰(Claude Opus 서브에이전트 또는 pane, 실제 mock 화면·스크린샷, 결과 `docs/handoff/reviews/review-uiux-view.md`) → 반영 → Codex 리뷰 → 반영 → **사용자가 `NEXT_PUBLIC_MOCK=1 pnpm dev`로 확인**(http://localhost:3000/s/live, 관리자는 아무 이메일·비밀번호) → 피드백 반영 → 병합. 사용자 확인을 기다리는 동안 scenario-redesign은 계속한다.
+5. **scenario-redesign 관문**: 내부 관문 3개(미션·스키마 → API·도구 계약 검증 → 워커·픽스처 인수)마다 중간 보고 → Codex 리뷰 → `make test`·`make lint` → 병합. 병합 시 catalog_version·7카드 레이블·fixed_opinions·선점/팀장 DM 픽스처·대본 초기본을 인수하고 `scenarios/missions/` 문구는 prompts, `scenarios/e2e/`는 e2e-runner로 소유권 반환(P1 관문).
+6. 둘 다 병합되고 사용자 mock 확인이 끝나면 P2(agent-session ∥ agent-assistant ∥ web-integrate ∥ web-polish).
 
-### 미처리 변경 요청(오케스트레이터 결정 필요, 보고서 "변경 요청" 절 참조)
-- agent-min: 분류 저장용 MCP 도구 추가 또는 프로세스 안 DB 직접 저장 인정(지금은 직접 저장); `app/run.py` 기동 시 runner 초기화·종료 시 aclose; harness.md의 `langchain-mcp-adapters` 문구 정정(직접 만든 McpClient 사용); contracts.md 허용 목록 표에 페르소나별 분리(팀장은 get_board·get_document_state만); design.md State "16필드" 표기(실제 17).
-- web-office: State에 파트 제목·`virtual_company`·`session_id` 추가(M2 api 보강으로 미룸), `lib/api.ts`의 미사용 `idempotencyKey` 제거(foundation).
-- worker: 섹션 `card_t_min` 추가 여부.
-- 공통: `tests/conftest.py`·`services/api/tests/conftest.py`는 foundation 소유로 확정됨. pyproject·lock의 트랙별 변경은 승인 후 decisions.md에 기록.
+### 이전 라운드의 미처리 변경 요청 (재설계로 정리됨)
+- 해결됨: 분류 저장 도구(`record_observation`·`update_observation`으로 계약화), 팀장 허용 목록(contracts), State 필드 수(18), harness의 MCP 클라이언트 문구(직접 만든 McpClient), worker `card_t_min`(카드 소섹션에 카드 시각 포함).
+- scenario-redesign이 맡음: `app/run.py` 기동 시 runner 초기화·종료 시 aclose, `tests/conftest.py`·`services/api/tests/conftest.py` 갱신(공용 변경 담당 1명 지정).
+- web-redesign이 맡음: `lib/api.ts`의 미사용 `idempotencyKey` 제거, State의 파트 제목·`virtual_company`·`session_id`(contracts의 새 State 형태로 해결).
 
 ## pane 브리프 템플릿
 
 ```
-역할: <트랙 이름> 개발. worktree <경로>, 브랜치 track/<이름>.
+역할: <트랙 이름> 개발. worktree <경로>, 브랜치 track/<이름>. 기준 커밋 <main 해시>, 계약 커밋 <해시>, catalog_version <값>.
+받은 것: <선행 산출물·픽스처·훅>. 허용 파일: <소유권 표 행>. 사전 승인된 공용 변경: <목록 또는 없음>. 테스트 격리명: <임시 DB/스키마/큐 이름>. 실제 스택: <사용 안 함 | 사용권 시각>.
 읽을 것: AGENTS.md, docs/common/contracts.md, docs/common/<관련>.md, docs/<역할>/design.md, docs/plan.md의 소유권·완료 기준, docs/decisions.md 2026-10-20 절, docs/handoff/reports/*의 "다른 트랙에 알릴 것".
 범위: docs/plan.md의 <트랙> 행. 소유권 밖 파일은 수정하지 않는다. 계약이 바뀌어야 하면 "변경 요청"으로 보고하고 계속 진행한다.
 방식: TDD, happy path 중심(docs/dev-process.md). LLM은 mock. 커밋은 자기 브랜치에만. 키 값 출력 금지.
-완료: 완료 기준의 각 줄을 직접 실행해 명령과 결과를 보고한다. 파일 수정 목록, 남은 문제, 변경 요청, 다른 트랙에 알릴 것을 Markdown 파일로 저장하고 마지막 응답은 경로 한 줄.
+완료: 완료 기준의 각 줄을 직접 실행해 명령·결과·검증 방식(mock/격리 DB/실 API/실 LLM)을 보고한다. 계약 변경 요청은 영향 경로·요청/응답 예시를 붙인다. 파일 수정 목록, 남은 문제, 변경 요청, 다른 트랙에 알릴 것, 후속 인수자에게 넘길 것(새 API·대본·프롬프트·helper·catalog_version)을 저장소 상대 경로의 Markdown 파일(docs/handoff/reports/<트랙>-report.md)로 저장하고 마지막 응답은 경로 한 줄.
 ```
 
 실제로 쓴 브리프 전부가 `docs/handoff/briefs/`에 있으니 다음 트랙 브리프는 그 형식을 따른다(수정 라운드 브리프는 `brief-<트랙>-fix.md`, 리뷰 브리프는 `reviews/review-<트랙>-brief.md`).
+
+## 오케스트레이터 체크리스트 (계획 리뷰 반영, `docs/handoff/reviews/review-plan.md` 4절)
+
+기동 전: 선행 병합 커밋·계약 커밋·catalog_version·받을 파일을 적고 이전 보고의 미처리 요청을 반영/보류/폐기로 분류 · 활성 트랙끼리 쓰기 경로 대조(공용 conftest·package/lock·schema·infra·문서·캡처 자산 포함) · worktree·브랜치·탭·모델·env 두 파일·로컬 스킬 준비 · 테스트 격리와 실제 스택 사용권 확인 · 완료 기준을 "자기 코드로 가능한 검사"와 "후속 통합 인수"로 구분.
+완료 보고 확인: 기준 커밋·수정 파일·명령/결과·검증 방식·기록 경로 · 변경 요청마다 요청자·담당·영향 소비자·해결 커밋 또는 대기 사유 · 6건 배정표 채움, 미래 구현을 가짜 결과로 대체한 항목 없음 · web-redesign은 UI/UX→수정→Codex→사용자 피드백 기록 · 임시 DB·큐·백그라운드 앱 정리, 후속 인수자에게 전달.
+병합 전: main 위 rebase한 트랙 브랜치에서 make test·lint와 추가 계약 검증 · 소유권 밖 수정·미승인 공용 변경·키·임시 산출물 없음, squash 대상 = 리뷰된 변경 · 생산자·소비자 조합 인수 완료 · 스키마·카탈로그·스택 전환은 사용권 안에서 · 진행 표에 병합 커밋·증거·소유권 반환·다음 입력 기록 후 worktree·브랜치·탭 정리.
 
 ## Herdr 운영 규칙 (사용자 결정)
 
 - **트랙마다 탭 하나** (`herdr tab create --workspace $HERDR_WORKSPACE_ID --cwd <worktree> --label <트랙>`). 루트 pane의 쉘이 홈에서 열리는 경우가 있으니 `herdr pane run <pane> "cd <worktree>"` 뒤에 `agent start`. 같은 탭 오른쪽에 리뷰 pane. 병합되면 탭째 닫는다. 오케스트레이터 탭에 pane을 늘리지 않는다.
 - 개발 pane: Claude(`--permission-mode auto`; 구현 sonnet/medium, 어려운 것 opus/high). 리뷰 pane: Codex `-m gpt-6.1-sol -c model_reasoning_effort=high -s workspace-write -a never -c features.fast_mode=false`. read-only 샌드박스면 파일 저장이 막히고 좁은 pane 출력은 회수가 안 되므로 workspace-write로 띄우고 **결과를 worktree의 `REVIEW.md`(추적 안 함, 병합 전 삭제)에 쓰게 한다.** 리뷰 프롬프트에 "소스 수정·git 변경·외부 게시 금지"를 적는다.
-- `codex exec` 백그라운드는 사용자가 원치 않는다(보이는 pane으로). 꼭 쓰면 `</dev/null` 필수.
+- **개발과 리뷰는 전부 보이는 pane으로** 띄운다. 오케스트레이터의 Agent 서브에이전트와 `codex exec`(`</dev/null` 필수)는 아주 간단한 일(한 파일 정리, 조회·대조, 짧은 리뷰)에만 쓴다.
 - Claude pane은 처음 보는 폴더에서 신뢰 확인에 멈춘다. 긴 출력은 파일로 저장시킨다. `herdr agent prompt --wait`는 타임아웃이 나도 보통 전달돼 있으니 `agent get`으로 확인한다.
 - Claude 한도 소진 시 개발을 Codex(gpt-6.1-sol, 편집 모드)로, 리뷰를 다른 모델(gpt-6-astra 또는 Claude 복구 후)로 바꾼다. 같은 모델이 만들고 검토하지 않는다.
 - 병합: 오케스트레이터가 `git rebase main`(decisions.md 끝에 절이 겹치면 양쪽 유지) → `make test`·`make lint` → `main`에 squash → push → `sh scripts/worktree.sh --remove <트랙>` → 브랜치 삭제 → 탭 닫기 → 이 문서 진행 표 갱신.
@@ -61,6 +71,7 @@
 |---|---|
 | 설계 리뷰 5라운드(Codex 4, Claude UX 1) | 전부 반영, 커밋 7512022 이전 |
 | 구현 트랙 10개(W0 1, W1 4, W2 4, W3 agent-min 1) | 각 1회 Codex 리뷰 + 수정 라운드 반영 후 병합. 리뷰 원문 `docs/handoff/reviews/` |
+| 재설계 개발 전 리뷰 3종(Codex 설계, Claude 지원자 관점, Claude 담당자 관점) | 반영 지시서 `reviews/review-redesign-triage.md`대로 문서에 반영(2026-10-20 밤). 원문 `review-redesign.md`·`review-candidate-view.md`·`review-admin-view.md` |
 
 ## 진행 표
 
@@ -76,13 +87,19 @@
 | W2 | web-office | 병합 완료 | Codex 차단 6 반영 | 3d5eb65 |
 | W2 | worker | 병합 완료 | Codex 차단 7 반영 | 2ed126f |
 | W3 | agent-min (agent-session 1단계) | 병합 완료 | Codex 4건 반영, live 1회 실패(M2에서 해결) | 07f82f3 |
-| W3 | agent-session M2 | 대기 | | |
-| W3 | agent-assistant | 대기 | | |
-| W3 | web-polish | 대기 | | |
-| W3 | e2e-runner | 대기 | | |
+| P0 | redesign-docs | 문서 완료·커밋됨(track/redesign-docs 0a374d4). 픽스처 마무리·병합은 Codex 인수(`briefs/brief-p0-finish.md`) | Codex 설계·계획 리뷰 + Claude 관점 2종 반영 | (Codex가 기입) |
+| P1 | web-redesign | 대기 (P0 기준 커밋). 관문: UI/UX 리뷰 → Codex → 사용자 mock 확인 | | |
+| P1 | scenario-redesign | 대기 (P0 기준 커밋). 내부 관문 3개 | | |
+| P2 | agent-session M2 | 대기 (scenario 병합 + 사용자 mock 확인) | | |
+| P2 | agent-assistant | 대기 (scenario 병합, 라우터 훅, 인터페이스 동결) | | |
+| P2 | web-integrate | 대기 (scenario 병합 + mock 확인). 실제 세션 인수는 agent 병합 뒤 | | |
+| P2 | web-polish | 대기 (web-redesign 병합) | | |
+| P3 | e2e-runner | 대기 (P2 합본) | | |
+| P4 | pilot | 대기 | | |
+| P5 | docs-final ∥ docs-service | 대기 (최종 기준점, 캡처 묶음) | | |
 | W4 | docs-final | 대기 | | |
 | 공유 | docs-share | 병합 완료 (docs/share) | — | 72a9400 |
 
-## 결정 요약 (자세한 것은 docs/decisions.md)
+## 결정 요약 (자세한 것은 docs/decisions.md 2026-10-20 절들)
 
-요소 선택은 채용 건 단위 1~4개. 지원자는 리드(분업 결정·재지시·보고). 동료는 회사 인재상 페르소나(성향 자유 + 의무 카드 + 선점 금지, 카탈로그 `persona`). 평가표는 요소당 4항목, AI 분류를 입력으로 규칙이 1/0/기록 없음 산출, 담당자가 조정해 확정(`docs/common/rubric.md`). 리포트는 산출물 + 관찰·평가표 + AI 활용. 에이전트는 api 모듈(`app/agent/`), 작업 기억 `work_notes`, 중간 초안 texture. 관찰 창은 다음 요소 카드까지(흐름 카드는 닫지 않음, 마지막 창은 제출까지). Recovery는 재시도 2회 후 폴백, 대체 모델 없음. 사람 승인은 리포트 그래프 interrupt. 시계는 접속과 무관. 임베딩 BGE-M3 로컬. Idempotency-Key는 MVP 계약에서 제외(도메인 멱등만). tasks 행은 내부 division PUT이 생성. 디브리핑 기한은 종료 +7일. 시작 공개 문서는 start()가 즉시 공개. 리포트 JSON 형태(aux_facts string[], context.prev_persona_message 문자열, items[].minutes, ai_usage category)는 worker 산출 기준. MVP 제외 목록은 plan.md. 동시 pane 4개, 인프라만 docker.
+초점 "같이 일하기 좋은 사람". 요소 5개 중 1~5개 선택, 요소당 카드 최대 2장: 계획성(분업·계획 0~, 중간 점검 45), 협업(도움 30, 반대 의견 90), 책임감(지연 60, 공개 70), 적응성(방향 변경 75: 핵심 기능 축소·일정 당김), 정직(보고 110 또는 제출 시). 실력은 점수 제외. 문서 주고받기(documents·versions·shares·opens·revisions·final_document), 보드가 분업 경로(tasks 5행 null 시작, both 허용, division_min 2 주담당·3 동료/같이·4·5 중 하나 동료 단독), 보고는 팀 채널(감지는 팀장 DM도), 세션 상태 reporting(5분), 관찰 창은 카드 단위(키 card_id), 창 밖 근거는 메시지만, 반대 의견 내용 고정, 선점 금지 6건, 팀장 DM 상시(정답 요청은 돌림). 리포트: summary 세 수, 카드 소섹션, basis, record_ref, 전체 기록 화면, 샘플·인쇄, AI 활용 시간순 사실. 호칭 주담당. 모델: 기본 gpt-4o-mini, 역할별 env, 프롬프트로 안 되는 역할만 상향. 개발·리뷰는 pane, 리뷰 서브에이전트는 Opus, 간단한 일만 서브에이전트·codex exec.

@@ -1,0 +1,437 @@
+{
+  "session": {
+    "id": "sess-1",
+    "status": "reporting",
+    "started_at": "2026-10-20T01:00:00Z",
+    "ends_at": "2026-10-20T03:00:00Z",
+    "remaining_seconds": 540,
+    "deadline_at": "2026-10-20T02:56:00Z",
+    "completed_at": null
+  },
+  "division": {
+    "parts": {
+      "1": "candidate",
+      "2": "candidate",
+      "3": "both",
+      "4": "colleague",
+      "5": "colleague"
+    },
+    "decided_by": "candidate",
+    "decided_at": "2026-10-20T01:12:12Z"
+  },
+  "messages": [
+    {
+      "id": "m-50",
+      "channel": "team",
+      "sender": "colleague",
+      "content": "3번 v2 보냅니다. 지시 반영했어요.",
+      "event_id": "ev-7",
+      "run_id": "r-50",
+      "t_min": 90.0,
+      "created_at": "2026-10-20T02:30:00Z",
+      "reply_to_doc": null,
+      "shared_doc": {
+        "doc_id": "doc-k3",
+        "version": 2
+      }
+    },
+    {
+      "id": "m-51",
+      "channel": "team",
+      "sender": "colleague",
+      "content": "4번 v2 보냅니다. 지시 반영했어요.",
+      "event_id": "ev-7",
+      "run_id": "r-50",
+      "t_min": 90.0,
+      "created_at": "2026-10-20T02:30:00Z",
+      "reply_to_doc": null,
+      "shared_doc": {
+        "doc_id": "doc-k4",
+        "version": 2
+      }
+    },
+    {
+      "id": "m-52",
+      "channel": "team",
+      "sender": "colleague",
+      "content": "5번 v2 보냅니다. 지시 반영했어요.",
+      "event_id": "ev-7",
+      "run_id": "r-50",
+      "t_min": 90.0,
+      "created_at": "2026-10-20T02:30:00Z",
+      "reply_to_doc": null,
+      "shared_doc": {
+        "doc_id": "doc-k5",
+        "version": 2
+      }
+    },
+    {
+      "id": "m-53",
+      "channel": "team",
+      "sender": "colleague",
+      "content": "주담당 파트도 보내 주시면 볼게요. 그리고 1번에서 '다음 모임 일정을 놓쳐서'가 주원인이라고 쓰셨는데, 인터뷰 8명 중 5명은 '아는 사람이 없어 어색해서'를 먼저 말해서 저는 그쪽이 주원인에 가깝다고 봐요.",
+      "event_id": "ev-8",
+      "run_id": "r-50",
+      "t_min": 90.5,
+      "created_at": "2026-10-20T02:30:30Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    },
+    {
+      "id": "m-54",
+      "channel": "team",
+      "sender": "candidate",
+      "content": "인터뷰 기준으론 어색함이 더 많이 나오는 게 맞아요. 다만 지표 문서의 이탈 시점이 일정 놓친 직후라서 둘 다 쓰고 일정 쪽을 먼저 두는 걸로 할게요.",
+      "event_id": null,
+      "run_id": null,
+      "t_min": 93.0,
+      "created_at": "2026-10-20T02:33:00Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    },
+    {
+      "id": "m-60",
+      "channel": "team",
+      "sender": "manager",
+      "content": "마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
+      "event_id": "ev-9",
+      "run_id": "r-60",
+      "t_min": 110.0,
+      "created_at": "2026-10-20T02:50:00Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    },
+    {
+      "id": "m-61",
+      "channel": "team",
+      "sender": "system",
+      "content": "최종본은 오른쪽 탭에서 제출합니다. 제출하면 세션이 끝납니다.",
+      "event_id": "ev-9",
+      "run_id": "r-60",
+      "t_min": 110.0,
+      "created_at": "2026-10-20T02:50:00Z",
+      "reply_to_doc": null,
+      "shared_doc": null
+    }
+  ],
+  "my_documents": [
+    {
+      "doc_id": "doc-c1",
+      "part_no": 1,
+      "title": "문제 정의와 대상 사용자",
+      "content": "모아런 첫 참여자가 두 번째 모임에 오지 않는 문제. 대상은 첫 모임을 마친 지 2주 안의 참여자. 주원인 가정: 다음 모임 일정을 놓쳐서. 핵심 기능은 48시간 안 후속 모임 제안 한 가지로 좁힘.",
+      "updated_at": "2026-10-20T02:20:00Z",
+      "revision": 2,
+      "versions": [
+        {
+          "version": 1,
+          "revision": 1,
+          "channel": "team",
+          "message_id": "m-13",
+          "t_min": 25.0
+        },
+        {
+          "version": 2,
+          "revision": 2,
+          "channel": "team",
+          "message_id": "m-40",
+          "t_min": 84.0
+        }
+      ]
+    },
+    {
+      "doc_id": "doc-c2",
+      "part_no": 2,
+      "title": "사용자 인터뷰에서 찾은 근거",
+      "content": "인터뷰 8명 중 5명이 '아는 사람이 없어 어색했다', 6명이 '다음 일정을 몰랐다'고 답함.",
+      "updated_at": "2026-10-20T02:12:30Z",
+      "revision": 1,
+      "versions": [
+        {
+          "version": 1,
+          "revision": 1,
+          "channel": "dm",
+          "message_id": "m-33",
+          "t_min": 73.0
+        }
+      ]
+    },
+    {
+      "doc_id": "doc-c3",
+      "part_no": 3,
+      "title": "핵심 기능 제안",
+      "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
+      "revision": 0,
+      "versions": []
+    },
+    {
+      "doc_id": "doc-c4",
+      "part_no": 4,
+      "title": "비슷한 서비스 사례",
+      "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
+      "revision": 0,
+      "versions": []
+    },
+    {
+      "doc_id": "doc-c5",
+      "part_no": 5,
+      "title": "성공 지표와 출시 일정",
+      "content": "",
+      "updated_at": "2026-10-20T01:00:00Z",
+      "revision": 0,
+      "versions": []
+    }
+  ],
+  "received": [
+    {
+      "doc_id": "doc-k3",
+      "owner": "colleague",
+      "part_no": 3,
+      "title": "핵심 기능 제안",
+      "versions": [
+        {
+          "version": 1,
+          "channel": "team",
+          "message_id": "m-20",
+          "t_min": 45.0,
+          "opened": false
+        },
+        {
+          "version": 2,
+          "channel": "team",
+          "message_id": "m-50",
+          "t_min": 90.0,
+          "opened": true
+        }
+      ]
+    },
+    {
+      "doc_id": "doc-k4",
+      "owner": "colleague",
+      "part_no": 4,
+      "title": "비슷한 서비스 사례",
+      "versions": [
+        {
+          "version": 1,
+          "channel": "team",
+          "message_id": "m-21",
+          "t_min": 45.0,
+          "opened": true
+        },
+        {
+          "version": 2,
+          "channel": "team",
+          "message_id": "m-51",
+          "t_min": 90.0,
+          "opened": true
+        }
+      ]
+    },
+    {
+      "doc_id": "doc-k5",
+      "owner": "colleague",
+      "part_no": 5,
+      "title": "성공 지표와 출시 일정",
+      "versions": [
+        {
+          "version": 1,
+          "channel": "team",
+          "message_id": "m-22",
+          "t_min": 45.0,
+          "opened": false
+        },
+        {
+          "version": 2,
+          "channel": "team",
+          "message_id": "m-52",
+          "t_min": 90.0,
+          "opened": true
+        }
+      ]
+    }
+  ],
+  "final": {
+    "sections": [
+      {
+        "part_no": 1,
+        "title": "문제 정의와 대상 사용자",
+        "content": "모아런 첫 참여자가 두 번째 모임에 오지 않는 문제. 대상은 첫 모임을 마친 지 2주 안의 참여자. 주원인 가정: 다음 모임 일정을 놓쳐서. 핵심 기능은 48시간 안 후속 모임 제안 한 가지로 좁힘.",
+        "source_doc_id": "doc-c1",
+        "source_version": 2,
+        "edited": true
+      },
+      {
+        "part_no": 2,
+        "title": "사용자 인터뷰에서 찾은 근거",
+        "content": "인터뷰 8명 중 5명이 '아는 사람이 없어 어색했다', 6명이 '다음 일정을 몰랐다'고 답함.",
+        "source_doc_id": "doc-c2",
+        "source_version": 1,
+        "edited": false
+      },
+      {
+        "part_no": 3,
+        "title": "핵심 기능 제안",
+        "content": "핵심 기능: 첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능 하나. 알림은 모임 종료 다음 날 오전 1회, 2번 인터뷰의 '일정을 몰랐다' 응답에 대응.",
+        "source_doc_id": "doc-k3",
+        "source_version": 2,
+        "edited": true
+      },
+      {
+        "part_no": 4,
+        "title": "비슷한 서비스 사례",
+        "content": "사례 1: 독서 모임 앱 A의 후속 모임 알림(재참여율 22%→31%). 사례 2: 러닝 크루 B의 첫 참여자 전용 채널.",
+        "source_doc_id": "doc-k4",
+        "source_version": 2,
+        "edited": false
+      },
+      {
+        "part_no": 5,
+        "title": "성공 지표와 출시 일정",
+        "content": "성공 지표: 2회차 참여율 22%→30%. 출시: 이번 분기 말, 알림 기능 먼저.",
+        "source_doc_id": "doc-k5",
+        "source_version": 2,
+        "edited": false
+      }
+    ],
+    "template": {
+      "length": "섹션당 5~10줄, 1~2쪽"
+    }
+  },
+  "tasks": [
+    {
+      "part_no": 1,
+      "assignee": "candidate",
+      "status": "done",
+      "order": 1,
+      "due_min": 40,
+      "depends_on": []
+    },
+    {
+      "part_no": 2,
+      "assignee": "candidate",
+      "status": "done",
+      "order": 2,
+      "due_min": null,
+      "depends_on": []
+    },
+    {
+      "part_no": 3,
+      "assignee": "both",
+      "status": "done",
+      "order": 3,
+      "due_min": null,
+      "depends_on": [
+        2
+      ]
+    },
+    {
+      "part_no": 4,
+      "assignee": "colleague",
+      "status": "done",
+      "order": 4,
+      "due_min": null,
+      "depends_on": []
+    },
+    {
+      "part_no": 5,
+      "assignee": "colleague",
+      "status": "doing",
+      "order": 5,
+      "due_min": null,
+      "depends_on": []
+    }
+  ],
+  "documents": [
+    {
+      "doc_id": "company_intro",
+      "title": "루프랩·모아런 소개",
+      "released": true,
+      "release_at_min": null
+    },
+    {
+      "doc_id": "metrics",
+      "title": "지표 현황",
+      "released": true,
+      "release_at_min": null
+    },
+    {
+      "doc_id": "interview_summary",
+      "title": "사용자 인터뷰 요약",
+      "released": true,
+      "release_at_min": null
+    },
+    {
+      "doc_id": "policy",
+      "title": "운영 정책",
+      "released": true,
+      "release_at_min": null
+    },
+    {
+      "doc_id": "meeting_notes",
+      "title": "회의록",
+      "released": true,
+      "release_at_min": null
+    }
+  ],
+  "assistant": [
+    {
+      "call_id": "ac-1",
+      "request": "재참여율 22%가 낮은 편인지 비슷한 서비스 기준으로 알려 줘",
+      "response": "지표 현황 문서 기준으로 재참여율은 22%이고, 회의록에서 최우선 과제로 정한 수치입니다. 외부 기준 수치는 문서에 없습니다.",
+      "cited_docs": [
+        "metrics",
+        "meeting_notes"
+      ],
+      "t_min": 47.5
+    },
+    {
+      "call_id": "ac-2",
+      "request": "인터뷰 요약에서 두 번째 모임에 안 온 이유만 뽑아 줘",
+      "response": "인터뷰 요약 문서에 따르면 8명 중 5명이 '아는 사람이 없어 어색했다', 6명이 '다음 일정을 몰랐다'고 답했습니다.",
+      "cited_docs": [
+        "interview_summary"
+      ],
+      "t_min": 72.0
+    }
+  ],
+  "active_runs": [],
+  "connection_gaps": [
+    {
+      "from_t_min": 31.2,
+      "to_t_min": 46.0
+    }
+  ],
+  "channels": {
+    "team": {
+      "members": [
+        "manager",
+        "colleague",
+        "candidate"
+      ]
+    },
+    "dm": {
+      "members": [
+        "colleague",
+        "candidate"
+      ]
+    },
+    "manager_dm": {
+      "members": [
+        "manager",
+        "candidate"
+      ]
+    },
+    "notice": {
+      "members": [
+        "candidate"
+      ]
+    }
+  },
+  "persona": {
+    "manager": "한서윤 팀장",
+    "colleague": "이도현",
+    "candidate_role": "주담당"
+  }
+}

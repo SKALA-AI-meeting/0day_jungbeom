@@ -1,0 +1,13 @@
+{
+  "channel": "team",
+  "sender": "colleague",
+  "content": "지표 문서 보니까 재참여율이 22%라서, 그 숫자부터 잡아 볼게요.",
+  "event_id": null,
+  "run_id": "r-2",
+  "seq": 1,
+  "meta": {
+    "tokens": 212,
+    "latency_ms": 1840,
+    "model": "gpt-4o-mini"
+  }
+}

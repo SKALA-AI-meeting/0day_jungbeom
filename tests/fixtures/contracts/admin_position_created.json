@@ -1,0 +1,147 @@
+{
+  "id": "pos-1",
+  "name": "PM 인턴 2026 하반기",
+  "mission_id": "planning",
+  "elements": [
+    "responsibility",
+    "planning",
+    "adaptability",
+    "collaboration",
+    "honesty"
+  ],
+  "scenario": {
+    "mission_id": "planning",
+    "session_minutes": 120,
+    "cards": [
+      {
+        "card_id": "kickoff",
+        "at_min": 0,
+        "flow": true
+      },
+      {
+        "card_id": "planning_division",
+        "element": "planning",
+        "at_min": 10,
+        "window_start_min": 0
+      },
+      {
+        "card_id": "collab_help",
+        "element": "collaboration",
+        "at_min": 30
+      },
+      {
+        "card_id": "planning_checkin",
+        "element": "planning",
+        "at_min": 45,
+        "sends_document": {
+          "parts": "colleague_all",
+          "version": 1
+        }
+      },
+      {
+        "card_id": "responsibility_delay",
+        "element": "responsibility",
+        "at_min": 60,
+        "effects": {
+          "release_document": "interview_summary",
+          "release_at_min": 70
+        }
+      },
+      {
+        "card_id": "adaptability_change",
+        "element": "adaptability",
+        "at_min": 75
+      },
+      {
+        "card_id": "review",
+        "at_min": 90,
+        "flow": true,
+        "sends_document": {
+          "parts": "colleague_all",
+          "version": 2
+        }
+      },
+      {
+        "card_id": "collab_disagree",
+        "element": "collaboration",
+        "at_min": 90,
+        "attach_to": "review"
+      },
+      {
+        "card_id": "honesty_report",
+        "element": "honesty",
+        "at_min": 110,
+        "or_on_submit": true
+      }
+    ],
+    "parts": {
+      "1": {
+        "title": "문제 정의와 대상 사용자"
+      },
+      "2": {
+        "title": "사용자 인터뷰에서 찾은 근거"
+      },
+      "3": {
+        "title": "핵심 기능 제안",
+        "depends_on": [
+          2
+        ]
+      },
+      "4": {
+        "title": "비슷한 서비스 사례"
+      },
+      "5": {
+        "title": "성공 지표와 출시 일정"
+      }
+    },
+    "division_min": {
+      "2": [
+        "candidate"
+      ],
+      "3": [
+        "colleague",
+        "both"
+      ],
+      "any_colleague_only": [
+        4,
+        5
+      ]
+    },
+    "final_template": {
+      "sections": [
+        {
+          "part_no": 1,
+          "title": "문제 정의와 대상 사용자"
+        },
+        {
+          "part_no": 2,
+          "title": "사용자 인터뷰에서 찾은 근거"
+        },
+        {
+          "part_no": 3,
+          "title": "핵심 기능 제안"
+        },
+        {
+          "part_no": 4,
+          "title": "비슷한 서비스 사례"
+        },
+        {
+          "part_no": 5,
+          "title": "성공 지표와 출시 일정"
+        }
+      ],
+      "length": "섹션당 5~10줄, 1~2쪽"
+    },
+    "vars": {
+      "interview_expected_time": "01:00",
+      "release_time": "01:10"
+    },
+    "releases_at_start": [
+      "company_intro",
+      "metrics",
+      "policy",
+      "meeting_notes"
+    ]
+  },
+  "catalog_version": "a3f9c2e1d4b5"
+}

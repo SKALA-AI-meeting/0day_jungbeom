@@ -95,3 +95,26 @@
 - null 지표 사유: aux 판정 지표(response_specific·proposes_alternative·proposes_fix)가 null이면 레이블이 정상이어도 `classify_failed`. 그 밖의 null은 레이블 unclassified·null이면 classify_failed, 아니면 no_activity. `window_missed`는 관찰 `metrics.window_missed: {value: true, evidence_ids: []}`(bool 허용)로 확정.
 - 소유권 예외: worker `pyproject.toml`·`uv.lock` 변경 승인(런타임 `psycopg[binary]`: slim 이미지에 libpq가 없음, dev `pyyaml`: 테스트가 카탈로그를 읽음). 이 라운드에 한해 worker 트랙이 `services/api/app/routers/internal.py`(events·offset·usage)와 해당 테스트, `contracts.md`·`decisions.md`를 고쳤다.
 - 금지어 보강: 1위·N위·N등·만점·감점·가산점·상위/하위 N%·등수. 업무 "우선순위", 근거 원문 quote, 평가표 숫자는 검사하지 않는다. 설정은 OPENAI_MODEL이 gpt-4o-mini가 아니면 시작 시 오류.
+
+## 2026-10-20 인성 5요소·문서 주고받기 재설계 (위 결정 중 요소 4개·L/4~3/4 배치·존중 카드·공유 문서 편집·관찰 키는 이 절로 대체)
+- 초점을 "같이 일하기 좋은 사람인가"로 재정의. 요소 5개(책임감/성실성, 계획성/꼼꼼함, 적응성/유연성, 협업/조율, 정직/공정한 보고) 중 1~5개 선택, 요소당 카드 최대 2장(총 7장). 존중·소통(동료 정책 위반 지적)은 삭제. 실력(오류 발견·산출물 품질)은 점수 제외. 이유: 인성 평가 서비스이지 역량 평가가 아님(사용자 결정). 대안: 요소 4개 유지, 수치 오류 삽입으로 꼼꼼함 관찰(실력 판단이라 기각).
+- 협업 모델은 **문서 주고받기**: 각자 파트 문서를 쓰고 보내며(버전), 받은 쪽은 열어 보고 문서에 매인 답글로 피드백, 주담당이 킥오프 템플릿대로 최종본에 가져와 통합. 이유: 리모트 협업의 실제 흐름과 같고, 문서 주인이 하나라 기여·열람이 사실로 남아 정직·꼼꼼함 관찰이 쉬움, 동시 편집·낙관적 잠금 불필요(사용자 결정). 대안: 공유 문서 전체 편집(기각).
+- 제출 → 팀장 보고 요청 → 보고하거나 5분 뒤 종료(상태 reporting). 보고 요청은 11L/12 또는 제출 시 먼저 오는 쪽. 이유: 조기 제출자도 정직 카드 관찰(사용자 결정).
+- 관찰 창은 카드 단위, 키 (session, card_id, window_start). 창 밖 근거는 메시지만 related_card로 허용(약속 이행). 중간 카드 N개는 L/4 + i·(L/2)/N, 순서 도움 → 중간 점검 → 지연 → 변경, 책임감 지연 L/12. 이유: 중간 점검 카드가 끼면서 기존 지연 L/8이 창 밖으로 나감.
+- 반대 의견 카드의 내용은 카탈로그 고정(두 번째 의견 포함), 주담당 문서는 "어느 문장에 대해"에만 씀. 이유: 같은 채용 건 안 공정성("말투만 생성" 원칙 유지).
+- 보드가 관찰 입력: 담당·상태·순서·"언제까지"(선택)·의존 배지, 변경 이벤트 기록. 이유: 계획성·적응성을 LLM 해석 없이 규칙으로 셈.
+- 팀장 DM 상시. 과제 질문에 답하고 정답·판단 요청은 주담당에게 돌림. 호칭 "리드" → "주담당". 관리자 생성 화면은 요소의 뜻과 "이렇게 봅니다"만(상황 비공개).
+- 미션 단위 카탈로그 `scenarios/missions/<id>/`, positions.mission_id. MVP는 기획안 미션 하나.
+- 작업 순서: UI(mock)를 먼저 만들어 사용자가 확인한 뒤 코드. 디자인 스킬 emilkowalski/skills는 apps/web/.agents/skills에 로컬 설치(git 무시). 디자인 문서 3개: frontend/design-direction.md(형태), design-system.md(토큰·컴포넌트), design.md(화면 규칙).
+
+## 2026-10-20 개발 전 리뷰 3종 반영
+- Codex 설계 리뷰 차단 12건·권장 9건, 지원자 관점·담당자 관점 리뷰의 필수 항목을 `docs/handoff/reviews/review-redesign-triage.md`대로 반영. 설계 수준은 오케스트레이터 결정(보고는 팀 채널, rubric.md가 레이블·근거 타입 단일 표, document_revisions 복원, 보드가 분업 경로, 계획성 창은 0부터, 약속 이행은 종료 시 확정, 적응성 반영은 target_applied, 정직 전제 지표화, division_min에 3번 의존 보장, 문서 전송 실패 사유 document_missing, reporting 재입장).
+- 사용자 결정: 적응성 카드는 자료가 살아남는 변경(핵심 기능 축소·일정 당김), 전체 기록 읽기 전용 화면과 근거→기록 링크(F-05 MVP 포함), 리포트 화면은 디자인 컨셉으로 재설계, 샘플 리포트·인쇄/PDF 내보내기 MVP, AI 활용 라벨 제거(시간순 사실만). 이유: 담당자 조정과 "사람이 판단" 절차가 원문 없이 성립하지 않음, 라벨은 감점으로 읽힘, 연출이 자료를 무효화하면 유연성이 아니라 분노를 관찰함.
+- 계획: web-integrate 트랙 추가, scenario-redesign 소유권 확대(prompts 포함), 사용자 mock 확인이 막는 범위는 web-integrate·agent-session 착수뿐. 생성 화면 미리보기·버전 비교·최종본 append·둘째 계정은 MVP 제외.
+
+## 2026-10-20 역할별 모델과 상향 규칙
+- LLM 역할 5개: 동료(MODEL_COLLEAGUE), 팀장(MODEL_MANAGER), 관찰 분류(MODEL_OBSERVE), 어시스턴트(MODEL_ASSISTANT), 리포트 작성(MODEL_REPORT). 각 역할은 env의 자기 모델 id를 읽고, 비어 있으면 `OPENAI_MODEL`(기본 gpt-4o-mini)을 쓴다.
+- 키 선택은 모델 id로 결정한다: `gpt-4o-mini` → `OPENAI_API_KEY`(제한 키), 그 외 `gpt-*` → `OPENAI_API_KEY_PERSONAL`, `gemini-*` → `GEMINI_API_KEY`(Google의 OpenAI 호환 엔드포인트라 클라이언트 추가 없음). 이 규칙은 `app/agent/llm`과 worker의 공용 LLM 래퍼 한 곳에만 둔다.
+- 상향 규칙: 어떤 역할의 결과가 프롬프트·규칙 수정으로 안 되면 그 역할만 올린다. 사다리: gpt-4o-mini → GPT-6 계열 소형 → GPT-6 표준(마지막). 모델 선택은 오케스트레이터가 하고 사용자에게 보고한다. 괜찮은 역할은 그대로 둔다. 판단 자료: live 테스트의 레이블 정확도, 선점 금지·팀장 DM 규칙 준수, 응답의 자연스러움, 카드 실패율, 리포트 금지어·근거 검증 실패율. 상향 결과(어느 역할을 왜 올렸는지)는 docs-final에 적는다.
+- 키 값은 어떤 문서·브리프·로그에도 쓰지 않는다. Recovery(재시도 2회 후 규칙 폴백)는 모델과 무관하게 유지.
+

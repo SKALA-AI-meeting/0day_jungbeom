@@ -1,0 +1,9 @@
+{
+  "call_id": "ac-1",
+  "message_id": "m-26",
+  "content": "지표 현황 문서 기준으로 재참여율은 22%이고, 회의록에서 최우선 과제로 정한 수치입니다. 외부 기준 수치는 문서에 없습니다.",
+  "cited_docs": [
+    "metrics",
+    "meeting_notes"
+  ]
+}
