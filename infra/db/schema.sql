@@ -52,6 +52,9 @@ CREATE TABLE sessions (
   llm_failures int NOT NULL DEFAULT 0,
   report_enqueued_at timestamptz,
   approve_enqueued_at timestamptz,          -- report.approve 발행 기록(outbox)
+  failed_stage text CHECK (failed_stage IN ('session','report')),
+  failed_reason text,
+  token_usage jsonb NOT NULL DEFAULT '{}'::jsonb,  -- 세션 누계(agent_runs 합), 예산 검사용
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -80,11 +83,25 @@ CREATE TABLE messages (
   event_id uuid REFERENCES session_events(id),
   run_id uuid,
   seq int,
+  client_msg_id text,                       -- 지원자 메시지 재전송 멱등
   meta jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (session_id, run_id, seq)
 );
 CREATE INDEX ON messages (session_id, created_at);
+CREATE UNIQUE INDEX ON messages (session_id, client_msg_id) WHERE client_msg_id IS NOT NULL;
+
+CREATE TABLE agent_runs (
+  run_id uuid PRIMARY KEY,
+  session_id uuid NOT NULL REFERENCES sessions(id),
+  stimulus text NOT NULL CHECK (stimulus IN ('message','event','end')),
+  ref_ids uuid[] NOT NULL DEFAULT '{}',     -- message_id 또는 event_id 묶음
+  status text NOT NULL DEFAULT 'started' CHECK (status IN ('started','finished','failed')),
+  usage jsonb NOT NULL DEFAULT '{}'::jsonb, -- llm_calls, retries, tokens_in, tokens_out, latency_ms, tool_calls
+  started_at timestamptz NOT NULL DEFAULT now(),
+  finished_at timestamptz
+);
+CREATE INDEX ON agent_runs (session_id) WHERE status = 'started';
 
 CREATE TABLE document_states (
   session_id uuid NOT NULL REFERENCES sessions(id),
@@ -142,7 +159,7 @@ CREATE TABLE observations (
   window_end timestamptz NOT NULL,
   metrics jsonb NOT NULL DEFAULT '{}'::jsonb,
   label text,
-  evidence_message_ids uuid[] NOT NULL DEFAULT '{}',
+  evidence jsonb NOT NULL DEFAULT '[]'::jsonb,   -- [{type: message|revision|doc_view|assistant_call, id}]
   run_id uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (session_id, element, window_start)
@@ -172,7 +189,8 @@ CREATE TABLE reports (
   content jsonb NOT NULL,
   generated_at timestamptz NOT NULL DEFAULT now(),
   reviewed_at timestamptz,
-  attempts int NOT NULL DEFAULT 0
+  attempts int NOT NULL DEFAULT 0,
+  usage jsonb NOT NULL DEFAULT '{}'::jsonb  -- 워커 LLM 사용량
 );
 
 CREATE TABLE doc_chunks (

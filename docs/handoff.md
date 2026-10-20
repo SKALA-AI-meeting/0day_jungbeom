@@ -35,7 +35,10 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 |---|---|---|
 | 1차 설계 리뷰 (Codex) | A~E 반영 (커밋 4aa8eca) | — |
 | 재검토 (Codex) | 해소 22 / 부분 해소 14 / 새 불일치 9 → 전부 문서에 반영 | — |
-| 최종 리뷰 (Codex) | 재검토 항목 해소 23 / 부분 6 → 전부 반영. 새 문서 지적 8건(로컬↔docker 연결, 8001 리스너, Makefile 실패 코드, 포트 오프셋 제거, 파도 의존성, foundation 소유 범위, live 마커 제외, seed 위치) 반영. 설계 방향 변경 없음 | — (다음 리뷰는 foundation 완료 후) |
+| 최종 리뷰 (Codex) | 재검토 항목 해소 23 / 부분 6 → 전부 반영. 새 문서 지적 8건 반영. 설계 방향 변경 없음 | — |
+| 3관점 최종 리뷰 (Codex, 192f973 기준) | 기획 11·개발 11·평가 9·미결정 13 → 전부 반영(아래). 설계 방향 변경 표시 3건은 PRD 범위 안의 행동 규칙 확정으로 처리 | — (다음 리뷰는 foundation 완료 후) |
+
+3관점 리뷰에서 확정한 것: 수신자 규칙·페르소나 행동 계약 표(agent/design.md), 리뷰 단계에서 동료가 자기 파트만 수정, 업무 중 재분업 1회, 창 경계=카드 due_at, inject→observe 순서, evidence 타입화, 레이블 no_evidence·unclassified·null 구분, agent_runs·client_msg_id, 프롬프트를 `scenarios/prompts/`로 옮겨 버전 해시에 포함, 종료 후 디브리핑 토큰, failed_stage, 보관 90일, 초대 링크 수동 전달, 재사용 추정 함수 명세, 토큰 예산 300k, e2e 단언 3a·3b·8·9, eval-live 기록, M4 파일럿.
 
 재검토에서 반영한 결정(설계 방향은 바뀌지 않음, 세부 규칙만 확정):
 - 카드 실패는 최초 포함 총 3회 시도 후 세션 failed. 재실행은 fired 시 기록한 같은 run_id를 쓴다.

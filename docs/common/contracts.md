@@ -15,7 +15,7 @@
 | 단계 | 호출 | 상태 | 토큰 |
 |---|---|---|---|
 | 초대 생성 | 관리자 POST /invites | sessions 행이 `invited`로 함께 생성됨 | 초대 토큰(링크에만, DB에는 해시) |
-| 링크 입장 | GET /s/{token} | 만료(72h) → 410, 세션이 completed 이후 → 409 | 없음 |
+| 링크 입장 | GET /s/{token} | 시작 전 만료(72h) → 410. completed 이후·failed → 200에 `status`와 `debrief_token`(디브리핑·종료 안내만 읽는 JWT, 종료 후 7일) | 없음 |
 | 동의 | POST /s/{token}/consent | `consented_at` 기록 | 세션 JWT 발급. 만료 = now + session_minutes + 120분 |
 | 시작 | POST /s/{token}/start (Bearer) | `in_progress`, started_at·ends_at 확정, 이벤트·공개 예약 | 같은 JWT |
 | 재입장 | GET /s/{token} → status가 invited면 POST /s/{token}/consent 재호출, in_progress면 POST /s/{token}/resume | 변화 없음 | 세션 JWT 재발급(저장된 JWT가 없어도 링크만으로 이어감). 초대 72h 만료는 시작 후에는 적용하지 않음 |
@@ -31,8 +31,8 @@
 | POST | /admin/auth/login | {email, password} | {token} |
 | GET | /admin/positions | | [{id, name, elements, candidate_count, created_at}] |
 | POST | /admin/positions | {name, elements: ["cooperation", ...]} (1~4개) | {id, name, elements, scenario, catalog_version} |
-| GET | /admin/positions/{id}/candidates | | [{session_id, alias, status, invited_at, report_ready_at}] |
-| POST | /admin/positions/{id}/invites | {alias, email} | {session_id, invite_url, expires_at} |
+| GET | /admin/positions/{id}/candidates | | [{session_id, alias, status, invited_at, report_ready_at, failed_stage?, failed_reason?}] |
+| POST | /admin/positions/{id}/invites | {alias, email} | {session_id, invite_url, expires_at}. 발송하지 않음. 화면은 링크 복사 버튼을 제공하고 email은 기록용 |
 | GET | /admin/sessions/{id}/report | | Report (아래) 또는 404(아직 없음) |
 | POST | /admin/sessions/{id}/review | | {status: "approving"}. 이미 approving·reviewed면 200 멱등 |
 
@@ -46,7 +46,8 @@
  "sections":[
   {"element":"responsibility","name":"책임감","situation":"담당 파트에 필요한 인터뷰 자료 지연",
    "observed":"마감 전에 지연을 먼저 알리고 대안을 제시함",
-   "evidence":[{"message_id":"...","t_min":52,"channel":"team","quote":"인터뷰 자료가 늦어서..."}]},
+   "evidence":[{"type":"message","id":"...","t_min":52,"channel":"team","quote":"인터뷰 자료가 늦어서..."},
+              {"type":"revision","id":"...","t_min":74,"part_no":1,"summary":"1번 파트 수정(대상을 휴면 참여자로)"}]},
   {"element":"cooperation","name":"협력 태도","situation":"...","observed":null,"evidence":[],
    "note":"해당 상황에서 관련 행동이 기록되지 않음"}],
  "ai_usage":{"used":true,"summary":"...",
@@ -54,13 +55,13 @@
  "generated_at":"...","reviewed_at":null}
 ```
 
-`stage`는 draft 또는 final. `ai_usage.used=false`면 summary는 "사용하지 않음"이고 evidence는 빈 배열. 모든 evidence의 message_id·call_id는 같은 세션의 실제 행을 가리켜야 하며(워커가 검증), 어떤 필드에도 점수·합격·순위 표현이 없어야 한다.
+`stage`는 draft 또는 final. evidence 타입: message(quote), revision(part_no, summary), doc_view(doc_id), assistant_call(quote). `ai_usage.used=false`면 summary는 "사용하지 않음"이고 evidence는 빈 배열. 모든 evidence의 id는 같은 세션의 실제 행을 가리켜야 하며(워커가 검증), 어떤 필드에도 점수·합격·순위 표현이 없어야 한다.
 
 ## 지원자 REST (`/s`, `/sessions`, 포트 8000)
 
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
-| GET | /s/{token} | | {company_name, duration_minutes, status, elements_names} 또는 410 `expired` / 409 `completed` |
+| GET | /s/{token} | | {company_name, duration_minutes, status, elements_names, debrief_token?, failed_stage?} 또는 410 `expired`. debrief_token은 completed 이후·failed일 때만 |
 | POST | /s/{token}/consent | | {session_token} |
 | POST | /s/{token}/resume | | {session_token} (status in_progress일 때만, 아니면 409) |
 | POST | /s/{token}/start | Bearer | {session_id, started_at, ends_at} (이미 시작했으면 같은 값 멱등) |
@@ -70,8 +71,8 @@
 | GET | /sessions/{id}/documents | Bearer | [{doc_id, title, released: bool}] |
 | GET | /sessions/{id}/documents/{doc_id} | Bearer | {doc_id, title, content} 또는 423 `not_released`. 열람을 `doc_views`에 기록 |
 | POST | /sessions/{id}/assistant | Bearer {prompt} | {call_id, message_id, content, cited_docs} 또는 429 `assistant_limit`(60회 초과) |
-| POST | /sessions/{id}/submit | Bearer | {status: "completed"} (멱등) |
-| GET | /sessions/{id}/debrief | Bearer | {events: [{element, name, description}], notice} |
+| POST | /sessions/{id}/submit | Bearer | {status: "completed"} (멱등). web은 대기 중인 문서 PUT을 끝낸 뒤 호출한다. submitted_at 이후의 문서 PUT·assistant·message.send는 409 `session_ending` |
+| GET | /sessions/{id}/debrief | Bearer(세션 JWT 또는 debrief_token) | {events: [{element, name, description}] (실제 fired된 카드만), notice, failed_stage?: "session"∣"report", failed_notice?} |
 
 ### State 스냅샷
 
@@ -86,7 +87,7 @@
  "persona":{"manager":"한서윤 팀장","colleague":"이도현"}}
 ```
 
-재접속 복구 범위: 스냅샷이 전체 상태이고 WS는 증분만 보낸다. `active_runs`로 진행 중 표시를 복원한다. 완료된 실행은 messages의 run_id로 식별한다.
+재접속 복구 범위: 스냅샷이 전체 상태이고 WS는 증분만 보낸다. `active_runs`는 `agent_runs`에서 status=started인 행이다. 완료된 실행은 messages의 run_id로 식별한다. ack 뒤 실행 시작 전에 api가 죽은 메시지는 `agent_runs`에 started로 남아 있으므로 스케줄러가 120초 뒤 같은 run_id로 재실행한다.
 
 ## WebSocket `/ws/sessions/{id}?token=<세션 JWT>`
 
@@ -106,7 +107,7 @@
 
 | type | payload |
 |---|---|
-| message.send | {client_msg_id, channel: "team"∣"dm", content} |
+| message.send | {client_msg_id, channel: "team"∣"dm", content}. 같은 client_msg_id 재전송은 기존 메시지로 ack(저장 시 (session_id, client_msg_id) unique). submitted_at 이후는 `error{code: session_ending}` |
 
 `event_id`가 있는 message.new는 이벤트 카드 실행의 결과다(러너가 카드 발생을 감지하는 기준). 진행 상태 이름은 위 다섯 가지로 고정한다.
 
@@ -124,14 +125,14 @@
 | PUT | /internal/sessions/{id}/document/{part_no} | {content, by: "colleague", run_id} | {updated_at, revision}. 같은 part_no+run_id 재요청은 기존 revision. 동료 담당이 아니면 403 |
 | GET | /internal/sessions/{id}/documents | | {catalog_version, documents: [{doc_id, title, released}]} (rag-mcp가 공개 여부와 색인 버전 확인에 사용) |
 | POST | /internal/sessions/{id}/releases/{doc_id} | | {released_at} (멱등) |
-| POST | /internal/sessions/{id}/observations | {element, window_start, window_end, metrics, label, evidence_message_ids, run_id} | {id}. 같은 element+window_start 재요청은 기존 행. evidence가 이 세션의 메시지가 아니면 422 |
+| POST | /internal/sessions/{id}/observations | {element, window_start, window_end, metrics, label, evidence: [{type: message∣revision∣doc_view∣assistant_call, id}], run_id} | {id}. 같은 element+window_start 재요청은 기존 행. evidence의 각 id가 이 세션의 해당 테이블 행이 아니면 422 |
 | GET | /internal/sessions/{id}/observations | | [...] |
 | GET | /internal/sessions/{id}/assistant_calls | | [{id, request_message_id, response_message_id, cited_doc_ids, created_at}] |
 | GET | /internal/sessions/{id}/assistant_reuse | | [{call_id, part_no, reuse, ratio}] (제출 후에만 값이 있음) |
 | GET | /internal/sessions/{id}/document_revisions | | [{part_no, revision, by, content, length, diff_ratio, created_at}] |
 | GET | /internal/sessions/{id}/doc_views | | [{doc_id, viewed_at}] |
 | POST | /internal/sessions/{id}/report/draft | {content} | {status: "report_ready"} (멱등) |
-| POST | /internal/sessions/{id}/report/final | {content} | {status: "reviewed", reviewed_at}. draft가 없거나 status가 approving이 아니면 409 |
+| POST | /internal/sessions/{id}/report/final | {content} | {status: "reviewed", reviewed_at}. 이미 reviewed이고 content 해시가 같으면 200 기존 값(재전달 멱등). draft가 없거나 status가 approving·reviewed가 아니면 409 |
 | POST | /internal/sessions/{id}/report_failed | {error} | {status: "failed"} |
 | POST | /internal/test/sessions | {elements, session_minutes, alias?} | {session_id, token, invite_url} (`ENABLE_TEST_API=1`일 때만) |
 
@@ -147,12 +148,12 @@
 | list_messages | {session_id, since_t_min?, channel?, limit?=50} | [Message] | 조회 |
 | get_board | {session_id} | {tasks} | 조회 |
 | get_document_state | {session_id} | 내부 GET /document | 조회 |
-| post_message | {session_id, channel, sender ∈ colleague∣manager∣system, content, event_id?, run_id, seq} | Message | 변경 |
+| post_message | {session_id, channel, sender ∈ colleague∣manager∣system, content, event_id?, run_id, seq, meta?} | Message | 변경 |
 | set_division | {session_id, parts} | {division} | 변경 |
 | update_task | {session_id, part_no, status} | task | 변경 |
 | write_document_part | {session_id, part_no, content, run_id} | {updated_at, revision} | 변경 |
 | release_document | {session_id, doc_id} | {released_at} | 변경 |
-| record_observation | {session_id, element, window_start, window_end, metrics, label, evidence_message_ids, run_id} | {id} | 변경 |
+| record_observation | {session_id, element, window_start, window_end, metrics, label, evidence: [{type, id}], run_id} | {id} | 변경 |
 
 ### rag-mcp (`http://rag-mcp:9102/mcp`)
 
@@ -189,4 +190,4 @@
 | report.approve | {session_id, attempt} | api `/admin/sessions/{id}/review`. 미발행(approve_enqueued_at null)은 스케줄러가 60초마다 재발행 | 워커. final 저장 성공 후 ack |
 | report.dlq | 원본 + error | 워커(attempt ≥ 3) | 워커의 dlq 소비자가 `POST /internal/.../report_failed`를 호출한 뒤 ack(api가 내려가 있으면 ack하지 않고 60초 뒤 재시도). 메시지는 사람이 확인할 때까지 관리 UI에 남지 않으므로 error는 워커 로그에도 남김 |
 
-메시지는 persistent, 소비는 manual ack, 같은 session_id의 중복 메시지는 stage로 멱등 처리. 재시도는 nack 없이 `attempt+1`로 재발행한 뒤 원본을 ack한다(지연은 워커의 백오프 대기).
+메시지는 persistent, 발행은 publisher confirm을 켜고 브로커 확인을 받은 뒤에야 `*_enqueued_at`을 기록하거나(api) 원본을 ack한다(워커 재발행). 소비는 manual ack, 같은 session_id의 중복 메시지는 stage로 멱등 처리. 재시도는 nack 없이 `attempt+1`로 재발행(확인 후) → 원본 ack(지연은 워커의 백오프 대기). RabbitMQ 데이터는 `rabbitdata` 볼륨에 남고, 브로커를 재생성해 큐가 비면 api 스케줄러의 outbox 재탐색이 미처리 세션을 다시 발행한다.

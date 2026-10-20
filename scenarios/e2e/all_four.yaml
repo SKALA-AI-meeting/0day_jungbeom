@@ -1,6 +1,9 @@
 name: all_four
 elements: [cooperation, responsibility, flexibility, respect]
 minutes: 6
+expect:
+  labels: { cooperation: negotiate_timing, responsibility: notify_with_alternative, flexibility: replan_and_apply, respect: point_out_with_evidence }
+  evidence_types: { flexibility: [message, revision] }
 steps:
   - at: kickoff
     say: { channel: team, content: "안녕하세요, 오늘 합류한 기획자입니다. 잘 부탁드립니다." }

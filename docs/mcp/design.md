@@ -6,6 +6,7 @@
 
 - api 내부 앱(`http://api:8001/internal/*`)을 httpx로 호출한다. DB 접근 없음. 권한·상태 판단은 하지 않고 api의 403·409를 코드로 전달한다(`forbidden`, `conflict`).
 - 각 도구는 Pydantic 입력 모델, docstring 설명, `{ok, data}` 반환. api 4xx→코드 매핑(404 not_found, 403 forbidden, 409 conflict, 422 invalid_input), 5xx·연결 실패→`upstream_unavailable`(retryable, 1회 재시도). 타임아웃 10초.
+- `post_message`의 `meta`(토큰·지연·모델)는 내부 메시지 API의 meta로 그대로 전달한다.
 - 멱등 키는 그대로 전달하고 판단은 api에 맡긴다: `post_message`는 run_id·seq, `write_document_part`는 run_id, `record_observation`은 element·window_start(run_id는 추적용).
 
 ## rag-mcp (`services/rag-mcp/`)

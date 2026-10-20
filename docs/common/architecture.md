@@ -24,7 +24,7 @@ MVP 원칙: **평가 항목이 요구하는 조각만 분리하고 나머지는 
 
 ### 지원자 메시지
 1. web → api WS `message.send{client_msg_id}`
-2. api: 민감정보 마스킹 → 저장(DB 커밋) → `message.ack{run_id}`와 `message.new` 브로드캐스트 → `AgentRunner.run(session_id, stimulus=message, run_id)`
+2. api: 민감정보 마스킹 → 저장(client_msg_id 멱등, DB 커밋) → `agent_runs` started(커밋) → `message.ack{run_id}`와 `message.new` 브로드캐스트 → `AgentRunner.run(session_id, stimulus=message, run_id)` → finished/failed 기록
 3. 그래프: `agent.progress` 이벤트를 WS로 중계하며 실행(LLM 호출 타임아웃 30초, 응답당 도구 3회). 회사 질문이면 rag-mcp 검색. 응답은 business-mcp `post_message{run_id, seq}`
 4. business-mcp → api `POST /internal/sessions/{id}/messages` → 저장(멱등) → 브로드캐스트
 
@@ -32,7 +32,7 @@ MVP 원칙: **평가 항목이 요구하는 조각만 분리하고 나머지는 
 
 ### 이벤트 도래
 1. 스케줄러가 `status=pending AND due_at <= now`를 집어 `fired`로 바꾸고(커밋) `AgentRunner.run(stimulus=event)`
-2. `observe`가 열려 있는 관찰 창을 닫고 `record_observation`, `inject`가 카드를 실행. 시스템 카드는 LLM 없이 고정 문장. 카드 메시지 저장 후 이벤트는 `done`
+2. `inject`가 카드를 실행(시스템 카드는 LLM 없이 고정 문장), 이어서 `observe`가 직전 창([이전 카드 due_at, 이 카드 due_at))을 `record_observation`. 행마다 자기 event_id의 카드 메시지가 저장되면 `done`
 3. 실패 시 attempts+1로 재실행(최초 포함 총 3회, 같은 run_id), 3회째도 실패면 이벤트 failed·세션 failed·`session.ended{failed}`
 
 ### 세션 종료와 리포트

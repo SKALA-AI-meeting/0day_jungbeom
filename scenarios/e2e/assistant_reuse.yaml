@@ -1,0 +1,18 @@
+name: assistant_reuse
+elements: [cooperation]
+minutes: 6
+expect:
+  ai_usage: { used: true, reuse: verbatim, part_no: 1 }
+steps:
+  - at: division
+    say: { channel: dm, content: "분담안 그대로 갈게요." }
+  - at: +0.5
+    assistant: "지표 현황 문서를 근거로 첫 모임 참여자의 재참여율 문제를 세 문장으로 정리해줘"
+    capture_as: summary          # 러너가 응답 본문을 변수로 보관
+  - at: +0.5
+    write: { part_no: 1, content: "{summary}" }   # 응답을 그대로 붙여넣음
+  - at: cooperation
+    say: { channel: dm, content: "지금은 1번 마무리 중이라 15분 뒤에 같이 봐요." }
+  - at: report_request
+    say: { channel: team, content: "1번 정리했습니다. 공유드려요." }
+    submit: true

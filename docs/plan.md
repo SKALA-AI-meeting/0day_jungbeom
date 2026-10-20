@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | M0 | (오케스트레이터) | 문서, 계약, 카탈로그, 회사 문서, 대본, compose, 스키마 | — | 완료 |
 | M0.5 | foundation | 서비스 5개의 최소 앱(Dockerfile, `/health`, 의존성·lockfile), api 공용 기반(config, db, models, auth, SessionService, scenario, hub, queue, masking, AgentRunner+Fake), web 기본(Next 앱, 토큰, 공용 컴포넌트 props만, mocks/ 골격), 테스트 픽스처 골격 | M0 | `make up` 전부 healthy(api·MCP `/health`, web `/api/health`, worker heartbeat 파일), `make infra-up` 후 로컬 `app.run`이 8000·8001 둘 다 응답, SessionService 단위 테스트, 조립 결과가 scenario-model.md 수치와 일치, Fake runner로 메시지→내부 저장→hub 브로드캐스트 단위 테스트(WS·rag 검색은 M1 트랙) |
-| M1 | prompts | 페르소나 프롬프트, 카드 brief 문구, 금지어 패턴, 관찰 레이블 정의·예시. 코드 없음 | M0 | 리뷰 통과 |
+| M1 | prompts | `scenarios/prompts/` 페르소나 프롬프트(행동 계약 표 반영), common_rules, guard_patterns.yaml, 카드 brief·label_texts(레이블→리포트 문장)·debrief 문구, 관찰 레이블 예시. 코드 없음 | M0 | 리뷰 통과 |
 | M1 | api-admin | /admin, /internal 라우터 | foundation | 계약 예시대로, 격리·검증·409 테스트 |
 | M1 | api-candidate | /s, /sessions, WS, 스케줄러, 공개·만료·재발행 | foundation | 6분 세션 시계대로, 재시작 재실행, ack·재연결 |
 | M1 | business-mcp | 도구 10개 | foundation | Inspector, 오류 코드, 멱등 전달 |
@@ -22,7 +22,8 @@
 | M2 | web-polish | emilkowalski/skills로 디자인 다듬기, 모션, break-ui 점검 | web-* | review-animations·break-ui 통과 |
 | M3 | e2e-runner | 러너, 대본 5개, 장애 주입, 근거 정확성 픽스처, 기록 | 전부 | 단언 전부 통과, 기록 커밋 |
 | M3 | fix-* | 실패 영역별 | e2e | 해당 단언 통과 |
-| M4 | docs-final | README 실행법, 레퍼런스 형식의 아키텍처 그림(6뷰·번호·금지 사항·Layer/Tier), 평가표 근거 표, 120분 실세션 기록 | 전부 | 새 환경에서 README만으로 기동 |
+| M4 | docs-final | README 실행법, 레퍼런스 형식의 아키텍처 그림(6뷰·번호·금지 사항·Layer/Tier), 평가표 근거 표(증거마다 커밋 해시), 120분 실세션 기록, `scripts/purge.py` | 전부 | 새 환경에서 README만으로 기동 |
+| M4 | pilot (오케스트레이터+사람) | 지원자 역할 3명·담당자 역할 2명 파일럿: 설문, 근거 대조표, 면접 질문 채택 수, 가격 질문 | docs-final 전 | PRD 11 잠정 기준 대비 결과를 `docs/pilot.md`에 기록 |
 
 ## 병렬 작업 방식
 
@@ -49,7 +50,7 @@
 | foundation | `services/*/Dockerfile`, `pyproject.toml`·lockfile 전부(pytest 설정 포함), `services/api/app/{main,run,config,db,auth,hub,queue,masking}.py`, `app/models/`, `app/services/`, `app/agent/runner.py`, 각 MCP·worker의 패키지 진입점(`__main__.py`, `/health` 또는 heartbeat만), `apps/web/{Dockerfile,package.json,app/layout.tsx,app/globals.css,app/api/health/route.ts,components/ui/,mocks/,lib/api.ts}`, `scenarios/version.py`, `scripts/seed.py`, `infra/docker-compose.dev.yml`, `tests/conftest.py`, `tests/fixtures/` | 이후 변경은 오케스트레이터 승인. MCP·worker 진입점은 foundation 병합 후 각 트랙 소유로 넘어감 |
 | api-admin | `app/routers/{admin,internal}.py`, 해당 테스트 | |
 | api-candidate | `app/routers/{candidate,ws}.py`, `app/scheduler.py`, 해당 테스트 | |
-| prompts | `services/api/app/agent/prompts/`, `scenarios/catalog.yaml`의 brief·labels·debrief 문구 | |
+| prompts | `scenarios/prompts/`, `scenarios/catalog.yaml`의 brief·labels·label_texts·debrief 문구 | 코드 쪽 로더는 agent-session |
 | agent-session | `app/agent/{session,observe,llm,guard,mcp_client}/` | agent-assistant는 llm·guard·mcp_client를 import만 |
 | agent-assistant | `app/agent/assistant/` | |
 | business-mcp, rag-mcp, worker | 각 `services/<이름>/` | |
