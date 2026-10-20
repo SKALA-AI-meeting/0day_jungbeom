@@ -20,6 +20,27 @@
 5. worktree마다 `infra/.env`·`.env.local`을 복사해 줘야 한다(git 무시 파일이라 worktree에 없다).
 6. Herdr를 쓴다면 `~/.agents/skills/herdr`와 플러그인 `dev@horang-skills`(herdr-dispatch 포함, 마켓플레이스 `zaehorang/horang-skills` GitHub 소스)가 있어야 한다. 디자인 스킬은 `cd apps/web && npx -y skills@latest add emilkowalski/skills --yes`(git 무시).
 
+## 직접 서비스 돌려보기 (다른 머신에서, P3 병합 뒤)
+
+1. 인프라: `make infra-up`(postgres·rabbitmq·rag-mcp. 첫 기동은 이미지 빌드 + BGE-M3 다운로드로 오래 걸림).
+2. 공용 DB 스키마가 비어 있으면 적용: `docker exec -i infra-postgres-1 psql -U dayzero -d dayzero -v ON_ERROR_STOP=1 -q < infra/db/schema.sql`(DB 사용자는 `.env`의 DATABASE_URL 사용자).
+3. 앱 4개를 각자 터미널에서(worktree 아니라 main 체크아웃, `infra/.env.local`을 읽음):
+   ```
+   cd services/api && AGENT_RUNNER=session ASSISTANT_RUNNER=graph ENABLE_TEST_API=1 uv run python -m app.run
+   cd services/business-mcp && uv run python -m business_mcp
+   cd services/report-worker && uv run python -m report_worker
+   cd apps/web && pnpm dev          # http://localhost:3000 (NEXT_PUBLIC_MOCK 없이)
+   ```
+4. `make seed` → 채용 건·회사 문서 색인(indexed > 0, catalog_version 확인).
+5. **120분 정식 세션**: http://localhost:3000/admin 가입·로그인 → 채용 건 생성 → 초대 → 링크를 다른 브라우저(시크릿 창)로 열어 지원자 진행.
+6. **6분 짧은 세션**(내부 테스트 API, `ENABLE_TEST_API=1` 필요):
+   ```
+   python scripts/make_session.py --minutes 6 --elements responsibility,planning,adaptability,collaboration,honesty
+   ```
+   출력의 `invite_token`으로 http://localhost:3000/s/<invite_token> 입장, `admin_email`로 관리자 로그인(비밀번호는 스크립트가 만든 계정 — 출력 참고)하면 그 세션의 리포트·전체 기록이 보인다. 카드 7장은 120분 비율로 6분에 압축돼 나온다(분업 0.5분, 도움 1.5분, 중간 점검 2.25분, 지연 3분·공개 3.5분, 변경 3.75분, 리뷰 4.5분, 보고 요청 5.5분).
+7. 브라우저 자동 한 세션: `cd apps/web && node e2e/session.mjs`(스크린샷 `apps/web/e2e/shots/`). 대본 e2e: `make test-e2e`(mock) / 실 스택은 `tests/e2e/README.md`.
+8. 끝나면 네 앱 종료: `lsof -ti:8000,8001,9101,3000 -sTCP:LISTEN | xargs kill; pkill -f report_worker`.
+
 ## 다음 행동: P1 개발 시작 (사용자 승인 뒤)
 
 사용자가 "P0까지 끝내고 멈춰라"고 했으므로 **P1은 사용자가 시작하라고 할 때** 띄운다. 파도·소유권·관문은 `docs/plan.md`(P0~P5 표, 테스트 6건 배정, 공용 파일 담당), 절차는 `docs/dev-process.md`, 체크리스트는 아래 "오케스트레이터 체크리스트".
