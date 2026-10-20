@@ -100,6 +100,14 @@
 
 재접속 복구 범위: 스냅샷이 전체 상태이고 WS는 증분만 보낸다. `active_runs`는 `agent_runs`에서 status=started인 행이다. 완료된 실행은 messages의 run_id로 식별한다. ack 뒤 실행 시작 전에 api가 죽은 메시지는 `agent_runs`에 started로 남아 있으므로 스케줄러가 120초 뒤 같은 run_id로 재실행한다.
 
+### 지원자 경로 보충 (2026-10-20 api-candidate 리뷰 반영)
+
+- 알 수 없는 초대 토큰: `/s/{token}` 계열 전부 404 `not_found`.
+- 디브리핑 기한 = 세션 종료 시각 + 7일. 종료 시각은 submitted_at(제출·만료), 진행 중 실패면 실패 시각(`fail(session)`이 ends_at을 그 시각으로 당긴다). `debrief_token`의 exp는 이 기한으로 고정되고(발급할 때마다 늘어나지 않음), 기한이 지나면 `GET /s/{token}`과 `GET /sessions/{id}/debrief`는 410 `expired`.
+- 세션 실패(failed_stage=session) 디브리핑: `{"events": [], "persona_note": null, "scoring_notice": "<중단 안내>", "failed_stage": "session"}`. 연출·페르소나 설명은 비운다.
+- 지원자 문서 PUT 권한: 분업 확정 전에는 모든 파트, 확정 뒤에는 `division.parts`에서 candidate·both인 파트만. colleague 단독 파트는 403 `forbidden`. 저장은 세션 Lock 안에서 하므로 제출 처리와 겹치면 저장되지 않고 409 `session_ending`.
+- 시작 공개 문서(`releases_at_start`)는 start 응답 시점에 이미 released다. 지연 공개만 스케줄러가 기록하고 `document.released`를 보낸다.
+
 ## WebSocket `/ws/sessions/{id}?token=<세션 JWT>`
 
 서버 → 클라이언트:
@@ -125,6 +133,16 @@
 같은 세션에 WS가 둘 이상 붙으면 마지막 연결만 유효하고 이전 연결은 `{"type": "session.replaced", "payload": {}}`를 받은 뒤 close code 4000으로 닫힌다. `notice` 채널 메시지(책임감 알림)는 지원자에게만 전달되고 페르소나 컨텍스트에는 들어가지 않는다.
 
 `event_id`가 있는 message.new는 이벤트 카드 실행의 결과다(러너가 카드 발생을 감지하는 기준). 진행 상태 이름은 위 다섯 가지로 고정한다.
+
+연결 거절과 오류 프레임 (2026-10-20 api-candidate 리뷰 반영):
+
+| close code | 뜻 | 클라이언트 동작 |
+|---|---|---|
+| 4401 | 토큰 없음·만료·위조 | `POST /s/{token}/resume`으로 세션 JWT를 다시 받고 재연결 |
+| 4403 | 다른 세션의 토큰 | 재연결하지 않음 |
+| 4000 | 같은 세션의 새 연결로 교체됨(`session.replaced` 뒤) | 재연결하지 않음 |
+
+클라이언트 프레임 처리 오류는 `{"type": "error", "payload": {"code": ..., "message": ...}}`. code: `session_ending`(submitted_at 이후 message.send, 상태가 completed 이후여도 같음), `conflict`(진행 중이 아님), `invalid_input`(JSON 아님·알 수 없는 type·payload 검증 실패).
 
 ## 내부 REST (`/internal`, 포트 8001, X-Internal-Token)
 

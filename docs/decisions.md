@@ -76,3 +76,13 @@
 - 관찰 창 종료: 흐름 카드(report_request 포함)는 창을 닫지 않고, 마지막 요소 창은 제출(세션 종료)까지다. agent/design.md 전이표와 scenario-model.md의 "흐름 카드 포함" 문장을 observe 절에 맞춰 고쳤다. 이유: 마감 보고 메시지의 첫 지적도 존중 창에 들어가게. 대안: report_request에서 닫기(보고 속 지적 누락).
 - 책임감 레이블은 공개 전후와 무관하게 알린 내용으로 고른다. `notify_only`는 "지연 사실만 알리고 대안 없음", `notify_with_alternative`도 시간 조건 없이 "알리고 대안 제시"다. 공개 전 알림 여부는 지표 `notified_before_release`(항목 `resp_notified_before_release`)가 따로 센다. 이유: 레이블과 지표가 같은 사실을 이중으로 세지 않게, 공개 뒤 알림이 null로 빠지지 않게.
 - guard 판정 패턴은 지원자·리드·응답에 대한 평가나 진행 중인 평가 운영 문맥으로 좁히고, 숫자 점수는 별도 `score` 그룹(업무 지표 문장은 `unless`로 보존)으로 막는다. 컨텍스트 유출 픽스처(`scenarios/prompts/fixtures/context_leak.yaml`, 미래 유도 3건·역할 사칭 2건)는 prompts 트랙 담당이다.
+
+## 2026-10-20 api-candidate 리뷰 반영 (Codex)
+- 카드 실행은 세션별 due_at 직렬: 미완료(fired) 묶음이 done·failed·skipped가 되기 전에는 뒤 묶음을 디스패치하지 않는다. 재시작 복구도 같은 순서를 따른다. 이유: 상태를 가진 세션 그래프가 카드 순서를 뒤집어 처리하지 않게. 대안: retry를 events보다 먼저 호출(60초 미만 fired와 여러 pending 묶음 문제가 남음).
+- 지원자 문서 PUT 권한: 분업 확정 전에는 모든 파트(리드가 초안을 잡을 수 있음), 확정 뒤에는 candidate·both만, colleague 단독 파트는 403. 이유: 동료 파트(정책 위반 포함)를 지원자가 직접 덮어쓰면 관찰 전제가 깨진다.
+- 지원자 문서 PUT은 세션 Lock 안에서 상태를 다시 확인하고 저장한다. 내부 라우터는 Lock을 잡지 않는다. 이유: complete()와 직렬화해 종료 뒤 쓰기를 막되, 실행 중 runner의 내부 API 호출이 자기 Lock을 기다리는 교착을 피하려고. 대안: DB 행 잠금으로 complete와 공유(종료 경로 전체를 바꿔야 함).
+- 디브리핑 기한은 세션 종료 시각(submitted_at, 진행 중 실패면 실패 시각) + 7일로 고정하고 debrief_token exp를 그 시각으로 발급, 지나면 410 expired. 진행 중 실패 시각은 `fail(session)`이 ends_at을 실패 시각으로 당겨 기록한다(별도 컬럼 없이). 리포트 단계 실패는 세션 종료가 submitted_at이므로 그 기준. 이유: GET마다 "지금부터 7일"을 발급하면 기한이 무기한 연장된다.
+- 카드 3회 실패의 failed 기록과 SessionService.fail을 한 트랜잭션으로 하고, failed 필수 카드가 남은 in_progress 세션은 스케줄러 retry 단계가 fail로 수렴시킨다. 이유: 두 커밋 사이에 죽으면 세션이 진행 중으로 남아 만료 때 리포트까지 발행된다.
+- 시작 공개 문서는 `SessionService.start()`가 시작 트랜잭션에서 released_at을 바로 기록한다. 이유: 첫 tick(최대 5초)까지 423이 되는 공백 제거, 지원자·내부·rag가 같은 시점부터 같은 상태를 봄.
+- assistant_reuse의 revision 컬럼은 보류: 현재 내부 REST·워커 소비 계약에 revision이 없어 컬럼만 추가하는 효과가 없다. 순수 함수 반환값에만 revision을 둔다.
+- `submitted_at` 이후 message.send는 상태와 무관하게 session_ending(접수 함수가 submitted_at을 status보다 먼저 검사).

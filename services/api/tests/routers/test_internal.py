@@ -198,17 +198,18 @@ async def test_documents_listing_and_release_are_idempotent(internal, running):
     listing = (await internal.get(url(sid, "/documents"))).json()
     assert listing["catalog_version"] == position["catalog_version"]
     released = {d["doc_id"]: d["released"] for d in listing["documents"]}
-    assert released["interview_summary"] is False  # released_at은 공개되면 기록된다
+    # 시작 공개 4개는 start()가 즉시 released_at을 기록하고, interview_summary만 지연 공개다
+    assert released["interview_summary"] is False and released["metrics"] is True
     assert {"doc_id", "title", "released"} == set(listing["documents"][0])
 
-    # 시작 시 펼친 예약의 released_at은 스케줄러가 기록한다. 여기서는 직접 공개한다.
+    # 지연 공개의 released_at은 스케줄러가 기록한다. 여기서는 직접 공개한다.
     first = (await internal.post(url(sid, "/releases/interview_summary"))).json()
     again = (await internal.post(url(sid, "/releases/interview_summary"))).json()
     assert first == again and first["released_at"]
     assert ws.types().count("document.released") == 1
     after = (await internal.get(url(sid, "/documents"))).json()["documents"]
     flags = {d["doc_id"]: d["released"] for d in after}
-    assert flags["interview_summary"] is True and flags["metrics"] is False
+    assert flags["interview_summary"] is True and flags["metrics"] is True
     assert (await internal.post(url(sid, "/releases/nope"))).status_code == 404
     assert (await internal.get(url(sid, "/doc_views"))).json() == []
 

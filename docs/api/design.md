@@ -43,6 +43,8 @@ ending:   in_progress AND submitted_at not null → complete() 재실행(종료 
 ```
 세션별 Lock으로 메시지 자극과 직렬화. 같은 due_at 이벤트는 card order로 한 run에 처리.
 
+세션별 due_at 직렬 처리(2026-10-20 리뷰 반영): events·retry의 카드 실행은 세션마다 "미완료(fired) 또는 due된 pending 중 due_at이 가장 이른 묶음" 하나만 다룬다. 그 묶음이 done·failed·skipped가 되기 전에는 뒤 묶음을 fired로 만들지 않는다. 미완료 묶음은 이 프로세스에서 실행 중이면 기다리고, 아니면(재시작) fired_at < now-60s일 때 같은 run_id로 재실행한다. 카드의 최종 failed와 세션 fail은 한 트랜잭션이고, failed 필수 카드가 남은 in_progress 세션은 다음 tick이 fail로 수렴시킨다. runs(120초) 재실행은 메시지 실행만 대상이다. 시작 공개 문서는 `start()`가 released_at을 바로 기록하므로 releases는 지연 공개만 다룬다.
+
 ## 제출 처리
 `/submit` 또는 timeout → `complete()` 안에서 end 실행 뒤 `assistant_reuse` 계산.
 
@@ -52,6 +54,7 @@ ending:   in_progress AND submitted_at not null → complete() 재실행(종료 
 - ratio = (응답과 revision의 공통 부분 문자열 중 길이 20자 이상인 것들의 합) / 응답 정규화 길이. `difflib.SequenceMatcher.get_matching_blocks` 사용.
 - 파트·revision 중 최대 ratio를 택한다. ≥0.8 verbatim, ≥0.3 edited, 아니면 none. 결과 행에 part_no와 revision을 남긴다.
 - 예: 응답 120자, 파트 1 revision 3에 그대로 붙여넣음 → ratio 1.0 verbatim. 문장 절반만 가져감 → 0.5 edited.
+- 저장(2026-10-20 리뷰 반영): 순수 함수는 최적 (part_no, revision)을 반환하지만, `assistant_reuse`에는 호출×파트별 최대값(reuse, ratio)만 저장한다(revision 컬럼 없음). 위 "결과 행에 revision을 남긴다"는 반환값 기준이다.
 
 ## 문서 저장
 `PUT /sessions/{id}/document/{part_no}`는 revision+1, `document_revisions`에 본문 스냅샷·길이·diff_ratio 기록. submitted_at 이후는 409 `session_ending`. 회사 문서 본문 조회는 `doc_views` 기록.

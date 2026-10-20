@@ -156,6 +156,9 @@ class SessionService:
         session.ends_at = now + timedelta(minutes=position.scenario["session_minutes"])
         invite.used_at = now
         events, releases = scenario_service.expand(position.scenario, session.id, now)
+        # 시작 공개 문서는 시작 트랜잭션에서 바로 공개한다. 지연 공개만 스케줄러가 기록한다.
+        for release in releases:
+            release["released_at"] = now if release["release_at"] <= now else None
         await self.db.execute(
             insert(SessionEvent)
             .values(events)
@@ -270,6 +273,9 @@ class SessionService:
         session.status = "failed"
         session.failed_stage = stage
         session.failed_reason = reason
+        if stage == "session":
+            # 진행 중 중단은 그 시각이 세션 종료 시각이다(디브리핑 기한의 기준)
+            session.ends_at = min(session.ends_at, self.now())
         await self.db.commit()
         if stage == "session":
             await self.hub.broadcast(session_id, "session.ended", {"reason": "failed"})

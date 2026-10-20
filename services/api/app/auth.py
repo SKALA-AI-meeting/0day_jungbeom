@@ -69,8 +69,16 @@ def session_token(session_id: uuid.UUID, session_minutes: int) -> str:
     return _encode({"role": "candidate", "sub": str(session_id)}, ttl)
 
 
-def debrief_token(session_id: uuid.UUID) -> str:
-    return _encode({"role": "debrief", "sub": str(session_id)}, DEBRIEF_TTL)
+def debrief_deadline(ended_at: datetime) -> datetime:
+    """디브리핑을 읽을 수 있는 기한: 세션 종료 시각 + 7일."""
+    return ended_at + DEBRIEF_TTL
+
+
+def debrief_token(session_id: uuid.UUID, expires_at: datetime | None = None) -> str:
+    """expires_at을 주면 그 시각이 exp다(종료 기준 기한). 없으면 지금부터 7일."""
+    now = datetime.now(UTC)
+    ttl = expires_at - now if expires_at is not None else DEBRIEF_TTL
+    return _encode({"role": "debrief", "sub": str(session_id)}, ttl, now)
 
 
 def decode_token(token: str) -> Principal:

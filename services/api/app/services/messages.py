@@ -60,10 +60,11 @@ async def accept_candidate_message(
     같은 client_msg_id 재전송은 기존 메시지와 그 run_id로 다시 ack한다.
     """
     session = await _session(db, session_id)
-    if session.status != "in_progress":
-        raise SessionError("conflict", f"session is {session.status}")
+    # 제출이 시작됐으면(completed 이후 포함) 상태와 무관하게 session_ending(contracts.md)
     if session.submitted_at is not None:
         raise SessionError("session_ending", "session already submitted")
+    if session.status != "in_progress":
+        raise SessionError("conflict", f"session is {session.status}")
 
     stmt = (
         insert(Message)

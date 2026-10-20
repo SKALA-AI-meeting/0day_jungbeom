@@ -14,6 +14,7 @@ from app.db import make_engine, make_session_factory
 from app.hub import Hub
 from app.queue import Publisher, RabbitPublisher
 from app.services.locks import SessionLocks
+from app.services.reuse import record_reuse
 from app.services.session import SessionService
 
 
@@ -29,7 +30,12 @@ class AppContext:
 
     def session_service(self, db: AsyncSession) -> SessionService:
         return SessionService(
-            db, hub=self.hub, runner=self.runner, publisher=self.publisher, locks=self.locks
+            db,
+            hub=self.hub,
+            runner=self.runner,
+            publisher=self.publisher,
+            locks=self.locks,
+            reuse_estimator=record_reuse,
         )
 
 
