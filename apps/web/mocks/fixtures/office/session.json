@@ -1,0 +1,54 @@
+{
+  "messages": [
+    {
+      "id": "m-kickoff-1",
+      "channel": "team",
+      "sender": "manager",
+      "content": "다들 반가워요. 이번 주 과제는 모아런 휴면 사용자 재참여 기획안이에요. 리드는 새로 오신 분이 맡아 주세요. 사용자 인터뷰 요약은 리서치 쪽에서 곧 공유될 예정이에요.",
+      "event_id": "e-kickoff",
+      "run_id": "r-kickoff",
+      "t_min": 0.0,
+      "created_at": "2026-10-20T01:00:00Z"
+    },
+    {
+      "id": "m-kickoff-2",
+      "channel": "dm",
+      "sender": "colleague",
+      "content": "안녕하세요, 이도현입니다! 파트를 어떻게 나눌지 정해 주시면 바로 시작할게요.",
+      "event_id": "e-division",
+      "run_id": "r-division",
+      "t_min": 0.4,
+      "created_at": "2026-10-20T01:00:24Z"
+    }
+  ],
+  "document": {
+    "1": { "content": "", "revision": 0, "updated_by": null },
+    "2": { "content": "", "revision": 0, "updated_by": null },
+    "3": { "content": "", "revision": 0, "updated_by": null },
+    "4": { "content": "", "revision": 0, "updated_by": null },
+    "5": { "content": "", "revision": 0, "updated_by": null }
+  },
+  "tasks": [
+    { "part_no": 1, "assignee": "candidate", "status": "todo" },
+    { "part_no": 2, "assignee": "candidate", "status": "todo" },
+    { "part_no": 3, "assignee": "both", "status": "todo" },
+    { "part_no": 4, "assignee": "colleague", "status": "doing" },
+    { "part_no": 5, "assignee": "colleague", "status": "doing" }
+  ],
+  "documents": [
+    { "doc_id": "company_intro", "title": "회사·서비스 소개", "released": true },
+    { "doc_id": "metrics", "title": "지표 현황", "released": true },
+    { "doc_id": "interview_summary", "title": "사용자 인터뷰 요약", "released": false },
+    { "doc_id": "policy", "title": "운영 정책", "released": true },
+    { "doc_id": "meeting_notes", "title": "지난주 회의록", "released": true }
+  ],
+  "contents": {
+    "company_intro": "루프랩은 습관 형성 앱 모아런을 만듭니다.\n\n- 주요 사용자: 20~30대 직장인\n- 핵심 기능: 하루 10분 루틴, 친구와 함께하는 챌린지",
+    "metrics": "최근 90일 지표\n\n- 휴면 전환율: 38%\n- 휴면 사용자 재참여율: 22%\n- 유료 멤버십 유지율: 61%",
+    "interview_summary": "휴면 사용자 인터뷰 8명 요약\n\n- 루틴이 끊긴 뒤 다시 시작할 계기가 없음\n- 친구 챌린지가 끝나면 앱을 덜 열게 됨",
+    "policy": "운영 정책\n\n- 푸시 알림은 하루 2회 이하\n- 혜택은 멤버십 정책을 따른다",
+    "meeting_notes": "지난주 회의록\n\n- 재참여 캠페인 우선순위 논의\n- 인터뷰 요약은 이번 주 공유 예정"
+  },
+  "assistant": [],
+  "persona": { "manager": "한서윤 팀장", "colleague": "이도현" }
+}
