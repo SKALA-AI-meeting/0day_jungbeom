@@ -7,10 +7,10 @@ PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시�
 | companies | id, name | |
 | admins | id, company_id, email(unique), password_hash | bcrypt |
 | positions | id, company_id, name, elements text[], session_minutes int default 120, catalog_version text, scenario jsonb, created_at | 생성 시 카탈로그 카드와 문서 내용을 scenario에 복사해 고정. 수정·삭제 없음 |
-| invites | id, position_id, alias, email, token_hash, expires_at, used_at | 토큰 원문은 링크에만 |
-| sessions | id, invite_id(unique), status, consented_at, started_at, ends_at, division jsonb({parts, decided_by: candidate∣colleague_default, decided_at}), submitted_at, llm_failures int, report_enqueued_at, approve_enqueued_at, failed_stage, failed_reason, token_usage jsonb | **초대와 동시에 생성**(status invited). status: invited·in_progress·completed·report_ready·approving·reviewed·failed |
+| invites | id, position_id, alias, email, token_hash, expires_at, used_at, cancelled_at, previous_session_id | 토큰 원문은 링크에만. 목록 표시 상태 "만료"는 invited이고 expires_at 지남으로 계산 |
+| sessions | id, invite_id(unique), status, consented_at, started_at, ends_at, division jsonb({parts, decided_by: candidate∣colleague_default, decided_at}), submitted_at, llm_failures int, report_enqueued_at, approve_enqueued_at, failed_stage, failed_reason, token_usage jsonb | **초대와 동시에 생성**(status invited). status: invited·cancelled·in_progress·completed·report_ready·approving·reviewed·failed |
 | session_events | id, session_id, card_id, element, due_at, status(pending·fired·done·failed), fired_at, done_at, attempts, run_id, texture bool | respect는 review와 같은 due_at의 별도 행. texture 행(midpoint_draft)은 관찰 없음. (session_id, card_id) unique. run_id는 fired 시 생성해 재실행에서도 재사용 |
-| messages | id, session_id, channel, sender, content, event_id, run_id, seq, client_msg_id, meta jsonb, created_at | (session_id, run_id, seq) unique로 멱등. 지원자 메시지는 (session_id, client_msg_id) unique. meta에 토큰·지연·모델 |
+| messages | id, session_id, channel(team·dm·assistant·notice), sender, content, event_id, run_id, seq, client_msg_id, meta jsonb, created_at | (session_id, run_id, seq) unique로 멱등. 지원자 메시지는 (session_id, client_msg_id) unique. meta에 토큰·지연·모델, 지원자 메시지는 meta.classification(recipient, kind, instruction, related_card) |
 | agent_runs | run_id(pk), session_id, stimulus, ref_ids, status(started·finished·failed), usage jsonb, started_at, finished_at | 실행 기록. /state의 active_runs 원천. started 120초 초과는 스케줄러가 재실행. usage로 세션 비용 합산 |
 | document_states | session_id, part_no(1~5), content, revision, updated_by, updated_at | 현재 내용 |
 | document_revisions | id, session_id, part_no, revision, by(candidate·colleague), content, length, diff_ratio, run_id, created_at | 변경 로그. 본문 스냅샷을 함께 저장해 특정 수정 내용과 AI 반영 시점을 복원한다. 동료 수정은 (session_id, part_no, run_id) unique로 멱등 |
@@ -35,7 +35,7 @@ invited ──동의·시작──▶ in_progress ──제출/만료──▶ c
 
 상태 변경은 api의 `SessionService` 한 곳만 한다(start, complete, mark_report_ready, approve, mark_reviewed, fail). 지원자 목록 표시명: 초대됨, 진행 중, 완료, 리포트 준비됨, 확정 중, 검토 완료, 실패. `fail(stage, reason)`은 failed_stage(session: 진행 중 중단, report: 리포트 생성 실패)와 사유를 남긴다. 세션 실패는 디브리핑(그때까지 fired된 카드)을 제공하고 리포트는 만들지 않는다. 재응시는 관리자가 새 초대를 만든다(기록은 보존).
 
-보관: 세션 종료 후 90일. `scripts/purge.py`(M4)가 messages·document_*·doc_views·observations·assistant_*·reports·checkpoints를 세션 단위로 지운다. LangSmith는 프로젝트 보존 기간을 90일로 둔다.
+보관: 세션 종료 후 90일. `scripts/purge.py`(M4)가 messages·document_*·doc_views·observations·assistant_*·reports·rubric_adjustments·agent_runs·session_events·document_releases·checkpoints를 세션 단위로 지운다(조정 메모 포함). LangSmith는 프로젝트 보존 기간을 90일로 둔다.
 
 ## 이벤트 처리 상태
 
