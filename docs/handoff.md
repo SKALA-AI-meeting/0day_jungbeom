@@ -27,6 +27,8 @@
 완료: 완료 기준의 각 줄을 직접 실행해 명령과 결과를 보고한다. 파일 수정 목록과 남은 문제를 함께.
 ```
 
+Herdr 배치 규칙(사용자 결정 2026-10-20): **worktree(트랙)마다 탭 하나**를 만들고(`herdr tab create --workspace $HERDR_WORKSPACE_ID --cwd <worktree> --label <트랙>`), 그 탭 안에 작업 pane과 리뷰 pane을 둔다. 오케스트레이터 탭에는 pane을 늘리지 않는다. 트랙이 병합되면 탭째 닫는다.
+
 Herdr 기동(참고): `herdr pane split --current --direction right --cwd <worktree> --no-focus` → `herdr agent start <이름> --kind claude --pane <id> -- <플래그>`. 모델·플래그는 `~/.claude/skills/herdr-dispatch` 역할표(구현: sonnet/medium, 어려운 것: opus/high). 리뷰는 codex gpt-6.1-sol high 읽기 전용(`-s read-only -a never -c features.fast_mode=false`). Claude pane은 처음 보는 폴더에서 신뢰 확인에 멈추므로 worktree를 만든 뒤 사용자에게 한 번 열어 달라고 요청한다.
 
 ## 리뷰 상태
