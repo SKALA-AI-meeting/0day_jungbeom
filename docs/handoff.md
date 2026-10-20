@@ -53,10 +53,10 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 | W0 | foundation | w1J:p8(닫음) | 병합 완료 | Codex 차단 5·권장 5 반영 | c9fa550 |
 | W1 | prompts | 닫음 | 병합 완료 | Codex 차단 4 반영 | fb963e0 |
 | W1 | api-admin | 닫음 | 병합 완료 | Codex 차단 6 반영 | 9447848 |
-| W1 | api-candidate | w1J:pB | 리뷰 반영 중 | Codex 차단 7 | |
+| W1 | api-candidate | 닫음 | 병합 완료 | Codex 차단 7 반영 | (이 커밋 직전) |
 | W1 | business-mcp | w1J:pD(닫음) | 병합 완료 | Codex 차단 1·권장 1 반영 | 502b88b |
 | W2 | rag-mcp | 닫음 | 병합 완료 | Codex 차단 1 반영 | (이 커밋) |
-| W2 | web-admin | 탭 w1J:t6 | 진행 중 | | |
+| W2 | web-admin | 탭 w1J:t6 | 리뷰 중 | Codex | |
 | W2 | web-office | 탭 w1J:t7 | 진행 중 | | |
 | W2 | worker | 탭 w1J:t5 | 진행 중 | | |
 | W3 | agent-min / agent-session | — | 대기 | | |
@@ -64,6 +64,7 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 | W3 | web-polish | — | 대기 | | |
 | W3 | e2e-runner | — | 대기 | | |
 | W4 | docs-final | — | 대기 | | |
+| (공유) | docs-share | 탭 w1J:t8 | 진행 중 (architecture.html, 기획 보고서) | | |
 
 ## 결정 요약 (자세한 것은 docs/decisions.md)
 
