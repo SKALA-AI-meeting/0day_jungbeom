@@ -101,7 +101,7 @@
 | 섹션 근거 | `context.prev_persona_message` | 문자열 `"<보낸이 이름> · <t>분: <본문>"`(근거 직전의 동료·팀장 메시지), 없으면 null |
 | 섹션 근거 | `context.card_at_t_min` | 카드 소섹션의 `card_at_t_min`과 같은 값 |
 | 섹션 근거 | `record_ref` | `{type, id, t_min}`. 근거와 같은 type·id, document·doc_view는 null |
-| 섹션 근거 | document `summary`, share `summary`, open `summary`, task_event `summary`, doc_view `summary` | `"n번 파트 편집(t분)"`, `"n번 파트 v2 보냄(t분)"`, `"동료 n번 v1 열람(t분)"`, `"n번 카드 <field> 변경(t분)"`, `"<문서명> 열람(t분)"` |
+| 섹션 근거 | document `summary`, share `summary`, open `summary`, task_event `summary`, doc_view `summary` | `"n번 파트 편집(t분)"`, `"n번 파트 v2 보냄(t분)"`, `"동료 n번 v1 열람(t분)"`, `"n번 <필드 한국어> → <새 값>(t분)"`(예: "1번 담당 → 지원자(12분)", "1번 언제까지 → 40분(15분)"), `"<문서명> 열람(t분)"` |
 | 평가표 항목 | `basis` | `metric`∣`label` (카탈로그 rubric의 basis). 카탈로그가 `by_source`인 항목(plan_stated_schedule)은 워커가 충족시킨 근거로 정한다: task_event면 `metric`, 메시지 레이블·aux면 `label` |
 | 평가표 항목 | `no_record_reason` | auto가 null일 때 사유(`not_applicable` 포함), 아니면 null |
 | 평가표 항목 | `minutes` | 응답 시간(response_minutes) 항목에만. 실제 분, 관련 메시지가 없으면 null(0점 처리와 구분) |
