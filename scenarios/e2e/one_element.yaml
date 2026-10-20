@@ -9,18 +9,17 @@ expect:
     planning_division: assign_only
   events:
     planning_checkin: { first_attempt: failed, document_missing: true, rerun: true }   # 3회째까지 성공하면 정상 진행
-  rubric_items_if_never_delivered:          # 재실행에서도 전달되지 않았을 때(러너가 주입 횟수를 늘려 확인)
-    plan_opened_draft: { auto: null, no_record_reason: document_missing }
-    plan_responded_draft: { auto: null, no_record_reason: document_missing }
 steps:
   - at: kickoff
     say: { channel: team, content: "안녕하세요. 잘 부탁드립니다." }
   - at: planning_division
-    board:
+    board:                                   # C1 위반 조합: 2번 colleague로 다 채우는 PUT은 422 invalid_division(저장 안 됨)
       - { part_no: 1, assignee: candidate }
-      - { part_no: 2, assignee: candidate }
+      - { part_no: 2, assignee: colleague }
       - { part_no: 3, assignee: colleague }
       - { part_no: 4, assignee: colleague }
+      - { part_no: 5, assignee: colleague, expect: 422 }
+      - { part_no: 2, assignee: candidate }  # 되돌린 뒤 5번을 채워 확정
       - { part_no: 5, assignee: colleague }
   - at: 1.4
     inject: { tool: send_document, fail_times: 2 }   # business-mcp send_document → upstream_unavailable
