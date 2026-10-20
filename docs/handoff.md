@@ -37,6 +37,11 @@
 - scenario-redesign이 맡음: `app/run.py` 기동 시 runner 초기화·종료 시 aclose, `tests/conftest.py`·`services/api/tests/conftest.py` 갱신(공용 변경 담당 1명 지정).
 - web-redesign이 맡음: `lib/api.ts`의 미사용 `idempotencyKey` 제거, State의 파트 제목·`virtual_company`·`session_id`(contracts의 새 State 형태로 해결).
 
+## P1 진행 중 결정·변경 요청 (2026-10-21)
+
+- web-redesign 완료 보고(8cdf03b) 변경 요청 처리: ① 시작 직후 `state_start.json`·② 묶음 5종 `admin_candidates.json` 보강(sess-4~8)·⑥ `GET /admin/catalog` missions[].documents {doc_id,title} 추가 → scenario-redesign이 관문 2 뒤 반영(계약은 c9b956d 이후 커밋에 반영됨). ③ 묶음 정의는 design.md 쪽(확정 중은 "완료")으로 data-model.md를 고침. ④ import의 내 문서 미전송 버전은 `version: null`. ⑤ no_record_reason 6종 픽스처는 보류. ⑦ `.prettierignore`에 `mocks/fixtures` 허용. 긴 최종본 섹션 접기는 사용자 결정 대기(기본 전부 펼침).
+- scenario-redesign 관문 1 리뷰 반영: basis `by_source`(contracts), FAQ 4+2문항(admin_catalog.json 수정 사전 승인), PRD 분량 1~2쪽(b9e9763).
+
 ## pane 브리프 템플릿
 
 ```
