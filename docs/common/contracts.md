@@ -221,7 +221,7 @@
 | PATCH | /internal/sessions/{id}/observations | {card_id, window_start, metrics_patch: {<지표>: {value, evidence_ids}}, run_id} | observation. 지정한 지표만 갱신(세션 종료 finalize의 `promise_kept`). 같은 card_id+window_start+run_id 재요청은 멱등. 관찰 행이 없으면 404 |
 | GET | /internal/sessions/{id}/observations | | [...] |
 | GET | /internal/sessions/{id}/assistant_calls | | [{id, request_message_id, response_message_id, cited_doc_ids, created_at}] |
-| PUT | /internal/sessions/{id}/messages/{message_id}/classification | {recipient, kind, instruction?, related_card?} | Message. 그래프가 respond 앞 분류 결과를 저장(meta.classification). 멱등 |
+| PUT | /internal/sessions/{id}/messages/{message_id}/classification | {recipient, kind, instruction?, related_card?, reply_to_doc?: {document_id, version}} | Message. 그래프가 respond 앞 분류 결과를 저장(meta.classification). 멱등 |
 | GET | /internal/sessions/{id}/assistant_reuse | | [{call_id, doc_id, part_no∣"final", applied: bool}] (제출 후에만 값이 있음. 응답이 그 호출 이후 지원자 문서 revision에 반영됐는지 추정. 비율은 내부 계산값이며 응답에 싣지 않는다) |
 | GET | /internal/sessions/{id}/doc_views | | [{id, doc_id, viewed_at}] |
 | POST | /internal/sessions/{id}/complete | | {status: "completed", completed_at} (reporting 세션을 보고 종료로 넘김. 보고 메시지(`meta.classification.kind = report`) 저장 뒤 그래프가, deadline_at 경과 시 스케줄러가 호출. 멱등) |

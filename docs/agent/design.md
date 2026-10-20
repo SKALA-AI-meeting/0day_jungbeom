@@ -193,7 +193,7 @@ phase: `kickoff → division → work → checkin → review → submit → repo
 
 `classify()` 반환형: `{label, evidence: [{type,id}], aux: {...카드별, related_message_ids}}`. 순서는 규칙 지표 계산 → LLM 분류 → aux를 쓰는 지표 병합이며, 분류가 실패하면 aux 기반 지표는 null이다. 지표 함수는 값과 함께 근거 id를 돌려준다(`{value, evidence_ids}`). 각 평가표 항목의 근거는 그 항목 조건에 쓰인 지표·레이블의 근거만 붙인다. 보드 "언제까지"(due_min·order)는 규칙 지표로 세고, 비어 있으면 채팅의 시점 언급을 LLM aux로 보완한다.
 
-레이블 규칙: 카드의 `labels` 중 하나, 또는 `no_evidence`(창 안에 지원자 활동 없음, LLM 미호출), `unclassified`(LLM 출력이 허용 밖), null(LLM 실패). `ignore`·`silent`·`no_report`·`refuse_or_ignore`처럼 "하지 않음"을 뜻하는 레이블은 창 안에 지원자 활동이 있을 때만 나올 수 있다. 레이블이 있으면 evidence가 1개 이상이어야 하며(없으면 unclassified로 강등), `apply_silently`의 evidence는 문서(document) 근거다. 적응성 "반영" 항목은 `document_changed_after`와 aux `target_applied`가 둘 다 참일 때만 충족이라 무관한 편집(오탈자 수정)은 세지 않는다. 실력(오류 발견·산출물 품질)은 어느 레이블에도 들어가지 않는다. 리포트 문장 매핑은 worker-infra/design.md.
+레이블 규칙: 카드의 `labels` 중 하나, 또는 `no_evidence`(창 안에 지원자 활동 없음, LLM 미호출), `unclassified`(LLM 출력이 허용 밖), null(LLM 실패). `ignore`·`silent`·`no_report`·`refuse_or_ignore`처럼 "하지 않음"을 뜻하는 레이블은 창 안에 지원자 활동이 있을 때만 나올 수 있다. 행동 레이블은 evidence가 1개 이상이어야 하며(없으면 unclassified로 강등), "하지 않음" 레이블(ignore·silent·no_report·refuse_or_ignore)은 허용 타입의 근거가 없으면 evidence를 비워도 된다(observe_labels.md·rubric.md 0점 규칙과 같음), `apply_silently`의 evidence는 문서(document) 근거다. 적응성 "반영" 항목은 `document_changed_after`와 aux `target_applied`가 둘 다 참일 때만 충족이라 무관한 편집(오탈자 수정)은 세지 않는다. 실력(오류 발견·산출물 품질)은 어느 레이블에도 들어가지 않는다. 리포트 문장 매핑은 worker-infra/design.md.
 
 ## 복구
 
