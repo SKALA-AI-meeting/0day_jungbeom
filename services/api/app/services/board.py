@@ -14,9 +14,16 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Session, Task, TaskEvent
+from app.models import Session, SessionEvent, Task, TaskEvent
 
 FIELDS = ("assignee", "status", "order", "due_min")
+# 확정 뒤 재분업 한도: 적응성 카드 전 1회 + 뒤 1회(docs/agent/design.md "업무 중 재분업").
+# 경로마다 한 번의 재분업을 세는 단위가 다르다. 채팅(동료 set_division)은 결정 하나가 1회다.
+# 보드는 카드 한 장씩 PUT하므로 같은 단계의 첫 보드 재배정 뒤 1분 안에 이어지는 보드 PUT만
+# 같은 묶음으로 본다.
+# 다른 경로(보드↔채팅)의 변경이나 묶음 밖 변경은 새 재분업이라 같은 단계에서는 거부한다
+REDIVIDE_GRACE_MIN = 1.0
+REDIVIDE_LIMIT_TEXT = "일정상 지금 더 바꾸긴 어렵겠어요. 지금 분담대로 마무리해 주세요."
 COLLEAGUE_PARTS = {"colleague", "both"}
 
 
@@ -63,6 +70,42 @@ def check_division(parts: dict[str, str | None], scenario: dict[str, Any]) -> No
             raise InvalidDivision(messages[no])
     if not any(parts[str(no)] == "colleague" for no in rule["any_colleague_only"]):
         raise InvalidDivision(messages["any_colleague_only"])
+
+
+async def redivide_stage(db: AsyncSession, session_id: uuid.UUID) -> str:
+    """지금 재분업이 적응성 카드 전(before_change)인지 뒤(after_change)인지."""
+    status = await db.scalar(
+        select(SessionEvent.status).where(
+            SessionEvent.session_id == session_id, SessionEvent.card_id == "adaptability_change"
+        )
+    )
+    return "after_change" if status in ("fired", "done", "failed") else "before_change"
+
+
+def _session_minutes(session: Session, now: datetime) -> float:
+    return (now - session.started_at).total_seconds() / 60
+
+
+def redivide_allowed(session: Session, stage: str, now: datetime, via: str) -> bool:
+    """이 단계의 재분업을 아직 안 썼으면 허용. 썼으면 보드 묶음(보드로 시작한 재분업의 1분 안 보드
+    PUT)만 허용한다. via는 board(지원자 보드 PUT)·chat(채팅 결정을 동료가 set_division)."""
+    for row in session.redivisions or []:
+        if row["stage"] == stage:
+            same_batch = via == "board" and row.get("via") == "board"
+            elapsed = _session_minutes(session, now) - row["t_min"]
+            return same_batch and elapsed <= REDIVIDE_GRACE_MIN
+    return True
+
+
+async def use_redivide(db: AsyncSession, session: Session, via: str) -> None:
+    """확정 뒤 담당 재배정 한 번. 한도를 넘으면 InvalidDivision(422). 보드 PUT·동료 set_division
+    공용."""
+    stage, now = await redivide_stage(db, session.id), datetime.now(UTC)
+    if not redivide_allowed(session, stage, now, via):
+        raise InvalidDivision(REDIVIDE_LIMIT_TEXT)
+    if all(row["stage"] != stage for row in session.redivisions or []):
+        row = {"stage": stage, "via": via, "t_min": round(_session_minutes(session, now), 2)}
+        session.redivisions = [*(session.redivisions or []), row]
 
 
 async def load_tasks(db: AsyncSession, session_id: uuid.UUID, lock: bool = False) -> list[Task]:
@@ -152,6 +195,8 @@ async def candidate_update(
     current = session.division or {}
     if current.get("parts") == parts:
         return result
+    if current:
+        await use_redivide(db, session, "board")
     result.division_changed = True
     result.confirmed = not current
     session.division = {
@@ -176,6 +221,8 @@ async def set_division(
     tasks = await load_tasks(db, session.id, lock=True)
     if current.get("parts") == parts:
         return tasks, False
+    if current:
+        await use_redivide(db, session, "chat")
     for task in tasks:
         new = parts[str(task.part_no)]
         if task.assignee != new:

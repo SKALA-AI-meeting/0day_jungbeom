@@ -41,6 +41,9 @@ class RunResult:
     ok: bool = True
     fallback_used: bool = False
     error: str | None = None
+    # 지원자 메시지에 대한 페르소나 응답 자체가 LLM 실패로 고정 문장이 됨(분류 폴백은 제외).
+    # api가 세션의 llm_failures를 센다(연속 3회 → 세션 failed, 정상 응답이면 0)
+    reply_fallback: bool = False
     # agent_runs.usage로 저장(llm_calls, retries, tokens_in, tokens_out, latency_ms, tool_calls)
     usage: dict[str, Any] = field(default_factory=dict)
 

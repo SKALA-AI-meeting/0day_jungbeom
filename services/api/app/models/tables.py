@@ -99,6 +99,9 @@ class Session(Base):
     reported_at: Mapped[datetime | None] = mapped_column(TZ)
     completed_at: Mapped[datetime | None] = mapped_column(TZ)
     llm_failures: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    redivisions: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb")
+    )
     report_enqueued_at: Mapped[datetime | None] = mapped_column(TZ)
     approve_enqueued_at: Mapped[datetime | None] = mapped_column(TZ)
     failed_stage: Mapped[str | None] = mapped_column(Text)

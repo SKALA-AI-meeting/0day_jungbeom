@@ -17,6 +17,13 @@ expect:
     planning_division: [task_event]
     planning_checkin: [open]
     adaptability_change: [document]
+  work_memory:                 # agent-session 보강: 동료 문서 핵심어·버전, 진행 답, 반대 의견 대상
+    draft_v1: { 4: [재참여] }
+    final_v2: { 3: [후속 모임], 4: [재참여], 5: [이번 분기] }
+    v3_after_reply: 4
+    progress_same_answer: 2
+    board: { doing_at: division, done_at: review }
+    disagree_target: sentence   # 주담당이 보낸 1번 v1의 원인 가정 문장
   rubric:                      # 초기 추정. e2e-runner가 첫 실 실행으로 확정한다
     responsibility: { met: 4, unmet: 0, no_record: 0 }
     planning: { met: 4, unmet: 0, no_record: 0 }
@@ -38,7 +45,11 @@ steps:
   - at: collab_help
     say: { channel: dm, content: "지금 1번 정리 중이라 1분 뒤에 DM 드릴게요." }
     write: { part_no: 1, content: "문제: 첫 모임 참여자의 두 번째 참여율이 22%에 그친다(지표 현황). 대상: 첫 모임을 마친 참여자. 주원인 가정: 다음 모임 일정을 놓쳐서." }
-  - at: +1                     # 약속 시각(창 밖, related_card=collab_help) → finalize에서 promise_kept=true (C3)
+  - at: 1.8                    # 진행 질문 2회: 같은 progress로 답해야 한다(작업 기억)
+    say: { channel: dm, content: "도현님, 4번은 지금 어디까지 됐어요?" }
+  - at: +0.1
+    say: { channel: dm, content: "아 그리고 4번 진행 상황 한 번만 더 알려 주세요." }
+  - at: 2.5                    # 약속 시각 = collab_help + 1분(창 밖, related_card=collab_help) → finalize에서 promise_kept=true (C3)
     say: { channel: dm, content: "도현님, 4번 기준 지금 같이 봐요. 재참여 기능이 있는 서비스 두세 개로 좁혀 볼까요?" }
   - at: planning_checkin
     open: { part_no: 4, version: 1 }
@@ -54,10 +65,12 @@ steps:
   - at: adaptability_change
     say: { channel: dm, content: "도현님, 3번은 첫 모임 뒤 48시간 안 후속 모임 제안 하나로 좁히고, 5번 출시는 이번 분기로 바꿔 주세요." }
   - at: +0.1
-    write: { part_no: 1, content: "문제: 첫 모임 참여자의 두 번째 참여율이 22%에 그친다(지표 현황). 대상: 첫 모임을 마친 참여자. 핵심 기능은 첫 모임 뒤 48시간 안 후속 모임 제안 한 가지, 출시는 이번 분기." }
+    write: { part_no: 1, content: "문제: 첫 모임 참여자의 두 번째 참여율이 22%에 그친다(지표 현황). 대상: 첫 모임을 마친 참여자. 주원인 가정: 다음 모임 일정을 놓쳐서. 핵심 기능은 첫 모임 뒤 48시간 안 후속 모임 제안 한 가지, 출시는 이번 분기." }
     share: { part_no: 1, channel: team }
   - at: review
     open: { part_no: 4, version: 2 }
+  - at: +0.1                   # 완성본 v2에 고쳐 달라는 답글 → 동료가 v3을 보낸다(작업 기억)
+    say: { channel: team, content: "4번 사례 하나는 후속 모임 제안 기능이 있는 서비스로 바꿔 주세요.", reply_to_doc: { part_no: 4, version: 2 } }
   - at: collab_disagree
     say: { channel: team, content: "말씀 일리 있어요. 다만 2·8번처럼 일정을 놓친 경우는 후속 모임 알림으로 바로 풀 수 있어서 일정을 주원인으로 두고, 관계는 보조 원인으로 적을게요." }
   - at: +0.3

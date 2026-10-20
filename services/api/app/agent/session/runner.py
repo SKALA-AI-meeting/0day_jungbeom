@@ -17,8 +17,8 @@ from psycopg_pool import AsyncConnectionPool
 from app.agent.llm import BaseLLM, Usage
 from app.agent.mcp_client import McpClient
 from app.agent.runner import Broadcast, RunResult, Stimulus
+from app.agent.session.common import RunDeps
 from app.agent.session.graph import RECURSION_LIMIT, build_graph, thread_id
-from app.agent.session.nodes import RunDeps
 from app.agent.session.store import AgentStore
 
 
@@ -36,8 +36,10 @@ class SessionAgentRunner:
         store: AgentStore,
         database_url: str,
         broadcast: Broadcast | None = None,
+        roles: Mapping[str, BaseLLM] | None = None,
     ) -> None:
-        self.llm = llm
+        self.llm = llm  # 역할이 정해지지 않은 호출과 roles에 없는 역할
+        self.roles = dict(roles or {})
         self.mcp_urls = dict(mcp_urls)
         self.store = store
         self._conninfo = checkpoint_conninfo(database_url)
@@ -85,13 +87,25 @@ class SessionAgentRunner:
             await self._broadcast(session_id, "agent.progress", payload)
 
         async with McpClient(self.mcp_urls, session_id) as mcp:
-            deps = RunDeps(llm=self.llm, mcp=mcp, store=self.store, usage=usage, progress=progress)
+            deps = RunDeps(
+                llm=self.llm,
+                mcp=mcp,
+                store=self.store,
+                usage=usage,
+                progress=progress,
+                roles=self.roles,
+            )
             config = {
                 "configurable": {"thread_id": thread_id(session_id)},
                 "recursion_limit": RECURSION_LIMIT,
                 "run_name": f"session_graph:{stimulus.type}",
                 "tags": [f"run_id:{run_id}"],
-                "metadata": {"run_id": str(run_id), "session_id": str(session_id)},
+                # 메타데이터 키 "run_id"는 LangGraph가 실행 식별자로 써서, 같은 값으로 다시 부르면
+                # 끝난
+                # 실행으로 보고 아무 노드도 돌리지 않는다(카드 재시도가 안 됨). 그래서 다른 이름을
+                # 쓴다.
+                # LLM 호출마다의 trace에는 Trace.config()가 run_id 메타데이터를 따로 붙인다
+                "metadata": {"agent_run_id": str(run_id), "session_id": str(session_id)},
             }
             await graph.ainvoke(
                 {
@@ -107,6 +121,7 @@ class SessionAgentRunner:
             ok=outcome.ok,
             fallback_used=outcome.fallback_used,
             error=outcome.error,
+            reply_fallback=outcome.reply_fallback,
             usage=usage.as_dict(),
         )
 
@@ -117,4 +132,6 @@ def _stimulus(stimulus: Stimulus) -> dict[str, Any]:
         body["message_id"] = str(stimulus.message_id)
     if stimulus.event_ids:
         body["event_ids"] = [str(e) for e in stimulus.event_ids]
+    if stimulus.task_event_ids:
+        body["task_event_ids"] = [str(e) for e in stimulus.task_event_ids]
     return body

@@ -19,10 +19,14 @@ class OpenAILLM(BaseLLM):
         model: str = MODEL,
         timeout: float = TIMEOUT_SECONDS,
         retry_delays: tuple[float, ...] = RETRY_DELAYS,
+        base_url: str | None = None,
     ) -> None:
         self.model = model
         self.retry_delays = retry_delays
-        self._chat = ChatOpenAI(model=model, api_key=api_key, timeout=timeout, max_retries=0)
+        # base_url은 OpenAI 호환 엔드포인트(gemini-*)일 때만 준다(llm/roles.py)
+        self._chat = ChatOpenAI(
+            model=model, api_key=api_key, timeout=timeout, max_retries=0, base_url=base_url
+        )
 
     async def _call(
         self,

@@ -1,7 +1,7 @@
 """세션 그래프 State(docs/agent/design.md "세션 그래프"). thread `session:{id}`에 체크포인트된다.
 
-설계의 필드를 모두 선언한다. 이번 단계(agent-min)는 respond 경로만 쓰므로 negotiate_round·division·
-current_card·window_start·report_requested·summary 등은 기본값으로 둔다(M2 agent-session이 채운다).
+설계의 18필드를 모두 선언한다. division은 확정된 분업의 파트별 담당({"1": "candidate", ...})이고,
+work_notes는 동료의 작업 기억이다(요약으로 접히지 않음, 갱신표는 docs/agent/design.md).
 """
 
 from typing import Any, TypedDict
@@ -11,7 +11,7 @@ TOKEN_BUDGET = 300_000  # 세션 토큰 예산(입력+출력, 재시도 포함).
 
 class SessionState(TypedDict, total=False):
     session_id: str
-    phase: str  # kickoff → negotiate → work → review → submit → done
+    phase: str  # kickoff → division → work → checkin → review → submit → reporting → done
     negotiate_round: int
     division: dict[str, str] | None  # {"1": "candidate", ...}. 확정 전 None
     scenario: dict[str, Any] | None  # 채용 건 고정 시나리오(회사 문서 본문 제외)
@@ -32,12 +32,14 @@ class SessionState(TypedDict, total=False):
 
 def empty_work_notes() -> dict[str, Any]:
     return {
-        "parts": [],
-        "instructions": [],
+        "parts": [],  # 확정 분업에서 동료 담당(colleague·both) 파트 번호
+        "instructions": [],  # [{t_min, text, keywords, part_no, source_message_id}]
         "agreements": [],
-        "progress": {},
-        "draft_written": False,
-        "final_written": False,
+        "progress": {},  # {"4": "사례 후보 추리는 중"}. 말한 것만
+        "sent": {},  # {"4": 2}. 파트별 마지막으로 보낸 버전
+        "feedback": [],  # [{document_id, version, part_no, text, source_message_id}]
+        "disagree_target": None,
+        "proposal": None,  # 분업 되돌림 때 동료가 낸 대안(다음 위반이면 이대로 확정)
     }
 
 

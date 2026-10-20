@@ -58,7 +58,8 @@ CREATE TABLE sessions (
   deadline_at timestamptz,                  -- submitted_at + 5분(보고 대기 상한)
   reported_at timestamptz,                  -- kind=report 지원자 메시지 저장 시각
   completed_at timestamptz,                 -- 보고 종료. 마지막 관찰 창의 끝, 디브리핑 기한·삭제 예정일 기준
-  llm_failures int NOT NULL DEFAULT 0,
+  llm_failures int NOT NULL DEFAULT 0,      -- 일반 응답 LLM 실패 연속 횟수(3이면 세션 failed, 정상 응답이면 0)
+  redivisions jsonb NOT NULL DEFAULT '[]'::jsonb,  -- 확정 뒤 재분업 기록 [{stage: before_change|after_change, via: board|chat, t_min}]. 보드·채팅 공용 한도
   report_enqueued_at timestamptz,
   approve_enqueued_at timestamptz,          -- report.approve 발행 기록(outbox)
   failed_stage text CHECK (failed_stage IN ('session','report')),

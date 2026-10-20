@@ -38,7 +38,7 @@ from app.queue import republish_pending
 from app.services import events as event_runs
 from app.services import releases
 from app.services.context import AppContext
-from app.services.runs import run_agent
+from app.services.runs import LLM_FAILURE_LIMIT, llm_failures_exceeded, run_agent
 
 log = logging.getLogger(__name__)
 
@@ -169,7 +169,18 @@ class Scheduler:
             spawn(run_id, partial(run_events, self.ctx, session_id, run_id))
 
     async def _retry(self, db: AsyncSession) -> None:
-        """필수 카드가 failed인데 세션이 아직 진행 중이면 실패로 수렴시킨다."""
+        """필수 카드가 failed이거나 일반 응답 LLM 실패가 연속 3회인데 세션이 아직 진행 중이면 실패로
+        수렴시킨다(실행 직후 전이 전에 죽은 경우)."""
+        stuck = (
+            await db.execute(
+                select(Session.id).where(
+                    Session.llm_failures >= LLM_FAILURE_LIMIT,
+                    Session.status.in_(("in_progress", "reporting")),
+                )
+            )
+        ).scalars()
+        for session_id in list(stuck):
+            await self.ctx.session_service(db).fail(session_id, "session", "llm_failures")
         rows = (
             await db.execute(
                 select(SessionEvent.session_id, SessionEvent.card_id)
@@ -273,6 +284,8 @@ async def run_stimulus(
     """메시지·division 자극 실행. agent_runs started는 호출 전에 커밋돼 있다."""
     async with ctx.session_factory() as db:
         await run_agent(db, ctx.runner, ctx.locks, session_id, stimulus, run_id)
+        if await llm_failures_exceeded(db, session_id):
+            await ctx.session_service(db).fail(session_id, "session", "llm_failures")
 
 
 async def run_events(ctx: AppContext, session_id: uuid.UUID, run_id: uuid.UUID) -> None:

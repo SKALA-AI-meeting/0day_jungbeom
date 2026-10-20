@@ -33,3 +33,8 @@ step 동작(한 step에 여러 개면 아래 순서로 실행):
 | C4 무관한 편집 | `restart` adaptability_change의 오탈자 수정 | document_changed_after=true, target_applied=false, adapt_applied_to_doc=0 | 반영 대본(`all_five`)은 1 |
 | C5 문서 제공 실패 | `one_element` at 1.4 `inject` send_document 2회 실패 | 첫 시도 failed, document_missing=true, 재실행 | 끝내 실패 시 plan_* 사유 document_missing |
 | C6 reporting 재접속 | `early_submit` 제출 → `disconnect` → 팀장 DM 보고 | resume 200·새 JWT, state reporting·deadline_at, kind=report로 completed, connection_gaps 1건 | 팀 채널 보고도 같은지 |
+
+## agent-session 보강 (P2)
+
+- 새 step 키는 없다. `all_five`에 기존 키(`say`)로 step 3개를 더했다: 진행 질문 2회(1.8, +0.1), 완성본 v2 답글(review +0.1, `reply_to_doc` 4번 v2 → 동료 v3). 약속 이행 step은 `+1` 대신 절대 시각 `2.5`(같은 시각)로 바꿨다. 3.85 step의 1번 문서 본문에 원인 가정 문장("주원인 가정: 다음 모임 일정을 놓쳐서.")을 남겨 반대 의견 대상 ①이 성립하게 했다.
+- 새 기대값 키 `expect.work_memory`(all_five): `draft_v1`·`final_v2`(파트별 핵심어), `v3_after_reply`, `progress_same_answer`, `board`, `disagree_target`. 프로세스 안 실행은 `services/api/tests/agent/test_session_scripts.py`가 단언한다.
