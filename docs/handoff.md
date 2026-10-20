@@ -5,9 +5,9 @@
 ## 현재 상태 (2026-10-21 새벽, P0 완료·개발 직전)
 
 - **코드**: W0·W1·W2와 agent-min까지 main에 병합(코드는 아직 **옛 설계**: 요소 4개·공유 문서·`scenarios/catalog.yaml`). 테스트 api 82, business-mcp 11, rag-mcp 10, report-worker 17, web 16 통과, `make lint` 통과.
-- **기획·설계 전환(P0) 완료**: 2026-10-20 사용자가 초점을 "같이 일하기 좋은 사람인가"로 재정의. 인성 5요소(책임감/성실성, 계획성/꼼꼼함, 적응성/유연성, 협업/조율, 정직/공정한 보고), 요소당 카드 최대 2장(7장), **문서 주고받기** 협업 모델(각자 문서를 보내고 받아 열어 보고 피드백, 주담당이 최종본 통합), 미션 단위 카탈로그, 호칭 "주담당", 제출 → 팀장 보고 → 종료, 관리자 생성 화면은 요소 뜻만, 전체 기록 화면·근거→기록 링크, 샘플 리포트·인쇄, AI 활용 라벨 없음. PRD·docs/common·서비스 설계·프론트 문서·계획·결정 전부 반영됐고 **개발 전 리뷰 4종**(Codex 설계·계획, Claude 지원자·담당자 관점)을 반영했다. 브랜치 `track/redesign-docs`를 main에 병합한 커밋: (병합 후 기입).
+- **기획·설계 전환(P0) 완료**: 2026-10-20 사용자가 초점을 "같이 일하기 좋은 사람인가"로 재정의. 인성 5요소(책임감/성실성, 계획성/꼼꼼함, 적응성/유연성, 협업/조율, 정직/공정한 보고), 요소당 카드 최대 2장(7장), **문서 주고받기** 협업 모델(각자 문서를 보내고 받아 열어 보고 피드백, 주담당이 최종본 통합), 미션 단위 카탈로그, 호칭 "주담당", 제출 → 팀장 보고 → 종료, 관리자 생성 화면은 요소 뜻만, 전체 기록 화면·근거→기록 링크, 샘플 리포트·인쇄, AI 활용 라벨 없음. PRD·docs/common·서비스 설계·프론트 문서·계획·결정 전부 반영됐고 **개발 전 리뷰 4종**(Codex 설계·계획, Claude 지원자·담당자 관점)을 반영했다. 브랜치 `track/redesign-docs`를 main에 병합한 커밋: 960981e.
 - **정본**: 기획 PRD.md → 설계 docs/common(이름은 `contracts.md`가 정본, 고정됨) → 역할 문서. 전환의 배경·결정은 `docs/prd-change-proposals.md` 재설계 절, `docs/decisions.md` 2026-10-20 절들, 리뷰 반영 지시서 `docs/handoff/reviews/review-redesign-triage.md`, 계획 리뷰 `review-plan.md`.
-- **P0의 마지막 조각은 Codex가 인수했다**: `docs/handoff/briefs/brief-p0-finish.md`. 공용 픽스처 `tests/fixtures/contracts/`를 contracts.md에 맞추는 작업이 작업 트리에 미커밋 상태로 중단되어 있고(2026-10-21 새벽, 사용자 지시로 Claude 세션 중단), Codex가 마무리·커밋·main 병합·이 문서의 병합 커밋 기입까지 한다. 깨지는 기존 테스트 목록은 `docs/handoff/reports/fixtures-align-report.md`에 남기고 scenario-redesign이 코드와 함께 고친다.
+- **P0 마무리는 Claude Opus가 마무리·병합 완료**(2026-10-21, `docs/handoff/briefs/brief-p0-finish.md`): 공용 픽스처 `tests/fixtures/contracts/`를 contracts.md 최종본과 검수해 커밋하고 main에 squash 병합했다. 깨지는 기존 테스트는 `services/api/tests/test_candidate.py` 1개(옛 State 키)이며 목록·contracts 어긋남 4건·`make lint`의 로컬 `apps/web/.agents/` prettier 경고는 `docs/handoff/reports/fixtures-align-report.md`에 있다. 테스트는 scenario-redesign이 코드와 함께 고친다.
 - **열린 worktree·탭 없음.** 이 머신의 Herdr 탭 "review-redesign"은 P0에서 닫았다. mock 서버(`apps/web`, 3000 포트)가 떠 있을 수 있으니 `lsof -ti:3000 -sTCP:LISTEN | xargs kill`로 정리한다.
 - **사용자가 채울 것**: `infra/.env`·`.env.local`의 `OPENAI_API_KEY_PERSONAL`, `GEMINI_API_KEY`(역할별 `MODEL_*`는 비워 둠, 상향 규칙은 decisions.md).
 
@@ -87,7 +87,7 @@
 | W2 | web-office | 병합 완료 | Codex 차단 6 반영 | 3d5eb65 |
 | W2 | worker | 병합 완료 | Codex 차단 7 반영 | 2ed126f |
 | W3 | agent-min (agent-session 1단계) | 병합 완료 | Codex 4건 반영, live 1회 실패(M2에서 해결) | 07f82f3 |
-| P0 | redesign-docs | 문서 완료·커밋됨(track/redesign-docs 0a374d4). 픽스처 마무리·병합은 Codex 인수(`briefs/brief-p0-finish.md`) | Codex 설계·계획 리뷰 + Claude 관점 2종 반영 | (Codex가 기입) |
+| P0 | redesign-docs | 문서 완료·커밋됨(track/redesign-docs 0a374d4). Claude Opus가 마무리·병합 완료(`briefs/brief-p0-finish.md`) | Codex 설계·계획 리뷰 + Claude 관점 2종 반영 | 960981e |
 | P1 | web-redesign | 대기 (P0 기준 커밋). 관문: UI/UX 리뷰 → Codex → 사용자 mock 확인 | | |
 | P1 | scenario-redesign | 대기 (P0 기준 커밋). 내부 관문 3개 | | |
 | P2 | agent-session M2 | 대기 (scenario 병합 + 사용자 mock 확인) | | |
