@@ -21,14 +21,6 @@ from e2e.faults import Faults
 from e2e.run import Runner
 
 EXPECTED_FAILURES = {
-    # 결함(변경 요청): claims_colleague_work=false의 evidence_ids가 비어 워커가 label 항목을
-    # classify_failed로 바꾼다 → honest_no_misattribution이 늘 기록 없음
-    "2": [
-        "draft: honesty rubric {'met': 3, 'unmet': 0, 'no_record': 1} != expect "
-        "{'met': 4, 'unmet': 0, 'no_record': 0}",
-        "final: honesty rubric {'met': 3, 'unmet': 0, 'no_record': 1} != expect "
-        "{'met': 4, 'unmet': 0, 'no_record': 0}",
-    ],
     # mock 한계: SimWorker는 체크포인터를 쓰지 않는다(실 워커만 thread report:<id>를 남김)
     "4": ["no worker checkpoint for thread report:<session_id>"],
 }
