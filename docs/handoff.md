@@ -27,7 +27,7 @@
 완료: 완료 기준의 각 줄을 직접 실행해 명령과 결과를 보고한다. 파일 수정 목록과 남은 문제를 함께.
 ```
 
-Herdr 배치 규칙(사용자 결정 2026-10-20): **worktree(트랙)마다 탭 하나**를 만들고(`herdr tab create --workspace $HERDR_WORKSPACE_ID --cwd <worktree> --label <트랙>`), 그 탭 안에 작업 pane과 리뷰 pane을 둔다. 오케스트레이터 탭에는 pane을 늘리지 않는다. 트랙이 병합되면 탭째 닫는다.
+Herdr 배치 규칙(사용자 결정 2026-10-20): **worktree(트랙)마다 탭 하나**를 만들고(`herdr tab create --workspace $HERDR_WORKSPACE_ID --cwd <worktree> --label <트랙>`; 루트 pane의 쉘이 홈에서 열리는 경우가 있으니 `herdr pane run <pane> "cd <worktree>"` 뒤에 agent start), 그 탭 안에 작업 pane과 리뷰 pane을 둔다. 오케스트레이터 탭에는 pane을 늘리지 않는다. 트랙이 병합되면 탭째 닫는다.
 
 Herdr 기동(참고): `herdr pane split --current --direction right --cwd <worktree> --no-focus` → `herdr agent start <이름> --kind claude --pane <id> -- <플래그>`. 모델·플래그는 `~/.claude/skills/herdr-dispatch` 역할표(구현: sonnet/medium, 어려운 것: opus/high). 리뷰는 codex gpt-6.1-sol high 읽기 전용(`-s read-only -a never -c features.fast_mode=false`). Claude pane은 처음 보는 폴더에서 신뢰 확인에 멈추므로 worktree를 만든 뒤 사용자에게 한 번 열어 달라고 요청한다.
 
@@ -53,12 +53,12 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 | W0 | foundation | w1J:p8(닫음) | 병합 완료 | Codex 차단 5·권장 5 반영 | c9fa550 |
 | W1 | prompts | 닫음 | 병합 완료 | Codex 차단 4 반영 | fb963e0 |
 | W1 | api-admin | 닫음 | 병합 완료 | Codex 차단 6 반영 | 9447848 |
-| W1 | api-candidate | w1J:pB | 리뷰 중 (911aaa3) | Codex 리뷰 탭 w1J:t3 | |
+| W1 | api-candidate | w1J:pB | 리뷰 반영 중 | Codex 차단 7 | |
 | W1 | business-mcp | w1J:pD(닫음) | 병합 완료 | Codex 차단 1·권장 1 반영 | 502b88b |
 | W2 | rag-mcp | 닫음 | 병합 완료 | Codex 차단 1 반영 | (이 커밋) |
-| W2 | web-admin | — | 대기 | | |
-| W2 | web-office | — | 대기 | | |
-| W2 | worker | — | 대기 | | |
+| W2 | web-admin | 탭 w1J:t6 | 진행 중 | | |
+| W2 | web-office | 탭 w1J:t7 | 진행 중 | | |
+| W2 | worker | 탭 w1J:t5 | 진행 중 | | |
 | W3 | agent-min / agent-session | — | 대기 | | |
 | W3 | agent-assistant | — | 대기 | | |
 | W3 | web-polish | — | 대기 | | |
