@@ -8,14 +8,14 @@
 |---|---|---|---|---|
 | M0 | (오케스트레이터) | 문서, 계약, 카탈로그, 회사 문서, 대본, compose, 스키마 | — | 완료 |
 | M0.5 | foundation | 서비스 5개의 최소 앱(Dockerfile, `/health`, 의존성·lockfile), api 공용 기반(config, db, models, auth, SessionService, scenario, hub, queue, masking, AgentRunner+Fake), web 기본(Next 앱, 토큰, 공용 컴포넌트 props만, mocks/ 골격), 테스트 픽스처 골격 | M0 | `make up` 전부 healthy(api·MCP `/health`, web `/api/health`, worker heartbeat 파일), `make infra-up` 후 로컬 `app.run`이 8000·8001 둘 다 응답, SessionService 단위 테스트, 조립 결과가 scenario-model.md 수치와 일치, Fake runner로 메시지→내부 저장→hub 브로드캐스트 단위 테스트(WS·rag 검색은 M1 트랙) |
-| M1 | prompts | `scenarios/prompts/` 페르소나 프롬프트(행동 계약 표 반영), common_rules, guard_patterns.yaml, 카드 brief·label_texts(레이블→리포트 문장)·debrief 문구, 관찰 레이블 예시. 코드 없음 | M0 | 리뷰 통과 |
-| M1 | api-admin | /admin, /internal 라우터 | foundation | 계약 예시대로, 격리·검증·409 테스트 |
+| M1 | prompts | `scenarios/prompts/` 페르소나 프롬프트(카탈로그 persona의 values·must·must_not_preempt 반영), common_rules, guard_patterns.yaml, 카드 brief·label_texts·debrief 문구, 관찰 레이블 예시, 선점 유도 픽스처 문장. 코드 없음 | M0 | 리뷰 통과 |
+| M1 | api-admin | /admin, /internal 라우터(리뷰 조정 본문, 산출물·조정 병합, 목록 합계) | foundation | 계약 예시대로, 격리·검증·409 테스트, memo_required·already_reviewed |
 | M1 | api-candidate | /s, /sessions, WS, 스케줄러, 공개·만료·재발행 | foundation | 6분 세션 시계대로, 재시작 재실행, ack·재연결 |
 | M1 | business-mcp | 도구 10개 | foundation | Inspector, 오류 코드, 멱등 전달 |
 | M1 | rag-mcp | 색인·검색·공개 필터 | foundation | 검색 응답, 차단, 재색인 |
 | M1 | web-admin | 관리자 5화면 | foundation(토큰·컴포넌트 props) | mock으로 전 화면, 7상태, draft/final 배지 |
 | M1 | web-office | 지원자 화면과 가상 오피스 | foundation | mock으로 전 화면, ack·진행 표시·재연결 |
-| M1 | worker | 리포트 그래프, 큐 2종, 재시도·DLQ | foundation | draft 멈춤→approve 재개→final, DLQ |
+| M1 | worker | 리포트 그래프(평가표 규칙 계산 포함), 큐 2종, 재시도·DLQ | foundation | draft 멈춤→approve 재개→final, DLQ, rubric.evaluate 단위 테스트 |
 | M1 끝 | agent-min (agent-session 트랙의 1단계) | respond 노드 + MCP 클라이언트 + guard로 최소 종단 흐름 | api-admin, api-candidate, business-mcp, rag-mcp 병합 | 메시지→그래프→rag→post→WS 연결 테스트 |
 | M2 | agent-session | 전이표 전체, observe(규칙·분류 포함), 카드 실행, 복구, 체크포인터 | agent-min, prompts | agent/design.md 완료 기준 |
 | M2 | agent-assistant | 어시스턴트 그래프 | agent-min 병합(llm·guard·mcp_client를 import), prompts | 공개 문서만 인용, 한도 |

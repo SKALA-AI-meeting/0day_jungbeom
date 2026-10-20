@@ -5,7 +5,7 @@ steps:
   - at: kickoff
     say: { channel: team, content: "안녕하세요. 잘 부탁드립니다." }
   - at: division
-    say: { channel: dm, content: "네, 그대로 할게요." }
+    say: { channel: dm, content: "1·2·3번은 제가, 4·5번은 도현님이 해 주세요." }
   - at: cooperation
     say: { channel: dm, content: "네, 지금 바로 같이 볼게요." }
   - at: review

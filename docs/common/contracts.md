@@ -31,10 +31,10 @@
 | POST | /admin/auth/login | {email, password} | {token} |
 | GET | /admin/positions | | [{id, name, elements, candidate_count, created_at}] |
 | POST | /admin/positions | {name, elements: ["cooperation", ...]} (1~4개) | {id, name, elements, scenario, catalog_version} |
-| GET | /admin/positions/{id}/candidates | | [{session_id, alias, status, invited_at, report_ready_at, failed_stage?, failed_reason?}] |
+| GET | /admin/positions/{id}/candidates | | [{session_id, alias, status, invited_at, report_ready_at, failed_stage?, failed_reason?, score?: {met, judged, no_record, source: "auto"∣"reviewer"}}] (report 없으면 score null, 정렬은 초대순) |
 | POST | /admin/positions/{id}/invites | {alias, email} | {session_id, invite_url, expires_at}. 발송하지 않음. 화면은 링크 복사 버튼을 제공하고 email은 기록용 |
 | GET | /admin/sessions/{id}/report | | Report (아래) 또는 404(아직 없음) |
-| POST | /admin/sessions/{id}/review | | {status: "approving"}. 이미 approving·reviewed면 200 멱등 |
+| POST | /admin/sessions/{id}/review | {adjustments: [{item_id, value: 1∣0∣null, memo}], memo?} | {status: "approving"}. 생략한 항목은 자동 값. item_id가 이 채용 건 rubric에 없으면 400 `invalid_item`, 자동 값과 다른데 memo 없으면 400 `memo_required`. 이미 approving·reviewed이고 본문 동일이면 200 멱등, 다르면 409 `already_reviewed` |
 
 `elements` 검증: 카탈로그 id만, 중복 없음, 1~4개. 위반 시 400 `invalid_elements`. 모든 조회는 JWT의 company_id로 필터.
 
@@ -43,6 +43,12 @@
 ```json
 {"session_id":"...","alias":"지원자A","stage":"draft",
  "position":{"name":"...","elements":["cooperation","responsibility"]},
+ "deliverable":{"parts":[{"part_no":1,"title":"문제 정의와 대상 사용자","assignee":"candidate","content":"...","revisions":4,"empty":false}]},
+ "rubric":{"elements":[{"element":"responsibility","name":"책임감",
+    "auto":{"met":3,"judged":4,"no_record":0},"reviewer":null,
+    "items":[{"id":"resp_notified_before_release","text":"자료가 공개되기 전에 지연을 팀에 알림","auto":1,"reviewer":null,"memo":null,
+              "evidence":[{"type":"message","id":"...","t_min":52}]}]}],
+   "auto_total":{"met":9,"judged":14,"no_record":2},"reviewer_total":null,"review":null,"history":[]},
  "sections":[
   {"element":"responsibility","name":"책임감","situation":"담당 파트에 필요한 인터뷰 자료 지연",
    "observed":"마감 전에 지연을 먼저 알리고 대안을 제시함",
@@ -55,7 +61,7 @@
  "generated_at":"...","reviewed_at":null}
 ```
 
-`stage`는 draft 또는 final. evidence 타입: message(quote), revision(part_no, summary), doc_view(doc_id), assistant_call(quote). `ai_usage.used=false`면 summary는 "사용하지 않음"이고 evidence는 빈 배열. 모든 evidence의 id는 같은 세션의 실제 행을 가리켜야 하며(워커가 검증), 어떤 필드에도 점수·합격·순위 표현이 없어야 한다.
+`stage`는 draft 또는 final. evidence 타입: message(quote), revision(part_no, summary), doc_view(doc_id), assistant_call(quote). `ai_usage.used=false`면 summary는 "사용하지 않음"이고 evidence는 빈 배열. 모든 evidence의 id는 같은 세션의 실제 행을 가리켜야 하며(워커가 검증), `rubric.auto`는 워커가 draft에 넣고(규칙 계산, LLM 없음) `reviewer`·`review`·`history`는 api가 GET 때 `rubric_adjustments`에서 병합한다(draft/final content 자체는 바뀌지 않아 해시 규칙 유지). `deliverable`은 api가 GET 때 document_states에서 붙인다. `observed`·`note`·`summary` 텍스트 필드에는 합격·순위 표현과 평가표 밖의 점수 표현이 없어야 한다(워커 금지어 검사 범위는 텍스트 필드만).
 
 ## 지원자 REST (`/s`, `/sessions`, 포트 8000)
 
@@ -120,7 +126,7 @@
 | POST | /internal/sessions/{id}/messages | {channel, sender, content, event_id?, run_id, seq, meta?} | Message (같은 run_id+seq 재요청은 기존 행) |
 | GET | /internal/sessions/{id}/board | | {tasks} |
 | PUT | /internal/sessions/{id}/tasks/{part_no} | {status} | task. 동료 담당이 아니면 403 `forbidden` |
-| PUT | /internal/sessions/{id}/division | {parts} | {division}. in_progress가 아니면 409. 최소 조건(2번 candidate, 4·5 중 하나 이상 colleague 단독) 위반은 422 |
+| PUT | /internal/sessions/{id}/division | {parts, decided_by: "candidate"∣"colleague_default"} | {division}. in_progress가 아니면 409. 최소 조건(2번 candidate, 4·5 중 하나 이상 colleague 단독) 위반은 422 |
 | GET | /internal/sessions/{id}/document | | {"1": {content, revision, updated_by}, ...} |
 | PUT | /internal/sessions/{id}/document/{part_no} | {content, by: "colleague", run_id} | {updated_at, revision}. 같은 part_no+run_id 재요청은 기존 revision. 동료 담당이 아니면 403 |
 | GET | /internal/sessions/{id}/documents | | {catalog_version, documents: [{doc_id, title, released}]} (rag-mcp가 공개 여부와 색인 버전 확인에 사용) |
@@ -149,7 +155,7 @@
 | get_board | {session_id} | {tasks} | 조회 |
 | get_document_state | {session_id} | 내부 GET /document | 조회 |
 | post_message | {session_id, channel, sender ∈ colleague∣manager∣system, content, event_id?, run_id, seq, meta?} | Message | 변경 |
-| set_division | {session_id, parts} | {division} | 변경 |
+| set_division | {session_id, parts, decided_by} | {division} | 변경 |
 | update_task | {session_id, part_no, status} | task | 변경 |
 | write_document_part | {session_id, part_no, content, run_id} | {updated_at, revision} | 변경 |
 | release_document | {session_id, doc_id} | {released_at} | 변경 |

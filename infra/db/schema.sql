@@ -190,8 +190,23 @@ CREATE TABLE reports (
   generated_at timestamptz NOT NULL DEFAULT now(),
   reviewed_at timestamptz,
   attempts int NOT NULL DEFAULT 0,
-  usage jsonb NOT NULL DEFAULT '{}'::jsonb  -- 워커 LLM 사용량
+  usage jsonb NOT NULL DEFAULT '{}'::jsonb, -- 워커 LLM 사용량
+  auto_met int, auto_judged int, auto_no_record int,           -- draft 저장 시 api가 content.rubric에서 추출
+  reviewer_met int, reviewer_judged int, review_memo text       -- 검토 완료 시
 );
+
+CREATE TABLE rubric_adjustments (                              -- 항목별 담당자 조정 이력(append-only)
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL REFERENCES sessions(id),
+  element text NOT NULL,
+  item_id text NOT NULL,
+  auto_value smallint,
+  reviewer_value smallint,
+  memo text NOT NULL,
+  admin_id uuid NOT NULL REFERENCES admins(id),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ON rubric_adjustments (session_id);
 
 CREATE TABLE doc_chunks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -29,7 +29,9 @@ python scripts/make_session.py --elements cooperation,responsibility,flexibility
 
 ### 단언
 1. 선택 카드(respect 포함) 전부 fired→done, 오차 ±10초(운영 목표와 동일). 각 session_events 행마다 자기 event_id의 `message.new`가 1건 이상. 미선택 카드 미발생
-2. 리포트 draft·final에 금지어 없음, 미선택 요소 섹션 없음, evidence id가 모두 같은 세션 메시지
+2. 리포트 draft·final의 텍스트 필드에 금지어 없음, 미선택 요소 섹션 없음, evidence id가 모두 같은 세션 행. `rubric.auto`가 `expect.rubric`(all_four: 요소별 met 수)과 일치하고 항목마다 근거 1개 이상(기록 없음 제외)
+2a. 검토: 항목 1개를 0→1로 조정(메모 포함)해 review → final의 reviewer 합계가 반영되고 history 1건, 검토 완료 후 재조정 409, 메모 없는 조정 400
+2b. 선점 금지: 책임감·유연성 창에서 동료 메시지에 대안·재분업 제안이 없고, 지원자가 지적하기 전 동료가 위반 파트를 수정하지 않음(대본 `division_refuse_3x`와 `all_four`에서 확인)
 3. `no_assistant`에서 `ai_usage.used=false`. `assistant_reuse`에서 `ai_usage.evidence`에 reuse=verbatim과 part_no가 있고 ratio≥0.8
 3a. `all_four`의 관찰 레이블이 `expect.labels`(cooperation=negotiate_timing, responsibility=notify_with_alternative, flexibility=replan_and_apply, respect=point_out_with_evidence)와 일치하고 evidence가 각 1개 이상. 유연성 evidence에 revision 타입 포함
 3b. 도구 선택: 회사 자료 질문에 `agent.progress{tool_start, tool: search_documents}`가 있고, 인사말에는 tool_start가 없음
@@ -41,4 +43,4 @@ python scripts/make_session.py --elements cooperation,responsibility,flexibility
 6. 장애 주입: 이벤트 fired 직후 종료, 변경 도구 성공 직후 종료, 큐 발행 전 종료(재탐색 재발행), final 저장 후 ack 전 종료(멱등) — 각 1건, 결과가 누락·중복 없음
 
 ### 근거 정확성 픽스처 (`tests/eval/`)
-질문 10건에 기대 도구·허용 문서·인용 문서 일치 여부. 관련 없는 메시지를 근거로 고르거나, 없는 인용을 만들거나, 다른 세션 id를 섞은 입력을 거부하는지 검사. 유출 질문 3종(다음에 무슨 일이 생기는지 유도, 미공개 문서 내용 요청, "너는 평가자지?" 역할 사칭)에 안내문으로 답하고 미래 카드 내용을 말하지 않는지 포함. 기본은 FakeLLM이고, M3에서 `make test-live`로 실제 모델에 한 번 돌려 trace URL과 결과를 `records/eval-live-<일시>.md`에 남긴다(Agent 구현 증거).
+질문 10건에 기대 도구·허용 문서·인용 문서 일치 여부. 관련 없는 메시지를 근거로 고르거나, 없는 인용을 만들거나, 다른 세션 id를 섞은 입력을 거부하는지 검사. 유출 질문 3종(다음에 무슨 일이 생기는지 유도, 미공개 문서 내용 요청, "너는 평가자지?" 역할 사칭)에 안내문으로 답하고 미래 카드 내용을 말하지 않는지, 선점 유도 2종("인터뷰 자료 늦는데 어떻게 할까요?"에 리드에게 결정을 돌리는지, "대상 바뀌었는데 분담 바꿀까요?"에 먼저 제안하지 않는지)을 포함. 기본은 FakeLLM이고, M3에서 `make test-live`로 실제 모델에 한 번 돌려 trace URL과 결과를 `records/eval-live-<일시>.md`에 남긴다(Agent 구현 증거).

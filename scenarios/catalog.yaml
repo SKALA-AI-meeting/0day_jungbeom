@@ -5,13 +5,46 @@ company:
   product: 모아런
   manager: { name: 한서윤, title: 프로덕트 팀장 }
   colleague: { name: 이도현, title: 기획자, years: 2 }
+persona:   # 동료는 "회사가 원하는 인재상"으로 설정된 한 사람. 세부 행동은 모델에 맡기고 아래 values로 성향을 만든다. (기업별 편집은 확장)
+  colleague:
+    values:
+      - 근거를 들어 말한다 (회사 문서·지표를 인용)
+      - 막히면 먼저 공유한다
+      - 상대의 결정을 존중하고 따른다
+      - 사용자 관점으로 돌아간다
+    style: 친근하고 짧게. 질문 하나에 답 하나. 인위적 지연 없음.
+    self_note: 좋은 동료도 정책 문서를 놓칠 수 있다. 지적받으면 바로 인정하고 고친다.
+  manager:
+    values:
+      - 결정은 분명히, 이유는 한 줄
+      - 리드에게 결과 책임을 묻는다
+    style: 2~4문장.
+  must:      # 의무 액션. 시점·내용은 카드가 정하고 문장만 페르소나가 만든다
+    - 카드를 정해진 시점에 정해진 내용으로 실행한다
+    - 리드의 분업 결정을 따른다 (division_min 위반만 되돌림)
+    - 자기 파트를 쓰고 리뷰 시점에 공유한다
+    - 회사 정보를 말할 때 문서명을 인용한다
+  must_not_preempt:   # 평가 보호. 관찰 대상 행동을 동료가 먼저 해 버리면 지원자가 할 기회가 사라진다
+    - responsibility 창에서 지연에 대한 대안이나 팀장 보고를 먼저 하지 않는다 ("리드가 정해 주시면 따를게요")
+    - flexibility 창에서 재분업·범위 조정을 먼저 제안하지 않는다
+    - 자기 파트의 정책 위반을 스스로 알아채거나 고치지 않는다 (지원자가 지적해야 고침)
+    - cooperation 카드의 도움 요청을 스스로 거두지 않는다
+    - 지원자 단독 파트를 대신 쓰지 않는다 (조언·예시 1~2문장까지)
+  must_not:  # 공통 금지 (guard와 common_rules)
+    - 점수·합격·순위·연출·평가 기준 언급
+    - 아직 오지 않은 카드 암시
+    - 미공개 문서 내용
+texture:   # 카드가 아닌 가벼운 결 메시지. 관찰 근거로 쓰이지 않는다. 생략 가능
+  - { id: midpoint_share, at_fraction: 0.5, actor: colleague, channel: team, brief: 자기 파트 진행 상황을 한 줄 공유한다 }
 parts:
   1: 문제 정의와 대상 사용자
   2: 사용자 인터뷰에서 찾은 근거
   3: 핵심 기능 제안
   4: 비슷한 서비스 사례
   5: 성공 지표와 출시 일정
-default_division: { 1: candidate, 2: candidate, 3: both, 4: colleague, 5: colleague }
+candidate_role: lead    # 고정. 분업 결정·재지시·보고의 주체. (확장 후보: follower)
+default_division: { 1: candidate, 2: candidate, 3: both, 4: colleague, 5: colleague }   # 리드가 정하지 않을 때 동료가 제안하는 기본안
+division_min: { candidate_parts: [2], colleague_solo_any_of: [4, 5] }   # 분업 최소 조건
 documents:
   - { id: company_intro, title: 회사·서비스 소개, file: company_intro.md }
   - { id: metrics, title: 지표 현황, file: metrics.md }
@@ -24,22 +57,22 @@ flow_cards:
     at_fraction: 0
     actor: manager
     channel: team
-    brief: 과제 브리프를 공지한다. 첫 모임 참여자가 두 번째 모임에도 나오게 하는 신규 기능 기획, 마감까지 2~3쪽 기획안, AI 어시스턴트 사용 가능. 동료가 이어서 인사만 한다(분담안은 division 카드에서).
+    brief: 과제 브리프를 공지한다. 첫 모임 참여자가 두 번째 모임에도 나오게 하는 신규 기능 기획, 마감까지 2~3쪽 기획안, AI 어시스턴트 사용 가능. 지원자를 이번 건의 리드로 지정하고 동료와 역할을 나눠 마무리까지 정리해 달라고 한다. 동료가 이어서 인사만 한다(리드 맡으신 거 들었다, 정리되면 말해 달라).
   - id: division
     at_fraction: 0.0833
     actor: colleague
     channel: dm
-    brief: default_division을 제안하고 지원자의 응답을 기다린다. 다르게 나누자고 하면 조정한다. 최대 3회.
+    brief: 기획안 5개 파트를 어떻게 나눌지 리드에게 묻는다. 자기는 4번 사례·5번 지표가 익숙하고 2번 인터뷰 근거는 리드가 보는 게 좋겠다는 힌트만 준다. 안을 먼저 내지 않는다. 리드가 정하면 따르고, division_min을 벗어나면 이유를 말하며 조건에 맞는 안을 되돌려 준다(최대 3회). 다음 이벤트까지 정하지 않으면 default_division을 제안하고 "일단 이대로 진행할게요"로 확정한다.
   - id: review
     at_fraction: 0.75
     actor: colleague
     channel: team
-    brief: 동료가 확정된 분업에서 자기 담당 파트를 공유 문서에 쓰고 팀 채널에 공유하며 지원자 파트 리뷰를 요청한다.
+    brief: 동료가 확정된 분업에서 자기 담당 파트를 공유 문서에 쓰고 팀 채널에 공유하며 리드의 리뷰를 요청한다.
   - id: report_request
     at_fraction: 0.9167
     actor: manager
     channel: team
-    brief: 마감 전 보고를 요청한다. 지원자의 보고에 답한다.
+    brief: 마감 전 리드에게 팀 전체 결과 보고를 요청한다. 지원자의 보고에 답한다.
 
 element_cards:
   - id: cooperation
@@ -55,6 +88,11 @@ element_cards:
       decline: 이유를 말하고 거절함
       ignore: 요청에 답하지 않음
     metrics: [response_minutes, first_recipient]
+    rubric:
+      - { id: coop_replied, text: 동료의 도움 요청에 답장을 보냄, when: { label_in: [help_now, negotiate_timing, decline] }, evidence_types: [message] }
+      - { id: coop_replied_within_5m, text: 요청 후 5분 안에 첫 답장을 보냄 (파일럿 값), when: { metric: response_minutes, lte: 5 }, evidence_types: [message] }
+      - { id: coop_offered_help, text: 바로 돕거나 도울 시점을 제시함, when: { label_in: [help_now, negotiate_timing] }, evidence_types: [message] }
+      - { id: coop_specific_response, text: 돕는 방식·시점 또는 거절 이유를 구체적으로 말함, when: { label_in: [help_now, negotiate_timing, decline] , metric: response_specific, eq: true }, evidence_types: [message] }   # response_specific 신규
     situation: 내 일이 바쁠 때 동료의 도움 요청
     debrief: 00:30 무렵 동료가 도움을 요청한 것은 협력 태도를 보기 위한 연출이었습니다.
   - id: responsibility
@@ -74,7 +112,12 @@ element_cards:
       notify_only: 지연 사실만 알림
       silent: 알리지 않고 진행함
       ask_colleague: 동료에게 자료나 도움을 요청함
-    metrics: [response_minutes, first_recipient, notified_before_release, doc_opened_after_release]
+    metrics: [response_minutes, first_recipient, notified_before_release, notified_manager, doc_opened_after_release]
+    rubric:
+      - { id: resp_notified_before_release, text: 자료가 공개되기 전에 지연을 팀에 알림, when: { metric: notified_before_release, eq: true }, evidence_types: [message] }
+      - { id: resp_proposed_alternative, text: 지연 동안 먼저 할 작업이나 대안을 제시함, when: { label_in: [notify_with_alternative] }, evidence_types: [message] }
+      - { id: resp_told_manager, text: 지연을 팀장에게 알림 (순서 무관), when: { metric: notified_manager, eq: true }, evidence_types: [message] }   # notified_manager 신규
+      - { id: resp_opened_after_release, text: 공개된 인터뷰 요약을 열람함, when: { metric: doc_opened_after_release, eq: true }, evidence_types: [doc_view] }
     situation: 담당 파트에 필요한 인터뷰 자료 지연
     debrief: 인터뷰 자료가 늦게 도착한 것은 책임감을 보기 위한 연출이었습니다.
   - id: flexibility
@@ -89,7 +132,12 @@ element_cards:
       apply_silently: 말없이 기획안에 반영함
       complain_then_apply: 불만을 표현한 뒤 반영함
       refuse_or_ignore: 반영하지 않거나 답하지 않음
-    metrics: [response_minutes, document_changed_after, mentions_scope_or_division]
+    metrics: [response_minutes, document_changed_after, mentions_scope_or_division, redivide_requested]
+    rubric:
+      - { id: flex_applied_to_doc, text: 바뀐 대상을 기획안에 반영함, when: { all: [ { label_in: [replan_and_apply, apply_silently, complain_then_apply] }, { metric: document_changed_after, eq: true } ] }, evidence_types: [revision] }
+      - { id: flex_replied_within_10m, text: 변경 공지 후 10분 안에 메시지를 보냄 (파일럿 값), when: { metric: response_minutes, lte: 10 }, evidence_types: [message] }
+      - { id: flex_raised_scope, text: 범위·일정·분담을 다시 정하자고 말함, when: { metric: mentions_scope_or_division, eq: true }, evidence_types: [message] }
+      - { id: flex_redirected_colleague, text: 동료에게 분담 변경이나 방향 전환을 지시함 (리드), when: { metric: redivide_requested, eq: true }, evidence_types: [message] }   # redivide_requested 신규
     situation: 막판 요구사항 변경
     debrief: 팀장이 대상 사용자를 바꾼 것은 유연성을 보기 위한 연출이었습니다.
   - id: respect
@@ -108,10 +156,22 @@ element_cards:
       point_out_blaming: 오류를 지적하되 비난 중심임
       point_out_vague: 오류를 언급하지만 근거가 없음
       not_noticed: 오류를 알아채지 못함
-    metrics: [policy_doc_opened, response_minutes, mentions_policy]
+    metrics: [policy_doc_opened, response_minutes, mentions_policy, proposes_fix, colleague_revised_after_feedback]
+    rubric:
+      - { id: respect_raised_issue, text: 동료 파트의 유료 멤버십 내용을 언급함, when: { label_in: [point_out_with_evidence, point_out_blaming, point_out_vague] }, evidence_types: [message] }
+      - { id: respect_cited_policy, text: 운영 정책을 근거로 언급함, when: { metric: mentions_policy, eq: true }, evidence_types: [message] }
+      - { id: respect_proposed_fix, text: 수정 방향을 함께 제시함, when: { metric: proposes_fix, eq: true }, evidence_types: [message] }   # proposes_fix 신규
+      - { id: respect_no_blame, text: 비난 없이 해결 중심으로 말함, when: { label_in: [point_out_with_evidence, point_out_vague] }, evidence_types: [message] }
+    # colleague_revised_after_feedback(신규)는 점수에 쓰지 않고 근거로만 표시 (동료 반응이지 지원자 행동이 아님). policy_doc_opened도 근거 표시만
     situation: AI 동료의 실수
     debrief: 동료 파트에 유료 멤버십이 들어 있던 것은 존중·소통을 보기 위한 연출이었습니다.
 
+rubric_rules:   # 평가표 공통 규칙. 자세한 설명은 docs/common/rubric.md
+  item_values: [1, 0, null]        # 충족 / 미충족 / 기록 없음(분모 제외)
+  label_item_when_unclassified_or_null: null   # 레이블 기반 항목은 기록 없음, metric 기반 항목은 계산
+  no_evidence: null                # 모든 항목 기록 없음
+  response_minutes_null_with_activity: 0       # 창 안 활동은 있는데 메시지가 없으면 미충족
+  reviewer_adjust: { values: [1, 0, null], memo_required_on_change: true, after_reviewed: forbidden }
 common_labels:   # 모든 카드 공통. observe가 규칙으로 부여
   no_evidence: 창 안에 지원자 활동 없음 (LLM 미호출)
   unclassified: 행동이 기록되었으나 허용 레이블로 분류되지 않음

@@ -29,13 +29,13 @@ phase: `kickoff → negotiate → work → review → submit → done`
 
 | phase | 자극 | 노드 | 부수 효과 | 다음 phase |
 |---|---|---|---|---|
-| kickoff | event kickoff | kickoff | 팀장 브리프 post(team), 동료 인사 post(dm). division은 제안하지 않음 | negotiate 대기(phase 유지) |
-| kickoff | event division | propose_division | 기본 분담안 post(dm), negotiate_round=0 | negotiate |
+| kickoff | event kickoff | kickoff | 팀장 브리프 post(team, 리드 지정 포함), 동료 인사 post(dm) | negotiate 대기(phase 유지) |
+| kickoff | event division | ask_division | 동료가 어떻게 나눌지 묻는 post(dm, 힌트만), negotiate_round=0, division=None | negotiate |
 | kickoff | message | respond | 일반 응답(수신자 규칙) | kickoff |
-| negotiate | message | negotiate | 분류 `{decision: accept∣modify∣other}`. other(일반 질문·잡담)는 respond로 답하고 round를 올리지 않음. modify면 조정안 post, round+1. accept 또는 round≥3이면 set_division·update_task·확정 메시지 | 확정 시 work |
-| negotiate | event (요소 카드) | inject → observe | 미합의 상태면 마지막 제안안으로 **확정**하고 "일단 이대로 진행할게요" post 후 카드 실행 (PRD F-21) | work |
-| negotiate | event review | review → observe | 요소 카드와 같은 규칙으로 확정 post 후 review 실행(존중만 선택했거나 분업에 답하지 않은 경우) | review |
-| work | message | respond | 수신자 규칙으로 동료/팀장 결정. 도구 선택(허용 목록), 문서명 인용. 분류가 `redivide`(분담 재조정 제안)면 negotiate 1회: 최소 조건 안에서 set_division·update_task 후 안내 | work |
+| negotiate | message | negotiate | 분류 `{decision: decide∣ask∣other, parts?}`. decide(리드가 분담을 말함): 최소 조건 충족이면 set_division·update_task·"네, 그렇게 할게요" post. 위반이면 이유와 조건에 맞춘 대안 post, round+1(round≥3이면 대안을 그대로 확정). ask(어떻게 나누면 좋겠냐고 되물음): 기본안을 **참고로** 말하되 결정은 리드에게 돌림, round 유지. other: respond로 답하고 round 유지 | 확정 시 work |
+| negotiate | event (요소 카드) | inject → observe | division이 None이면 default_division으로 **확정**하고 "아직 안 정해져서 일단 이렇게 진행할게요" post 후 카드 실행 (PRD F-21). 미결정 사실은 `division_decided_by: colleague_default`로 기록 | work |
+| negotiate | event review | review → observe | 요소 카드와 같은 규칙으로 확정 post 후 review 실행(존중만 선택했거나 분업을 정하지 않은 경우) | review |
+| work | message | respond | 수신자 규칙으로 동료/팀장 결정. 도구 선택(허용 목록), 문서명 인용. 분류가 `redivide`(리드의 재분업·재지시)면 negotiate 1회: 최소 조건 안에서 set_division·update_task 후 "알겠어요, 그렇게 바꿀게요" 안내. 담당은 그대로 두고 방향만 바꾸는 재지시(예: 사례를 휴면 사용자로)는 동료가 수락 메시지만 post하고 자기 파트 작성 시 반영 | work |
 | work | event (요소 카드) | inject → observe | 카드 실행 → 직전 창(current_element, [이전 카드 due_at, 이 카드 due_at)) record_observation → current_element=카드 요소 | work |
 | work | event review | review → observe | 확정 division에서 동료 담당 파트를 write_document_part, 공유 메시지 post. respect 행이 있으면 동료 담당 첫 파트에 정책 위반 삽입 → 직전 창 닫기, current_element=respect | review |
 | review | message | respond | 수신자 규칙. 지원자가 동료 파트의 오류를 지적하거나 수정을 요청하면 동료가 인정하고 **자기 파트만** `write_document_part`로 고친 뒤 알림(허용 도구에 포함, 지원자 파트는 api 403) | review |
@@ -52,10 +52,10 @@ respect는 `session_events`에 review와 같은 due_at의 별도 행으로 있�
 | 노드 | 역할 | Agentic 요소 |
 |---|---|---|
 | route | 전이표 조회 | 결정적 |
-| kickoff, propose_division, request_report | 카드 brief로 문장 생성 후 post | 생성 |
-| negotiate | 구조화 출력 `{decision: accept∣modify∣other, parts?}`. modify면 조정안 생성, other면 respond로 위임 | 분류 + 생성 |
+| kickoff, ask_division, request_report | 카드 brief로 문장 생성 후 post | 생성 |
+| negotiate | 구조화 출력 `{decision: decide∣ask∣other, parts?}`. decide면 최소 조건 검사 후 수락 또는 대안 생성, ask면 참고안 생성, other면 respond로 위임 | 분류 + 생성 |
 | respond, respond_report | tool-calling 루프. 허용 도구만, 최대 3회, 결과 2k자 절단. 인용 시 문서 제목 포함 | **모델이 도구 선택** |
-| observe | `observe/` 순수 함수로 metrics, LLM 레이블 분류(temperature 0). 창 안에 지원자 활동(메시지·문서 수정·문서 열람·어시스턴트 호출)이 하나도 없으면 LLM을 부르지 않고 `no_evidence`. 허용 레이블 외 출력은 `unclassified`, LLM 실패는 null. evidence는 창 안의 데이터만, 타입별 참조 `{type: message∣revision∣doc_view∣assistant_call, id}` → record_observation | 규칙 + 고정 레이블 분류 |
+| observe | `observe/` 순수 함수로 metrics(카탈로그 `metrics`, 신규 5개 정의는 rubric.md), LLM 레이블 분류(temperature 0). 창 안에 지원자 활동(메시지·문서 수정·문서 열람·어시스턴트 호출)이 하나도 없으면 LLM을 부르지 않고 `no_evidence`. 허용 레이블 외 출력은 `unclassified`, LLM 실패는 null. evidence는 창 안의 데이터만, 타입별 참조 `{type: message∣revision∣doc_view∣assistant_call, id}` → record_observation | 규칙 + 고정 레이블 분류 |
 | inject | 카드 실행. system은 text 그대로 post(LLM 없음). colleague/manager는 brief로 생성. post는 event_id·run_id·seq 포함 | 생성 |
 | review | 동료 파트 작성(write_document_part), 공유 post | 생성 |
 | guard 앞 context | 페르소나별 컨텍스트 허용 목록(harness.md Context)으로 입력을 거른다: 미래 카드·관찰 레이블·어시스턴트 대화는 어떤 페르소나에도 넣지 않음 | 함수 |
@@ -63,23 +63,33 @@ respect는 `session_events`에 review와 같은 due_at의 별도 행으로 있�
 
 동료 담당 파트는 확정 division에서 `assignee ∈ {colleague}`인 파트다. `both`는 지원자가 쓰고 동료는 리뷰 코멘트만 한다. 위반 삽입 위치는 동료 담당 파트 중 번호가 가장 작은 것.
 
-**분업 최소 조건**(PRD 6.2): 2번 파트는 지원자 담당, 4·5번 중 하나 이상은 동료 단독 담당이어야 한다. 이 조건은 `set_division`이 검증하고(api `PUT /division`도 422), negotiate가 조건을 어기는 요청을 받으면 수락하지 않고 "인터뷰 근거는 지원자님이, 사례나 지표는 제가 맡는 게 좋겠어요" 식으로 이유를 말하며 조건에 맞춘 조정안을 내고 round+1 한다. 그래서 모든 분업에서 책임감 카드(2번 자료 지연)와 존중 카드(동료 파트 위반)의 전제가 성립한다.
+**지원자는 리드**(카탈로그 `candidate_role: lead`): 분업을 정하고, 요구사항 변경 뒤 재지시하고, 보고를 맡는다. 동료는 묻고 따르되 자기 파트는 자율로 쓴다. 분업 결과에는 `division_decided_by: candidate∣colleague_default`를 남겨 리드가 결정을 미룬 경우가 관찰에 쓰인다.
 
-## 페르소나 행동 계약 (프롬프트 `scenarios/prompts/`의 근거)
+**분업 최소 조건**(PRD 6.2, 카탈로그 `division_min`): 2번 파트는 지원자 담당, 4·5번 중 하나 이상은 동료 단독 담당이어야 한다. 이 조건은 `set_division`이 검증하고(api `PUT /division`도 422), negotiate가 조건을 어기는 결정을 받으면 "인터뷰 근거는 리드가 직접 보시는 게 좋겠어요, 대신 4·5번은 제가 다 맡을게요" 식으로 이유를 말하며 조건에 맞춘 대안을 내고 round+1 한다. 그래서 모든 분업에서 책임감 카드(2번 자료 지연)와 존중 카드(동료 파트 위반)의 전제가 성립한다.
+
+## 페르소나 (프롬프트 `scenarios/prompts/`의 근거, 데이터는 카탈로그 `persona`)
+
+동료는 규칙 묶음이 아니라 **회사가 원하는 인재상으로 설정된 한 사람**이다. 정의는 세 층이다.
+
+| 층 | 내용 | 강제 방식 |
+|---|---|---|
+| 성향(values·style) | 카탈로그 `persona.colleague.values` 3~4개와 말투. 세부 행동(먼저 말 걸기, 진행 공유, 리뷰 코멘트, 길이)은 모델이 성향대로 정한다 | 프롬프트. 강제하지 않음 |
+| 의무 액션(must) | 카드를 정해진 시점·내용으로 실행, 리드 결정 존중(division_min 위반만 되돌림), 자기 파트 작성·공유, 문서명 인용 | 카드는 결정적 노드(inject·review)가 실행. 인용은 guard 검사 |
+| 금지 | **평가 보호(must_not_preempt)**: 책임감 창에서 대안·팀장 보고 선점 금지, 유연성 창에서 재분업 제안 금지, 자기 파트 위반 자각·수정 금지(지적받기 전), 협력 요청 철회 금지, 지원자 단독 파트 대필 금지. **공통(must_not)**: 점수·합격·연출·기준, 미래 카드, 미공개 문서 | 프롬프트 + guard 패턴 + 유출·선점 픽스처 테스트 |
+
+동료가 먼저 말하는 경우가 카드 외에도 생기므로(진행 공유, 리뷰 코멘트, 되묻기) observe는 **동료·팀장 발화를 어느 창에서도 근거로 쓰지 않는다**. 점수는 지원자 행동만 센다. 카탈로그 `texture`의 중간 공유는 카드가 아닌 결 메시지이며 생략돼도 실패가 아니다.
 
 | 항목 | 동료(이도현) | 팀장(한서윤) | 어시스턴트 |
 |---|---|---|---|
-| 먼저 말하는 때 | 카드 실행(인사, 분담안, 도움 요청, 파트 공유)뿐 | 카드 실행(브리프, 대상 변경, 보고 요청)뿐 | 없음 |
-| 답장 | 인위적 지연 없음. 1~3문장, 600자 상한. 질문 하나에 답 하나 | 2~4문장. 결정은 분명히, 이유 한 줄 | 요청 형식에 맞게(요약·초안은 길어도 됨), 인용 문서명 필수 |
-| 대행 범위 | 자기 파트와 both 파트의 협업. 지원자 단독 파트는 조언·예시 1~2문장까지, 대신 쓰지 않음("그 파트는 OO님 담당이라 제가 쓰진 않을게요, 대신 …") | 과제·일정 판단. 문서는 쓰지 않음 | 질문·요약·초안 생성. 지원자 문서에 직접 쓰지 않음(F-16). 회사 문서는 공개된 것만 |
-| 진행 상황 질문 | 접근 방법과 진행 정도만("사례 3개 추리는 중이에요"). 완성본 공유는 리뷰 시점 | 일정 재확인 | — |
-| both 파트 의견 요청 | 의견 2~3개를 짧게 | — | — |
-| 업무 외 요청·사담 | 한 줄 받아주고 업무로 복귀 | 한 줄 받아주고 업무로 복귀 | "업무 관련 요청만 도울 수 있어요" |
+| 리드에 대한 태도 | 결정을 묻고 따른다. 분업은 힌트만 주고 안을 먼저 내지 않는다. 되물으면 참고안을 말하되 결정은 돌려준다 | 리드에게 결과 책임을 묻는다(보고 요청은 리드에게) | — |
+| 대행 범위 | 자기 파트와 both 파트의 협업. 지원자 단독 파트는 조언·예시 1~2문장까지 | 과제·일정 판단. 문서는 쓰지 않음 | 질문·요약·초안 생성. 지원자 문서에 직접 쓰지 않음(F-16). 회사 문서는 공개된 것만 |
+| 자기 파트 | 리뷰 시점에 완성본 공유. 그 전엔 진행 상황을 자유롭게 말함(기본 성향). 파트당 300~600자, 회사 문서 인용 | — | — |
 | 평가 기준·연출 질문 | 공통 안내문(common_rules) | 공통 안내문 | 공통 안내문 |
 | 추가 자료 요청(대상 변경 뒤 등) | "저도 그 자료는 없어요" + 가정 제안 | 고정 대응: 추가 자료는 없으니 가정을 명시하고 검증 계획을 적어 달라 | 공개 문서 범위 밖이면 없다고 답함 |
+| 업무 외 요청 | 성향대로 받아주고 업무로 복귀 | 동일 | "업무 관련 요청만 도울 수 있어요" |
 | 보는 기록 | 팀 채널 + 동료 DM, 보드, 문서 상태, 공개 문서 | 팀 채널, 보드, 문서 상태 | 자기 대화 + 공개 회사 문서. 팀 대화는 보지 않음 |
 
-업무 중 재분업: 지원자가 분담 재조정을 제안하면(유연성 카드 뒤가 보통) 동료가 1회 받아들여 최소 조건 안에서 division·보드를 바꾼다. 그 이상은 "일정상 지금 더 바꾸긴 어렵겠어요"로 유지.
+업무 중 재분업·재지시: 리드가 분담을 다시 정하면(유연성 카드 뒤가 보통) 동료가 1회 받아들여 최소 조건 안에서 division·보드를 바꾼다. 그 이상은 "일정상 지금 더 바꾸긴 어렵겠어요"로 유지. 담당을 바꾸지 않는 방향 재지시는 횟수 제한 없이 수락한다. 상호 리뷰에서 동료가 지원자 파트에 코멘트를 남기는 것은 성향에 맡긴다(양방향 허용).
 
 ## 어시스턴트 그래프
 
@@ -90,6 +100,8 @@ respect는 `session_events`에 review와 같은 due_at의 별도 행으로 있�
 `compute_metrics(window, card, messages, revisions, views, assistant_calls) -> dict`, `classify(window, card, llm) -> (label|None, evidence: [{type, id}])`. 입력은 창 안의 데이터만. 카드별 픽스처로 단위 테스트. agent-session 트랙이 함께 구현한다.
 
 창 경계: `window_start` = 직전 카드(흐름 카드 포함)의 due_at, `window_end` = 이 카드의 due_at. 마지막 창은 `ends_at` 또는 `submitted_at`까지. 모두 시나리오에서 결정되므로 재실행에 무관하다.
+
+근거 규칙: 지원자의 메시지·문서 수정·열람·어시스턴트 호출만 근거가 된다. 동료·팀장 메시지는 어느 창에서도 근거가 아니다(동료의 자유 행동이 점수에 영향을 주지 않게).
 
 레이블 규칙: 카드의 `labels` 중 하나, 또는 `no_evidence`(창 안에 지원자 활동 없음, LLM 미호출), `unclassified`(LLM 출력이 허용 밖), null(LLM 실패). `ignore`·`silent`·`not_noticed`처럼 "하지 않음"을 뜻하는 레이블은 창 안에 지원자 활동이 있을 때만 나올 수 있다. 레이블이 있으면 evidence가 1개 이상이어야 하며(없으면 unclassified로 강등), `silent`·`apply_silently`의 evidence는 문서 revision이다. 리포트 문장 매핑은 worker-infra/design.md.
 

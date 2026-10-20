@@ -13,10 +13,12 @@ PRD(`../PRD.md`)를 구현 가능한 수준으로 구체화한 문서다. `revie
 | MCP | `common/contracts.md`, `common/data-model.md` | `mcp/design.md` |
 | 워커·인프라 | `common/data-model.md` | `worker-infra/design.md` |
 | 테스트 | `common/scenario-model.md` | `common/testing.md` |
+| 에이전트·워커·프론트(리포트) | `common/rubric.md` | 평가표 규칙·지표 정의 |
 
 ## 파일
 
 - `common/architecture.md`: 구성 요소, 원칙, 요청 흐름, 저장소 구조, ISO/IEC 25010 대응
+- `common/rubric.md`: 평가표 항목 값·점수 규칙, 조건 문법, 지표 정의, 담당자 조정
 - `common/scenario-model.md`: 요소 카탈로그, 이벤트 카드, 시나리오 조립과 시점 배치
 - `common/data-model.md`: 테이블, 상태 전이
 - `common/contracts.md`: REST·WebSocket·내부 API·MCP 도구 계약과 예시

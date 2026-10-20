@@ -5,7 +5,7 @@ expect:
   ai_usage: { used: true, reuse: verbatim, part_no: 1 }
 steps:
   - at: division
-    say: { channel: dm, content: "분담안 그대로 갈게요." }
+    say: { channel: dm, content: "1·2·3번 제가 할게요. 4·5번 부탁드려요." }
   - at: +0.5
     assistant: "지표 현황 문서를 근거로 첫 모임 참여자의 재참여율 문제를 세 문장으로 정리해줘"
     capture_as: summary          # 러너가 응답 본문을 변수로 보관

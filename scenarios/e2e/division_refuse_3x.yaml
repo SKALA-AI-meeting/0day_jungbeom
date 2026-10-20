@@ -5,7 +5,7 @@ steps:
   - at: kickoff
     say: { channel: team, content: "안녕하세요." }
   - at: division
-    say: { channel: dm, content: "4번 사례 조사를 제가 하고 2번을 도현님이 하시는 건 어때요?" }
+    say: { channel: dm, content: "2번 인터뷰 근거는 도현님이 하고 4번 사례 조사는 제가 할게요." }
   - at: +0.3
     say: { channel: dm, content: "아니면 3번을 전부 제가 할게요." }
   - at: +0.3
