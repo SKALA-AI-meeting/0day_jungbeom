@@ -12,7 +12,7 @@
 
 ## 다음 행동
 
-1. **W0 foundation pane 기동** (Claude, 편집·자동 검토). 브리프는 아래 템플릿 + `docs/plan.md` 파일 소유권의 foundation 행 + `docs/api/design.md` 구조 표. 완료 기준은 plan.md M0.5 행.
+1. **W0 foundation pane 기동** (Claude, 편집·자동 검토). 브리프는 아래 템플릿 + `docs/plan.md` 파일 소유권의 foundation 행 + `docs/api/design.md` 구조 표 + `docs/dev-process.md`(app.run 두 리스너, compose.dev.yml, pytest live 마커, seed 위치). 완료 기준은 plan.md M0.5 행.
 2. foundation 완료 보고 확인 → Codex 리뷰 pane → 반영 → squash 병합 → worktree 제거.
 3. W1 pane 4개 기동(prompts, api-admin, api-candidate, business-mcp).
 4. 이후는 `docs/plan.md` 파도 표대로.
@@ -35,7 +35,7 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 |---|---|---|
 | 1차 설계 리뷰 (Codex) | A~E 반영 (커밋 4aa8eca) | — |
 | 재검토 (Codex) | 해소 22 / 부분 해소 14 / 새 불일치 9 → 전부 문서에 반영 | — |
-| 최종 리뷰 | 재검토 반영분 + plan·dev-process·handoff 확인 | (아래 갱신) |
+| 최종 리뷰 (Codex) | 재검토 항목 해소 23 / 부분 6 → 전부 반영. 새 문서 지적 8건(로컬↔docker 연결, 8001 리스너, Makefile 실패 코드, 포트 오프셋 제거, 파도 의존성, foundation 소유 범위, live 마커 제외, seed 위치) 반영. 설계 방향 변경 없음 | — (다음 리뷰는 foundation 완료 후) |
 
 재검토에서 반영한 결정(설계 방향은 바뀌지 않음, 세부 규칙만 확정):
 - 카드 실패는 최초 포함 총 3회 시도 후 세션 failed. 재실행은 fired 시 기록한 같은 run_id를 쓴다.

@@ -12,6 +12,8 @@ class AgentRunner(Protocol):
 ```
 세션별 asyncio.Lock으로 직렬 실행. Lock은 메모리이므로 api는 단일 프로세스로 운영한다(제약을 `docs/plan.md`에 기록).
 
+이벤트 재실행 규칙: 그래프 state에 `handled_events`(event_id 집합)를 둔다. route는 자극이 event이고 event_id가 이미 있으면 inject·전이를 건너뛰고 ok만 돌려준다. 그래서 "그래프 완료 후 done 기록 전에 중단"된 이벤트를 재실행해도 phase가 이미 바뀐 상태에 카드가 다시 주입되지 않고, api는 ok를 받아 done으로 마감한다.
+
 ## 세션 그래프
 
 State (TypedDict): `session_id, phase, negotiate_round, division, scenario, current_element, window_start, stimulus, run_id, recent_messages, summary, tool_calls_used, token_budget_left, last_error`

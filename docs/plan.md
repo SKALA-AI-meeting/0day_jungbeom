@@ -7,7 +7,7 @@
 | 단계 | pane | 범위 | 의존 | 완료 기준 |
 |---|---|---|---|---|
 | M0 | (오케스트레이터) | 문서, 계약, 카탈로그, 회사 문서, 대본, compose, 스키마 | — | 완료 |
-| M0.5 | foundation | 서비스 5개의 최소 앱(Dockerfile, `/health`, 의존성·lockfile), api 공용 기반(config, db, models, auth, SessionService, scenario, hub, queue, masking, AgentRunner+Fake), web 기본(Next 앱, 토큰, 공용 컴포넌트 props만, mocks/ 골격), 테스트 픽스처 골격 | M0 | `docker compose up` 전부 healthy(각 서비스는 /health만 응답), SessionService 단위 테스트, 조립 결과가 scenario-model.md 수치와 일치, Fake runner로 메시지→내부 저장→hub 브로드캐스트 단위 테스트(WS·rag 검색은 M1 트랙) |
+| M0.5 | foundation | 서비스 5개의 최소 앱(Dockerfile, `/health`, 의존성·lockfile), api 공용 기반(config, db, models, auth, SessionService, scenario, hub, queue, masking, AgentRunner+Fake), web 기본(Next 앱, 토큰, 공용 컴포넌트 props만, mocks/ 골격), 테스트 픽스처 골격 | M0 | `make up` 전부 healthy(api·MCP `/health`, web `/api/health`, worker heartbeat 파일), `make infra-up` 후 로컬 `app.run`이 8000·8001 둘 다 응답, SessionService 단위 테스트, 조립 결과가 scenario-model.md 수치와 일치, Fake runner로 메시지→내부 저장→hub 브로드캐스트 단위 테스트(WS·rag 검색은 M1 트랙) |
 | M1 | prompts | 페르소나 프롬프트, 카드 brief 문구, 금지어 패턴, 관찰 레이블 정의·예시. 코드 없음 | M0 | 리뷰 통과 |
 | M1 | api-admin | /admin, /internal 라우터 | foundation | 계약 예시대로, 격리·검증·409 테스트 |
 | M1 | api-candidate | /s, /sessions, WS, 스케줄러, 공개·만료·재발행 | foundation | 6분 세션 시계대로, 재시작 재실행, ack·재연결 |
@@ -16,9 +16,9 @@
 | M1 | web-admin | 관리자 5화면 | foundation(토큰·컴포넌트 props) | mock으로 전 화면, 7상태, draft/final 배지 |
 | M1 | web-office | 지원자 화면과 가상 오피스 | foundation | mock으로 전 화면, ack·진행 표시·재연결 |
 | M1 | worker | 리포트 그래프, 큐 2종, 재시도·DLQ | foundation | draft 멈춤→approve 재개→final, DLQ |
-| M1 끝 | agent-min (agent-session 트랙의 1단계) | respond 노드 + MCP 클라이언트 + guard로 최소 종단 흐름 | api-*, mcp | 메시지→그래프→rag→post→WS 연결 테스트 |
+| M1 끝 | agent-min (agent-session 트랙의 1단계) | respond 노드 + MCP 클라이언트 + guard로 최소 종단 흐름 | api-admin, api-candidate, business-mcp, rag-mcp 병합 | 메시지→그래프→rag→post→WS 연결 테스트 |
 | M2 | agent-session | 전이표 전체, observe(규칙·분류 포함), 카드 실행, 복구, 체크포인터 | agent-min, prompts | agent/design.md 완료 기준 |
-| M2 | agent-assistant | 어시스턴트 그래프 | rag-mcp, prompts | 공개 문서만 인용, 한도 |
+| M2 | agent-assistant | 어시스턴트 그래프 | agent-min 병합(llm·guard·mcp_client를 import), prompts | 공개 문서만 인용, 한도 |
 | M2 | web-polish | emilkowalski/skills로 디자인 다듬기, 모션, break-ui 점검 | web-* | review-animations·break-ui 통과 |
 | M3 | e2e-runner | 러너, 대본 5개, 장애 주입, 근거 정확성 픽스처, 기록 | 전부 | 단언 전부 통과, 기록 커밋 |
 | M3 | fix-* | 실패 영역별 | e2e | 해당 단언 통과 |
@@ -33,20 +33,20 @@
 | W0 | foundation (1) | 단독 | 끝나야 다음 파도 시작. 리뷰 후 main 병합 |
 | W1 | prompts, api-admin, api-candidate, business-mcp | api-admin → api-candidate → business-mcp → prompts | 모두 foundation 위에서 mock으로 독립 |
 | W2 | rag-mcp, web-admin, web-office, worker | 순서 무관 | W1 중 끝난 자리에 바로 채움 |
-| W3 | agent-min → agent-session, agent-assistant, web-polish, e2e-runner | agent-session → agent-assistant → e2e-runner → web-polish | agent-min은 api-*·business-mcp 병합 후 시작 |
+| W3 | agent-min → agent-session, agent-assistant, web-polish, e2e-runner | agent-session → agent-assistant → e2e-runner → web-polish | agent-min은 api-admin·api-candidate·business-mcp·rag-mcp 병합 후 시작. agent-assistant는 agent-min 병합 후 시작(그 전 자리는 web-polish·e2e-runner가 채움) |
 | W4 | fix-* (필요한 만큼, 4개 이내), docs-final | | |
 
 규칙:
 - 한 pane은 트랙 하나, 트랙이 끝나면 pane을 닫는다. 리뷰 pane은 별도로 띄우고 끝나면 닫는다.
 - 파도 안에서 서로 파일을 공유하지 않는다(소유권 표). 공유 파일이 필요하면 foundation 변경 요청으로 올린다.
-- 병합 전 `main`에서 `make test`와 `make lint`가 통과해야 한다.
+- 병합 전 트랙 브랜치를 `main` 위로 rebase한 상태에서 `make test`와 `make lint`가 통과해야 한다.
 - 오케스트레이터는 파도마다 "띄움 → 완료 보고 확인 → 리뷰 → 병합 → 다음" 기록을 `docs/handoff.md`의 진행 표에 남긴다.
 
 ## 파일 소유권
 
 | 트랙 | 소유 | 비고 |
 |---|---|---|
-| foundation | `services/*/Dockerfile`, `pyproject.toml`·lockfile 전부, `services/api/app/{main,config,db,auth,hub,queue,masking}.py`, `app/models/`, `app/services/`, `app/agent/runner.py`, `apps/web/{package.json,app/layout.tsx,app/globals.css,components/ui/,mocks/,lib/api.ts}`, `tests/conftest.py`, `tests/fixtures/` | 이후 변경은 오케스트레이터 승인 |
+| foundation | `services/*/Dockerfile`, `pyproject.toml`·lockfile 전부(pytest 설정 포함), `services/api/app/{main,run,config,db,auth,hub,queue,masking}.py`, `app/models/`, `app/services/`, `app/agent/runner.py`, 각 MCP·worker의 패키지 진입점(`__main__.py`, `/health` 또는 heartbeat만), `apps/web/{Dockerfile,package.json,app/layout.tsx,app/globals.css,app/api/health/route.ts,components/ui/,mocks/,lib/api.ts}`, `scenarios/version.py`, `scripts/seed.py`, `infra/docker-compose.dev.yml`, `tests/conftest.py`, `tests/fixtures/` | 이후 변경은 오케스트레이터 승인. MCP·worker 진입점은 foundation 병합 후 각 트랙 소유로 넘어감 |
 | api-admin | `app/routers/{admin,internal}.py`, 해당 테스트 | |
 | api-candidate | `app/routers/{candidate,ws}.py`, `app/scheduler.py`, 해당 테스트 | |
 | prompts | `services/api/app/agent/prompts/`, `scenarios/catalog.yaml`의 brief·labels·debrief 문구 | |

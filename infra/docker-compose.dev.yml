@@ -1,0 +1,16 @@
+# 개발용 override: 앱은 로컬에서 돌리고 인프라만 컨테이너로. `make infra-up`이 이 파일을 함께 쓴다.
+# 포트는 127.0.0.1에만 바인딩한다.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+  rabbitmq:
+    ports:
+      - "127.0.0.1:5672:5672"
+  rag-mcp:
+    ports:
+      - "127.0.0.1:9102:9102"
+    environment:
+      API_INTERNAL_URL: http://host.docker.internal:8001   # 로컬 api의 내부 리스너
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

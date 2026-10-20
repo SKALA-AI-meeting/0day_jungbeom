@@ -4,7 +4,8 @@
 
 ```
 services/api/app/
-  main.py              앱 2개 마운트: 공개(8000) /admin,/s,/sessions,/ws · 내부(8001) /internal   [foundation]
+  main.py              FastAPI 앱 2개: 공개 /admin,/s,/sessions,/ws · 내부 /internal                     [foundation]
+  run.py               uvicorn Server 두 개(8000, 8001)를 한 asyncio 루프에서 실행. hub·Lock·스케줄러 공유   [foundation]
   config.py, db.py     env, SQLAlchemy async                                                   [foundation]
   models/              테이블 모델                                                              [foundation]
   auth.py              JWT, 역할 의존성, bcrypt, 초대 토큰 해시                                  [foundation]
@@ -50,4 +51,4 @@ ending:   in_progress AND submitted_at not null → complete() 재실행(종료 
 ## 완료 기준
 - foundation: `docker compose up`에서 api healthy, 모델·마이그레이션, SessionService 단위 테스트(전이 전부·멱등), 조립 결과가 scenario-model.md 수치와 일치, FakeAgentRunner로 메시지→내부 저장→hub 브로드캐스트(단위 테스트, WS 라우터는 api-candidate)
 - api-admin: 관리자·내부 엔드포인트가 계약 예시대로, 기업 간 격리, elements 검증, 권한 밖 변경 403, 승인 전 final 409
-- api-candidate: 지원자 엔드포인트·WS(ack, 증분, 재연결 후 /state), 6분 테스트 세션에서 이벤트가 ±5초 내 fired→done, 만료 시 큐 발행, 재시작 후 fired 이벤트 재실행, 미발행 세션 재발행
+- api-candidate: 지원자 엔드포인트·WS(ack, 증분, 재연결 후 /state), 6분 테스트 세션에서 이벤트가 ±10초 내 fired→done, 만료 시 큐 발행, 재시작 후 fired 이벤트 재실행, 미발행 세션 재발행

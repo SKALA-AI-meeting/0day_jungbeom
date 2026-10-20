@@ -62,7 +62,7 @@ services/report-worker/
 scenarios/                catalog.yaml, documents/, e2e/ 대본
 scripts/                  seed.py, make_session.py, worktree.sh
 tests/e2e/                run.py, records/
-infra/                    docker-compose.yml, .env.example, db/schema.sql
+infra/                    docker-compose.yml, docker-compose.dev.yml(로컬 포트 바인딩), .env.example, db/schema.sql
 docs/
 ```
 
