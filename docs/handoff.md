@@ -56,9 +56,9 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 | W1 | api-candidate | 닫음 | 병합 완료 | Codex 차단 7 반영 | (이 커밋 직전) |
 | W1 | business-mcp | w1J:pD(닫음) | 병합 완료 | Codex 차단 1·권장 1 반영 | 502b88b |
 | W2 | rag-mcp | 닫음 | 병합 완료 | Codex 차단 1 반영 | (이 커밋) |
-| W2 | web-admin | 탭 w1J:t6 | 리뷰 중 | Codex | |
-| W2 | web-office | 탭 w1J:t7 | 진행 중 | | |
-| W2 | worker | 탭 w1J:t5 | 진행 중 | | |
+| W2 | web-admin | 닫음 | 병합 완료 | Codex 차단 7 반영 | (이 커밋 직전) |
+| W2 | web-office | 탭 w1J:t7 | 리뷰 중 (c4b017b) | Codex | |
+| W2 | worker | 탭 w1J:t5 | 리뷰 중 (d6b5a08) | Codex | |
 | W3 | agent-min / agent-session | — | 대기 | | |
 | W3 | agent-assistant | — | 대기 | | |
 | W3 | web-polish | — | 대기 | | |
