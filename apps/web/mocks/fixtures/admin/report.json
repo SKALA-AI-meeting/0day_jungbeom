@@ -1,9 +1,9 @@
 {
-  "session_id": "...",
-  "alias": "지원자A",
+  "session_id": "s-ready",
+  "alias": "지원자F",
   "stage": "draft",
   "position": {
-    "name": "...",
+    "name": "프로덕트 매니저 인턴",
     "elements": ["cooperation", "responsibility"]
   },
   "deliverable": {
@@ -12,11 +12,49 @@
         "part_no": 1,
         "title": "문제 정의와 대상 사용자",
         "assignee": "candidate",
-        "content": "...",
+        "content": "휴면 참여자가 다시 들어오지 않는 이유를 줄이는 것이 목표입니다. 대상은 최근 30일 접속이 없는 참여자로 좁혔습니다.",
         "revisions": 4,
         "empty": false
+      },
+      {
+        "part_no": 2,
+        "title": "사용자 인터뷰에서 찾은 근거",
+        "assignee": "candidate",
+        "content": "인터뷰 3건 모두 '알림이 많아서 끈다'고 답했습니다.",
+        "revisions": 2,
+        "empty": false
+      },
+      {
+        "part_no": 3,
+        "title": "핵심 기능 제안",
+        "assignee": "both",
+        "content": "알림 묶음 발송과 주간 요약을 제안합니다.",
+        "revisions": 3,
+        "empty": false
+      },
+      {
+        "part_no": 4,
+        "title": "비슷한 서비스 사례",
+        "assignee": "colleague",
+        "content": "경쟁 서비스 두 곳의 알림 설정 화면을 비교했습니다.",
+        "revisions": 1,
+        "empty": false
+      },
+      {
+        "part_no": 5,
+        "title": "성공 지표와 출시 일정",
+        "assignee": "colleague",
+        "content": "",
+        "revisions": 0,
+        "empty": true
       }
-    ]
+    ],
+    "division_decided_by": "candidate",
+    "final_report_message": {
+      "id": "m-final",
+      "t_min": 118,
+      "content": "기획안 1~4번을 정리했고 5번 지표는 도현님 초안 그대로 두었습니다. 출시 일정은 다음 주 회의에서 다시 정하면 좋겠습니다."
+    }
   },
   "rubric": {
     "elements": [
@@ -32,25 +70,133 @@
         "items": [
           {
             "id": "resp_notified_before_release",
-            "text": "자료가 공개되기 전에 지연을 팀에 알림",
+            "text": "자료가 공개되기 전에 지연을 팀이나 동료에게 알림",
             "auto": 1,
             "reviewer": null,
             "memo": null,
+            "adjusted": false,
             "evidence": [
               {
                 "type": "message",
-                "id": "...",
+                "id": "m-52",
                 "t_min": 52
               }
             ]
+          },
+          {
+            "id": "resp_proposed_alternative",
+            "text": "지연 동안 먼저 할 작업이나 대안을 제시함",
+            "auto": 1,
+            "reviewer": null,
+            "memo": null,
+            "adjusted": false,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "m-52",
+                "t_min": 52
+              }
+            ]
+          },
+          {
+            "id": "resp_told_team",
+            "text": "팀 채널(팀장이 보는 곳)에 지연을 알림",
+            "auto": 1,
+            "reviewer": null,
+            "memo": null,
+            "adjusted": false,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "m-52",
+                "t_min": 52
+              }
+            ]
+          },
+          {
+            "id": "resp_opened_after_release",
+            "text": "공개된 인터뷰 요약을 열람함",
+            "auto": 0,
+            "reviewer": null,
+            "memo": null,
+            "adjusted": false,
+            "evidence": []
+          }
+        ]
+      },
+      {
+        "element": "cooperation",
+        "name": "협력 태도",
+        "auto": {
+          "met": 2,
+          "judged": 3,
+          "no_record": 1
+        },
+        "reviewer": null,
+        "items": [
+          {
+            "id": "coop_replied",
+            "text": "동료의 도움 요청에 답함",
+            "auto": 1,
+            "reviewer": null,
+            "memo": null,
+            "adjusted": false,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "m-30",
+                "t_min": 30
+              }
+            ]
+          },
+          {
+            "id": "coop_replied_within_5m",
+            "text": "요청 후 5분 안에 답함",
+            "auto": 0,
+            "reviewer": null,
+            "memo": null,
+            "adjusted": false,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "m-30",
+                "t_min": 30
+              }
+            ],
+            "minutes": 7.5
+          },
+          {
+            "id": "coop_offered_help",
+            "text": "바로 돕거나 도울 시점을 제시함",
+            "auto": 1,
+            "reviewer": null,
+            "memo": null,
+            "adjusted": false,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "m-30",
+                "t_min": 30
+              }
+            ]
+          },
+          {
+            "id": "coop_specific_response",
+            "text": "돕는 방식·시점 또는 거절 이유를 구체적으로 말함",
+            "auto": null,
+            "no_record_reason": "classify_failed",
+            "reviewer": null,
+            "memo": null,
+            "adjusted": false,
+            "evidence": []
           }
         ]
       }
     ],
     "auto_total": {
-      "met": 9,
-      "judged": 14,
-      "no_record": 2
+      "met": 5,
+      "judged": 7,
+      "no_record": 1
     },
     "reviewer_total": null,
     "review": null,
@@ -61,50 +207,88 @@
       "element": "responsibility",
       "name": "책임감",
       "situation": "담당 파트에 필요한 인터뷰 자료 지연",
-      "observed": "마감 전에 지연을 먼저 알리고 대안을 제시함",
+      "event_fired": true,
+      "observed": "자료가 공개되기 전에 지연을 팀 채널에 먼저 알리고, 대안으로 다른 파트를 먼저 쓰겠다고 제안함",
       "evidence": [
         {
           "type": "message",
-          "id": "...",
+          "id": "m-52",
           "t_min": 52,
           "channel": "team",
-          "quote": "인터뷰 자료가 늦어서..."
+          "quote": "인터뷰 자료가 늦어서 2번 파트는 뒤로 미루고 3번을 먼저 쓰겠습니다.",
+          "context": {
+            "prev_persona_message": "한서윤 팀장: 인터뷰 요약은 15분쯤 뒤에 공유될 예정이에요.",
+            "card_at_t_min": 48
+          }
         },
         {
           "type": "revision",
-          "id": "...",
+          "id": "r-74",
           "t_min": 74,
           "part_no": 1,
-          "summary": "1번 파트 수정(대상을 휴면 참여자로)"
+          "summary": "1번 파트 수정(대상을 휴면 참여자로)",
+          "change_ratio": 0.4
+        }
+      ],
+      "aux_facts": ["인터뷰 요약 공개 후 열람 기록은 없음"],
+      "out_of_window_messages": [
+        {
+          "t_min": 96,
+          "channel": "dm",
+          "quote": "인터뷰 쪽 일정이 아직 불안해서 한 번 더 말씀드려요."
         }
       ]
     },
     {
       "element": "cooperation",
       "name": "협력 태도",
-      "situation": "...",
+      "situation": "내 일이 바쁠 때 동료의 도움 요청",
+      "event_fired": true,
       "observed": null,
-      "evidence": [],
-      "note": "해당 상황에서 관련 행동이 기록되지 않음"
+      "note": "해당 상황에서 관련 행동이 기록되지 않음",
+      "no_record_reason": "classify_failed",
+      "evidence": [
+        {
+          "type": "message",
+          "id": "m-30",
+          "t_min": 30,
+          "channel": "dm",
+          "quote": "지금 3번을 정리 중이라 10분 뒤에 4번 표를 같이 볼게요.",
+          "context": {
+            "prev_persona_message": "이도현: 4번 사례 표 구성 좀 봐주실 수 있어요?",
+            "card_at_t_min": 28
+          }
+        }
+      ],
+      "aux_facts": [],
+      "out_of_window_messages": []
     }
   ],
   "ai_usage": {
     "used": true,
-    "summary": "...",
+    "summary": "어시스턴트를 3회 호출했고 두 응답을 기획안에 옮겨 일부 고쳐 썼음",
     "evidence": [
       {
-        "call_id": "...",
+        "call_id": "c-41",
         "t_min": 41,
-        "quote": "..."
+        "quote": "휴면 참여자 정의를 어떻게 잡으면 좋을까?",
+        "category": "delegate"
       },
       {
-        "call_id": "...",
+        "call_id": "c-44",
+        "t_min": 44,
+        "quote": "지표 현황 문서의 최근 30일 수치를 알려줘",
+        "category": "context"
+      },
+      {
+        "call_id": "c-47",
         "t_min": 47,
         "part_no": 4,
-        "reuse": "edited"
+        "reuse": "edited",
+        "category": "verify"
       }
     ]
   },
-  "generated_at": "...",
+  "generated_at": "2026-10-17T03:00:00+00:00",
   "reviewed_at": null
 }
