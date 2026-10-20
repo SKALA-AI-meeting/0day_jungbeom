@@ -49,6 +49,8 @@
 - 어시스턴트 라우터(`app/routers/candidate.py`): 요청 메시지 저장 전 `app.masking.mask`, 60회 카운트 조회→INSERT 직렬화(agent-assistant Codex 리뷰).
 - `app/run.py`: `ctx.assistant` warm-up(`graph()`)·종료 시 `aclose()`(agent-assistant 보고서). 체크포인터 setup의 `CREATE INDEX CONCURRENTLY`가 열린 트랜잭션에 막힐 수 있어 기동 시 먼저 수행.
 - MODEL_ASSISTANT 역할별 생성 함수는 agent-session에 요청함(llm 소유).
+- `POST /internal/test/sessions`에 `company_id?`(또는 admin_email) 지정(web-integrate·e2e-runner 요청, internal.py).
+- 공용 DB `dayzero`는 재설계 전 스키마. web-integrate는 `dayzero_web_integrate`에 새 스키마를 적용해 썼다. 2라운드 전 오케스트레이터가 `dayzero`에 schema.sql 재적용(개발 DB, 데이터 없음) 또는 그 DB를 계속 사용. rag-mcp 이미지는 재설계 코드로 재빌드 중(오케스트레이터).
 
 ## pane 브리프 템플릿
 
