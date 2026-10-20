@@ -109,7 +109,8 @@
 | P2 | agent-assistant | 병합 완료. api 수준 요청(라우터 마스킹·60회 직렬화·run.py 수명주기)은 위 'P2 진행 중 모인 api 수준 변경 요청' | Codex 차단 6 + 재확인 2회 반영 | cd55eb4 |
 | P2 | web-integrate | 1라운드 병합 완료(FakeAgentRunner로 27단계). 2라운드(AGENT_RUNNER=session·ASSISTANT_RUNNER=graph 실제 한 세션)는 api-fix 병합 뒤 같은 트랙으로 | Codex 차단 3 + 재확인 반영 | 1e7ce3f |
 | P2 | web-polish | 병합 완료. B2(최종본 저장 실패 표시 유지)는 web-integrate 필수 후속 | Codex 차단 1·권장 2 반영 | fb788aa |
-| P3 | e2e-runner | 대기 (P2 합본) | | |
+| P2 보충 | api-fix | 병합 완료(어시스턴트 마스킹·60회 직렬화·run.py 수명주기·테스트 세션 회사 지정) | codex exec 리뷰 필수 2 반영 | 7bd2b86 |
+| P3 | e2e-runner | 진행 중(1단계 러너·단언·픽스처 mock 작성). 실 스택 사용권은 web-integrate 2라운드 뒤 | | |
 | P4 | pilot | 대기 | | |
 | P5 | docs-final ∥ docs-service | 대기 (최종 기준점, 캡처 묶음) | | |
 | W4 | docs-final | 대기 | | |
