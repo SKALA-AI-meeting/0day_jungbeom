@@ -52,6 +52,12 @@
 - `POST /internal/test/sessions`에 `company_id?`(또는 admin_email) 지정(web-integrate·e2e-runner 요청, internal.py).
 - 공용 DB `dayzero`는 재설계 전 스키마. web-integrate는 `dayzero_web_integrate`에 새 스키마를 적용해 썼다. 2라운드 전 오케스트레이터가 `dayzero`에 schema.sql 재적용(개발 DB, 데이터 없음) 또는 그 DB를 계속 사용. rag-mcp 이미지는 재설계 코드로 재빌드 중(오케스트레이터).
 
+## P3에서 모인 fix 요청 (e2e 실 실행 뒤 fix-* 트랙에서 처리)
+
+- **observe/worker**: `honest_no_misattribution`(claims_colleague_work=false 같은 "하지 않음" aux)이 근거 없음으로 늘 classify_failed → 결정: 관찰이 판정한 보고 메시지 id를 aux 지표의 evidence_ids에 넣는다(true·false 모두). 담당 agent-session 영역.
+- **대본**: `one_element`의 "끝내 미전달" 기대값은 삭제(카드 3회 실패 → 세션 failed → 리포트 없음이 설계). 결정 2026-10-21.
+- 인증 경계: 타 기업 접근은 404 유지(testing.md 수정), "동료 문서 PUT"은 내부 docs/send에 지원자 doc_id → 403으로 정의.
+
 ## pane 브리프 템플릿
 
 ```

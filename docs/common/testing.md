@@ -54,7 +54,7 @@ python scripts/make_session.py --elements responsibility,planning,adaptability,c
 4. draft → review → final 저장, 같은 thread_id(워커 로그), `reports.content_hash`가 draft와 final에서 동일, 중복 review 멱등
 5. `restart`: 재시작 후 90초 안에 /state 복원, fired 이벤트 재실행(같은 run_id), 중복 메시지·중복 문서 version 없음(run_id·seq, doc_id·run_id)
 7. 동시 실행: 대본 5개(all_five×3, one_element, no_assistant)를 함께 돌려 단언 1·2 통과
-8. 인증 경계(러너가 한 번에 실행, `records/.../auth.md`): 타 기업 관리자의 채용 건·리포트·전체 기록 조회 403, 타 세션 JWT로 /state 403, 동의 전 /state 401, 만료 JWT 401, X-Internal-Token 없이 /internal 401, 공개 포트 8000에서 /internal 404, 동료 문서 PUT 403, 완료 세션 재초대(previous_session_id) 422
+8. 인증 경계(러너가 한 번에 실행, `records/.../auth.md`): 타 기업 관리자의 채용 건·리포트·전체 기록 조회 404(존재를 숨김), 타 세션 JWT로 /state 403, 동의 전 /state 401, 만료 JWT 401, X-Internal-Token 없이 /internal 401, 공개 포트 8000에서 /internal 404, 지원자 문서 doc_id로 내부 `docs/send` 호출 403(동료 문서가 아닌 doc), 완료 세션 재초대(previous_session_id) 422
 9. 비용·지연: summary에 세션 토큰 합(agent_runs.usage + reports.usage)과 접수→응답 지연 p95를 기록, 토큰 ≤ 300k
 6. 장애 주입: 이벤트 fired 직후 종료, 변경 도구 성공 직후 종료, 동료 문서 보내기 실패(최소 계약 테스트 C5), 큐 발행 전 종료(재탐색 재발행), final 저장 후 ack 전 종료(멱등), 리포트 3회 실패 → failed → regenerate로 report_ready — 각 1건, 결과가 누락·중복 없음
 
