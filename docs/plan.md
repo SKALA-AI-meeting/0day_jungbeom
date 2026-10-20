@@ -13,7 +13,7 @@
 | M1 | api-candidate | /s, /sessions, WS, 스케줄러, 공개·만료·재발행 | foundation | 6분 세션 시계대로, 재시작 재실행, ack·재연결 |
 | M1 | business-mcp | 도구 10개 | foundation | Inspector, 오류 코드, 멱등 전달 |
 | M1 | rag-mcp | 색인·검색·공개 필터 | foundation | 검색 응답, 차단, 재색인 |
-| M1 | web-admin | 관리자 5화면 | foundation(토큰·컴포넌트 props) | mock으로 전 화면, 7상태, draft/final 배지 |
+| M1 | web-admin | 관리자 5화면(채용 건 생성 시 평가표 항목 미리보기, 리포트 평가표 조정 포함) | foundation(토큰·컴포넌트 props) | mock으로 전 화면, 7상태, draft/final 배지, 조정·메모 |
 | M1 | web-office | 지원자 화면과 가상 오피스 | foundation | mock으로 전 화면, ack·진행 표시·재연결 |
 | M1 | worker | 리포트 그래프(평가표 규칙 계산 포함), 큐 2종, 재시도·DLQ | foundation | draft 멈춤→approve 재개→final, DLQ, rubric.evaluate 단위 테스트 |
 | M1 끝 | agent-min (agent-session 트랙의 1단계) | respond 노드 + MCP 클라이언트 + guard로 최소 종단 흐름 | api-admin, api-candidate, business-mcp, rag-mcp 병합 | 메시지→그래프→rag→post→WS 연결 테스트 |

@@ -29,6 +29,7 @@
 |---|---|---|---|
 | POST | /admin/auth/signup | {email, password, company_name} | {token} |
 | POST | /admin/auth/login | {email, password} | {token} |
+| GET | /admin/catalog | | {elements: [{id, name, situation_public, rubric: [{id, text}]}]} (채용 건 생성 화면의 요소 설명·평가표 미리보기. situation_public은 상황을 드러내지 않는 한 줄) |
 | GET | /admin/positions | | [{id, name, elements, candidate_count, created_at}] |
 | POST | /admin/positions | {name, elements: ["cooperation", ...]} (1~4개) | {id, name, elements, scenario, catalog_version} |
 | GET | /admin/positions/{id}/candidates | | [{session_id, alias, status, invited_at, report_ready_at, failed_stage?, failed_reason?, score?: {met, judged, no_record, source: "auto"∣"reviewer"}}] (report 없으면 score null, 정렬은 초대순) |
