@@ -31,7 +31,7 @@
 | POST | /admin/auth/signup | {email, password, company_name} | {token}. 이미 있는 이메일은 409 `conflict` |
 | POST | /admin/auth/login | {email, password} | {token}. 실패는 401 `unauthorized` |
 | GET | /admin/catalog | | {missions: [{id, name, company_name, deliverable}], elements: [{id, name, meaning, how_we_see, if_unselected}], candidate_notice_template, candidate_faq: [{q, a}], session_minutes} (채용 건 생성 화면: 요소 카드 5장에 이름·한 줄 뜻·"이렇게 봅니다"·요소를 뺐을 때 달라지는 것 한 줄. 기본은 전체 선택. 상황·시점·평가표 항목은 보여 주지 않는다) |
-| GET | /admin/positions | | [{id, name, mission_id, elements, candidate_count, created_at}] |
+| GET | /admin/positions | | [{id, name, mission_id, elements, candidate_count(초대된 사람 수, 세션 수 아님), created_at}] |
 | POST | /admin/positions | {name, elements: ["responsibility", ...], mission_id?: "planning"} (요소 1~5개, mission_id 기본 `planning`) | {id, name, mission_id, elements, scenario, catalog_version} |
 | GET | /admin/positions/{id}/candidates | | [{session_id, alias, email, status, display_status, display_group, invited_at, started_at?, ends_at?, last_activity_at?, message_count, report_ready_at?, purge_at?, failed_stage?, failed_reason?, next_action?, previous_session_id?, previous_relation?: "retry"∣"reissue", met?, unmet?, no_record?, score_source?: "auto"∣"reviewer", by_element?: [{element, met, unmet, no_record}]}] (display_status는 status에 만료(invited이고 expires_at 지남)·취소를 더한 표시값, display_group ∈ waiting∣in_progress∣needs_review∣done∣problem은 화면의 다섯 묶음·필터 키. purge_at은 completed_at+90일. next_action은 failed일 때 담당자 행동 안내 문자열("새 초대를 만들어 보내세요"∣"리포트를 다시 생성하세요"). report 없으면 met·unmet·no_record·score_source·by_element는 null, 정렬은 초대순) |
 | POST | /admin/positions/{id}/invites | {alias, email, previous_session_id?} | {session_id, invite_url, expires_at, notice_text}. 발송하지 않음. 화면은 링크 복사와 안내 문안 복사(2시간·PC 권장·중간 휴식 없음·72시간 만료·가상 회사 루프랩) 버튼과 별칭 설명("지원자에게 이 이름으로 안내되고 리포트에 이 이름이 남습니다"). 같은 채용 건 안 같은 별칭은 409 `conflict`. previous_session_id는 그 세션이 failed(failed_stage=session)·만료(invited이고 expires_at 지남)·cancelled일 때만 허용하고 아니면 422 `invalid_previous_session`. 만료 초대의 재발행은 previous_relation=reissue(연장), 실패·취소 뒤는 retry(재응시)로 목록에 표시 |
@@ -50,7 +50,7 @@
 {"session_id":"...","alias":"지원자A","stage":"draft",
  "position":{"name":"...","mission_id":"planning","elements":["responsibility","collaboration"]},
  "summary":[{"element":"responsibility","name":"책임감/성실성","line":"공개 전에 지연을 알리고 대안을 제시함","met":3,"unmet":1,"no_record":0},
-            {"element":"collaboration","name":"협업/조율","line":null,"met":0,"judged":0,"no_record":4}],
+            {"element":"collaboration","name":"협업/조율","line":null,"met":0,"unmet":0,"no_record":4}],
  "deliverable":{
    "final":{"sections":[{"part_no":1,"title":"문제 정의와 대상 사용자","content":"...","source_doc_id":"...","source_owner":"candidate","source_version":2,"edited":true,"source_content":null},
                         {"part_no":4,"title":"비슷한 서비스 사례","content":"...","source_doc_id":"...","source_owner":"colleague","source_version":2,"edited":true,"source_content":"(동료 v2 원문)"}],
