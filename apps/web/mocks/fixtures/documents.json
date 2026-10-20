@@ -1,7 +1,7 @@
 [
   {
     "doc_id": "company_intro",
-    "title": "루프랩·모아런 소개",
+    "title": "회사·서비스 소개",
     "released": true,
     "release_at_min": null
   },
@@ -25,7 +25,7 @@
   },
   {
     "doc_id": "meeting_notes",
-    "title": "회의록",
+    "title": "지난주 회의록",
     "released": true,
     "release_at_min": null
   }

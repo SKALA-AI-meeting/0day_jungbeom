@@ -16,7 +16,6 @@ import { countdown, givenName, partLabel, remainText } from "./lines";
 import { DocEditor, DocList, FinalDoc, type DocTarget, type SaveState } from "./my-docs";
 import { Library } from "./library";
 import {
-  isSystemLine,
   locked as isLocked,
   nowMin,
   partTitles,
@@ -229,13 +228,6 @@ export function OfficeView(props: OfficeViewProps) {
     state.replaced || props.connection === "replaced" || props.connection === "forbidden";
   const offline = !stopped && props.connection !== "open";
   const canWrite = channel !== "notice" && !ended && !stopped;
-  const releasedLater = snap.documents
-    .filter((d) =>
-      snap.messages.some(
-        (m) => m.channel === "notice" && isSystemLine(m) && m.content.includes(`「${d.title}」`),
-      ),
-    )
-    .map((d) => d.doc_id);
   const emptySections = snap.final.sections.filter((s) => !s.content.trim()).map((s) => s.part_no);
   // 마감 10분 전부터 가운데 위에 마감 배너(레일 타이머는 문서 편집 중 시선 밖이다)
   const closing = snap.session.status === "in_progress" && remaining != null && remaining <= 600;
@@ -435,7 +427,7 @@ export function OfficeView(props: OfficeViewProps) {
               content: (
                 <Library
                   documents={snap.documents}
-                  releasedLater={releasedLater}
+                  releasedLater={state.releasedLater}
                   onRead={props.onReadCompany}
                 />
               ),

@@ -11,7 +11,7 @@ import { createMockSocket, mockControls, resetMockOffice } from "@/mocks/office"
 import { candidateApi as api, sessionIdFromToken } from "./flow";
 import { sourceLabel } from "./my-docs";
 import { initialState, reduce, type OfficeState } from "./reducer";
-import type { SendFrame, ServerFrame } from "./types";
+import type { SendFrame, ServerFrame, StateSnapshot } from "./types";
 
 afterEach(() => {
   resetMockOffice();
@@ -143,4 +143,35 @@ test("문서 주고받기부터 디브리핑까지 mock으로 돈다", async () 
   expect(state.ended).toBe("submitted");
   const debrief = await api.debrief(id, jwt);
   expect(debrief.final?.sections.find((s) => s.part_no === 4)?.content).toContain("수치 추가");
+});
+
+test("가져오기 전에 조회한 state가 늦게 와도 가져온 섹션(본문·출처)과 다른 섹션 저장이 유지된다", async () => {
+  const { default: fixture } = await import("@/mocks/fixtures/state.json");
+  const before = structuredClone(fixture) as unknown as StateSnapshot;
+  let state = initialState(before);
+  // 재동기화 시작: 이 시점의 세대를 들고 조회를 보낸다(응답은 가져오기 전 서버 값)
+  const since = state.saveSeq;
+  const imported = {
+    ...before.final.sections[3],
+    content: "IMPORTED_LATEST",
+    source_doc_id: "doc-colleague-4",
+    source_version: 2,
+    edited: false,
+  };
+  state = reduce(state, { type: "final_section", section: imported });
+  state = reduce(state, { type: "final_edit", part_no: 1, content: "내가 쓴 1번" });
+  const body = state.snap.final.sections.map(({ part_no, content }) => ({ part_no, content }));
+  state = reduce(state, { type: "final_saved", sections: body });
+  state = reduce(state, { type: "snapshot", state: structuredClone(before), since });
+
+  const [one, , , four] = state.snap.final.sections;
+  expect(four).toMatchObject({
+    content: "IMPORTED_LATEST",
+    source_doc_id: "doc-colleague-4",
+    source_version: 2,
+    edited: false,
+  });
+  expect(one.content).toBe("내가 쓴 1번");
+  // 다음 최종본 저장도 가져온 본문을 그대로 보낸다
+  expect(state.snap.final.sections.map((s) => s.content)[3]).toBe("IMPORTED_LATEST");
 });

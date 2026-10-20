@@ -1,2 +1,3 @@
 next-env.d.ts
 *.tsbuildinfo
+e2e/shots/

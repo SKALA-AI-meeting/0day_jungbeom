@@ -26,7 +26,10 @@ test("생성 화면: 미션 표시, 요소 5장 전체 선택, 뺀 요소의 차
   expect(
     unselectedLines(catalog, ["planning", "adaptability", "collaboration", "honesty"]),
   ).toEqual([
-    { id: "responsibility", line: "인터뷰 요약이 시작 시 공유되고 지연 장면이 없습니다." },
+    {
+      id: "responsibility",
+      line: catalog.elements.find((e) => e.id === "responsibility")!.if_unselected,
+    },
   ]);
 
   const code = (elements: string[]) =>

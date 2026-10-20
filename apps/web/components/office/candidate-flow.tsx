@@ -190,6 +190,10 @@ export function CandidateFlow({
           initial={stage.snapshot}
           api={api}
           onEnded={(jwt) => showDebrief(jwt, false)}
+          onLost={() => {
+            setStage({ kind: "loading" });
+            setAttempt((n) => n + 1);
+          }}
         />
       );
     case "debrief":
@@ -207,6 +211,12 @@ export function CandidateFlow({
 }
 
 const SAVE_DELAY_MS = 1000;
+
+/** resume이 "세션이 끝나 더 이을 수 없음"으로 거절했는지(409 conflict·410 expired/cancelled·404) */
+function isTerminal(failure: unknown) {
+  const status = (failure as { status?: unknown } | null)?.status;
+  return status === 409 || status === 410 || status === 404;
+}
 const ENDED_DELAY_MS = 1500;
 
 function OfficeContainer({
@@ -215,12 +225,15 @@ function OfficeContainer({
   initial,
   api,
   onEnded,
+  onLost,
 }: {
   token: string;
   jwt: string;
   initial: StateSnapshot;
   api: CandidateApi;
   onEnded: (jwt: string) => void;
+  /** 연결을 더 이을 수 없음(세션 JWT를 다시 받지 못함) */
+  onLost: () => void;
 }) {
   const [state, dispatch] = useReducer(reduce, initial, initialState);
   const [connection, setConnection] = useState<ConnectionStatus>("connecting");
@@ -240,23 +253,50 @@ function OfficeContainer({
   const msgSeq = useRef(0);
   const alias = aliasOf(initial);
 
+  // 부모가 렌더마다 새로 만드는 콜백이라 소켓 effect가 다시 돌지 않게 ref로 읽는다
+  const lost = useRef(onLost);
   useEffect(() => {
     stateRef.current = state;
+    lost.current = onLost;
   });
 
   // 조회 중에 온 프레임은 모아 두었다가 스냅샷 뒤에 다시 얹는다(스냅샷이 그 프레임보다 먼저 만들어졌을 수 있다)
   const during = useRef<ServerFrame[] | null>(null);
+  const mounted = useRef(true);
+  const refreshing = useRef({ running: false, again: false });
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      // 화면을 떠나면 남은 예약 저장을 버린다(옛 JWT로 돌지 않게). 개발 모드의 즉시 재마운트는 건너뛴다
+      setTimeout(() => {
+        if (!mounted.current) saver.stop();
+      }, 0);
+    };
+  }, [saver]);
+  // 재동기화는 한 번에 하나만 돈다. 도는 중에 다시 불리면 끝난 뒤 한 번 더 받아 최신 상태로 맞춘다.
+  // 화면을 떠나면(언마운트) 재시도를 멈춘다
   const refresh = useCallback(async () => {
-    during.current = [];
-    // 조회 시작 시점의 저장 세대. 이보다 뒤에 성공한 저장은 응답보다 최신이다
-    const since = stateRef.current.saveSeq;
-    const snapshot = await fetchSnapshot(
-      () => api.state(id, jwt.current),
-      () => true,
-    );
-    const frames = during.current ?? [];
-    during.current = null;
-    if (snapshot) dispatch({ type: "snapshot", state: snapshot, frames, since });
+    const r = refreshing.current;
+    if (r.running) {
+      r.again = true;
+      return;
+    }
+    r.running = true;
+    do {
+      r.again = false;
+      during.current = [];
+      // 조회 시작 시점의 저장 세대. 이보다 뒤에 성공한 저장은 응답보다 최신이다
+      const since = stateRef.current.saveSeq;
+      const snapshot = await fetchSnapshot(
+        () => api.state(id, jwt.current),
+        () => mounted.current,
+      );
+      const frames = during.current ?? [];
+      during.current = null;
+      if (snapshot) dispatch({ type: "snapshot", state: snapshot, frames, since });
+    } while (mounted.current && r.again);
+    r.running = false;
   }, [api, id]);
 
   const sendFrame = (p: {
@@ -271,14 +311,16 @@ function OfficeContainer({
       sessionId: id,
       getToken: () => jwt.current,
       refreshToken: async () => {
-        // 4401: 링크로 새 세션 JWT를 받는다. 끝난 세션이면(409) 더 붙지 않는다
+        // 4401: 링크로 새 세션 JWT를 받는다. 세션이 끝났다는 응답(409·410·404)만 null로 멈추고,
+        // 네트워크·5xx는 throw 해 소켓이 재발급을 다시 시도한다(오피스와 미저장 편집은 그대로 둔다)
         try {
           const { session_token } = await api.resume(token);
           jwt.current = session_token;
           tokenStore.set(token, session_token);
           return session_token;
-        } catch {
-          return null;
+        } catch (failure) {
+          if (isTerminal(failure)) return null;
+          throw failure;
         }
       },
       onStatus: (status) => {
@@ -288,12 +330,13 @@ function OfficeContainer({
           saver.stop();
           dispatch({ type: "stopped" });
         }
+        // 4401 뒤 resume이 종료 응답으로 거절됨(끊긴 사이 세션이 끝남): 링크 입장부터 다시 판정해 디브리핑으로 보낸다
+        if (status === "closed") lost.current();
       },
       onOpen: ({ reconnected }) => {
-        if (reconnected) {
-          void refresh();
-          toast("연결이 다시 이어졌어요");
-        }
+        // 첫 연결도 따라잡는다: 입장 때 받은 /state와 WS가 열리기 사이의 변화는 프레임으로 오지 않는다
+        void refresh();
+        if (reconnected) toast("연결이 다시 이어졌어요");
         // 끊긴 동안 쌓인 메시지는 같은 client_msg_id로 다시 보낸다(서버가 중복을 막는다)
         for (const p of stateRef.current.pending) sendFrame(p);
       },
@@ -368,7 +411,8 @@ function OfficeContainer({
   const schedule = (key: string, job: () => Promise<void>) => {
     if (stateRef.current.replaced) return;
     saver.schedule(key, job);
-    setSaves((s) => ({ ...s, [key]: "saving" }));
+    // 해결되지 않은 실패는 다시 저장하는 동안에도 남기고, 성공 응답(saved)에서만 지운다
+    setSaves((s) => ({ ...s, [key]: s[key] === "failed" ? "failed" : "saving" }));
   };
   /** 저장이 끝나지 않았으면 다음 동작을 멈추고 알린다 */
   const ensureSaved = async (key: string | undefined, action: string) => {

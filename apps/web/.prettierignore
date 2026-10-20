@@ -3,3 +3,4 @@ node_modules
 pnpm-lock.yaml
 next-env.d.ts
 .agents
+e2e/shots

@@ -1,7 +1,6 @@
 // 관리자 화면 mock 서버. 오류 코드와 우선순위는 docs/common/contracts.md "관리자 REST"를 따르고 상태는 모듈 안에만 둔다.
 //
-// 데이터: 채용 건 pos-1(admin_positions.json), 지원자 sess-1~3(admin_candidates.json) + 묶음 5종을 채우는
-// sess-4~8(admin_candidates_extra.json). 리포트는 sess-1(draft, report.json)과 sess-6(final, report.json에 검토를 더함).
+// 데이터: 채용 건 pos-1(admin_positions.json), 지원자 sess-1~8(admin_candidates.json, 묶음 5종). 리포트는 sess-1(draft, report.json)과 sess-6(final, report.json에 검토를 더함).
 // 검토자 이름에 "지연"을 넣으면 확정이 끝나지 않아 "확정만 다시 시도" 화면을 볼 수 있다(다시 제출하면 끝난다).
 import type {
   Adjustment,
@@ -14,7 +13,6 @@ import type {
 } from "@/components/admin/types";
 
 import candidatesFixture from "./fixtures/admin_candidates.json";
-import extraCandidates from "./fixtures/admin_candidates_extra.json";
 import catalogFixture from "./fixtures/admin_catalog.json";
 import createdFixture from "./fixtures/admin_position_created.json";
 import inviteFixture from "./fixtures/admin_invite.json";
@@ -85,10 +83,7 @@ function fresh(): Store {
   return {
     positions: structuredClone(positionsFixture) as Position[],
     candidates: {
-      "pos-1": [
-        ...(structuredClone(candidatesFixture) as Candidate[]),
-        ...(structuredClone(extraCandidates) as Candidate[]),
-      ],
+      "pos-1": structuredClone(candidatesFixture) as Candidate[],
     },
     reports: {
       "sess-1": {

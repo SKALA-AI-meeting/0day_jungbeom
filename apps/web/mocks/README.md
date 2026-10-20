@@ -10,9 +10,8 @@
 | `worst.ts`                             | break-ui 최악 데이터. 주소에 `?data=worst`(화면 위쪽 Demo / Worst case 전환)           |
 | `fixtures/*.json`                      | `tests/fixtures/contracts/`에서 같은 이름·같은 id로 복사한 계약 예시(직접 고치지 않음) |
 | `fixtures/office_script.json`          | web 전용 재생 대본: 장면 시각, 픽스처에 없는 메시지, 회사 문서 본문, 동료 답장 문구    |
-| `fixtures/admin_candidates_extra.json` | 지원자 묶음 5종을 채우는 추가 행(sess-4~8, 계약 형태 그대로)                           |
 
-계약 예시가 바뀌면 `tests/fixtures/contracts/`에서 다시 복사한다. 화면만 쓰는 데이터는 위의 두 web 전용 파일에만 더한다.
+계약 예시가 바뀌면 `tests/fixtures/contracts/`에서 다시 복사한다. 화면만 쓰는 데이터는 위의 web 전용 파일(office_script.json)에만 더한다.
 
 ## 링크 토큰(지원자)
 

@@ -1,5 +1,5 @@
 // 리포트 검토 계산: 단계 판정, 담당자 조정(바꾸면 메모 필수), 조정 반영 합계, 전체 기록 링크.
-import type { Adjustment, Counts, RecordRef, Report, RubricItem } from "./types";
+import type { Adjustment, Catalog, Counts, RecordRef, Report, RubricItem } from "./types";
 
 export type Phase = "draft" | "approving" | "final";
 
@@ -73,4 +73,10 @@ export function reviewBodyFrom(report: Report) {
     ...(report.rubric.review.memo ? { memo: report.rubric.review.memo } : {}),
     reviewer_name: report.rubric.review.reviewer_name,
   };
+}
+
+/** 리포트 미션의 회사 문서 id → 이름(카탈로그 missions[].documents) */
+export function docTitlesOf(catalog: Catalog | null, missionId: string): Record<string, string> {
+  const mission = catalog?.missions.find((m) => m.id === missionId);
+  return Object.fromEntries((mission?.documents ?? []).map((d) => [d.doc_id, d.title]));
 }

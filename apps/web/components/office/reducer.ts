@@ -43,6 +43,8 @@ export type OfficeState = {
   replaced: boolean;
   /** 도구를 쓰는 중인 실행(run_id). "자료 찾는 중…" 표시 */
   searching: string[];
+  /** 이 창이 열려 있는 동안 공개된 회사 문서(document.released 프레임 또는 재동기화 스냅샷으로 안다) */
+  releasedLater: string[];
   /**
    * 아직 서버에 저장되지 않은 편집(파트 번호·최종본 섹션 → 본문). 재연결 스냅샷이 서버 값으로 덮어도
    * 이 값을 다시 얹어 입력을 잃지 않는다. 저장이 성공하면 같은 본문인 것만 지운다.
@@ -55,6 +57,8 @@ export type OfficeState = {
     parts: Record<number, { content: string; seq: number }>;
     final: Record<number, { content: string; seq: number }>;
   };
+  /** 가져오기에 성공한 최종본 섹션(본문·출처)과 그 세대. 가져오기 전에 만든 스냅샷이 되돌리지 못하게 한다 */
+  imported: Record<number, { section: FinalSection; seq: number }>;
 };
 
 export type OfficeAction =
@@ -101,9 +105,11 @@ export function initialState(snap: StateSnapshot): OfficeState {
     ended: null,
     replaced: false,
     searching: [],
+    releasedLater: [],
     dirty: { parts: {}, final: {} },
     saveSeq: 0,
     confirmed: { parts: {}, final: {} },
+    imported: {},
   };
 }
 
@@ -115,11 +121,24 @@ function without(record: Record<number, string>, key: number, content?: string) 
 }
 
 /**
- * 스냅샷 위에 이 창이 더 최신으로 아는 본문을 다시 얹는다: 조회 뒤에 저장에 성공한 본문(since보다 큰 세대),
- * 그다음 아직 저장 전인 편집. 제출 뒤에는 서버 값이 맞으므로 얹지 않는다.
+ * 스냅샷 위에 이 창이 더 최신으로 아는 본문을 다시 얹는다: 조회 뒤에 성공한 가져오기(본문·출처), 조회 뒤에
+ * 저장에 성공한 본문(since보다 큰 세대), 그다음 아직 저장 전인 편집. 제출 뒤에는 서버 값이 맞으므로 얹지 않는다.
  */
-function withLocal(snap: StateSnapshot, state: OfficeState, since: number): StateSnapshot {
-  if (snap.session.status !== "in_progress") return snap;
+function withLocal(given: StateSnapshot, state: OfficeState, since: number): StateSnapshot {
+  if (given.session.status !== "in_progress") return given;
+  const imports = Object.values(state.imported).filter((v) => v.seq > since);
+  const snap = imports.length
+    ? {
+        ...given,
+        final: {
+          ...given.final,
+          sections: given.final.sections.map((sec) => {
+            const hit = imports.find((v) => v.section.part_no === sec.part_no);
+            return hit ? { ...sec, ...hit.section } : sec;
+          }),
+        },
+      }
+    : given;
   const parts: Record<number, string> = {};
   const final: Record<number, string> = {};
   for (const [k, v] of Object.entries(state.confirmed.parts))
@@ -227,6 +246,9 @@ function applyFrame(state: OfficeState, frame: ServerFrame): OfficeState {
     case "document.released":
       return {
         ...state,
+        releasedLater: state.releasedLater.includes(frame.payload.doc_id)
+          ? state.releasedLater
+          : [...state.releasedLater, frame.payload.doc_id],
         snap: {
           ...snap,
           documents: snap.documents.map((d) =>
@@ -347,8 +369,18 @@ export function reduce(state: OfficeState, action: OfficeAction): OfficeState {
         state.ended ??
         (["in_progress", "reporting"].includes(action.state.session.status) ? null : "submitted");
       const live = action.state.session.status === "in_progress";
+      // 끊긴 사이 공개된 문서: 이전 스냅샷에서 미공개였다가 새 스냅샷에서 공개된 것
+      const releasedNow = action.state.documents
+        .filter(
+          (d) =>
+            d.released &&
+            !state.releasedLater.includes(d.doc_id) &&
+            snap.documents.some((old) => old.doc_id === d.doc_id && !old.released),
+        )
+        .map((d) => d.doc_id);
       const base = {
         ...state,
+        releasedLater: [...state.releasedLater, ...releasedNow],
         snap: withLocal(action.state, state, action.since ?? state.saveSeq),
         dirty: live ? state.dirty : { parts: {}, final: {} },
         ended,
@@ -471,6 +503,12 @@ export function reduce(state: OfficeState, action: OfficeAction): OfficeState {
     case "final_section":
       return {
         ...state,
+        // 가져오기도 성공한 변경이라 세대를 올린다. 이 세대보다 앞서 조회한 스냅샷은 이 섹션을 되돌리지 못한다
+        saveSeq: state.saveSeq + 1,
+        imported: {
+          ...state.imported,
+          [action.section.part_no]: { section: action.section, seq: state.saveSeq + 1 },
+        },
         // 가져오기는 서버가 섹션을 덮어쓴 값이 정본이다(그 섹션의 미저장·확정 본문은 버린다)
         dirty: { ...state.dirty, final: without(state.dirty.final, action.section.part_no) },
         confirmed: {

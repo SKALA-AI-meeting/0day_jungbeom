@@ -14,7 +14,7 @@ export function Library({
   onRead,
 }: {
   documents: CompanyDoc[];
-  /** 세션 중에 공개된 문서(개인 알림의 "공개됐어요" 줄로 안다) */
+  /** 이 창이 열려 있는 동안 공개된 문서(document.released 프레임·재동기화 스냅샷) */
   releasedLater: string[];
   /** 열람은 서버가 doc_views에 기록한다 */
   onRead: (docId: string) => Promise<string>;

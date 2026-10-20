@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { adminApi, errorMessage, useLoad, useToken } from "@/components/admin/client";
 import { ReportView } from "@/components/admin/report-view";
-import { phaseOf, recordAnchor, reviewBodyFrom } from "@/components/admin/review";
+import { docTitlesOf, phaseOf, recordAnchor, reviewBodyFrom } from "@/components/admin/review";
 import type { Adjustment } from "@/components/admin/types";
 import { Button, Toaster } from "@/components/ui";
 
@@ -23,6 +23,7 @@ export default function ReportPage() {
   const { id } = useParams<{ id: string }>();
   const token = useToken();
   const { data: report, error, failures, reload } = useLoad((t) => adminApi.report(t, id), id);
+  const { data: catalog } = useLoad(adminApi.catalog);
   const [pending, setPending] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [polls, setPolls] = useState(0);
@@ -81,6 +82,7 @@ export default function ReportPage() {
           recordHref={(ref, card) =>
             `/admin/sessions/${id}/record${card ? `?card=${card}` : ""}#${recordAnchor(ref)}`
           }
+          docTitles={docTitlesOf(catalog, report.position.mission_id)}
           pending={pending}
           error={reviewError}
           stalled={approving && polls >= STALL_POLLS}

@@ -68,6 +68,11 @@ export function PositionForm({
           <p className="text-sm text-muted">
             {mission.company_name} · {catalog.session_minutes}분 · 산출물 {mission.deliverable}
           </p>
+          {mission.documents.length > 0 && (
+            <p className="mt-2 text-sm text-muted">
+              회사 문서 {mission.documents.map((d) => d.title).join(" · ")}
+            </p>
+          )}
         </div>
       </section>
 

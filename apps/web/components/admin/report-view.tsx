@@ -52,15 +52,6 @@ export const REPORT_NOTICE_LINES = [
 export const HONESTY_NOTE = "미완료는 보드 기준이며 지원자가 보드를 갱신하지 않았을 수 있습니다.";
 export const AI_HEADER = "판단 기준 없음, 면접 확인용";
 
-/** 회사 문서 id → 이름(미션 카탈로그) */
-const DOC_TITLES: Record<string, string> = {
-  company_intro: "루프랩·모아런 소개",
-  metrics: "지표 현황",
-  interview_summary: "사용자 인터뷰 요약",
-  policy: "운영 정책",
-  meeting_notes: "회의록",
-};
-
 const EVIDENCE_LABEL: Record<Evidence["type"], string> = {
   message: "메시지",
   document: "문서 저장",
@@ -104,6 +95,8 @@ export type ReportViewProps = {
   onReview?: (body: { adjustments: Adjustment[]; memo?: string; reviewer_name: string }) => void;
   onRetry?: () => void;
   onAddNote?: (body: { text: string; reviewer_name: string }) => Promise<void>;
+  /** 회사 문서 id → 이름(카탈로그 missions[].documents). 없으면 id를 그대로 보인다 */
+  docTitles?: Record<string, string>;
 };
 
 function usePrinting(forced?: boolean) {
@@ -685,9 +678,11 @@ function CardSection({
 function AiUsage({
   report,
   recordHref,
+  docTitles,
 }: {
   report: Report;
   recordHref: (ref: RecordRef) => string;
+  docTitles?: Record<string, string>;
 }) {
   const { ai_usage } = report;
   if (!ai_usage.used) return <p className="text-muted">사용하지 않음</p>;
@@ -702,7 +697,7 @@ function AiUsage({
             <span className="tabular-nums">{sessionClock(e.t_min)}</span>
             {e.cited_doc_ids.map((d) => (
               <Chip key={d} tone="outline">
-                {DOC_TITLES[d] ?? d}
+                {docTitles?.[d] ?? d}
               </Chip>
             ))}
             <span>
@@ -1012,7 +1007,7 @@ export function ReportView(props: ReportViewProps) {
 
       <section className="flex flex-col gap-4">
         <SectionTitle sub={AI_HEADER}>③ AI 활용</SectionTitle>
-        <AiUsage report={report} recordHref={recordHref} />
+        <AiUsage report={report} recordHref={recordHref} docTitles={props.docTitles} />
       </section>
 
       {!sample && phase !== "draft" && (

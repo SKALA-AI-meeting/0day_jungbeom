@@ -12,7 +12,14 @@ export type CatalogElement = {
 };
 
 export type Catalog = {
-  missions: { id: string; name: string; company_name: string; deliverable: string }[];
+  missions: {
+    id: string;
+    name: string;
+    company_name: string;
+    deliverable: string;
+    /** 이 미션의 회사 문서(리포트의 인용 문서 이름도 여기서 읽는다) */
+    documents: { doc_id: string; title: string }[];
+  }[];
   elements: CatalogElement[];
   candidate_notice_template: string;
   candidate_faq: { q: string; a: string }[];
