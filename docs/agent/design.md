@@ -9,9 +9,12 @@ class AgentRunner(Protocol):
     async def run(self, session_id: UUID, stimulus: Stimulus, run_id: UUID) -> RunResult: ...
 # Stimulus = {type: "message"|"event"|"end", message_id?, event_ids?: [UUID]}
 #   event: 같은 due_at의 행 묶음(card order). run_id는 묶음의 대표(첫 행의 run_id, api가 모든 행에 같은 값을 기록)
-# RunResult = {ok: bool, fallback_used: bool, error?: str}
+# RunResult = {ok: bool, fallback_used: bool, error?: str, usage: {llm_calls, retries, tokens_in, tokens_out, latency_ms, tool_calls}}  # usage는 agent_runs.usage로 저장
 ```
 세션별 asyncio.Lock으로 직렬 실행. Lock은 메모리이므로 api는 단일 프로세스로 운영한다(제약을 `docs/plan.md`에 기록). 실행 기록은 `agent_runs`(run_id, 자극, 상태, usage)에 api가 남기고, 120초 넘게 `started`인 run은 스케줄러가 같은 run_id로 다시 실행한다.
+
+- 실행은 `app/services/runs.run_agent(...)`로 한다. 이 함수가 세션 Lock을 잡는다. 호출자가 이미 `locks(session_id)` 안이면 `lock_held=True`로 부른다(asyncio.Lock은 재진입되지 않아 다시 잡으면 교착된다). `ok=False`나 예외면 agent_runs는 failed.
+- 종료 run(`stimulus=end`, run_id=uuid5(session_id,"end")): `SessionService.complete()`가 Lock 안에서 상태 재검증 → 종료 실행 → 재사용 추정 → completed → 발행을 한 번에 한다. 종료 run이 `ok=False`여도 지원자 작업물을 잃지 않도록 completed로 진행하고 리포트를 발행한다(agent_runs failed, 경고 로그). 예외면 complete가 중단되고 스케줄러가 다시 부른다.
 
 재실행 멱등 규칙(같은 run_id로 두 번 실행해도 결과가 한 벌):
 - state의 `handled_stimuli`(message_id·event_id 집합)에 이미 있으면 route가 생성·전이를 건너뛰고 ok를 돌려준다(그래프 완료 후 done 기록 전에 중단된 경우).

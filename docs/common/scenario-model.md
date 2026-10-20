@@ -33,6 +33,8 @@ n = len(non_review)
 시점: n==1 → L/4; n>=2 → L/4 + i*(L/2)/(n)  (i=0..n-1)
 ```
 
+모든 시점(at_min, 지연 공개 at_min)은 0.01분 단위로 반올림한다(카탈로그 비율 0.0833 → L=120에서 10). 킥오프 브리프의 `{interview_expected_time}`은 조립된 실제 책임감 카드 시각(`scenario.vars`, "00:50" 형식)이고, 책임감 미선택이면 "시작 시 공유됨"이다.
+
 L=120, 4개 선택: cooperation 30, responsibility 50, flexibility 70, respect 90(=review). PRD와 동일.
 L=120, 3개(협력·책임·유연): 30, 50, 70. L=6, 4개: 1.5, 2.5, 3.5, 4.5분.
 

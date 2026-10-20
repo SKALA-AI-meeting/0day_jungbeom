@@ -47,15 +47,15 @@
 
 | 트랙 | 소유 | 비고 |
 |---|---|---|
-| foundation | `services/*/Dockerfile`, `pyproject.toml`·lockfile 전부(pytest 설정 포함), `services/api/app/{main,run,config,db,auth,hub,queue,masking}.py`, `app/models/`, `app/services/`, `app/agent/runner.py`, 각 MCP·worker의 패키지 진입점(`__main__.py`, `/health` 또는 heartbeat만), `apps/web/{Dockerfile,package.json,app/layout.tsx,app/globals.css,app/api/health/route.ts,components/ui/,mocks/,lib/api.ts}`, `scenarios/version.py`, `scripts/seed.py`, `infra/docker-compose.dev.yml`, `tests/conftest.py`, `tests/fixtures/` | 이후 변경은 오케스트레이터 승인. MCP·worker 진입점은 foundation 병합 후 각 트랙 소유로 넘어감 |
+| foundation | `services/*/Dockerfile`, `pyproject.toml`·lockfile 전부(pytest 설정 포함), `services/api/app/{main,run,config,db,auth,hub,queue,masking}.py`, `app/models/`, `app/services/`(reuse.py 제외), `app/agent/runner.py`, 각 MCP·worker의 패키지 진입점(`__main__.py`, `/health` 또는 heartbeat만), `apps/web/{Dockerfile,package.json,app/layout.tsx,app/globals.css,app/api/health/route.ts,components/ui/,lib/api.ts}`, `apps/web/mocks/`(admin.ts·office.ts·fixtures/admin·fixtures/office 제외), `scenarios/version.py`, `scripts/seed.py`, `infra/docker-compose.dev.yml`, `tests/conftest.py`, `tests/fixtures/`, `services/api/tests/conftest.py` | 이후 변경은 오케스트레이터 승인. MCP·worker 진입점은 foundation 병합 후 각 트랙 소유로 넘어감 |
 | api-admin | `app/routers/{admin,internal}.py`, 해당 테스트 | |
-| api-candidate | `app/routers/{candidate,ws}.py`, `app/scheduler.py`, 해당 테스트 | |
+| api-candidate | `app/routers/{candidate,ws}.py`, `app/scheduler.py`, `app/services/reuse.py`(estimate_reuse), 해당 테스트 | `app/services/context.py`의 reuse 훅(`reuse_estimator`) 연결은 이 트랙이 한다 |
 | prompts | `scenarios/prompts/`, `scenarios/catalog.yaml`의 brief·labels·label_texts·debrief 문구 | 코드 쪽 로더는 agent-session |
 | agent-session | `app/agent/{session,observe,llm,guard,mcp_client}/` | agent-assistant는 llm·guard·mcp_client를 import만 |
 | agent-assistant | `app/agent/assistant/` | |
 | business-mcp, rag-mcp, worker | 각 `services/<이름>/` | |
-| web-admin | `apps/web/app/admin/`, `components/admin/` | ui 컴포넌트 내부는 수정하지 않음 |
-| web-office | `apps/web/app/s/`, `components/office/`, `lib/ws.ts` | |
+| web-admin | `apps/web/app/admin/`, `components/admin/`, `mocks/admin.ts`, `mocks/fixtures/admin/` | ui 컴포넌트 내부는 수정하지 않음 |
+| web-office | `apps/web/app/s/`, `components/office/`, `lib/ws.ts`, `mocks/office.ts`, `mocks/fixtures/office/` | |
 | web-polish | `components/ui/` 내부, `globals.css`, `public/brand/` | foundation 병합 후 W3 시작 시점에 이 두 경로의 소유권이 foundation에서 web-polish로 넘어온다. props 변경 금지 |
 | e2e-runner | `tests/e2e/`, `tests/eval/`, `scenarios/e2e/`, `scripts/make_session.py` | |
 

@@ -1,4 +1,6 @@
 line-length = 100
 target-version = "py312"
+# 문서(.md) 안의 코드 블록은 의사코드라 포맷 대상에서 뺀다(ruff는 Markdown 코드 블록도 포맷한다)
+extend-exclude = ["*.md"]
 [lint]
 select = ["E", "F", "I", "B", "UP"]

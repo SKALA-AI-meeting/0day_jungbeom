@@ -1,0 +1,110 @@
+{
+  "session_id": "...",
+  "alias": "지원자A",
+  "stage": "draft",
+  "position": {
+    "name": "...",
+    "elements": ["cooperation", "responsibility"]
+  },
+  "deliverable": {
+    "parts": [
+      {
+        "part_no": 1,
+        "title": "문제 정의와 대상 사용자",
+        "assignee": "candidate",
+        "content": "...",
+        "revisions": 4,
+        "empty": false
+      }
+    ]
+  },
+  "rubric": {
+    "elements": [
+      {
+        "element": "responsibility",
+        "name": "책임감",
+        "auto": {
+          "met": 3,
+          "judged": 4,
+          "no_record": 0
+        },
+        "reviewer": null,
+        "items": [
+          {
+            "id": "resp_notified_before_release",
+            "text": "자료가 공개되기 전에 지연을 팀에 알림",
+            "auto": 1,
+            "reviewer": null,
+            "memo": null,
+            "evidence": [
+              {
+                "type": "message",
+                "id": "...",
+                "t_min": 52
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "auto_total": {
+      "met": 9,
+      "judged": 14,
+      "no_record": 2
+    },
+    "reviewer_total": null,
+    "review": null,
+    "history": []
+  },
+  "sections": [
+    {
+      "element": "responsibility",
+      "name": "책임감",
+      "situation": "담당 파트에 필요한 인터뷰 자료 지연",
+      "observed": "마감 전에 지연을 먼저 알리고 대안을 제시함",
+      "evidence": [
+        {
+          "type": "message",
+          "id": "...",
+          "t_min": 52,
+          "channel": "team",
+          "quote": "인터뷰 자료가 늦어서..."
+        },
+        {
+          "type": "revision",
+          "id": "...",
+          "t_min": 74,
+          "part_no": 1,
+          "summary": "1번 파트 수정(대상을 휴면 참여자로)"
+        }
+      ]
+    },
+    {
+      "element": "cooperation",
+      "name": "협력 태도",
+      "situation": "...",
+      "observed": null,
+      "evidence": [],
+      "note": "해당 상황에서 관련 행동이 기록되지 않음"
+    }
+  ],
+  "ai_usage": {
+    "used": true,
+    "summary": "...",
+    "evidence": [
+      {
+        "call_id": "...",
+        "t_min": 41,
+        "quote": "..."
+      },
+      {
+        "call_id": "...",
+        "t_min": 47,
+        "part_no": 4,
+        "reuse": "edited"
+      }
+    ]
+  },
+  "generated_at": "...",
+  "reviewed_at": null
+}

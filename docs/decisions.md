@@ -52,3 +52,12 @@
 - 초대 취소·만료 표시·안내 문안, 안 읽음 배지, 제출 확인 창, 동시 접속은 마지막 연결 유효, 정체 질문엔 AI라고 답함.
 - 고영향 AI 해당 여부는 미확정으로 서술. 동의 문구를 "AI 분류를 입력으로 규칙 점수 계산, 사람이 확정"으로 통일.
 - 받아들이지 않은 것: 책임감·유연성 함께 선택 시 시점 재배치(PRD 시점 규칙 유지, 압박은 의도), 창 밖 행동 점수화(사실 표시만), 전체 대화 열람(확장), 응답 시간 접근성 배려 기준(파일럿 뒤 결정), 타임드 동료 재방문(동료가 기대만 분명히 말함).
+
+## 2026-10-20 foundation 리뷰 반영 (Codex)
+- 종료 run 실패: `complete()`는 종료 run이 `ok=False`여도 completed로 진행하고 리포트를 발행한다. agent_runs는 failed로 남기고 경고 로그를 찍는다. 이유: 지원자 작업물을 잃지 않기 위해. 대안: 세션 failed(작업물이 리포트로 가지 않음).
+- 종료 직렬화: `complete()` 전체(상태 재검증 → 종료 실행 → 재사용 추정 → completed 커밋 → 발행)를 세션 Lock 안에서 하고, Lock 안에서 다시 읽은 상태가 in_progress가 아니면 아무것도 하지 않는다. `run_agent(lock_held=True)`로 같은 Lock의 재획득(교착)을 피한다. 이유: 제출과 만료가 겹쳐도 종료 실행·발행이 한 번만 일어나게.
+- web mocks 소유권 분리: `mocks/index.ts`(foundation)는 `mocks/admin.ts`(web-admin)·`mocks/office.ts`(web-office)의 ROUTES를 합치기만 하고, fixture도 `fixtures/admin/`·`fixtures/office/`로 나눈다. 이유: W2의 두 화면 트랙이 같은 파일을 고치지 않게.
+- 문서 파트 행: 세션 시작 시 `SessionService.start()`가 시나리오 parts 수만큼 `document_states`(빈 본문, revision 0)를 만든다. tasks는 분업 확정 때 api-candidate가 만든다. 이유: State 스냅샷과 문서 PUT이 행 존재를 전제로 단순해짐. 대안: PUT에서 upsert.
+- `SCENARIOS_DIR`: 기본값(/scenarios)이 로컬에 없을 때만 저장소 `scenarios/`로 대체하고, 사용자가 지정한 경로가 없으면 설정 오류로 멈춘다. 이유: 잘못된 경로를 조용히 숨기지 않게.
+- 소유권 예외 3건 수용: `scenarios/catalog.yaml`의 두 줄 인용(값 불변), `ruff.toml`의 Markdown 제외, `apps/web/README.md` 실행법.
+- MVP 제외: 브로커가 발행을 확인한 뒤 큐가 유실된 경우의 복구(outbox는 `*_enqueued_at`이 비어 있는 세션만 재발행한다).

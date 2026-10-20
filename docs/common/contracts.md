@@ -6,6 +6,7 @@
 
 - 공개 베이스: `http://api:8000` (web이 호출). 내부 베이스: `http://api:8001` (`/internal/*`만, compose 네트워크 안에서만 열림, 포트 미공개).
 - 응답 JSON. 오류는 `{"error": {"code": "...", "message": "..."}}`와 HTTP 4xx/5xx.
+- CORS: 공개 앱(8000)만 `WEB_ORIGIN`(쉼표 구분, 기본 `http://localhost:3000`)을 허용한다. 메서드 전부, 헤더 `Authorization`·`Content-Type`·`Idempotency-Key`. 내부 앱(8001)에는 두지 않는다.
 - 인증 헤더: `Authorization: Bearer <jwt>`. 내부: `X-Internal-Token: <secret>`.
 - 시각은 ISO 8601 UTC. 세션 상대 시각은 `t_min`(세션 시작 기준 분, 소수 허용)으로도 함께 준다.
 - 멱등: 변경 요청은 `Idempotency-Key` 헤더(선택)를 받으며 같은 키의 재요청은 같은 결과를 돌려준다. 내부 저장의 멱등 키: 메시지 `(session_id, run_id, seq)`, 문서 수정 `(session_id, part_no, run_id)`, 관찰 `(session_id, element, window_start)`. 같은 키의 재요청은 기존 행을 돌려준다.
@@ -17,7 +18,7 @@
 | 초대 생성 | 관리자 POST /invites | sessions 행이 `invited`로 함께 생성됨 | 초대 토큰(링크에만, DB에는 해시) |
 | 링크 입장 | GET /s/{token} | 시작 전 만료(72h) → 410, 취소 → 410 `cancelled`. completed 이후·failed → 200에 `status`와 `debrief_token`(디브리핑·종료 안내만 읽는 JWT, 종료 후 7일). 입장 화면 고정 안내: 2시간 연속 진행·중간 휴식 없음·PC 권장·업무는 가상 회사 루프랩에서·지원자는 리드 역할 | 없음 |
 | 동의 | POST /s/{token}/consent | `consented_at` 기록 | 세션 JWT 발급. 만료 = now + session_minutes + 120분 |
-| 시작 | POST /s/{token}/start (Bearer) | `in_progress`, started_at·ends_at 확정, 이벤트·공개 예약 | 같은 JWT |
+| 시작 | POST /s/{token}/start (Bearer) | `in_progress`, started_at·ends_at 확정, 이벤트·공개 예약·문서 파트 행 생성. 동의 후라도 시작 시점에 초대가 만료(72h)됐으면 410 `expired` | 같은 JWT |
 | 재입장 | GET /s/{token} → status가 invited면 POST /s/{token}/consent 재호출, in_progress면 POST /s/{token}/resume | 변화 없음 | 세션 JWT 재발급(저장된 JWT가 없어도 링크만으로 이어감). 초대 72h 만료는 시작 후에는 적용하지 않음 |
 | 종료 | submit 또는 timeout | `completed` | JWT는 디브리핑 조회까지 유효 |
 
@@ -117,7 +118,9 @@
 |---|---|
 | message.send | {client_msg_id, channel: "team"∣"dm", content}. 같은 client_msg_id 재전송은 기존 메시지로 ack(저장 시 (session_id, client_msg_id) unique). submitted_at 이후는 `error{code: session_ending}` |
 
-같은 세션에 WS가 둘 이상 붙으면 마지막 연결만 유효하고 이전 연결은 `session.replaced`로 닫는다. `notice` 채널 메시지(책임감 알림)는 지원자에게만 전달되고 페르소나 컨텍스트에는 들어가지 않는다.
+프레임은 서버·클라이언트 모두 봉투 `{"type": <위 표의 이름>, "payload": {...}}`다. 예: `{"type": "message.ack", "payload": {"client_msg_id": "c-1", "message_id": "...", "run_id": "..."}}`.
+
+같은 세션에 WS가 둘 이상 붙으면 마지막 연결만 유효하고 이전 연결은 `{"type": "session.replaced", "payload": {}}`를 받은 뒤 close code 4000으로 닫힌다. `notice` 채널 메시지(책임감 알림)는 지원자에게만 전달되고 페르소나 컨텍스트에는 들어가지 않는다.
 
 `event_id`가 있는 message.new는 이벤트 카드 실행의 결과다(러너가 카드 발생을 감지하는 기준). 진행 상태 이름은 위 다섯 가지로 고정한다.
 
@@ -197,7 +200,7 @@
 
 | 큐 | 본문 | 발행 | 소비 |
 |---|---|---|---|
-| report.generate | {session_id, attempt} | api `complete()` 직후. 미발행 세션은 스케줄러가 60초마다 재탐색해 재발행 | 워커. draft 저장 성공 후 ack |
+| report.generate | {session_id, attempt} (attempt는 1부터. 최초 발행 1, 실패 시 +1로 재발행, 3에서도 실패하면 DLQ: 최초 포함 총 3회. approve도 같음) | api `complete()` 직후. 미발행 세션은 스케줄러가 60초마다 재탐색해 재발행 | 워커. draft 저장 성공 후 ack |
 | report.approve | {session_id, attempt} | api `/admin/sessions/{id}/review`. 미발행(approve_enqueued_at null)은 스케줄러가 60초마다 재발행 | 워커. final 저장 성공 후 ack |
 | report.dlq | 원본 + error | 워커(attempt ≥ 3) | 워커의 dlq 소비자가 `POST /internal/.../report_failed`를 호출한 뒤 ack(api가 내려가 있으면 ack하지 않고 60초 뒤 재시도). 메시지는 사람이 확인할 때까지 관리 UI에 남지 않으므로 error는 워커 로그에도 남김 |
 

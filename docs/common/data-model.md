@@ -12,7 +12,7 @@ PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시�
 | session_events | id, session_id, card_id, element, due_at, status(pending·fired·done·failed), fired_at, done_at, attempts, run_id, texture bool | respect는 review와 같은 due_at의 별도 행. texture 행(midpoint_draft)은 관찰 없음. (session_id, card_id) unique. run_id는 fired 시 생성해 재실행에서도 재사용 |
 | messages | id, session_id, channel(team·dm·assistant·notice), sender, content, event_id, run_id, seq, client_msg_id, meta jsonb, created_at | (session_id, run_id, seq) unique로 멱등. 지원자 메시지는 (session_id, client_msg_id) unique. meta에 토큰·지연·모델, 지원자 메시지는 meta.classification(recipient, kind, instruction, related_card) |
 | agent_runs | run_id(pk), session_id, stimulus, ref_ids, status(started·finished·failed), usage jsonb, started_at, finished_at | 실행 기록. /state의 active_runs 원천. started 120초 초과는 스케줄러가 재실행. usage로 세션 비용 합산 |
-| document_states | session_id, part_no(1~5), content, revision, updated_by, updated_at | 현재 내용 |
+| document_states | session_id, part_no(1~5), content, revision, updated_by, updated_at | 현재 내용. 세션 시작 시 시나리오 parts 수만큼 빈 본문·revision 0으로 생성(tasks는 분업 확정 때 생성) |
 | document_revisions | id, session_id, part_no, revision, by(candidate·colleague), content, length, diff_ratio, run_id, created_at | 변경 로그. 본문 스냅샷을 함께 저장해 특정 수정 내용과 AI 반영 시점을 복원한다. 동료 수정은 (session_id, part_no, run_id) unique로 멱등 |
 | doc_views | id, session_id, doc_id, viewed_at | 회사 문서 열람 기록 |
 | tasks | session_id, part_no, assignee(candidate·colleague·both), status(todo·doing·done) | |
@@ -33,7 +33,7 @@ invited ──동의·시작──▶ in_progress ──제출/만료──▶ c
             └──LLM 연속 실패 3회 또는 필수 카드 3회 실패──▶ failed
 ```
 
-상태 변경은 api의 `SessionService` 한 곳만 한다(start, complete, mark_report_ready, approve, mark_reviewed, fail). 지원자 목록 표시명: 초대됨, 진행 중, 완료, 리포트 준비됨, 확정 중, 검토 완료, 실패. `fail(stage, reason)`은 failed_stage(session: 진행 중 중단, report: 리포트 생성 실패)와 사유를 남긴다. 세션 실패는 디브리핑(그때까지 fired된 카드)을 제공하고 리포트는 만들지 않는다. 재응시는 관리자가 새 초대를 만든다(기록은 보존).
+상태 변경은 api의 `SessionService` 한 곳만 한다(start, complete, cancel, mark_report_ready, approve, mark_reviewed, fail). 지원자 목록 표시명: 초대됨, 진행 중, 완료, 리포트 준비됨, 확정 중, 검토 완료, 실패. `fail(stage, reason)`은 failed_stage(session: 진행 중 중단, report: 리포트 생성 실패)와 사유를 남긴다. 세션 실패(failed_stage=session)는 연출 설명 없이 중단 안내만 보여 주고(재응시 가능, PRD 7.4·contracts의 debrief) 리포트는 만들지 않는다. 재응시는 관리자가 새 초대를 만든다(기록은 보존).
 
 보관: 세션 종료 후 90일. `scripts/purge.py`(M4)가 messages·document_*·doc_views·observations·assistant_*·reports·rubric_adjustments·agent_runs·session_events·document_releases·checkpoints를 세션 단위로 지운다(조정 메모 포함). LangSmith는 프로젝트 보존 기간을 90일로 둔다.
 

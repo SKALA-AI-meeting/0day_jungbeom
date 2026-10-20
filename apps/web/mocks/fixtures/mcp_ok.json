@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "data": {
+    "id": "...",
+    "channel": "team",
+    "sender": "manager",
+    "content": "...",
+    "event_id": null,
+    "run_id": "...",
+    "t_min": 0.0,
+    "created_at": "..."
+  }
+}

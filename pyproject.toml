@@ -1,0 +1,12 @@
+# 저장소 루트 도구 환경(ruff). 서비스 의존성은 각 services/<이름>/pyproject.toml에 있다.
+[project]
+name = "dayzero-tools"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[dependency-groups]
+dev = ["ruff>=0.6"]
+
+[tool.uv]
+package = false
