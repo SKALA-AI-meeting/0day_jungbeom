@@ -100,7 +100,7 @@
 | P2 | agent-session M2 | 대기 (scenario 병합 + 사용자 mock 확인) | | |
 | P2 | agent-assistant | 대기 (scenario 병합, 라우터 훅, 인터페이스 동결) | | |
 | P2 | web-integrate | 대기 (scenario 병합 + mock 확인). 실제 세션 인수는 agent 병합 뒤 | | |
-| P2 | web-polish | 개발 완료(2a77953), Codex 리뷰 중 | | |
+| P2 | web-polish | 병합 완료. B2(최종본 저장 실패 표시 유지)는 web-integrate 필수 후속 | Codex 차단 1·권장 2 반영 | fb788aa |
 | P3 | e2e-runner | 대기 (P2 합본) | | |
 | P4 | pilot | 대기 | | |
 | P5 | docs-final ∥ docs-service | 대기 (최종 기준점, 캡처 묶음) | | |
