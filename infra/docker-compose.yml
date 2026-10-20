@@ -69,7 +69,7 @@ services:
       postgres: { condition: service_healthy }
     volumes:
       - ../scenarios:/scenarios:ro
-      - hfcache:/root/.cache/huggingface
+      - hfcache:/models
     deploy:
       resources:
         limits:

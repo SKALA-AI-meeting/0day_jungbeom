@@ -178,7 +178,7 @@
 | search_documents | {query, session_id, top_k?=3} | [{doc_id, title, chunk, score}]. 내부 GET /documents로 공개 여부 확인 후 공개된 문서만 | 조회 |
 | get_document | {doc_id, session_id} | {doc_id, title, content}. 공개 전이면 `not_released` | 조회 |
 | list_documents | {session_id} | [{doc_id, title, released}] | 조회 |
-| reindex_documents | {} | {indexed: n, model, dim, catalog_version}. 현재 카탈로그 버전으로 고정 문서 5개를 색인(관리용). 다른 버전의 청크는 지우지 않음. 에이전트에는 노출하지 않음 | 변경 |
+| reindex_documents | {} | {indexed: n(색인된 청크 수), model, dim, catalog_version}. 현재 카탈로그 버전으로 고정 문서 5개를 색인(관리용). 다른 버전의 청크는 지우지 않음. 에이전트에는 노출하지 않음 | 변경 |
 
 ### 에이전트별 도구 허용 목록
 

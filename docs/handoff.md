@@ -51,11 +51,11 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 | 파도 | 트랙 | pane | 상태 | 리뷰 | 병합 커밋 |
 |---|---|---|---|---|---|
 | W0 | foundation | w1J:p8(닫음) | 병합 완료 | Codex 차단 5·권장 5 반영 | c9fa550 |
-| W1 | prompts | w1J:pE | 리뷰 중 (c068e3c) | Codex 리뷰 탭 w1J:t3 | |
-| W1 | api-admin | w1J:pC | 리뷰 중 (e3c201c) | Codex 리뷰 탭 w1J:t3 | |
+| W1 | prompts | 닫음 | 병합 완료 | Codex 차단 4 반영 | fb963e0 |
+| W1 | api-admin | 닫음 | 병합 완료 | Codex 차단 6 반영 | 9447848 |
 | W1 | api-candidate | w1J:pB | 리뷰 중 (911aaa3) | Codex 리뷰 탭 w1J:t3 | |
 | W1 | business-mcp | w1J:pD(닫음) | 병합 완료 | Codex 차단 1·권장 1 반영 | 502b88b |
-| W2 | rag-mcp | w1J:pG | 진행 중 | | |
+| W2 | rag-mcp | 닫음 | 병합 완료 | Codex 차단 1 반영 | (이 커밋) |
 | W2 | web-admin | — | 대기 | | |
 | W2 | web-office | — | 대기 | | |
 | W2 | worker | — | 대기 | | |
