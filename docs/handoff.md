@@ -8,7 +8,7 @@
 - 설계 리뷰 5라운드(Codex 4, Claude UX 1) 전부 반영 완료. 마지막 반영 커밋은 `git log`의 최신. W0 foundation은 병합됐다(c9fa550). **W1 4개 트랙 진행 중**(브리프는 오케스트레이터 세션 scratchpad의 `brief-<트랙>.md`, 보고서는 `<트랙>-report.md`). `infra/.env.local`은 main에 있고 worktree마다 `.env`·`.env.local`을 복사해 준다.
 - 환경: `infra/.env`에 OpenAI·LangSmith 키가 들어 있다(git 무시). `infra/.env.local`은 아직 없다(foundation이 만든다).
 - 저장소: GitHub `SKALA-AI-meeting/Day-0_zaeho`, main 단일 브랜치. worktree 없음.
-- Herdr: 열려 있는 리뷰·개발 pane 없음. Claude pane은 처음 보는 폴더(worktree)에서 폴더 신뢰 확인에 멈추므로, worktree를 만든 뒤 사용자에게 한 번 "Yes, I trust"를 눌러 달라고 한다. Claude pane의 긴 출력은 `herdr agent read`로 다 못 읽으므로 결과를 파일로 저장하게 시킨다.
+- Herdr: 열려 있는 리뷰·개발 pane 없음. Claude pane은 처음 보는 폴더(worktree)에서 폴더 신뢰 확인에 멈추므로, worktree를 만든 뒤 사용자에게 한 번 "Yes, I trust"를 눌러 달라고 한다. Claude pane의 긴 출력은 `herdr agent read`로 다 못 읽으므로 결과를 파일로 저장하게 시킨다. Codex 리뷰어는 별도 탭에 pane으로 띄우고(`-s workspace-write -a never`, read-only면 파일 저장이 막힘) 결과를 worktree의 `REVIEW.md`(추적 안 함, 병합 전 삭제)에 쓰게 한다. `codex exec`를 백그라운드로 쓰려면 반드시 `</dev/null`.
 
 ## 다음 행동
 
@@ -49,9 +49,9 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 | 파도 | 트랙 | pane | 상태 | 리뷰 | 병합 커밋 |
 |---|---|---|---|---|---|
 | W0 | foundation | w1J:p8(닫음) | 병합 완료 | Codex 차단 5·권장 5 반영 | c9fa550 |
-| W1 | prompts | w1J:pE | 진행 중 | | |
-| W1 | api-admin | w1J:pC | 진행 중 | | |
-| W1 | api-candidate | w1J:pB | 진행 중 | | |
+| W1 | prompts | w1J:pE | 리뷰 중 (c068e3c) | Codex 리뷰 탭 w1J:t3 | |
+| W1 | api-admin | w1J:pC | 리뷰 중 (e3c201c) | Codex 리뷰 탭 w1J:t3 | |
+| W1 | api-candidate | w1J:pB | 리뷰 중 (911aaa3) | Codex 리뷰 탭 w1J:t3 | |
 | W1 | business-mcp | w1J:pD(닫음) | 병합 완료 | Codex 차단 1·권장 1 반영 | 502b88b |
 | W2 | rag-mcp | w1J:pG | 진행 중 | | |
 | W2 | web-admin | — | 대기 | | |
