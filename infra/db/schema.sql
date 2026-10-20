@@ -51,6 +51,7 @@ CREATE TABLE sessions (
   submitted_at timestamptz,
   llm_failures int NOT NULL DEFAULT 0,
   report_enqueued_at timestamptz,
+  approve_enqueued_at timestamptz,          -- report.approve 발행 기록(outbox)
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -64,6 +65,7 @@ CREATE TABLE session_events (
   fired_at timestamptz,
   done_at timestamptz,
   attempts int NOT NULL DEFAULT 0,
+  run_id uuid,                              -- fired 시 생성, 재실행에서 재사용
   UNIQUE (session_id, card_id)
 );
 CREATE INDEX ON session_events (due_at) WHERE status = 'pending';
@@ -100,11 +102,14 @@ CREATE TABLE document_revisions (
   part_no int NOT NULL,
   revision int NOT NULL,
   by text NOT NULL CHECK (by IN ('candidate','colleague')),
+  content text NOT NULL,                    -- 본문 스냅샷
   length int NOT NULL,
   diff_ratio real,
+  run_id uuid,                              -- 동료 수정만. 같은 (part_no, run_id)는 기존 행 반환
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (session_id, part_no, revision)
 );
+CREATE UNIQUE INDEX ON document_revisions (session_id, part_no, run_id) WHERE run_id IS NOT NULL;
 
 CREATE TABLE doc_views (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -178,5 +183,5 @@ CREATE TABLE doc_chunks (
   embedding vector(1024) NOT NULL,
   model text NOT NULL DEFAULT 'BAAI/bge-m3',
   catalog_version text NOT NULL,
-  UNIQUE (doc_id, chunk_no)
+  UNIQUE (catalog_version, doc_id, chunk_no)
 );

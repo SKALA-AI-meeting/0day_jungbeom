@@ -10,8 +10,8 @@
 
 ## rag-mcp (`services/rag-mcp/`)
 
-- 시드 시 `scenarios/documents/*.md`를 400자 청크로 나눠 BGE-M3(1024차원)로 임베딩해 `doc_chunks`에 저장(model, catalog_version 기록). `reindex_documents`는 같은 일을 하며 에이전트에는 노출하지 않는다.
-- `search_documents`: 내부 `GET /internal/sessions/{id}/documents`로 공개 목록을 받아 doc_id로 필터한 뒤 코사인 유사도 상위 k. 결과에 doc_id·title·chunk·score.
+- 시드 시 `scenarios/documents/*.md`를 400자 청크로 나눠 BGE-M3(1024차원)로 임베딩해 `doc_chunks`에 저장. 키는 (catalog_version, doc_id, chunk_no)이고 catalog_version은 api와 같은 카탈로그 파일 해시다. `reindex_documents`는 현재 버전을 색인하고 이전 버전 청크는 남겨 진행 중 채용 건이 자기 버전으로 검색하게 한다. 에이전트에는 노출하지 않는다.
+- `search_documents`: 내부 `GET /internal/sessions/{id}/documents`로 `catalog_version`과 공개 목록을 받아 같은 버전·공개된 doc_id로 필터한 뒤 코사인 유사도 상위 k. 해당 버전 청크가 없으면 `upstream_unavailable`(재색인 필요). 결과에 doc_id·title·chunk·score.
 - 모델 로드는 시작 시 1회. 컨테이너 메모리 3GB.
 
 ## 완료 기준

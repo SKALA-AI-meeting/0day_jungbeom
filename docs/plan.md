@@ -7,7 +7,7 @@
 | 단계 | pane | 범위 | 의존 | 완료 기준 |
 |---|---|---|---|---|
 | M0 | (오케스트레이터) | 문서, 계약, 카탈로그, 회사 문서, 대본, compose, 스키마 | — | 완료 |
-| M0.5 | foundation | 서비스 5개의 최소 앱(Dockerfile, `/health`, 의존성·lockfile), api 공용 기반(config, db, models, auth, SessionService, scenario, hub, queue, masking, AgentRunner+Fake), web 기본(Next 앱, 토큰, 공용 컴포넌트 props만, mocks/ 골격), 테스트 픽스처 골격 | M0 | `docker compose up` 전부 healthy, 시드 후 rag 검색 응답, SessionService 단위 테스트, Fake runner로 메시지→post→WS |
+| M0.5 | foundation | 서비스 5개의 최소 앱(Dockerfile, `/health`, 의존성·lockfile), api 공용 기반(config, db, models, auth, SessionService, scenario, hub, queue, masking, AgentRunner+Fake), web 기본(Next 앱, 토큰, 공용 컴포넌트 props만, mocks/ 골격), 테스트 픽스처 골격 | M0 | `docker compose up` 전부 healthy(각 서비스는 /health만 응답), SessionService 단위 테스트, 조립 결과가 scenario-model.md 수치와 일치, Fake runner로 메시지→내부 저장→hub 브로드캐스트 단위 테스트(WS·rag 검색은 M1 트랙) |
 | M1 | prompts | 페르소나 프롬프트, 카드 brief 문구, 금지어 패턴, 관찰 레이블 정의·예시. 코드 없음 | M0 | 리뷰 통과 |
 | M1 | api-admin | /admin, /internal 라우터 | foundation | 계약 예시대로, 격리·검증·409 테스트 |
 | M1 | api-candidate | /s, /sessions, WS, 스케줄러, 공개·만료·재발행 | foundation | 6분 세션 시계대로, 재시작 재실행, ack·재연결 |
@@ -24,6 +24,24 @@
 | M3 | fix-* | 실패 영역별 | e2e | 해당 단언 통과 |
 | M4 | docs-final | README 실행법, 레퍼런스 형식의 아키텍처 그림(6뷰·번호·금지 사항·Layer/Tier), 평가표 근거 표, 120분 실세션 기록 | 전부 | 새 환경에서 README만으로 기동 |
 
+## 병렬 작업 방식
+
+동시에 띄우는 개발 pane은 **최대 4개**다. 각 파도(wave)는 pane 4개 이하로 띄우고, 끝난 트랙부터 리뷰·병합한 뒤 다음 트랙을 채운다.
+
+| 파도 | 동시 pane | 병합 순서 | 비고 |
+|---|---|---|---|
+| W0 | foundation (1) | 단독 | 끝나야 다음 파도 시작. 리뷰 후 main 병합 |
+| W1 | prompts, api-admin, api-candidate, business-mcp | api-admin → api-candidate → business-mcp → prompts | 모두 foundation 위에서 mock으로 독립 |
+| W2 | rag-mcp, web-admin, web-office, worker | 순서 무관 | W1 중 끝난 자리에 바로 채움 |
+| W3 | agent-min → agent-session, agent-assistant, web-polish, e2e-runner | agent-session → agent-assistant → e2e-runner → web-polish | agent-min은 api-*·business-mcp 병합 후 시작 |
+| W4 | fix-* (필요한 만큼, 4개 이내), docs-final | | |
+
+규칙:
+- 한 pane은 트랙 하나, 트랙이 끝나면 pane을 닫는다. 리뷰 pane은 별도로 띄우고 끝나면 닫는다.
+- 파도 안에서 서로 파일을 공유하지 않는다(소유권 표). 공유 파일이 필요하면 foundation 변경 요청으로 올린다.
+- 병합 전 `main`에서 `make test`와 `make lint`가 통과해야 한다.
+- 오케스트레이터는 파도마다 "띄움 → 완료 보고 확인 → 리뷰 → 병합 → 다음" 기록을 `docs/handoff.md`의 진행 표에 남긴다.
+
 ## 파일 소유권
 
 | 트랙 | 소유 | 비고 |
@@ -37,7 +55,7 @@
 | business-mcp, rag-mcp, worker | 각 `services/<이름>/` | |
 | web-admin | `apps/web/app/admin/`, `components/admin/` | ui 컴포넌트 내부는 수정하지 않음 |
 | web-office | `apps/web/app/s/`, `components/office/`, `lib/ws.ts` | |
-| web-polish | `components/ui/` 내부, `globals.css`, `public/brand/` | props 변경 금지 |
+| web-polish | `components/ui/` 내부, `globals.css`, `public/brand/` | foundation 병합 후 W3 시작 시점에 이 두 경로의 소유권이 foundation에서 web-polish로 넘어온다. props 변경 금지 |
 | e2e-runner | `tests/e2e/`, `tests/eval/`, `scenarios/e2e/`, `scripts/make_session.py` | |
 
 ## 병렬 작업 규칙

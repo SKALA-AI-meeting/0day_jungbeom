@@ -22,7 +22,7 @@ MVP는 인성 요소 4개만 둔다. 카드 하나의 필드:
 
 ## 조립 (`positions.scenario`)
 
-채용 건 생성 시 api가 한 번 계산해 저장한다. 카탈로그 파일 해시를 `catalog_version`으로, 카드 내용과 회사 문서 본문을 scenario JSON에 복사해 고정한다. 이후 카탈로그를 고쳐도 진행 중 채용 건은 바뀌지 않는다.
+채용 건 생성 시 api가 한 번 계산해 저장한다. 카탈로그 파일 해시를 `catalog_version`으로, 카드 내용과 회사 문서 본문을 scenario JSON에 복사해 고정한다. 이후 카탈로그를 고쳐도 진행 중 채용 건은 바뀌지 않는다. RAG 색인도 같은 `catalog_version`을 키로 보존되므로(rag-mcp 설계) 검색은 채용 건에 고정된 버전의 청크만 본다.
 
 ```
 L = session_minutes

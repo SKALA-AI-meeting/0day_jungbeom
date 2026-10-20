@@ -22,7 +22,9 @@ PRD(`../PRD.md`)를 구현 가능한 수준으로 구체화한 문서다. 검토
 - `common/contracts.md`: REST·WebSocket·내부 API·MCP 도구 계약과 예시
 - `common/harness.md`: 하네스 8요소의 구현 위치
 - `common/testing.md`: 세션 빠른 조립, e2e 러너, 기록, 단언
-- `plan.md`: 마일스톤, pane 분할, 파일 소유권, 병렬 작업·모델 운영 규칙
+- `plan.md`: 마일스톤, 파도별 병렬 작업 방식, 파일 소유권, 모델 운영 규칙
+- `dev-process.md`: 도구, 로컬 실행, TDD 범위, 브랜치·리뷰·병합 규칙
+- `handoff.md`: 다음 오케스트레이터가 바로 이어가기 위한 현재 상태·다음 행동·진행 표
 - `frontend/`, `api/`, `agent/`, `mcp/`, `worker-infra/`: 역할별 상세 설계와 완료 기준
 - `assignment/evaluation.md`: 평가표와 항목별 근거, 레퍼런스와의 차이
 - `assignment/reference-architecture.md`: 과제 레퍼런스 아키텍처의 뷰·표기·표 구성과 보고서 적용 방법

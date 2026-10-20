@@ -8,7 +8,7 @@
 | State·Memory | LangGraph PostgresSaver. thread `session:{id}`, `assistant:{id}`, 워커 `report:{id}` | 자극마다 체크포인트. 재시작 시 fired 이벤트 재실행 | restart 대본 |
 | Agent Loop | recursion_limit 20, 분업 조정 3회, 어시스턴트 60회/세션, `ends_at` 도달 시 강제 submit | 한도 초과는 고정 안내문. 한도는 세션 단위, 초기화 없음 | e2e 단언 |
 | Guardrails | `guard`: 점수·합격·순위·연출·평가 기준 패턴 → 고정 안내문 치환. 입력 마스킹: 전화번호·이메일. 사람 승인: 리포트 그래프 interrupt → 검토 완료가 같은 thread 재개 | 패턴 목록은 prompts 트랙이 관리. 승인 전 final 저장은 api가 409로 차단 | guard 단위 테스트, 승인 e2e |
-| Recovery | LLM 래퍼: 타임아웃 30초, 재시도 2회(1·3초) → `FallbackText` | 일반 응답 실패: 고정 문장 저장, llm_failures+1. 필수 카드 실패: 이벤트 attempts+1로 2회 재실행. llm_failures 연속 3회 또는 카드 2회 실패 → 세션 failed. 성공 시 카운터 0 | 강제 실패 주입 테스트 |
+| Recovery | LLM 래퍼: 타임아웃 30초, 재시도 2회(1·3초) → `FallbackText` | 일반 응답 실패: 고정 문장 저장, llm_failures+1. 필수 카드 실패: 이벤트 attempts+1로 재실행(최초 포함 총 3회). llm_failures 연속 3회 또는 카드 3회 실패 → 세션 failed. 성공 시 카운터 0 | 강제 실패 주입 테스트 |
 | Observability | LangSmith trace(run_id를 metadata로), `messages.meta`에 토큰·지연·모델, 구조화 로그에 run_id | 세션당 비용 합산 가능 | trace 링크, meta 집계 |
 
 실패 유형별 폴백 형태: 페르소나 응답 → 고정 문장. 분업 분류 → "수락"으로 간주하지 않고 재질문 1회 후 마지막 안 확정. 관찰 분류 → label null(관찰 없음)로 기록. 어시스턴트 → "잠시 후 다시 시도해 주세요".

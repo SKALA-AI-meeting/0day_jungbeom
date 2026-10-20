@@ -1,5 +1,7 @@
 # 테스트와 기록
 
+원칙: happy path 중심. 아래 목록이 전부이며, 완료 기준에 없는 테스트는 추가하지 않는다(`docs/dev-process.md`).
+
 ## 단위
 - observe 규칙 함수, guard, 시나리오 조립(수치표), 재사용 추정, SessionService 전이·멱등: pytest 고정 입력.
 - MCP 도구: api mock으로 입력 검증·오류 코드.
@@ -26,11 +28,12 @@ python scripts/make_session.py --elements cooperation,responsibility,flexibility
 `transcript.jsonl`(WS 이벤트·REST 호출 전부), `observations.json`, `report_draft.json`, `report_final.json`, `summary.md`(카드별 예정·실제 시각과 오차, 단언 결과, run_id별 도구 호출, LangSmith trace URL).
 
 ### 단언
-1. 선택 카드(respect 포함) 전부 fired→done, 오차 ±10초. 미선택 카드 미발생
+1. 선택 카드(respect 포함) 전부 fired→done, 오차 ±10초(운영 목표와 동일). 각 session_events 행마다 자기 event_id의 `message.new`가 1건 이상. 미선택 카드 미발생
 2. 리포트 draft·final에 금지어 없음, 미선택 요소 섹션 없음, evidence id가 모두 같은 세션 메시지
 3. `no_assistant`에서 `ai_usage.used=false`
 4. draft → review → final 저장, 같은 thread_id(워커 로그), final 내용 = draft 해시, 중복 review 멱등
-5. `restart`: 재시작 후 /state 복원, fired 이벤트 재실행, 중복 메시지 없음(run_id·seq)
+5. `restart`: 재시작 후 90초 안에 /state 복원, fired 이벤트 재실행(같은 run_id), 중복 메시지 없음(run_id·seq)
+7. 동시 실행: 대본 5개(all_four×3, one_element, no_assistant)를 함께 돌려 단언 1·2 통과
 6. 장애 주입: 이벤트 fired 직후 종료, 변경 도구 성공 직후 종료, 큐 발행 전 종료(재탐색 재발행), final 저장 후 ack 전 종료(멱등) — 각 1건, 결과가 누락·중복 없음
 
 ### 근거 정확성 픽스처 (`tests/eval/`)

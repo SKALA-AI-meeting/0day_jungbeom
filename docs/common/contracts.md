@@ -8,7 +8,7 @@
 - 응답 JSON. 오류는 `{"error": {"code": "...", "message": "..."}}`와 HTTP 4xx/5xx.
 - 인증 헤더: `Authorization: Bearer <jwt>`. 내부: `X-Internal-Token: <secret>`.
 - 시각은 ISO 8601 UTC. 세션 상대 시각은 `t_min`(세션 시작 기준 분, 소수 허용)으로도 함께 준다.
-- 멱등: 변경 요청은 `Idempotency-Key` 헤더(선택)를 받으며 같은 키의 재요청은 같은 결과를 돌려준다. 내부 메시지·관찰 저장은 `(session_id, run_id, seq)`로 중복을 막는다.
+- 멱등: 변경 요청은 `Idempotency-Key` 헤더(선택)를 받으며 같은 키의 재요청은 같은 결과를 돌려준다. 내부 저장의 멱등 키: 메시지 `(session_id, run_id, seq)`, 문서 수정 `(session_id, part_no, run_id)`, 관찰 `(session_id, element, window_start)`. 같은 키의 재요청은 기존 행을 돌려준다.
 
 ## 인증 생명주기
 
@@ -18,10 +18,10 @@
 | 링크 입장 | GET /s/{token} | 만료(72h) → 410, 세션이 completed 이후 → 409 | 없음 |
 | 동의 | POST /s/{token}/consent | `consented_at` 기록 | 세션 JWT 발급. 만료 = now + session_minutes + 120분 |
 | 시작 | POST /s/{token}/start (Bearer) | `in_progress`, started_at·ends_at 확정, 이벤트·공개 예약 | 같은 JWT |
-| 재입장 | GET /s/{token} → status가 in_progress면 POST /s/{token}/resume | 변화 없음 | 세션 JWT 재발급(저장된 JWT가 없어도 링크만으로 이어감). 초대 72h 만료는 시작 후에는 적용하지 않음 |
+| 재입장 | GET /s/{token} → status가 invited면 POST /s/{token}/consent 재호출, in_progress면 POST /s/{token}/resume | 변화 없음 | 세션 JWT 재발급(저장된 JWT가 없어도 링크만으로 이어감). 초대 72h 만료는 시작 후에는 적용하지 않음 |
 | 종료 | submit 또는 timeout | `completed` | JWT는 디브리핑 조회까지 유효 |
 
-검증: 다른 세션 id 접근 403, 동의 중복 호출은 멱등(같은 JWT 재발급), 사용한 초대의 새 동의는 409, 시작 전 JWT 만료는 재입장으로 복구.
+검증: 다른 세션 id 접근 403, 동의 중복 호출은 멱등(새 JWT 재발급), 같은 초대의 동의는 시작 전까지 몇 번이든 허용하고 시작 후에는 409, 시작 전 JWT 만료는 `/consent` 재호출로, 시작 후 만료는 `/resume`으로 복구.
 
 ## 관리자 REST (`/admin`, 포트 8000)
 
@@ -119,15 +119,16 @@
 | POST | /internal/sessions/{id}/messages | {channel, sender, content, event_id?, run_id, seq, meta?} | Message (같은 run_id+seq 재요청은 기존 행) |
 | GET | /internal/sessions/{id}/board | | {tasks} |
 | PUT | /internal/sessions/{id}/tasks/{part_no} | {status} | task. 동료 담당이 아니면 403 `forbidden` |
-| PUT | /internal/sessions/{id}/division | {parts} | {division}. in_progress가 아니면 409 |
+| PUT | /internal/sessions/{id}/division | {parts} | {division}. in_progress가 아니면 409. 최소 조건(2번 candidate, 4·5 중 하나 이상 colleague 단독) 위반은 422 |
 | GET | /internal/sessions/{id}/document | | {"1": {content, revision, updated_by}, ...} |
-| PUT | /internal/sessions/{id}/document/{part_no} | {content, by: "colleague", run_id} | {updated_at, revision}. 동료 담당이 아니면 403 |
-| GET | /internal/sessions/{id}/documents | | [{doc_id, title, released}] (rag-mcp가 공개 여부 확인에 사용) |
+| PUT | /internal/sessions/{id}/document/{part_no} | {content, by: "colleague", run_id} | {updated_at, revision}. 같은 part_no+run_id 재요청은 기존 revision. 동료 담당이 아니면 403 |
+| GET | /internal/sessions/{id}/documents | | {catalog_version, documents: [{doc_id, title, released}]} (rag-mcp가 공개 여부와 색인 버전 확인에 사용) |
 | POST | /internal/sessions/{id}/releases/{doc_id} | | {released_at} (멱등) |
-| POST | /internal/sessions/{id}/observations | {element, window_start, window_end, metrics, label, evidence_message_ids, run_id} | {id}. evidence가 이 세션의 메시지가 아니면 422 |
+| POST | /internal/sessions/{id}/observations | {element, window_start, window_end, metrics, label, evidence_message_ids, run_id} | {id}. 같은 element+window_start 재요청은 기존 행. evidence가 이 세션의 메시지가 아니면 422 |
 | GET | /internal/sessions/{id}/observations | | [...] |
-| GET | /internal/sessions/{id}/assistant_calls | | [...] |
-| GET | /internal/sessions/{id}/document_revisions | | [{part_no, revision, by, updated_at, length}] |
+| GET | /internal/sessions/{id}/assistant_calls | | [{id, request_message_id, response_message_id, cited_doc_ids, created_at}] |
+| GET | /internal/sessions/{id}/assistant_reuse | | [{call_id, part_no, reuse, ratio}] (제출 후에만 값이 있음) |
+| GET | /internal/sessions/{id}/document_revisions | | [{part_no, revision, by, content, length, diff_ratio, created_at}] |
 | GET | /internal/sessions/{id}/doc_views | | [{doc_id, viewed_at}] |
 | POST | /internal/sessions/{id}/report/draft | {content} | {status: "report_ready"} (멱등) |
 | POST | /internal/sessions/{id}/report/final | {content} | {status: "reviewed", reviewed_at}. draft가 없거나 status가 approving이 아니면 409 |
@@ -160,7 +161,7 @@
 | search_documents | {query, session_id, top_k?=3} | [{doc_id, title, chunk, score}]. 내부 GET /documents로 공개 여부 확인 후 공개된 문서만 | 조회 |
 | get_document | {doc_id, session_id} | {doc_id, title, content}. 공개 전이면 `not_released` | 조회 |
 | list_documents | {session_id} | [{doc_id, title, released}] | 조회 |
-| reindex_documents | {} | {indexed: n, model, dim}. 고정 문서 5개를 다시 색인(관리용). 에이전트에는 노출하지 않음 | 변경 |
+| reindex_documents | {} | {indexed: n, model, dim, catalog_version}. 현재 카탈로그 버전으로 고정 문서 5개를 색인(관리용). 다른 버전의 청크는 지우지 않음. 에이전트에는 노출하지 않음 | 변경 |
 
 ### 에이전트별 도구 허용 목록
 
@@ -185,7 +186,7 @@
 | 큐 | 본문 | 발행 | 소비 |
 |---|---|---|---|
 | report.generate | {session_id, attempt} | api `complete()` 직후. 미발행 세션은 스케줄러가 60초마다 재탐색해 재발행 | 워커. draft 저장 성공 후 ack |
-| report.approve | {session_id, attempt} | api `/admin/sessions/{id}/review` | 워커. final 저장 성공 후 ack |
-| report.dlq | 원본 + error | 워커(attempt ≥ 3) | 사람 |
+| report.approve | {session_id, attempt} | api `/admin/sessions/{id}/review`. 미발행(approve_enqueued_at null)은 스케줄러가 60초마다 재발행 | 워커. final 저장 성공 후 ack |
+| report.dlq | 원본 + error | 워커(attempt ≥ 3) | 워커의 dlq 소비자가 `POST /internal/.../report_failed`를 호출한 뒤 ack(api가 내려가 있으면 ack하지 않고 60초 뒤 재시도). 메시지는 사람이 확인할 때까지 관리 UI에 남지 않으므로 error는 워커 로그에도 남김 |
 
 메시지는 persistent, 소비는 manual ack, 같은 session_id의 중복 메시지는 stage로 멱등 처리. 재시도는 nack 없이 `attempt+1`로 재발행한 뒤 원본을 ack한다(지연은 워커의 백오프 대기).

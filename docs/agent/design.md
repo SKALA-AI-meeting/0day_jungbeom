@@ -26,7 +26,8 @@ phase: `kickoff → negotiate → work → review → submit → done`
 | kickoff | event division | propose_division | 기본 분담안 post(dm), negotiate_round=0 | negotiate |
 | kickoff | message | respond | 일반 응답 | kickoff |
 | negotiate | message | negotiate | 수락/수정 분류. 수정이면 조정안 post, round+1. 수락 또는 round≥3이면 set_division·update_task·확정 메시지 | 확정 시 work |
-| negotiate | event (요소 카드) | observe → inject | 미합의 상태면 마지막 제안안으로 **확정**하고 "일단 이대로 진행할게요" post 후 카드 실행 | work |
+| negotiate | event (요소 카드) | observe → inject | 미합의 상태면 마지막 제안안으로 **확정**하고 "일단 이대로 진행할게요" post 후 카드 실행 (PRD F-21) | work |
+| negotiate | event review | observe → review | 요소 카드와 같은 규칙으로 확정 post 후 review 실행(존중만 선택했거나 분업에 답하지 않은 경우) | review |
 | work | message | respond | 도구 선택(허용 목록), 문서명 인용 | work |
 | work | event (요소 카드) | observe → inject | 열린 창 닫기(current_element가 있으면 record_observation), window_start=now, current_element=카드 요소 | work |
 | work | event review | observe → review | 창 닫기 → 확정 division에서 동료 담당 파트를 write_document_part, 공유 메시지 post. respect 이벤트가 있으면 동료 담당 첫 파트에 정책 위반 삽입, current_element=respect, window_start=now | review |
@@ -35,7 +36,7 @@ phase: `kickoff → negotiate → work → review → submit → done`
 | submit | message | respond_report | 팀장이 보고에 답함 | submit |
 | any | end | observe → close | 열린 창 닫기 → phase done | done |
 
-respect는 `session_events`에 review와 같은 due_at의 별도 행으로 있다. 스케줄러는 같은 시각의 이벤트를 card order대로 한 run에서 처리하며(review 먼저), respect 행은 review 노드가 위반을 삽입한 뒤 done 처리한다. 디브리핑·발생률 검사는 이 행을 본다.
+respect는 `session_events`에 review와 같은 due_at의 별도 행으로 있다. 스케줄러는 같은 시각의 이벤트를 card order대로 한 run에서 처리하며(review 먼저), respect 행은 review 노드가 위반을 삽입한 뒤 done 처리한다. 발생 감지를 위해 **행마다 자기 event_id를 단 메시지를 최소 1건** 만든다. review 행: 동료 파트 공유 메시지(`event_id=review`). respect 행: 위반이 든 파트를 가리키는 동료의 추가 한 줄(예: "핵심 기능에 유료 멤버십 할인도 넣었어요", `event_id=respect`, 같은 run_id의 다음 seq). 디브리핑·발생률 검사는 이 행과 메시지를 본다.
 
 ### 노드
 
@@ -51,6 +52,8 @@ respect는 `session_events`에 review와 같은 due_at의 별도 행으로 있�
 | guard | 모든 생성 텍스트: 금지 패턴 치환, 600자 제한 | 함수 |
 
 동료 담당 파트는 확정 division에서 `assignee ∈ {colleague}`인 파트다. `both`는 지원자가 쓰고 동료는 리뷰 코멘트만 한다. 위반 삽입 위치는 동료 담당 파트 중 번호가 가장 작은 것.
+
+**분업 최소 조건**(PRD 6.2): 2번 파트는 지원자 담당, 4·5번 중 하나 이상은 동료 단독 담당이어야 한다. 이 조건은 `set_division`이 검증하고(api `PUT /division`도 422), negotiate가 조건을 어기는 요청을 받으면 수락하지 않고 "인터뷰 근거는 지원자님이, 사례나 지표는 제가 맡는 게 좋겠어요" 식으로 이유를 말하며 조건에 맞춘 조정안을 내고 round+1 한다. 그래서 모든 분업에서 책임감 카드(2번 자료 지연)와 존중 카드(동료 파트 위반)의 전제가 성립한다.
 
 ## 어시스턴트 그래프
 

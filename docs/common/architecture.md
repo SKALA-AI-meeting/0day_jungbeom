@@ -33,22 +33,22 @@ MVP 원칙: **평가 항목이 요구하는 조각만 분리하고 나머지는 
 ### 이벤트 도래
 1. 스케줄러가 `status=pending AND due_at <= now`를 집어 `fired`로 바꾸고(커밋) `AgentRunner.run(stimulus=event)`
 2. `observe`가 열려 있는 관찰 창을 닫고 `record_observation`, `inject`가 카드를 실행. 시스템 카드는 LLM 없이 고정 문장. 카드 메시지 저장 후 이벤트는 `done`
-3. 실패 시 attempts+1로 2회까지 재실행, 그래도 실패면 이벤트 failed·세션 failed·`session.ended{failed}`
+3. 실패 시 attempts+1로 재실행(최초 포함 총 3회, 같은 run_id), 3회째도 실패면 이벤트 failed·세션 failed·`session.ended{failed}`
 
 ### 세션 종료와 리포트
-1. 제출 또는 `ends_at` 도달 → `SessionService.complete()`: 재사용 추정 계산, `status=completed`(커밋) → `AgentRunner.run(stimulus=end)`로 마지막 창 정리와 팀장 응답
+1. 제출 또는 `ends_at` 도달 → `SessionService.complete()`: `submitted_at` 기록(커밋, 이후 지원자 메시지는 409) → `AgentRunner.run(stimulus=end, run_id=uuid5(session_id,"end"))`로 마지막 창 정리와 팀장 응답 → 재사용 추정 계산 → `status=completed`(커밋). end 실행 전에 죽으면 스케줄러가 `submitted_at`이 있는 in_progress 세션을 다시 complete()하며 같은 run_id라 중복이 없다. 리포트 발행은 마지막 관찰이 저장된 뒤에만 일어난다
 2. api가 RabbitMQ `report.generate`에 `{session_id}` 발행(persistent), `report_enqueued_at` 기록. 발행 실패나 프로세스 종료로 기록이 비어 있으면 스케줄러가 60초마다 재탐색해 재발행
-3. report-worker 그래프 `collect → draft → interrupt → finalize`. draft 저장 → `status=report_ready` → ack. 관리자 검토 완료 → api `status=approving`, `report.approve` 발행 → 워커가 같은 thread 재개 → final 저장 → `status=reviewed` → ack
-4. 워커 실패는 attempt+1 재발행(백오프 5·15·45초), 3회면 `report.dlq`와 `report_failed` → `status=failed`. api가 내려가 있으면 재발행이 쌓였다가 복구 후 처리된다
+3. report-worker 그래프 `collect → draft → interrupt → finalize`. interrupt 체크포인트 저장 → draft 저장 → `status=report_ready` → ack(이 순서라 ack 뒤 승인은 항상 재개 대상이 있다). 관리자 검토 완료 → api `status=approving`(커밋) → `report.approve` 발행·`approve_enqueued_at` 기록(비어 있으면 스케줄러가 재발행) → 워커가 같은 thread 재개 → final 저장 → `status=reviewed` → ack
+4. 워커 실패는 attempt+1 재발행(백오프 5·15·45초), 3회면 `report.dlq`. dlq 소비자가 `report_failed` → `status=failed`. api가 내려가 있으면 재발행과 dlq 처리가 큐에 남았다가 복구 후 처리된다
 
 ## 운영 목표 (시연 환경)
 
 | 항목 | 목표 | 확인 |
 |---|---|---|
-| 동시 세션 | 5 | e2e 대본 3개 동시 실행 |
+| 동시 세션 | 5 | e2e 대본 5개 동시 실행(all_four×3, one_element, no_assistant) |
 | 페르소나 응답 지연 | p95 8초 (LLM 타임아웃 30초) | messages.meta |
-| 이벤트 시점 오차 | ±5초 (스케줄러 주기) | e2e summary |
-| api 재시작 복구 | 30초 안에 WS 재연결·fired 이벤트 재실행 | restart 대본 |
+| 이벤트 시점 오차 | ±10초 (스케줄러 주기 5초 + 실행) | e2e summary 단언 1 |
+| api 재시작 복구 | 90초 안에 WS 재연결·fired 이벤트 재실행 (재실행 조건 fired 후 60초) | restart 대본 |
 | 세션당 비용 | $0.5 이하 | 토큰 메타 합산 |
 
 ## 저장소 구조

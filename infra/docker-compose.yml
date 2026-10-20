@@ -76,6 +76,11 @@ services:
   report-worker:
     build: ../services/report-worker
     env_file: .env
+    healthcheck:   # 워커가 30초마다 갱신하는 heartbeat 파일
+      test: ["CMD-SHELL", "test -f /tmp/heartbeat && test $(( $(date +%s) - $(stat -c %Y /tmp/heartbeat) )) -lt 90"]
+      interval: 15s
+      timeout: 3s
+      retries: 10
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
@@ -86,6 +91,11 @@ services:
     env_file: .env
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
     depends_on:
       api: { condition: service_healthy }
 

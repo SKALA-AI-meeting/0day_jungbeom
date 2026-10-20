@@ -8,11 +8,11 @@ PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시�
 | admins | id, company_id, email(unique), password_hash | bcrypt |
 | positions | id, company_id, name, elements text[], session_minutes int default 120, catalog_version text, scenario jsonb, created_at | 생성 시 카탈로그 카드와 문서 내용을 scenario에 복사해 고정. 수정·삭제 없음 |
 | invites | id, position_id, alias, email, token_hash, expires_at, used_at | 토큰 원문은 링크에만 |
-| sessions | id, invite_id(unique), status, consented_at, started_at, ends_at, division jsonb, submitted_at, llm_failures int, report_enqueued_at | **초대와 동시에 생성**(status invited). status: invited·in_progress·completed·report_ready·approving·reviewed·failed |
-| session_events | id, session_id, card_id, element, due_at, status(pending·fired·done·failed), fired_at, done_at, attempts | respect는 review와 같은 due_at의 별도 행. (session_id, card_id) unique |
+| sessions | id, invite_id(unique), status, consented_at, started_at, ends_at, division jsonb, submitted_at, llm_failures int, report_enqueued_at, approve_enqueued_at | **초대와 동시에 생성**(status invited). status: invited·in_progress·completed·report_ready·approving·reviewed·failed |
+| session_events | id, session_id, card_id, element, due_at, status(pending·fired·done·failed), fired_at, done_at, attempts, run_id | respect는 review와 같은 due_at의 별도 행. (session_id, card_id) unique. run_id는 fired 시 생성해 재실행에서도 재사용 |
 | messages | id, session_id, channel, sender, content, event_id, run_id, seq, meta jsonb, created_at | (session_id, run_id, seq) unique로 멱등. meta에 토큰·지연·모델 |
 | document_states | session_id, part_no(1~5), content, revision, updated_by, updated_at | 현재 내용 |
-| document_revisions | id, session_id, part_no, revision, by(candidate·colleague), length, diff_ratio, created_at | 관찰용 변경 로그. 본문은 저장하지 않고 길이·변화율만 |
+| document_revisions | id, session_id, part_no, revision, by(candidate·colleague), content, length, diff_ratio, run_id, created_at | 변경 로그. 본문 스냅샷을 함께 저장해 특정 수정 내용과 AI 반영 시점을 복원한다. 동료 수정은 (session_id, part_no, run_id) unique로 멱등 |
 | doc_views | id, session_id, doc_id, viewed_at | 회사 문서 열람 기록 |
 | tasks | session_id, part_no, assignee(candidate·colleague·both), status(todo·doing·done) | |
 | document_releases | session_id, doc_id, release_at, released_at | 스케줄러가 released_at 기록 후 WS |
@@ -28,14 +28,14 @@ PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시�
 ```
 invited ──동의·시작──▶ in_progress ──제출/만료──▶ completed ──워커 draft──▶ report_ready ──검토 완료──▶ approving ──워커 final──▶ reviewed
             │                                        └──워커 3회 실패──▶ failed
-            └──LLM 연속 실패 3회 또는 필수 카드 2회 실패──▶ failed
+            └──LLM 연속 실패 3회 또는 필수 카드 3회 실패──▶ failed
 ```
 
 상태 변경은 api의 `SessionService` 한 곳만 한다(start, complete, mark_report_ready, approve, mark_reviewed, fail). 지원자 목록 표시명: 초대됨, 진행 중, 완료, 리포트 준비됨, 확정 중, 검토 완료, 실패.
 
 ## 이벤트 처리 상태
 
-`pending`(예약) → `fired`(스케줄러가 집음) → `done`(그래프가 카드 메시지를 저장함). 그래프 실패 시 attempts+1, 2회까지 재실행, 그래도 실패면 `failed`이고 세션도 failed. 재시작 후 `fired`인데 done이 아닌 행은 재실행 대상이다. 메시지 저장이 (run_id, seq)로 멱등이라 재실행해도 중복이 생기지 않는다.
+`pending`(예약) → `fired`(스케줄러가 집음) → `done`(그래프가 카드 메시지를 저장함). 그래프 실패 시 attempts+1로 재실행하며 시도는 최초 포함 총 3회, 3회째도 실패면 `failed`이고 세션도 failed. 재시작 후 `fired`인데 done이 아닌 행은 재실행 대상이다. 재실행은 `fired` 시점에 기록한 같은 `run_id`를 쓰므로 메시지(run_id, seq)·문서 수정(part_no, run_id)·관찰(element, window_start)이 모두 중복 없이 멱등이다.
 
 ## 기업 간 격리
 
