@@ -5,10 +5,11 @@ import time
 from pathlib import Path
 from typing import AsyncIterator
 
-from . import store
+from . import detector, store
 from .graph import GRAPH
 from .llm import BaseLLM, get_llm
 from .criteria import AXES, CRITERIA
+from .personas import allocate, public_mode
 from .scenarios import COMPETENCIES, MILESTONES, MILESTONE_KEYS, get_scenario
 
 PAINPOINTS = json.loads((Path(__file__).parent / "data" / "painpoints.json").read_text(encoding="utf-8"))
@@ -33,7 +34,12 @@ def _lock(session_id: str) -> asyncio.Lock:
 
 
 async def create_session(alias: str, scenario_id: str) -> dict:
-    scn = get_scenario(scenario_id)
+    sid = store.new_id()
+    base = get_scenario(scenario_id)
+    # counterpart conflict modes: randomized, balanced within the axis (dilemma) or category (minimization)
+    history = [d["condition"] for d in store.list_all() if d.get("condition")]
+    condition = allocate(base.get("axis") or scenario_id, history, seed=int(sid, 16))
+    scn = {**base, "condition": condition}
     beat = scn["beats"]["communicate"]
     names = {"user": alias, **{pid: p["name"] for pid, p in scn["personas"].items()}}
     directive = f"채널에 처음 말을 건다. 아래 내용을 빠짐없이 전달하되 네 말투로. BEAT: {beat['must_convey']}"
@@ -43,7 +49,7 @@ async def create_session(alias: str, scenario_id: str) -> dict:
         text = beat["must_convey"]
     now = time.time()
     doc = {
-        "id": store.new_id(),
+        "id": sid,
         "alias": alias,
         "scenario_id": scenario_id,
         "category": scn["category"],
@@ -57,6 +63,8 @@ async def create_session(alias: str, scenario_id: str) -> dict:
         "observations": [],
         "notes": "",
         "choice": None,
+        "condition": condition,
+        "detections": {},
         "report": None,
     }
     store.save(doc)
@@ -104,6 +112,18 @@ def candidate_view(doc: dict) -> dict:
 
 
 async def run_turn(session_id: str, text: str, choice_id: str | None = None) -> AsyncIterator[dict]:
+    completed = False
+    async for ev in _run_turn_locked(session_id, text, choice_id):
+        if ev["type"] == "_completed":
+            completed = True
+            continue
+        yield ev
+    if completed:  # outside the session lock: report generation waits for background detections
+        await ensure_report(session_id)
+        yield {"type": "completed"}
+
+
+async def _run_turn_locked(session_id: str, text: str, choice_id: str | None) -> AsyncIterator[dict]:
     async with _lock(session_id):
         sess = store.load(session_id)
         if sess is None:
@@ -170,12 +190,50 @@ async def run_turn(session_id: str, text: str, choice_id: str | None = None) -> 
             sess["status"] = "completed"
             sess["ended_at"] = time.time()
         store.save(sess)
+        _spawn_detection(session_id, user_msg, sess["messages"][:user_idx])
         yield {"type": "state", "milestone_idx": after, "status": sess["status"], **({"choice": {"option": sess["choice"]["option"]}} if sess.get("choice") else {})}
         if after >= MILESTONE_KEYS.index("compromise") and get_scenario(sess["scenario_id"]).get("kind") == "dilemma":
             yield {"type": "dilemma", "dilemma": candidate_view(sess)["dilemma"]}
         if completed:
-            await ensure_report(session_id)
-            yield {"type": "completed"}
+            yield {"type": "_completed"}
+
+
+_bg: set[asyncio.Task] = set()
+
+
+def _context(prev: list[dict], names: dict | None = None, n: int = 8) -> str:
+    return "\n".join(f"[{m['speaker']}] {m['text']}" for m in prev[-n:])
+
+
+async def _store_detection(session_id: str, msg: dict, prev: list[dict]) -> None:
+    res = await detector.detect(session_id, msg["idx"], msg["text"], _context(prev), msg["milestone"])
+    if res is None:
+        return
+    async with _lock(session_id):  # serialize with turns to avoid lost updates
+        sess = store.load(session_id)
+        sess.setdefault("detections", {})[str(msg["idx"])] = res
+        store.save(sess)
+
+
+def _spawn_detection(session_id: str, msg: dict, prev: list[dict]) -> None:
+    if not detector.enabled():
+        return
+    t = asyncio.create_task(_store_detection(session_id, msg, prev))
+    _bg.add(t)
+    t.add_done_callback(_bg.discard)
+
+
+async def backfill_detections(session_id: str) -> None:
+    """Judge any candidate message that has no (successful) detection yet."""
+    if not detector.enabled():
+        return
+    if _bg:
+        await asyncio.gather(*list(_bg), return_exceptions=True)
+    sess = store.load(session_id)
+    done = {k for k, v in (sess.get("detections") or {}).items() if v.get("final")}
+    for i, m in enumerate(sess["messages"]):
+        if m["speaker"] == "user" and str(m["idx"]) not in done:
+            await _store_detection(session_id, m, sess["messages"][:i])
 
 
 async def finish_session(session_id: str) -> dict | None:
@@ -195,6 +253,8 @@ async def ensure_report(session_id: str, attempts: int = 3) -> None:
     sess = store.load(session_id)
     if sess is None or (sess.get("report") or {}).get("status") == "ready":
         return
+    await backfill_detections(session_id)
+    sess = store.load(session_id)
     scn = get_scenario(sess["scenario_id"])
     for n in range(attempts):  # F-34: retry automatically, then mark failed
         try:
@@ -254,11 +314,19 @@ def _choice_detail(doc: dict, scn: dict) -> dict | None:
     return out
 
 
+def _condition_detail(doc: dict) -> dict | None:
+    c = doc.get("condition")
+    if not c:
+        return None
+    return {**c, "lead_mode": public_mode(c["lead"]), "peer_mode": public_mode(c["peer"])}
+
+
 def admin_row(doc: dict) -> dict:
     scn = get_scenario(doc["scenario_id"])
     det = _choice_detail(doc, scn)
     return {
         "axis": det["axis"]["name"] if det else None,
+        "condition": (lambda c: f"{c['lead_mode']['label']} 팀장 · {c['peer_mode']['label']} 동료" if c else None)(_condition_detail(doc)),
         "choice": det["choice"]["pole_label"] if det and det["choice"] else None,
         "id": doc["id"],
         "alias": doc["alias"],
@@ -280,4 +348,6 @@ def admin_view(doc: dict) -> dict:
         "scenario": scn,
         "painpoints": PAINPOINTS.get(scn["painpoint_key"]) if scn.get("painpoint_key") else None,
         "dilemma": _choice_detail(doc, scn),
+        "condition": _condition_detail(doc),
+        "detector": detector.summarize(doc),
     }

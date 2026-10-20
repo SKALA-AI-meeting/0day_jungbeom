@@ -27,6 +27,12 @@ cd frontend && npm install && npm run dev                  # http://localhost:51
 - 관리자: 공개 표본 분포 위에 지원자의 선택 위치, 근거 원문, 축 선정 근거·배정 이유를 표시 (점수화 없음)
 - 분석 재현: `analysis/` (원자료는 `data/raw/`, 커밋하지 않음)
 
+## PR3: 상대 페르소나 정의 · 외부 디텍터 MCP (`feat/persona-detector-mcp`)
+- 팀장·동료를 페르소나 카드(정체성 + 입장 + Thomas-Kilmann 갈등 유형)로 정의하고, 20개 조건 중 최소화법으로 균형 배정
+- `detector-mcp`: 규칙 + Gemini로 관찰기와 독립 판정 → 지원자 주장성·협력성 추정, 관찰기와의 κ, 엇갈린 판정 목록
+- 실행: `cd backend && uv run --python 3.12 python -m mcp_servers.detector.server` (:9103/mcp) 후 백엔드에 `DETECTOR_MCP_URL=http://127.0.0.1:9103/mcp`
+- 문서: [docs/criteria/02-personas-detector.md](criteria/02-personas-detector.md)
+
 ## 구조
 
 ```
@@ -37,7 +43,10 @@ backend/app/
   service.py    세션 수명주기, SSE 이벤트, 리포트 생성(실패 시 3회 재시도 후 failed)
   store.py      SQLite 문서 저장 / main.py FastAPI
   criteria.py   가치 축(V1~V4, data/criteria.json) + 직무·산업 → 축 배정
+  personas.py   갈등 유형 5종 정의, 조건 배정(최소화법)
+  detector.py   detector-mcp 클라이언트, 성향 추정·κ 집계
   dilemmas.py   축별 딜레마 템플릿, 'dl.<job>.<industry>' 시나리오 생성, 선택 기반 설득 비트
+backend/mcp_servers/detector/  server.py(FastMCP 도구 4개), rules.py(한국어 규칙 특징)
 frontend/src/   Home · Session(채팅+단계+노트+선택) · AdminList · AdminDetail
 analysis/value_conflict/  analyze → select_pairs → robustness → export_criteria
 docs/painpoints.{json,md}   카테고리별 현업 painpoint 웹 조사(출처·한계 병기)

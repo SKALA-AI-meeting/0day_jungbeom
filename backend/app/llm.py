@@ -52,25 +52,52 @@ def fmt_transcript(messages: list[dict], names: dict[str, str], limit: int = 40)
     return "\n".join(lines[-limit:]) or "(대화 없음)"
 
 
+def persona_mode(scn: dict, pid: str) -> str:
+    cond = scn.get("condition") or {}
+    return cond.get(pid) or ("collaborating" if pid == "lead" else "compromising")
+
+
 def persona_system(scn: dict, pid: str) -> str:
+    """Persona card: identity + scenario stance + conflict mode (personas.py) + universal guardrails."""
+    from .personas import IDENTITY, SPEECH, mode_block
+
     p = scn["personas"][pid]
-    other = scn["personas"]["peer" if pid == "lead" else "lead"]
-    return f"""너는 메신저 팀 채널에 참여한 '{p['name']}'({p['role']})이다. 한국어 메신저 말투로 1~3문장만 쓴다.
+    oid = "peer" if pid == "lead" else "lead"
+    other = scn["personas"][oid]
+    return f"""[페르소나 카드]
+이름/역할: {p['name']} ({p['role']}) — {IDENTITY[pid]}
 회사: {scn.get('company') or COMPANY}
 진행 상황: {scn['background']}
-너의 성격: {p['character']}
-너의 입장: {p['stance']}
-같은 채널에 있는 다른 팀원: {other['name']}({other['role']}) — 입장: {other['stance']}
-채널에는 지원자(오늘 합류한 같은 팀 기획자)와 너, {other['name']} 이렇게 3명이 있다.
-규칙:
-- 대화 상대는 지원자이고, {other['name']}에게도 필요하면 직접 말을 건다(이름을 부른다).
-- 너의 입장을 쉽게 포기하지 않는다. 지원자가 구체적인 근거나 구체적인 양보안(누가·무엇을·언제)을 내기 전에는 완전히 동의하지 말고, 걱정되는 점이나 확인할 점을 한 가지 짚는다. 근거가 설득력 있으면 그때 부분적으로 받아들인다.
-- 지원자의 말을 그대로 따라 말하며 동의만 반복하지 않는다. '필요하면 말씀해 주세요' 같은 인사말로 끝내지 않는다.
-- 아직 지원자가 묻지 않았거나 안건이 되지 않은 너의 사정은 먼저 털어놓지 않는다. 지원자가 직접 물으면 솔직하게 답한다.
-- 다른 팀원({other['name']})의 입장과 네 입장이 다르면, 지원자가 조율하도록 네 입장을 분명히 밝힌다.
-- 지원자를 평가하거나 점수·합격·관찰·시뮬레이션·테스트 같은 말을 절대 꺼내지 않는다.
+배경 성격: {p['character']}
+이 상황에서의 입장: {p['stance']}
+{mode_block(persona_mode(scn, pid))}
+말투: {SPEECH}
+
+[채널]
+지원자(같은 팀원), 너, {other['name']}({other['role']}) 3명이 있다. {other['name']}의 입장: {other['stance']}
+- 대화 상대는 지원자이며, 필요하면 {other['name']}에게도 '{other['name'][1:]}님'이라고 불러 직접 말한다.
+- '입장'은 무엇을 주장하는지, '갈등 대처 유형'은 어떻게 말하는지다. 유형과 상관없이 너의 입장과 반대되는 주장을 먼저 하지 않는다(수용형·회피형이라도 물으면 원래 입장을 말한다).
+- 갈등 대처 유형의 행동 규칙을 대화 내내 일관되게 지키되, 규칙에 든 예시 문구를 그대로 쓰지 말고 매번 다른 표현으로 같은 태도를 보인다. 너의 직전 발화와 같은 말로 시작하지 않는다.
+- 지원자의 말을 그대로 따라 말하지 않고, '필요하면 말씀해 주세요' 같은 인사말로 끝내지 않는다.
+- 아직 안건이 아닌 너의 사정은 먼저 털어놓지 않는다(유형 규칙이 더 엄격하면 그것을 따른다). 직접 물으면 답한다.
+
+[절대 규칙]
+- 지원자를 평가하거나 점수·합격·관찰·시뮬레이션·테스트·성향 같은 말을 꺼내지 않는다.
 - 새로운 숫자·사실을 지어내지 않는다. 회사/진행 상황에 적힌 것만 근거로 쓴다.
 - 이름 머리글([이름])이나 따옴표 없이 대사만 출력한다."""
+
+
+# Small models keep closing with service-desk filler despite the prompt; drop such trailing sentences.
+_OFFER = re.compile(r"언제든|필요하(시|신)?면|필요한\s?\S{0,6}\s?(부분|사항|점)|도움이\s?필요|도와\s?드릴\s?수|추가(로|적인)\s?(지원|도움)")
+_ASK = re.compile(r"(말씀|이야기|알려|연락|요청)\s?(해|하여)?\s?주(세요|십시오|시면)|말씀해\s?주세요|편하게\s?말씀")
+_SENT = re.compile(r"[^.!?。]+[.!?。]?")
+
+
+def strip_boilerplate(text: str) -> str:
+    sents = [x.strip() for x in _SENT.findall(text) if x.strip()]
+    while len(sents) > 1 and _OFFER.search(sents[-1]) and _ASK.search(sents[-1]):
+        sents.pop()
+    return " ".join(sents) if sents else text
 
 
 class BaseLLM:
@@ -95,7 +122,8 @@ class OpenAILLM(BaseLLM):
 - 두 사람의 입장이 충돌하는 주제라면 두 번째 발화자가 의견을 보태거나 반박하게 해 지원자가 조율해야 하게 만든다.
 - 지원자 발화가 짧거나 단순 확인이면 한 명만 답해도 된다.
 - 팀장은 'lead', 개발자/동료는 'peer'이다.
-- 두 사람의 입장: lead={scn['personas']['lead']['stance']} / peer={scn['personas']['peer']['stance']}"""
+- 두 사람의 입장: lead={scn['personas']['lead']['stance']} / peer={scn['personas']['peer']['stance']}
+- 두 사람의 갈등 대처 유형: lead={persona_mode(scn, 'lead')} / peer={persona_mode(scn, 'peer')}. avoiding(회피형)은 직접 불리거나 꼭 필요할 때만 답하고, competing(경쟁형)은 반대 의견이 나오면 끼어든다."""
         out = await self.cold.with_structured_output(TurnPlan).ainvoke(
             [("system", sys), ("human", f"대화:\n{fmt_transcript(messages, names)}\n\n지원자의 마지막 발화: {user_text}")]
         )
@@ -106,7 +134,7 @@ class OpenAILLM(BaseLLM):
             [("system", persona_system(scn, pid)), ("human", f"지금까지의 대화:\n{fmt_transcript(messages, names)}\n\n이번에 해야 할 일: {directive}\n대사만 출력:")]
         )
         text = out.content if isinstance(out.content, str) else str(out.content)
-        return re.sub(r"^\[[^\]]+\]\s*", "", text.strip()).strip('"“”')
+        return strip_boilerplate(re.sub(r"^\[[^\]]+\]\s*", "", text.strip()).strip('"“”'))
 
     async def observe(self, scn, milestone, messages, names, user_text):
         look = scn["beats"][milestone]["look_for"]
@@ -150,11 +178,19 @@ class MockLLM(BaseLLM):
             items.append(PlanItem(persona=second, intent="자기 입장에서 의견을 보탠다"))
         return TurnPlan(speakers=items)
 
+    LINES = {
+        "competing": ["그건 아니라고 봐요. 제 안대로 가야 일정이 지켜집니다.", "근거가 더 있으면 몰라도, 지금으로선 동의하기 어렵네요."],
+        "collaborating": ["제 입장은 그대로지만, 걱정하시는 지점이 정확히 뭔지 여쭤봐도 될까요?", "두 안을 같이 살릴 방법이 있을지 한번 같이 보죠."],
+        "compromising": ["시간이 없으니 반씩 양보하는 걸로 정리하면 어떨까요?", "이번엔 이렇게 하고, 다음엔 다른 쪽으로 가죠."],
+        "avoiding": ["음, 그건 상황 봐서 다시 얘기해요.", "글쎄요, 저는 잘 모르겠어요."],
+        "accommodating": ["네, 그렇게 하시죠. 저는 맞출게요.", "좋아요, 말씀하신 대로 할게요."],
+    }
+
     async def speak(self, scn, pid, messages, names, directive):
         if "BEAT:" in directive:
             return directive.split("BEAT:", 1)[1].strip()
-        p = scn["personas"][pid]
-        return f"{p['stance']} 그 부분은 어떻게 생각하세요?" if "의견" in directive else "네, 알겠어요. 말씀하신 방향으로 조금 더 이야기해 봐요."
+        pool = self.LINES[persona_mode(scn, pid)]
+        return pool[len(messages) % len(pool)]
 
     async def observe(self, scn, milestone, messages, names, user_text):
         first = re.split(r"(?<=[.?!。])\s+", user_text.strip())[0][:120]

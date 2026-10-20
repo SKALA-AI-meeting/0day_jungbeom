@@ -58,6 +58,7 @@ const fmt = (t) => new Date(t * 1000).toLocaleString('ko-KR', { month: 'numeric'
             <td>
               <template v-if="r.axis"><span class="small">{{ r.axis }}</span><br /><span class="chip" :class="r.choice ? 'blue' : 'gray'">{{ r.choice || '미선택' }}</span></template>
               <span v-else class="muted small">–</span>
+              <div v-if="r.condition" class="muted small">{{ r.condition }}</div>
             </td>
             <td>
               <div class="bar"><i v-for="(k, i) in MS" :key="k" :class="{ on: i <= r.milestone_idx }" :title="MS_LABEL[k]" /></div>

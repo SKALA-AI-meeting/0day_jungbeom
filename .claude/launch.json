@@ -4,8 +4,44 @@
     {
       "name": "dayzero-frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "dayzero-detector-mcp",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "--directory",
+        "backend",
+        "run",
+        "--python",
+        "3.12",
+        "python",
+        "-m",
+        "mcp_servers.detector.server"
+      ],
+      "port": 9103
+    },
+    {
+      "name": "dayzero-backend",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "--directory",
+        "backend",
+        "run",
+        "--python",
+        "3.12",
+        "uvicorn",
+        "app.main:app",
+        "--port",
+        "8765"
+      ],
+      "port": 8765
     }
   ]
 }

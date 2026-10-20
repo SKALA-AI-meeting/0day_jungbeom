@@ -38,7 +38,15 @@ for t in lines:
                 print(f"--- {e['key']} ---")
             elif e["type"] == "error":
                 print("ERR", e)
+c.post(f"/api/sessions/{s['id']}/finish")
 adm = c.get(f"/api/admin/sessions/{s['id']}").json()
+cond = adm["condition"]
+print("CONDITION", cond["lead_mode"]["label"], "팀장 /", cond["peer_mode"]["label"], "동료")
+det = adm["detector"]
+if det.get("status") == "ready":
+    print("DETECTOR", det["coverage"], det["sources"], "A", det["assertiveness"], "C", det["cooperativeness"], det["tki_estimate"], "| kappa", det["agreement"]["pooled_kappa"], {k: v["kappa"] for k, v in det["agreement"]["per_competency"].items()}, "| MAD", det["rules_vs_model_mad"])
+else:
+    print("DETECTOR", det)
 d = adm["dilemma"]
 print("AXIS", d["axis"]["name"], "| CHOICE", d["choice"] and d["choice"]["pole_label"], "| status", adm["status"])
 for o in adm["observations"]:

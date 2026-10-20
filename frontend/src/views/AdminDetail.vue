@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { api } from '../api'
 import ChatBubble from '../components/ChatBubble.vue'
-import { COMP_COLOR, MS_LABEL, SIGNAL } from '../constants'
+import { COMP_COLOR, MODE_LABEL, MODE_POS, MS_LABEL, SIGNAL, kappaWord } from '../constants'
 
 const props = defineProps({ id: String })
 const d = ref(null)
@@ -99,6 +99,11 @@ const marker = computed(() => {
   if (c.pole === 'b') return (1 - st.prefer_b / 2) * 100
   return (st.prefer_a + st.tie / 2) * 100
 })
+const det = computed(() => d.value?.detector)
+const cond = computed(() => d.value?.condition)
+// TKI plane: x = cooperativeness, y = assertiveness, both 1..5 -> 20..220 px
+const px = (v) => 20 + ((v - 1) / 4) * 200
+const py = (v) => 220 - ((v - 1) / 4) * 200
 function jumpMsg(idx) {
   jump({ msg_idx: idx })
 }
@@ -190,6 +195,81 @@ function jumpMsg(idx) {
             </ol>
           </div>
         </div>
+      </section>
+
+      <!-- 1.6 counterpart condition + external detector (PR3) -->
+      <section v-if="cond || det" class="card ext">
+        <h2>상대 페르소나 조건 · 외부 디텍터 <small class="muted">detector-mcp (규칙 + Gemini), 관찰기와 독립</small></h2>
+        <div class="ext-grid">
+          <div>
+            <svg viewBox="0 0 240 250" class="tki" role="img" aria-label="주장성과 협력성 평면">
+              <rect x="20" y="20" width="200" height="200" rx="8" class="plane" />
+              <line x1="120" y1="20" x2="120" y2="220" class="mid" /><line x1="20" y1="120" x2="220" y2="120" class="mid" />
+              <text x="26" y="34" class="q">경쟁형</text><text x="214" y="34" class="q" text-anchor="end">협력형</text>
+              <text x="26" y="214" class="q">회피형</text><text x="214" y="214" class="q" text-anchor="end">수용형</text>
+              <text x="120" y="138" class="q" text-anchor="middle">타협형</text>
+              <text x="120" y="240" class="ax" text-anchor="middle">협력성 →</text>
+              <text x="8" y="120" class="ax" text-anchor="middle" transform="rotate(-90 8 120)">주장성 →</text>
+              <template v-if="cond">
+                <g v-for="(who, k) in { lead: '팀장', peer: '동료' }" :key="k">
+                  <rect :x="px(MODE_POS[cond[k]][0]) - 6" :y="py(MODE_POS[cond[k]][1]) - 6" width="12" height="12" :class="['pm', k]" :transform="`rotate(45 ${px(MODE_POS[cond[k]][0])} ${py(MODE_POS[cond[k]][1])})`" />
+                  <text :x="px(MODE_POS[cond[k]][0])" :y="py(MODE_POS[cond[k]][1]) + (MODE_POS[cond[k]][1] > 3 ? 20 : -12)" class="pl" text-anchor="middle">{{ who }}</text>
+                </g>
+              </template>
+              <template v-if="det?.status === 'ready'">
+                <circle v-for="p in det.points" :key="p.msg_idx" :cx="px(p.c)" :cy="py(p.a)" r="4" class="dot" @click="jumpMsg(p.msg_idx)"><title>메시지 #{{ p.msg_idx }}: 주장 {{ p.a }} · 협력 {{ p.c }} · {{ p.focus }}</title></circle>
+                <circle :cx="px(det.cooperativeness)" :cy="py(det.assertiveness)" r="9" class="me" />
+                <text :x="px(det.cooperativeness)" :y="py(det.assertiveness) - 13" class="pl me-l" text-anchor="middle">지원자</text>
+              </template>
+            </svg>
+            <small class="muted">◆ 상대 페르소나 유형(배정) · ● 지원자 발화별 판정 · ⬤ 평균. 위치는 참고용 성향 기술이며 점수가 아니에요.</small>
+          </div>
+          <div>
+            <template v-if="cond">
+              <h3>배정된 상대 유형</h3>
+              <div class="modes">
+                <div class="mode lead"><b>팀장 · {{ cond.lead_mode.label }}</b><small>{{ cond.lead_mode.summary }}</small></div>
+                <div class="mode peer"><b>동료 · {{ cond.peer_mode.label }}</b><small>{{ cond.peer_mode.summary }}</small></div>
+              </div>
+              <small class="muted">무작위 균형 배정(최소화법, 층: {{ cond.stratum }}). 상대 유형에 따라 같은 지원자도 다르게 반응할 수 있으니, 같은 조건끼리 비교하세요.</small>
+            </template>
+            <template v-if="det?.status === 'ready'">
+              <h3>지원자 성향 추정 <span class="chip blue">{{ MODE_LABEL[det.tki_estimate] }}에 가까움</span></h3>
+              <p class="small">주장성 <b>{{ det.assertiveness }}</b> · 협력성 <b>{{ det.cooperativeness }}</b> (1–5) · 판정 {{ det.coverage }}
+                <span class="muted">({{ Object.entries(det.sources).map(([k, v]) => `${k} ${v}`).join(', ') }})</span></p>
+              <p v-if="det.rules_vs_model_mad" class="small muted">규칙 vs 모델 평균 차: 주장 {{ det.rules_vs_model_mad.assertiveness }} · 협력 {{ det.rules_vs_model_mad.cooperativeness }}</p>
+              <p v-if="Object.keys(det.flags).length" class="small">신호: <span v-for="(n, f) in det.flags" :key="f" class="chip amber flag">{{ { blame: '비난 표현', hedge_avoid: '회피 표현', vague: '모호한 약속', eval_probe: '평가 기준 질문' }[f] || f }} {{ n }}</span></p>
+            </template>
+            <p v-else-if="det?.status === 'disabled'" class="muted small">디텍터가 연결되지 않았어요 (DETECTOR_MCP_URL 미설정).</p>
+            <p v-else-if="det" class="muted small">디텍터 판정이 아직 없어요.</p>
+          </div>
+        </div>
+
+        <template v-if="det?.status === 'ready'">
+          <h3>관찰기 ↔ 디텍터 일치도 <small class="muted">발화×역량 {{ det.agreement.n_judgements }}건, Cohen's κ</small></h3>
+          <table class="agree">
+            <thead><tr><th>역량</th><th>κ</th><th>해석</th><th>일치율</th><th>관찰기 예</th><th>디텍터 예</th></tr></thead>
+            <tbody>
+              <tr v-for="c in comps" :key="c.id">
+                <td><span class="cid" :style="{ background: COMP_COLOR[c.id].bg, color: COMP_COLOR[c.id].fg }">{{ c.id }}</span> {{ c.name }}</td>
+                <td><b>{{ det.agreement.per_competency[c.id].kappa ?? '–' }}</b></td>
+                <td class="muted">{{ kappaWord(det.agreement.per_competency[c.id].kappa) }}</td>
+                <td>{{ det.agreement.per_competency[c.id].agree != null ? pct(det.agreement.per_competency[c.id].agree) : '–' }}</td>
+                <td>{{ det.agreement.per_competency[c.id].observer_yes }}</td>
+                <td>{{ det.agreement.per_competency[c.id].detector_yes }}</td>
+              </tr>
+              <tr class="tot"><td>전체</td><td><b>{{ det.agreement.pooled_kappa ?? '–' }}</b></td><td class="muted">{{ kappaWord(det.agreement.pooled_kappa) }}</td><td>{{ det.agreement.pooled_agree != null ? pct(det.agreement.pooled_agree) : '–' }}</td><td /><td /></tr>
+            </tbody>
+          </table>
+          <details v-if="det.disagreements.length" class="small dis">
+            <summary>판정이 엇갈린 {{ det.disagreements.length }}건 — 사람이 확인해 주세요</summary>
+            <ul>
+              <li v-for="x in det.disagreements" :key="`${x.msg_idx}-${x.competency}`" @click="jumpMsg(x.msg_idx)">
+                #{{ x.msg_idx }} <b>{{ x.competency }}</b>: 관찰기 {{ x.observer ? '있음' : '없음' }} / 디텍터 {{ x.detector ? '있음' : '없음' }} →
+              </li>
+            </ul>
+          </details>
+        </template>
       </section>
 
       <!-- 2. competency x milestone heatmap -->
@@ -361,6 +441,32 @@ blockquote { margin: 6px 0; padding: 6px 12px; border-left: 3px solid var(--line
 .rank { padding-left: 18px; margin: 0; font-size: 13px; }
 .rank li { margin: 4px 0; color: var(--muted); }
 .rank li.top { color: var(--ink); }
+.ext h3 { font-size: 14px; margin: 14px 0 8px; }
+.ext-grid { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+.tki { width: 100%; max-width: 300px; }
+.tki .plane { fill: var(--bg); stroke: var(--line); }
+.tki .mid { stroke: var(--line); stroke-dasharray: 3 3; }
+.tki .q { font-size: 10px; fill: var(--muted); font-weight: 700; }
+.tki .ax { font-size: 10px; fill: var(--muted); }
+.tki .pm.lead { fill: #0f766e; }
+.tki .pm.peer { fill: #b45309; }
+.tki .pl { font-size: 10px; font-weight: 700; fill: var(--ink); }
+.tki .dot { fill: #94a3b8; opacity: 0.75; cursor: pointer; }
+.tki .me { fill: var(--brand); stroke: #fff; stroke-width: 2; }
+.tki .me-l { fill: var(--brand); }
+.modes { display: flex; gap: 10px; margin-bottom: 6px; }
+.mode { flex: 1; border: 1px solid var(--line); border-left: 4px solid; border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; }
+.mode.lead { border-left-color: #0f766e; }
+.mode.peer { border-left-color: #b45309; }
+.mode small { color: var(--muted); }
+.flag { margin-right: 4px; }
+.agree { width: 100%; border-collapse: collapse; font-size: 13px; }
+.agree th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.agree td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.agree .tot td { border-bottom: 0; font-weight: 600; }
+.dis ul { margin: 6px 0 0; padding-left: 18px; }
+.dis li { cursor: pointer; margin: 3px 0; }
+.dis li:hover { color: var(--brand); }
 .notes { white-space: pre-wrap; margin: 0; font-family: inherit; }
 .src { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 12px; }
 
@@ -370,5 +476,5 @@ blockquote { margin: 6px 0; padding: 6px 12px; border-left: 3px solid var(--line
 .div { text-align: center; margin: 14px 0 4px; position: relative; }
 .div::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--line); }
 .div span { position: relative; background: var(--panel); padding: 0 10px; font-size: 12px; font-weight: 700; color: var(--brand); }
-@media (max-width: 1100px) { .wrap { grid-template-columns: 1fr; } .trans { position: static; max-height: 70vh; } .two, .sum, .tl { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .ext-grid { grid-template-columns: 1fr; } .wrap { grid-template-columns: 1fr; } .trans { position: static; max-height: 70vh; } .two, .sum, .tl { grid-template-columns: 1fr; } }
 </style>

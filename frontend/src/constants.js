@@ -12,3 +12,6 @@ export const SIGNAL = {
 }
 export const SPEAKER_COLOR = { user: '#2563eb', lead: '#0f766e', peer: '#b45309' }
 export const MS_LABEL = { communicate: '소통', coordinate: '조율', compromise: '타협', persuade: '설득' }
+export const MODE_LABEL = { competing: '경쟁형', collaborating: '협력형', compromising: '타협형', avoiding: '회피형', accommodating: '수용형' }
+export const MODE_POS = { competing: [1, 5], collaborating: [5, 4], compromising: [3, 3], avoiding: [1, 1], accommodating: [5, 1] } // [cooperative, assertive]
+export const kappaWord = (k) => (k == null ? '계산 불가' : k < 0 ? '우연 이하' : k <= 0.2 ? '약간' : k <= 0.4 ? '보통 이하' : k <= 0.6 ? '중간' : k <= 0.8 ? '상당' : '거의 완전')

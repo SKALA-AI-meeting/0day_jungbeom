@@ -44,7 +44,7 @@ class TurnState(TypedDict, total=False):
 def _ctx(state: TurnState, config) -> tuple[BaseLLM, dict, dict]:
     llm: BaseLLM = config["configurable"]["llm"]
     sess = state["session"]
-    scn = get_scenario(sess["scenario_id"])
+    scn = {**get_scenario(sess["scenario_id"]), "condition": sess.get("condition")}
     names = {"user": sess["alias"], **{pid: p["name"] for pid, p in scn["personas"].items()}}
     return llm, scn, names
 
