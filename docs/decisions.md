@@ -113,7 +113,7 @@
 - 계획: web-integrate 트랙 추가, scenario-redesign 소유권 확대(prompts 포함), 사용자 mock 확인이 막는 범위는 web-integrate·agent-session 착수뿐. 생성 화면 미리보기·버전 비교·최종본 append·둘째 계정은 MVP 제외.
 
 ## 2026-10-20 역할별 모델과 상향 규칙
-- LLM 역할 5개: 동료(MODEL_COLLEAGUE), 팀장(MODEL_MANAGER), 관찰 분류(MODEL_OBSERVE), 어시스턴트(MODEL_ASSISTANT), 리포트 작성(MODEL_REPORT). 각 역할은 env의 자기 모델 id를 읽고, 비어 있으면 `OPENAI_MODEL`(기본 gpt-4o-mini)을 쓴다.
+- LLM 역할 5개: 동료(MODEL_COLLEAGUE), 팀장(MODEL_MANAGER), 관찰 분류(MODEL_OBSERVE), 어시스턴트(MODEL_ASSISTANT), 리포트 작성(MODEL_REPORT). 각 역할은 env의 자기 모델 id를 읽고, 비어 있으면 `OPENAI_MODEL`(기본 gpt-4o-mini)을 쓴다. 2026-10-21 scenario-redesign 결과 리포트 초안은 카탈로그 label_texts·사유 문장 템플릿으로 만들어 LLM 호출이 0회다(관찰 레이블·근거가 이미 있어 서술 생성이 필요 없음). MODEL_REPORT는 예약 역할로 두고 상향·운영 대상에서 뺀다. 리포트에 자연어 서술을 넣기로 하면 그때 되살린다.
 - 키 선택은 모델 id로 결정한다: `gpt-4o-mini` → `OPENAI_API_KEY`(제한 키), 그 외 `gpt-*` → `OPENAI_API_KEY_PERSONAL`, `gemini-*` → `GEMINI_API_KEY`(Google의 OpenAI 호환 엔드포인트라 클라이언트 추가 없음). 이 규칙은 `app/agent/llm`과 worker의 공용 LLM 래퍼 한 곳에만 둔다.
 - 상향 규칙: 어떤 역할의 결과가 프롬프트·규칙 수정으로 안 되면 그 역할만 올린다. 사다리: gpt-4o-mini → GPT-6 계열 소형 → GPT-6 표준(마지막). 모델 선택은 오케스트레이터가 하고 사용자에게 보고한다. 괜찮은 역할은 그대로 둔다. 판단 자료: live 테스트의 레이블 정확도, 선점 금지·팀장 DM 규칙 준수, 응답의 자연스러움, 카드 실패율, 리포트 금지어·근거 검증 실패율. 상향 결과(어느 역할을 왜 올렸는지)는 docs-final에 적는다.
 - 키 값은 어떤 문서·브리프·로그에도 쓰지 않는다. Recovery(재시도 2회 후 규칙 폴백)는 모델과 무관하게 유지.
