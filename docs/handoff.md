@@ -105,7 +105,7 @@
 | P0 | redesign-docs | 문서 완료·커밋됨(track/redesign-docs 0a374d4). Claude Opus가 마무리·병합 완료(`briefs/brief-p0-finish.md`) | Codex 설계·계획 리뷰 + Claude 관점 2종 반영 | 960981e |
 | P1 | web-redesign | 병합 완료 (사용자 mock 확인은 생략, 나중에 일괄 수정) | UI/UX 페르소나 차단 8·권장 31 반영, Codex 차단 6 + 경합 3 반영(`reviews/review-uiux-view.md`, 보고서 `reports/web-redesign-report.md`) | 2019069 |
 | P1 | scenario-redesign | 병합 완료. catalog_version `b2cc7dd7baa915ca`. 소유권 반환: `app/agent/`→agent-session, `scenarios/missions/` 문구→prompts, `scenarios/e2e/`→e2e-runner | Codex 관문 3회(차단 4·7·5) + 재확인 반영(보고서 `reports/scenario-redesign-report.md`) | 4b849b8 |
-| P2 | agent-session M2 | 대기 (scenario 병합 + 사용자 mock 확인) | | |
+| P2 | agent-session M2 | 병합 완료. 남은 문제: 6k 토큰 요약 접기 미구현, 보드 1분 묶음 재분업 설계 변경 요청, live 선점 금지 2/6(모델 상향 판단 자료는 보고서 끝) | Codex 차단 9 → 재확인 6 → 2 반영 | a1723ad |
 | P2 | agent-assistant | 병합 완료. api 수준 요청(라우터 마스킹·60회 직렬화·run.py 수명주기)은 위 'P2 진행 중 모인 api 수준 변경 요청' | Codex 차단 6 + 재확인 2회 반영 | cd55eb4 |
 | P2 | web-integrate | 대기 (scenario 병합 + mock 확인). 실제 세션 인수는 agent 병합 뒤 | | |
 | P2 | web-polish | 병합 완료. B2(최종본 저장 실패 표시 유지)는 web-integrate 필수 후속 | Codex 차단 1·권장 2 반영 | fb788aa |
