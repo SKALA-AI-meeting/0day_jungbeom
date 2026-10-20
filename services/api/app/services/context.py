@@ -47,6 +47,8 @@ def build_context(settings: Settings | None = None) -> AppContext:
 
     fake(기본): FakeAgentRunner(내부 저장을 직접 호출). session: LangGraph 세션 그래프(gpt-4o-mini,
     business-mcp·rag-mcp 경유, PostgresSaver).
+    assistant는 ASSISTANT_RUNNER로 고른다. fake(기본): 고정 문장. graph: 어시스턴트 그래프
+    (rag-mcp 경유, 같은 PostgresSaver 저장소의 assistant thread).
     """
     settings = settings or get_settings()
     engine = make_engine(settings.database_url)
@@ -59,6 +61,13 @@ def build_context(settings: Settings | None = None) -> AppContext:
         runner = _fake_runner(factory, hub)
     else:
         raise ValueError(f"AGENT_RUNNER must be session or fake: {kind}")
+    assistant_kind = os.environ.get("ASSISTANT_RUNNER", "fake")
+    if assistant_kind == "graph":
+        assistant = _assistant_runner(settings, factory, hub)
+    elif assistant_kind == "fake":
+        assistant = FakeAssistantRunner()
+    else:
+        raise ValueError(f"ASSISTANT_RUNNER must be graph or fake: {assistant_kind}")
 
     return AppContext(
         settings=settings,
@@ -68,6 +77,7 @@ def build_context(settings: Settings | None = None) -> AppContext:
         locks=SessionLocks(),
         publisher=RabbitPublisher(settings.rabbitmq_url),
         runner=runner,
+        assistant=assistant,
     )
 
 
@@ -94,6 +104,21 @@ def _session_runner(
         llm=OpenAILLM(settings.openai_api_key, settings.openai_model),
         mcp_urls={BUSINESS: settings.business_mcp_url, RAG: settings.rag_mcp_url},
         store=DbAgentStore(factory),
+        database_url=settings.database_url,
+        broadcast=hub.broadcast,
+    )
+
+
+def _assistant_runner(
+    settings: Settings, factory: async_sessionmaker[AsyncSession], hub: Hub
+) -> AssistantRunner:
+    from app.agent.assistant import AssistantGraphRunner, db_scenario, mcp_rag
+    from app.agent.llm import OpenAILLM
+
+    return AssistantGraphRunner(
+        llm=OpenAILLM(settings.openai_api_key, settings.openai_model),
+        rag=mcp_rag(settings.rag_mcp_url),
+        scenario=db_scenario(factory),
         database_url=settings.database_url,
         broadcast=hub.broadcast,
     )
