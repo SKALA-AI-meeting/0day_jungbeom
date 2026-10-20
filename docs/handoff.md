@@ -59,7 +59,7 @@ Herdr 기동(참고): `herdr pane split --current --direction right --cwd <workt
 | W2 | web-admin | 닫음 | 병합 완료 | Codex 차단 7 반영 | (이 커밋 직전) |
 | W2 | web-office | 탭 w1J:t7 | 리뷰 중 (c4b017b) | Codex | |
 | W2 | worker | 탭 w1J:t5 | 리뷰 중 (d6b5a08) | Codex | |
-| W3 | agent-min / agent-session | — | 대기 | | |
+| W3 | agent-min / agent-session | 탭 agent-session | agent-min 진행 중 | | |
 | W3 | agent-assistant | — | 대기 | | |
 | W3 | web-polish | — | 대기 | | |
 | W3 | e2e-runner | — | 대기 | | |
