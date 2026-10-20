@@ -102,7 +102,7 @@
 | 섹션 근거 | `context.card_at_t_min` | 카드 소섹션의 `card_at_t_min`과 같은 값 |
 | 섹션 근거 | `record_ref` | `{type, id, t_min}`. 근거와 같은 type·id, document·doc_view는 null |
 | 섹션 근거 | document `summary`, share `summary`, open `summary`, task_event `summary`, doc_view `summary` | `"n번 파트 편집(t분)"`, `"n번 파트 v2 보냄(t분)"`, `"동료 n번 v1 열람(t분)"`, `"n번 카드 <field> 변경(t분)"`, `"<문서명> 열람(t분)"` |
-| 평가표 항목 | `basis` | `metric`∣`label` (카탈로그 rubric의 basis) |
+| 평가표 항목 | `basis` | `metric`∣`label` (카탈로그 rubric의 basis). 카탈로그가 `by_source`인 항목(plan_stated_schedule)은 워커가 충족시킨 근거로 정한다: task_event면 `metric`, 메시지 레이블·aux면 `label` |
 | 평가표 항목 | `no_record_reason` | auto가 null일 때 사유(`not_applicable` 포함), 아니면 null |
 | 평가표 항목 | `minutes` | 응답 시간(response_minutes) 항목에만. 실제 분, 관련 메시지가 없으면 null(0점 처리와 구분) |
 | AI 활용 | `events[]` | `{call_id, t_min, request_quote, response_quote, cited_doc_ids, applied_part: part_no∣"final"∣null}` 시간순. applied_part는 내부 `GET /assistant_reuse`에서 applied=true인 파트(여러 개면 ratio 최대) |
