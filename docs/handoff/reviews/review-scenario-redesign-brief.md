@@ -6,3 +6,6 @@
 
 ## 관문 1(미션·스키마)에서 특히 볼 것
 cards.yaml의 카드 7장 시각·창·레이블·aux·근거 타입·항목 id가 scenario-model.md·rubric.md와 한 글자도 다르지 않은지; fixed_opinions·선점 금지·팀장 DM 규칙이 triage 결정과 같은지; 적응성 카드가 "자료가 살아남는 변경"인지; schema.sql이 data-model.md의 테이블·컬럼·키(observations 카드 단위 키, documents 소유·버전·공유·열기·revisions, tasks null 시작)와 일치하고 옛 테이블이 남지 않았는지; version.py 해시 범위; 조립 테스트가 수치를 실제로 검증하는지(상수 복사 아님); 대본 7개가 e2e 6건을 덮는지; 호칭 "리드"·"평가"가 프롬프트·문서에 남지 않았는지.
+
+## 관문 2(API·도구 계약 검증)에서 특히 볼 것
+`git diff main...HEAD`에서 services/api·business-mcp·rag-mcp 부분(관문 1 범위는 반영 커밋 dd71105만 다시 확인). `tests/contract.py`의 `assert_contract`가 실제로 픽스처와 비교하는지(느슨한 비교가 계약 위반을 숨기지 않는지, 특히 키 이름·채널·status 값), SessionService 전이표(submit→reporting→completed, 만료 자동 제출, cancel, regenerate)와 Lock 규칙(판단 2의 백그라운드 종료가 교착·중복 종료를 만들지 않는지), 스케줄러 7종·재시작 재실행·or_on_submit 카드 즉시 실행, 보드 분업 422 조건(division_min)이 scenario-model과 같은지, 문서 API(보낸 버전만 열기 404, import 출처·`version: null`=현재 저장본, revisions), 내부 API·MCP 도구 11개가 contracts 표와 1:1인지(이름·입력·오류 코드), 어시스턴트 훅 시그니처가 P2 agent-assistant가 import만 해서 쓸 수 있는지, 관리자 candidates 평탄화·display_group(확정 중은 "완료" 묶음, data-model 27e5f1d 기준)·record ref=리포트 record_ref, 보고서 "판단과 계약 해석" 8개와 변경 요청 3개에 대한 의견(invites 별칭 unique 제거는 오케스트레이터 승인됨), 테스트 수가 happy path 범위인지, 주석 수준. 실행: `cd services/api && uv run pytest -q`(격리 DB는 공용 postgres localhost:5432 사용), business-mcp·rag-mcp pytest, ruff. REVIEW.md에 "## 관문 2" 절로 덧붙인다.
