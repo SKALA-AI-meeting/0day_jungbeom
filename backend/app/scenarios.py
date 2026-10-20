@@ -228,10 +228,22 @@ MILESTONE_KEYS = [m["key"] for m in MILESTONES]
 MIN_TURNS_PER_MILESTONE = 2
 
 
+def get_scenario(scenario_id: str) -> dict:
+    """PR1 category scenarios by id, or value-dilemma scenarios 'dl.<job>.<industry>' built on demand."""
+    if scenario_id in SCENARIO_BY_ID:
+        return SCENARIO_BY_ID[scenario_id]
+    if scenario_id.startswith("dl."):
+        from .dilemmas import build_cached
+
+        return build_cached(scenario_id)
+    raise KeyError(scenario_id)
+
+
 def public_scenario(s: dict) -> dict:
     """What the candidate may see: no beats, no persona stances (PRD: format is disclosed, situations are not)."""
     return {
         "id": s["id"],
+        "kind": s.get("kind", "category"),
         "category": s["category"],
         "tagline": s["tagline"],
         "title": s["title"],

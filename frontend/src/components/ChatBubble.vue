@@ -7,6 +7,7 @@ defineProps({
   mine: Boolean,
   highlight: Boolean,
   badges: { type: Array, default: () => [] }, // competency ids observed on this message (admin only)
+  tag: { type: String, default: '' }, // e.g. the option chosen with this message
 })
 </script>
 
@@ -18,6 +19,7 @@ defineProps({
         <b>{{ who?.name }}</b><span v-if="who?.role" class="role">{{ who.role }}</span>
         <span v-for="c in badges" :key="c" class="dot" :style="{ background: COMP_COLOR[c].fg }" :title="c">{{ c }}</span>
       </div>
+      <div v-if="tag" class="tag">✔ 선택: {{ tag }}</div>
       <div class="bubble">{{ message.text }}</div>
     </div>
   </div>
@@ -34,5 +36,6 @@ defineProps({
 .meta b { color: var(--ink); }
 .dot { color: #fff; font-size: 10px; font-weight: 800; padding: 0 6px; border-radius: 999px; line-height: 16px; }
 .bubble { padding: 10px 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.tag { font-size: 12px; font-weight: 700; color: var(--brand); background: var(--brand-soft); padding: 4px 10px; border-radius: 8px; max-width: 100%; }
 .row.mine .bubble { background: var(--brand); color: #fff; border-color: var(--brand); }
 </style>

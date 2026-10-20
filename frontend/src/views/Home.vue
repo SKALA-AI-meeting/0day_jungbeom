@@ -1,12 +1,16 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
 
 const router = useRouter()
 const meta = ref(null)
 const alias = ref(localStorage.getItem('dz_alias') || '')
+const mode = ref('dilemma') // 'dilemma' = 직무·산업 맞춤 (PR2), 'category' = PR1 상황 카테고리
 const picked = ref(null)
+const job = ref(null)
+const industry = ref(null)
+const preview = ref(null)
 const agreed = ref(false)
 const busy = ref(false)
 const error = ref('')
@@ -19,7 +23,14 @@ onMounted(async () => {
   }
 })
 
-const scenario = computed(() => meta.value?.scenarios.find((s) => s.id === picked.value))
+watch([job, industry], async ([j, i]) => {
+  preview.value = null
+  if (j && i) preview.value = await api.preview(`dl.${j}.${i}`).catch(() => null)
+})
+
+const scenario = computed(() =>
+  mode.value === 'dilemma' ? preview.value : meta.value?.scenarios.find((s) => s.id === picked.value),
+)
 const ready = computed(() => alias.value.trim() && scenario.value && agreed.value && !busy.value)
 const ICON = { delay: '⏱️', scope: '🔀', conflict: '⚖️', workload: '🤝' }
 
@@ -28,7 +39,7 @@ async function start() {
   error.value = ''
   try {
     localStorage.setItem('dz_alias', alias.value.trim())
-    const s = await api.createSession(alias.value.trim(), picked.value)
+    const s = await api.createSession(alias.value.trim(), scenario.value.id)
     router.push(`/s/${s.id}`)
   } catch (e) {
     error.value = e.message
@@ -49,8 +60,27 @@ async function start() {
     </section>
 
     <section class="card step">
-      <div class="step-h"><b>2</b> 상황 카테고리 선택</div>
-      <div class="cats">
+      <div class="step-h">
+        <b>2</b> 상황 고르기
+        <div class="tabs">
+          <button :class="{ on: mode === 'dilemma' }" @click="mode = 'dilemma'">직무·산업 맞춤</button>
+          <button :class="{ on: mode === 'category' }" @click="mode = 'category'">상황 카테고리</button>
+        </div>
+      </div>
+      <template v-if="mode === 'dilemma'">
+        <p class="muted small hint">지원하는 직무와 산업을 고르면, 그 일에서 자주 생기는 상황이 주어져요.</p>
+        <div class="lbl">직무</div>
+        <div class="pills">
+          <button v-for="j in meta?.dilemma.jobs" :key="j.id" class="pill" :class="{ on: job === j.id }" @click="job = j.id">{{ j.label }}</button>
+        </div>
+        <div class="lbl">산업</div>
+        <div class="pills">
+          <button v-for="i in meta?.dilemma.industries" :key="i.id" class="pill" :class="{ on: industry === i.id }" @click="industry = i.id">
+            {{ i.label }} <small>{{ i.service }}</small>
+          </button>
+        </div>
+      </template>
+      <div v-else class="cats">
         <button
           v-for="s in meta?.scenarios"
           :key="s.id"
@@ -67,6 +97,7 @@ async function start() {
 
     <section v-if="scenario" class="card step">
       <div class="step-h"><b>3</b> 오늘의 상황</div>
+      <span v-if="scenario.kind === 'dilemma'" class="chip blue">{{ scenario.category }}</span>
       <h3 class="st">{{ scenario.title }}</h3>
       <p class="bg">{{ scenario.background }}</p>
       <p class="muted small">{{ scenario.brief }}</p>
@@ -77,7 +108,9 @@ async function start() {
         </div>
       </div>
       <p class="muted small flow">
-        진행 방식: <b>소통 → 조율 → 타협 → 설득</b> 네 단계로 대화가 이어지고, 왼쪽에서 현재 단계를 볼 수 있어요. 오른쪽 노트에 생각을 정리해도 좋아요.
+        진행 방식: <b>소통 → 조율 → 타협 → 설득</b> 네 단계로 대화가 이어지고, 왼쪽에서 현재 단계를 볼 수 있어요.
+        <template v-if="scenario.kind === 'dilemma'"> 타협 단계에서는 <b>선택지 중 하나를 고르고 이유를 적는</b> 순간이 있어요.</template>
+        오른쪽 노트에 생각을 정리해도 좋아요.
       </p>
       <label class="consent">
         <input type="checkbox" v-model="agreed" />
@@ -101,7 +134,17 @@ async function start() {
 .cat.on { border-color: var(--brand); background: var(--brand-soft); box-shadow: 0 0 0 3px var(--brand-soft); }
 .cat .ic { font-size: 26px; }
 .cat small { color: var(--muted); }
-.st { margin: 0 0 6px; }
+.st { margin: 6px 0 6px; }
+.step-h .tabs { margin-left: auto; display: flex; background: var(--bg); border-radius: 10px; padding: 3px; }
+.tabs button { border: 0; background: transparent; padding: 6px 12px; border-radius: 8px; font-weight: 600; color: var(--muted); }
+.tabs button.on { background: var(--panel); color: var(--brand); box-shadow: var(--shadow); }
+.hint { margin: -4px 0 10px; }
+.lbl { font-size: 12px; font-weight: 700; color: var(--muted); margin: 10px 0 6px; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { border: 1.5px solid var(--line); background: var(--panel); color: var(--ink); padding: 8px 14px; border-radius: 999px; font-weight: 600; }
+.pill small { color: var(--muted); font-weight: 500; margin-left: 4px; }
+.pill:hover { border-color: var(--brand); }
+.pill.on { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
 .bg { margin: 0 0 8px; }
 .people { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0; }
 .person { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border: 1px solid var(--line); border-radius: 999px; }

@@ -1,0 +1,7852 @@
+{
+ "thresholds": {
+  "r_conflict": -0.2,
+  "r_complement": 0.3,
+  "r_indep": 0.1,
+  "omega_min": 0.7,
+  "longstring_frac": 0.5,
+  "pref_gap": 0.5,
+  "n_boot": 1000
+ },
+ "big5": {
+  "n_raw": 19719,
+  "n_clean": 19602,
+  "keying_agreement": "50/50",
+  "parallel_analysis_factors": 7,
+  "tucker_phi": {
+   "E": 0.948,
+   "N": 0.929,
+   "A": 0.934,
+   "C": 0.96,
+   "O": 0.944
+  },
+  "fairness": {
+   "E": {
+    "gender_d": 0.107,
+    "age_r": 0.102
+   },
+   "N": {
+    "gender_d": 0.349,
+    "age_r": -0.163
+   },
+   "A": {
+    "gender_d": 0.446,
+    "age_r": 0.16
+   },
+   "C": {
+    "gender_d": 0.056,
+    "age_r": 0.215
+   },
+   "O": {
+    "gender_d": -0.212,
+    "age_r": 0.082
+   }
+  },
+  "domain_corr": {
+   "E": {
+    "E": 1.0,
+    "N": -0.263,
+    "A": 0.335,
+    "C": 0.105,
+    "O": 0.167
+   },
+   "N": {
+    "E": -0.263,
+    "N": 1.0,
+    "A": -0.113,
+    "C": -0.261,
+    "O": -0.103
+   },
+   "A": {
+    "E": 0.335,
+    "N": -0.113,
+    "A": 1.0,
+    "C": 0.174,
+    "O": 0.113
+   },
+   "C": {
+    "E": 0.105,
+    "N": -0.261,
+    "A": 0.174,
+    "C": 1.0,
+    "O": 0.084
+   },
+   "O": {
+    "E": 0.167,
+    "N": -0.103,
+    "A": 0.113,
+    "C": 0.084,
+    "O": 1.0
+   }
+  }
+ },
+ "hexaco": {
+  "cleaning": {
+   "raw": 22786,
+   "complete": 22734,
+   "validity_items>=5": 21646,
+   "elapse>=p1": 21270,
+   "longstring<50%": 21270
+  },
+  "reliability": {
+   "HSinc": {
+    "alpha": 0.783,
+    "omega": 0.793,
+    "n_reversed": 9
+   },
+   "HFair": {
+    "alpha": 0.843,
+    "omega": 0.848,
+    "n_reversed": 5
+   },
+   "HGree": {
+    "alpha": 0.775,
+    "omega": 0.786,
+    "n_reversed": 8
+   },
+   "HMode": {
+    "alpha": 0.814,
+    "omega": 0.814,
+    "n_reversed": 6
+   },
+   "EFear": {
+    "alpha": 0.882,
+    "omega": 0.886,
+    "n_reversed": 5
+   },
+   "EAnxi": {
+    "alpha": 0.868,
+    "omega": 0.874,
+    "n_reversed": 5
+   },
+   "EDepe": {
+    "alpha": 0.819,
+    "omega": 0.828,
+    "n_reversed": 0
+   },
+   "ESent": {
+    "alpha": 0.862,
+    "omega": 0.864,
+    "n_reversed": 5
+   },
+   "XExpr": {
+    "alpha": 0.843,
+    "omega": 0.849,
+    "n_reversed": 5
+   },
+   "XSocB": {
+    "alpha": 0.86,
+    "omega": 0.862,
+    "n_reversed": 5
+   },
+   "XSoci": {
+    "alpha": 0.895,
+    "omega": 0.896,
+    "n_reversed": 5
+   },
+   "XLive": {
+    "alpha": 0.849,
+    "omega": 0.853,
+    "n_reversed": 2
+   },
+   "AForg": {
+    "alpha": 0.843,
+    "omega": 0.847,
+    "n_reversed": 6
+   },
+   "AGent": {
+    "alpha": 0.782,
+    "omega": 0.786,
+    "n_reversed": 6
+   },
+   "AFlex": {
+    "alpha": 0.737,
+    "omega": 0.74,
+    "n_reversed": 8
+   },
+   "APati": {
+    "alpha": 0.93,
+    "omega": 0.931,
+    "n_reversed": 5
+   },
+   "COrga": {
+    "alpha": 0.83,
+    "omega": 0.834,
+    "n_reversed": 5
+   },
+   "CDili": {
+    "alpha": 0.864,
+    "omega": 0.866,
+    "n_reversed": 5
+   },
+   "CPerf": {
+    "alpha": 0.821,
+    "omega": 0.829,
+    "n_reversed": 2
+   },
+   "CPrud": {
+    "alpha": 0.825,
+    "omega": 0.826,
+    "n_reversed": 7
+   },
+   "OAesA": {
+    "alpha": 0.756,
+    "omega": 0.777,
+    "n_reversed": 5
+   },
+   "OInqu": {
+    "alpha": 0.76,
+    "omega": 0.77,
+    "n_reversed": 4
+   },
+   "OCrea": {
+    "alpha": 0.808,
+    "omega": 0.834,
+    "n_reversed": 4
+   },
+   "OUnco": {
+    "alpha": 0.786,
+    "omega": 0.789,
+    "n_reversed": 5
+   }
+  },
+  "parallel_analysis_factors": 6,
+  "top_eigenvalues": [
+   4.822,
+   3.966,
+   2.858,
+   2.36,
+   1.882,
+   1.142,
+   0.794,
+   0.602,
+   0.539,
+   0.5
+  ],
+  "tucker_phi": {
+   "H": 0.899,
+   "E": 0.847,
+   "X": 0.917,
+   "A": 0.902,
+   "C": 0.933,
+   "O": 0.907
+  },
+  "domain_scores_corr": {
+   "H": {
+    "H": 1.0,
+    "E": 0.164,
+    "X": -0.17,
+    "A": 0.451,
+    "C": 0.11,
+    "O": -0.064
+   },
+   "E": {
+    "H": 0.164,
+    "E": 1.0,
+    "X": -0.161,
+    "A": -0.145,
+    "C": -0.178,
+    "O": -0.144
+   },
+   "X": {
+    "H": -0.17,
+    "E": -0.161,
+    "X": 1.0,
+    "A": 0.22,
+    "C": 0.103,
+    "O": 0.303
+   },
+   "A": {
+    "H": 0.451,
+    "E": -0.145,
+    "X": 0.22,
+    "A": 1.0,
+    "C": 0.094,
+    "O": 0.096
+   },
+   "C": {
+    "H": 0.11,
+    "E": -0.178,
+    "X": 0.103,
+    "A": 0.094,
+    "C": 1.0,
+    "O": 0.125
+   },
+   "O": {
+    "H": -0.064,
+    "E": -0.144,
+    "X": 0.303,
+    "A": 0.096,
+    "C": 0.125,
+    "O": 1.0
+   }
+  },
+  "invariance": {
+   "n_us": 14118,
+   "n_east_asia": 668,
+   "n_kr": 25,
+   "pattern_r_us_vs_ea": 0.985,
+   "mean_abs_diff": 0.036
+  },
+  "ipsative_baseline": -0.043,
+  "counts": {
+   "weak": 118,
+   "independent": 79,
+   "complement": 49,
+   "conflict": 30
+  },
+  "n_tradeoff": 71
+ },
+ "mds": {
+  "HSinc": [
+   -0.349,
+   -0.383
+  ],
+  "HFair": [
+   -0.066,
+   -0.707
+  ],
+  "HGree": [
+   -0.44,
+   -0.622
+  ],
+  "HMode": [
+   -0.283,
+   -0.77
+  ],
+  "EFear": [
+   0.353,
+   -0.763
+  ],
+  "EAnxi": [
+   0.585,
+   -0.593
+  ],
+  "EDepe": [
+   0.439,
+   -0.588
+  ],
+  "ESent": [
+   0.177,
+   -0.501
+  ],
+  "XExpr": [
+   -0.177,
+   0.741
+  ],
+  "XSocB": [
+   -0.132,
+   0.802
+  ],
+  "XSoci": [
+   -0.498,
+   0.534
+  ],
+  "XLive": [
+   -0.394,
+   0.639
+  ],
+  "AForg": [
+   -0.685,
+   -0.185
+  ],
+  "AGent": [
+   -0.74,
+   -0.266
+  ],
+  "AFlex": [
+   -0.773,
+   0.054
+  ],
+  "APati": [
+   -0.646,
+   0.058
+  ],
+  "COrga": [
+   0.727,
+   -0.062
+  ],
+  "CDili": [
+   0.575,
+   0.31
+  ],
+  "CPerf": [
+   0.805,
+   0.16
+  ],
+  "CPrud": [
+   0.506,
+   0.001
+  ],
+  "OAesA": [
+   0.069,
+   0.181
+  ],
+  "OInqu": [
+   0.481,
+   0.575
+  ],
+  "OCrea": [
+   0.186,
+   0.707
+  ],
+  "OUnco": [
+   0.28,
+   0.679
+  ]
+ },
+ "pairs": [
+  {
+   "a": "HSinc",
+   "b": "HFair",
+   "a_ko": "진실성",
+   "b_ko": "공정성",
+   "same_domain": true,
+   "r": 0.413,
+   "r_ci": [
+    0.402,
+    0.425
+   ],
+   "r_ipsative": 0.222,
+   "r_ipsative_ci": [
+    0.209,
+    0.237
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.083,
+   "prefer_a": 0.136,
+   "prefer_b": 0.564,
+   "tie": 0.3,
+   "balance": 0.194,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": 0.449
+  },
+  {
+   "a": "HSinc",
+   "b": "HGree",
+   "a_ko": "진실성",
+   "b_ko": "탐욕 회피",
+   "same_domain": true,
+   "r": 0.513,
+   "r_ci": [
+    0.502,
+    0.524
+   ],
+   "r_ipsative": 0.427,
+   "r_ipsative_ci": [
+    0.416,
+    0.439
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.987,
+   "prefer_a": 0.338,
+   "prefer_b": 0.233,
+   "tie": 0.429,
+   "balance": 0.408,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.525
+  },
+  {
+   "a": "HSinc",
+   "b": "HMode",
+   "a_ko": "진실성",
+   "b_ko": "겸손",
+   "same_domain": true,
+   "r": 0.343,
+   "r_ci": [
+    0.331,
+    0.355
+   ],
+   "r_ipsative": 0.257,
+   "r_ipsative_ci": [
+    0.243,
+    0.271
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.147,
+   "prefer_a": 0.402,
+   "prefer_b": 0.251,
+   "tie": 0.348,
+   "balance": 0.384,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": 0.361
+  },
+  {
+   "a": "HSinc",
+   "b": "EFear",
+   "a_ko": "진실성",
+   "b_ko": "두려움",
+   "same_domain": false,
+   "r": -0.052,
+   "r_ci": [
+    -0.065,
+    -0.038
+   ],
+   "r_ipsative": -0.065,
+   "r_ipsative_ci": [
+    -0.08,
+    -0.051
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.45,
+   "prefer_a": 0.417,
+   "prefer_b": 0.326,
+   "tie": 0.257,
+   "balance": 0.439,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": -0.069
+  },
+  {
+   "a": "HSinc",
+   "b": "EAnxi",
+   "a_ko": "진실성",
+   "b_ko": "불안",
+   "same_domain": false,
+   "r": -0.171,
+   "r_ci": [
+    -0.183,
+    -0.156
+   ],
+   "r_ipsative": -0.185,
+   "r_ipsative_ci": [
+    -0.198,
+    -0.171
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.53,
+   "prefer_a": 0.282,
+   "prefer_b": 0.479,
+   "tie": 0.239,
+   "balance": 0.37,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": -0.145
+  },
+  {
+   "a": "HSinc",
+   "b": "EDepe",
+   "a_ko": "진실성",
+   "b_ko": "의존성",
+   "same_domain": false,
+   "r": -0.246,
+   "r_ci": [
+    -0.259,
+    -0.232
+   ],
+   "r_ipsative": -0.363,
+   "r_ipsative_ci": [
+    -0.375,
+    -0.35
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.579,
+   "prefer_a": 0.356,
+   "prefer_b": 0.376,
+   "tie": 0.268,
+   "balance": 0.487,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": -0.331
+  },
+  {
+   "a": "HSinc",
+   "b": "ESent",
+   "a_ko": "진실성",
+   "b_ko": "감상성",
+   "same_domain": false,
+   "r": 0.118,
+   "r_ci": [
+    0.105,
+    0.132
+   ],
+   "r_ipsative": -0.132,
+   "r_ipsative_ci": [
+    -0.145,
+    -0.117
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.328,
+   "prefer_a": 0.314,
+   "prefer_b": 0.402,
+   "tie": 0.284,
+   "balance": 0.439,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": 0.027
+  },
+  {
+   "a": "HSinc",
+   "b": "XExpr",
+   "a_ko": "진실성",
+   "b_ko": "사회적 표현",
+   "same_domain": false,
+   "r": -0.043,
+   "r_ci": [
+    -0.058,
+    -0.029
+   ],
+   "r_ipsative": -0.22,
+   "r_ipsative_ci": [
+    -0.234,
+    -0.206
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.444,
+   "prefer_a": 0.562,
+   "prefer_b": 0.208,
+   "tie": 0.23,
+   "balance": 0.27,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": -0.125
+  },
+  {
+   "a": "HSinc",
+   "b": "XSocB",
+   "a_ko": "진실성",
+   "b_ko": "사회적 대담성",
+   "same_domain": false,
+   "r": -0.029,
+   "r_ci": [
+    -0.043,
+    -0.016
+   ],
+   "r_ipsative": -0.245,
+   "r_ipsative_ci": [
+    -0.258,
+    -0.231
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.435,
+   "prefer_a": 0.512,
+   "prefer_b": 0.249,
+   "tie": 0.239,
+   "balance": 0.327,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": -0.084
+  },
+  {
+   "a": "HSinc",
+   "b": "XSoci",
+   "a_ko": "진실성",
+   "b_ko": "사교성",
+   "same_domain": false,
+   "r": 0.058,
+   "r_ci": [
+    0.044,
+    0.074
+   ],
+   "r_ipsative": -0.219,
+   "r_ipsative_ci": [
+    -0.233,
+    -0.206
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.372,
+   "prefer_a": 0.518,
+   "prefer_b": 0.234,
+   "tie": 0.248,
+   "balance": 0.311,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": -0.003
+  },
+  {
+   "a": "HSinc",
+   "b": "XLive",
+   "a_ko": "진실성",
+   "b_ko": "활력",
+   "same_domain": false,
+   "r": 0.132,
+   "r_ci": [
+    0.117,
+    0.147
+   ],
+   "r_ipsative": -0.102,
+   "r_ipsative_ci": [
+    -0.116,
+    -0.089
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.318,
+   "prefer_a": 0.427,
+   "prefer_b": 0.274,
+   "tie": 0.299,
+   "balance": 0.391,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": 0.007
+  },
+  {
+   "a": "HSinc",
+   "b": "AForg",
+   "a_ko": "진실성",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": 0.244,
+   "r_ci": [
+    0.23,
+    0.258
+   ],
+   "r_ipsative": -0.011,
+   "r_ipsative_ci": [
+    -0.026,
+    0.006
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.23,
+   "prefer_a": 0.401,
+   "prefer_b": 0.261,
+   "tie": 0.337,
+   "balance": 0.394,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": 0.31
+  },
+  {
+   "a": "HSinc",
+   "b": "AGent",
+   "a_ko": "진실성",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": 0.359,
+   "r_ci": [
+    0.346,
+    0.372
+   ],
+   "r_ipsative": 0.149,
+   "r_ipsative_ci": [
+    0.134,
+    0.163
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.133,
+   "prefer_a": 0.332,
+   "prefer_b": 0.27,
+   "tie": 0.399,
+   "balance": 0.448,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.34
+  },
+  {
+   "a": "HSinc",
+   "b": "AFlex",
+   "a_ko": "진실성",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": 0.337,
+   "r_ci": [
+    0.325,
+    0.349
+   ],
+   "r_ipsative": 0.134,
+   "r_ipsative_ci": [
+    0.12,
+    0.148
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.152,
+   "prefer_a": 0.526,
+   "prefer_b": 0.136,
+   "tie": 0.338,
+   "balance": 0.205,
+   "fair_gender_d_max": null,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.338
+  },
+  {
+   "a": "HSinc",
+   "b": "APati",
+   "a_ko": "진실성",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": 0.203,
+   "r_ci": [
+    0.189,
+    0.216
+   ],
+   "r_ipsative": 0.009,
+   "r_ipsative_ci": [
+    -0.005,
+    0.024
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.263,
+   "prefer_a": 0.471,
+   "prefer_b": 0.268,
+   "tie": 0.261,
+   "balance": 0.363,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": 0.24
+  },
+  {
+   "a": "HSinc",
+   "b": "COrga",
+   "a_ko": "진실성",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": 0.115,
+   "r_ci": [
+    0.099,
+    0.129
+   ],
+   "r_ipsative": -0.03,
+   "r_ipsative_ci": [
+    -0.044,
+    -0.016
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.331,
+   "prefer_a": 0.554,
+   "prefer_b": 0.174,
+   "tie": 0.272,
+   "balance": 0.239,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": 0.162
+  },
+  {
+   "a": "HSinc",
+   "b": "CDili",
+   "a_ko": "진실성",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.245,
+   "r_ci": [
+    0.23,
+    0.259
+   ],
+   "r_ipsative": 0.028,
+   "r_ipsative_ci": [
+    0.014,
+    0.042
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.229,
+   "prefer_a": 0.43,
+   "prefer_b": 0.245,
+   "tie": 0.325,
+   "balance": 0.363,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": 0.205
+  },
+  {
+   "a": "HSinc",
+   "b": "CPerf",
+   "a_ko": "진실성",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.048,
+   "r_ci": [
+    -0.062,
+    -0.034
+   ],
+   "r_ipsative": -0.177,
+   "r_ipsative_ci": [
+    -0.191,
+    -0.162
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.448,
+   "prefer_a": 0.241,
+   "prefer_b": 0.46,
+   "tie": 0.298,
+   "balance": 0.344,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": -0.088
+  },
+  {
+   "a": "HSinc",
+   "b": "CPrud",
+   "a_ko": "진실성",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": 0.274,
+   "r_ci": [
+    0.26,
+    0.288
+   ],
+   "r_ipsative": 0.128,
+   "r_ipsative_ci": [
+    0.114,
+    0.143
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.205,
+   "prefer_a": 0.488,
+   "prefer_b": 0.187,
+   "tie": 0.325,
+   "balance": 0.277,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": 0.253
+  },
+  {
+   "a": "HSinc",
+   "b": "OAesA",
+   "a_ko": "진실성",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.078,
+   "r_ci": [
+    0.063,
+    0.092
+   ],
+   "r_ipsative": -0.174,
+   "r_ipsative_ci": [
+    -0.187,
+    -0.16
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.358,
+   "prefer_a": 0.115,
+   "prefer_b": 0.633,
+   "tie": 0.252,
+   "balance": 0.154,
+   "fair_gender_d_max": null,
+   "min_omega": 0.777,
+   "invariance_r_ea": -0.056
+  },
+  {
+   "a": "HSinc",
+   "b": "OInqu",
+   "a_ko": "진실성",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.05,
+   "r_ci": [
+    0.036,
+    0.063
+   ],
+   "r_ipsative": -0.132,
+   "r_ipsative_ci": [
+    -0.147,
+    -0.118
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.379,
+   "prefer_a": 0.134,
+   "prefer_b": 0.6,
+   "tie": 0.266,
+   "balance": 0.182,
+   "fair_gender_d_max": null,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.025
+  },
+  {
+   "a": "HSinc",
+   "b": "OCrea",
+   "a_ko": "진실성",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.064,
+   "r_ci": [
+    0.05,
+    0.078
+   ],
+   "r_ipsative": -0.154,
+   "r_ipsative_ci": [
+    -0.17,
+    -0.141
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.368,
+   "prefer_a": 0.112,
+   "prefer_b": 0.627,
+   "tie": 0.261,
+   "balance": 0.151,
+   "fair_gender_d_max": null,
+   "min_omega": 0.793,
+   "invariance_r_ea": 0.003
+  },
+  {
+   "a": "HSinc",
+   "b": "OUnco",
+   "a_ko": "진실성",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": 0.052,
+   "r_ci": [
+    0.037,
+    0.065
+   ],
+   "r_ipsative": -0.025,
+   "r_ipsative_ci": [
+    -0.04,
+    -0.011
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.377,
+   "prefer_a": 0.179,
+   "prefer_b": 0.526,
+   "tie": 0.295,
+   "balance": 0.253,
+   "fair_gender_d_max": null,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.003
+  },
+  {
+   "a": "HFair",
+   "b": "HGree",
+   "a_ko": "공정성",
+   "b_ko": "탐욕 회피",
+   "same_domain": true,
+   "r": 0.353,
+   "r_ci": [
+    0.34,
+    0.366
+   ],
+   "r_ipsative": 0.199,
+   "r_ipsative_ci": [
+    0.184,
+    0.212
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.137,
+   "prefer_a": 0.618,
+   "prefer_b": 0.121,
+   "tie": 0.261,
+   "balance": 0.164,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.346
+  },
+  {
+   "a": "HFair",
+   "b": "HMode",
+   "a_ko": "공정성",
+   "b_ko": "겸손",
+   "same_domain": true,
+   "r": 0.38,
+   "r_ci": [
+    0.368,
+    0.394
+   ],
+   "r_ipsative": 0.266,
+   "r_ipsative_ci": [
+    0.253,
+    0.279
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.113,
+   "prefer_a": 0.637,
+   "prefer_b": 0.106,
+   "tie": 0.257,
+   "balance": 0.143,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": 0.371
+  },
+  {
+   "a": "HFair",
+   "b": "EFear",
+   "a_ko": "공정성",
+   "b_ko": "두려움",
+   "same_domain": false,
+   "r": 0.248,
+   "r_ci": [
+    0.234,
+    0.261
+   ],
+   "r_ipsative": 0.211,
+   "r_ipsative_ci": [
+    0.198,
+    0.225
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.227,
+   "prefer_a": 0.598,
+   "prefer_b": 0.149,
+   "tie": 0.252,
+   "balance": 0.199,
+   "fair_gender_d_max": null,
+   "min_omega": 0.848,
+   "invariance_r_ea": 0.206
+  },
+  {
+   "a": "HFair",
+   "b": "EAnxi",
+   "a_ko": "공정성",
+   "b_ko": "불안",
+   "same_domain": false,
+   "r": 0.142,
+   "r_ci": [
+    0.129,
+    0.156
+   ],
+   "r_ipsative": 0.098,
+   "r_ipsative_ci": [
+    0.085,
+    0.111
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.31,
+   "prefer_a": 0.432,
+   "prefer_b": 0.272,
+   "tie": 0.296,
+   "balance": 0.387,
+   "fair_gender_d_max": null,
+   "min_omega": 0.848,
+   "invariance_r_ea": 0.089
+  },
+  {
+   "a": "HFair",
+   "b": "EDepe",
+   "a_ko": "공정성",
+   "b_ko": "의존성",
+   "same_domain": false,
+   "r": 0.186,
+   "r_ci": [
+    0.171,
+    0.201
+   ],
+   "r_ipsative": 0.069,
+   "r_ipsative_ci": [
+    0.055,
+    0.084
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.276,
+   "prefer_a": 0.55,
+   "prefer_b": 0.181,
+   "tie": 0.269,
+   "balance": 0.248,
+   "fair_gender_d_max": null,
+   "min_omega": 0.828,
+   "invariance_r_ea": 0.085
+  },
+  {
+   "a": "HFair",
+   "b": "ESent",
+   "a_ko": "공정성",
+   "b_ko": "감상성",
+   "same_domain": false,
+   "r": 0.363,
+   "r_ci": [
+    0.351,
+    0.376
+   ],
+   "r_ipsative": 0.135,
+   "r_ipsative_ci": [
+    0.12,
+    0.149
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.129,
+   "prefer_a": 0.493,
+   "prefer_b": 0.202,
+   "tie": 0.306,
+   "balance": 0.29,
+   "fair_gender_d_max": null,
+   "min_omega": 0.848,
+   "invariance_r_ea": 0.242
+  },
+  {
+   "a": "HFair",
+   "b": "XExpr",
+   "a_ko": "공정성",
+   "b_ko": "사회적 표현",
+   "same_domain": false,
+   "r": -0.084,
+   "r_ci": [
+    -0.097,
+    -0.071
+   ],
+   "r_ipsative": -0.337,
+   "r_ipsative_ci": [
+    -0.349,
+    -0.324
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.473,
+   "prefer_a": 0.713,
+   "prefer_b": 0.121,
+   "tie": 0.166,
+   "balance": 0.146,
+   "fair_gender_d_max": null,
+   "min_omega": 0.848,
+   "invariance_r_ea": -0.11
+  },
+  {
+   "a": "HFair",
+   "b": "XSocB",
+   "a_ko": "공정성",
+   "b_ko": "사회적 대담성",
+   "same_domain": false,
+   "r": -0.088,
+   "r_ci": [
+    -0.101,
+    -0.076
+   ],
+   "r_ipsative": -0.39,
+   "r_ipsative_ci": [
+    -0.402,
+    -0.377
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.475,
+   "prefer_a": 0.669,
+   "prefer_b": 0.153,
+   "tie": 0.178,
+   "balance": 0.186,
+   "fair_gender_d_max": null,
+   "min_omega": 0.848,
+   "invariance_r_ea": -0.09
+  },
+  {
+   "a": "HFair",
+   "b": "XSoci",
+   "a_ko": "공정성",
+   "b_ko": "사교성",
+   "same_domain": false,
+   "r": 0.113,
+   "r_ci": [
+    0.1,
+    0.127
+   ],
+   "r_ipsative": -0.216,
+   "r_ipsative_ci": [
+    -0.229,
+    -0.202
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.332,
+   "prefer_a": 0.685,
+   "prefer_b": 0.128,
+   "tie": 0.188,
+   "balance": 0.157,
+   "fair_gender_d_max": null,
+   "min_omega": 0.848,
+   "invariance_r_ea": 0.101
+  },
+  {
+   "a": "HFair",
+   "b": "XLive",
+   "a_ko": "공정성",
+   "b_ko": "활력",
+   "same_domain": false,
+   "r": 0.057,
+   "r_ci": [
+    0.044,
+    0.071
+   ],
+   "r_ipsative": -0.267,
+   "r_ipsative_ci": [
+    -0.281,
+    -0.254
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.373,
+   "prefer_a": 0.63,
+   "prefer_b": 0.153,
+   "tie": 0.218,
+   "balance": 0.195,
+   "fair_gender_d_max": null,
+   "min_omega": 0.848,
+   "invariance_r_ea": 0.048
+  },
+  {
+   "a": "HFair",
+   "b": "AForg",
+   "a_ko": "공정성",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": 0.41,
+   "r_ci": [
+    0.398,
+    0.422
+   ],
+   "r_ipsative": 0.163,
+   "r_ipsative_ci": [
+    0.149,
+    0.178
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.086,
+   "prefer_a": 0.64,
+   "prefer_b": 0.099,
+   "tie": 0.261,
+   "balance": 0.135,
+   "fair_gender_d_max": null,
+   "min_omega": 0.847,
+   "invariance_r_ea": 0.432
+  },
+  {
+   "a": "HFair",
+   "b": "AGent",
+   "a_ko": "공정성",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": 0.372,
+   "r_ci": [
+    0.359,
+    0.384
+   ],
+   "r_ipsative": 0.115,
+   "r_ipsative_ci": [
+    0.102,
+    0.129
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.121,
+   "prefer_a": 0.599,
+   "prefer_b": 0.12,
+   "tie": 0.282,
+   "balance": 0.167,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.367
+  },
+  {
+   "a": "HFair",
+   "b": "AFlex",
+   "a_ko": "공정성",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": 0.253,
+   "r_ci": [
+    0.24,
+    0.267
+   ],
+   "r_ipsative": -0.034,
+   "r_ipsative_ci": [
+    -0.049,
+    -0.019
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.222,
+   "prefer_a": 0.745,
+   "prefer_b": 0.071,
+   "tie": 0.184,
+   "balance": 0.087,
+   "fair_gender_d_max": null,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.241
+  },
+  {
+   "a": "HFair",
+   "b": "APati",
+   "a_ko": "공정성",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": 0.212,
+   "r_ci": [
+    0.198,
+    0.226
+   ],
+   "r_ipsative": -0.036,
+   "r_ipsative_ci": [
+    -0.05,
+    -0.022
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.256,
+   "prefer_a": 0.643,
+   "prefer_b": 0.145,
+   "tie": 0.212,
+   "balance": 0.185,
+   "fair_gender_d_max": null,
+   "min_omega": 0.848,
+   "invariance_r_ea": 0.258
+  },
+  {
+   "a": "HFair",
+   "b": "COrga",
+   "a_ko": "공정성",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": 0.184,
+   "r_ci": [
+    0.17,
+    0.197
+   ],
+   "r_ipsative": -0.0,
+   "r_ipsative_ci": [
+    -0.015,
+    0.014
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.278,
+   "prefer_a": 0.746,
+   "prefer_b": 0.082,
+   "tie": 0.172,
+   "balance": 0.099,
+   "fair_gender_d_max": null,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.255
+  },
+  {
+   "a": "HFair",
+   "b": "CDili",
+   "a_ko": "공정성",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.248,
+   "r_ci": [
+    0.234,
+    0.263
+   ],
+   "r_ipsative": -0.024,
+   "r_ipsative_ci": [
+    -0.04,
+    -0.01
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.226,
+   "prefer_a": 0.653,
+   "prefer_b": 0.12,
+   "tie": 0.227,
+   "balance": 0.155,
+   "fair_gender_d_max": null,
+   "min_omega": 0.848,
+   "invariance_r_ea": 0.26
+  },
+  {
+   "a": "HFair",
+   "b": "CPerf",
+   "a_ko": "공정성",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": 0.062,
+   "r_ci": [
+    0.048,
+    0.076
+   ],
+   "r_ipsative": -0.107,
+   "r_ipsative_ci": [
+    -0.123,
+    -0.092
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.37,
+   "prefer_a": 0.444,
+   "prefer_b": 0.256,
+   "tie": 0.3,
+   "balance": 0.365,
+   "fair_gender_d_max": null,
+   "min_omega": 0.829,
+   "invariance_r_ea": 0.065
+  },
+  {
+   "a": "HFair",
+   "b": "CPrud",
+   "a_ko": "공정성",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": 0.261,
+   "r_ci": [
+    0.247,
+    0.276
+   ],
+   "r_ipsative": 0.064,
+   "r_ipsative_ci": [
+    0.049,
+    0.078
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.216,
+   "prefer_a": 0.714,
+   "prefer_b": 0.091,
+   "tie": 0.195,
+   "balance": 0.112,
+   "fair_gender_d_max": null,
+   "min_omega": 0.826,
+   "invariance_r_ea": 0.271
+  },
+  {
+   "a": "HFair",
+   "b": "OAesA",
+   "a_ko": "공정성",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.154,
+   "r_ci": [
+    0.14,
+    0.169
+   ],
+   "r_ipsative": -0.14,
+   "r_ipsative_ci": [
+    -0.155,
+    -0.125
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.301,
+   "prefer_a": 0.262,
+   "prefer_b": 0.394,
+   "tie": 0.344,
+   "balance": 0.4,
+   "fair_gender_d_max": null,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.035
+  },
+  {
+   "a": "HFair",
+   "b": "OInqu",
+   "a_ko": "공정성",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.022,
+   "r_ci": [
+    0.008,
+    0.036
+   ],
+   "r_ipsative": -0.23,
+   "r_ipsative_ci": [
+    -0.243,
+    -0.218
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.399,
+   "prefer_a": 0.304,
+   "prefer_b": 0.37,
+   "tie": 0.325,
+   "balance": 0.451,
+   "fair_gender_d_max": null,
+   "min_omega": 0.77,
+   "invariance_r_ea": -0.064
+  },
+  {
+   "a": "HFair",
+   "b": "OCrea",
+   "a_ko": "공정성",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": -0.004,
+   "r_ci": [
+    -0.017,
+    0.011
+   ],
+   "r_ipsative": -0.308,
+   "r_ipsative_ci": [
+    -0.321,
+    -0.295
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.417,
+   "prefer_a": 0.282,
+   "prefer_b": 0.383,
+   "tie": 0.335,
+   "balance": 0.424,
+   "fair_gender_d_max": null,
+   "min_omega": 0.834,
+   "invariance_r_ea": -0.067
+  },
+  {
+   "a": "HFair",
+   "b": "OUnco",
+   "a_ko": "공정성",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.216,
+   "r_ci": [
+    -0.229,
+    -0.203
+   ],
+   "r_ipsative": -0.386,
+   "r_ipsative_ci": [
+    -0.398,
+    -0.375
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.559,
+   "prefer_a": 0.399,
+   "prefer_b": 0.324,
+   "tie": 0.277,
+   "balance": 0.448,
+   "fair_gender_d_max": null,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.259
+  },
+  {
+   "a": "HGree",
+   "b": "HMode",
+   "a_ko": "탐욕 회피",
+   "b_ko": "겸손",
+   "same_domain": true,
+   "r": 0.545,
+   "r_ci": [
+    0.535,
+    0.554
+   ],
+   "r_ipsative": 0.514,
+   "r_ipsative_ci": [
+    0.504,
+    0.524
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.954,
+   "prefer_a": 0.323,
+   "prefer_b": 0.253,
+   "tie": 0.423,
+   "balance": 0.439,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.484
+  },
+  {
+   "a": "HGree",
+   "b": "EFear",
+   "a_ko": "탐욕 회피",
+   "b_ko": "두려움",
+   "same_domain": false,
+   "r": 0.062,
+   "r_ci": [
+    0.048,
+    0.075
+   ],
+   "r_ipsative": 0.099,
+   "r_ipsative_ci": [
+    0.086,
+    0.113
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.37,
+   "prefer_a": 0.375,
+   "prefer_b": 0.351,
+   "tie": 0.274,
+   "balance": 0.484,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.006
+  },
+  {
+   "a": "HGree",
+   "b": "EAnxi",
+   "a_ko": "탐욕 회피",
+   "b_ko": "불안",
+   "same_domain": false,
+   "r": -0.015,
+   "r_ci": [
+    -0.03,
+    -0.001
+   ],
+   "r_ipsative": 0.027,
+   "r_ipsative_ci": [
+    0.012,
+    0.041
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.425,
+   "prefer_a": 0.235,
+   "prefer_b": 0.512,
+   "tie": 0.254,
+   "balance": 0.314,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.009
+  },
+  {
+   "a": "HGree",
+   "b": "EDepe",
+   "a_ko": "탐욕 회피",
+   "b_ko": "의존성",
+   "same_domain": false,
+   "r": -0.148,
+   "r_ci": [
+    -0.162,
+    -0.134
+   ],
+   "r_ipsative": -0.186,
+   "r_ipsative_ci": [
+    -0.2,
+    -0.172
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.515,
+   "prefer_a": 0.312,
+   "prefer_b": 0.412,
+   "tie": 0.276,
+   "balance": 0.431,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.191
+  },
+  {
+   "a": "HGree",
+   "b": "ESent",
+   "a_ko": "탐욕 회피",
+   "b_ko": "감상성",
+   "same_domain": false,
+   "r": 0.127,
+   "r_ci": [
+    0.112,
+    0.141
+   ],
+   "r_ipsative": -0.05,
+   "r_ipsative_ci": [
+    -0.065,
+    -0.036
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.321,
+   "prefer_a": 0.28,
+   "prefer_b": 0.448,
+   "tie": 0.272,
+   "balance": 0.384,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.121
+  },
+  {
+   "a": "HGree",
+   "b": "XExpr",
+   "a_ko": "탐욕 회피",
+   "b_ko": "사회적 표현",
+   "same_domain": false,
+   "r": -0.234,
+   "r_ci": [
+    -0.247,
+    -0.22
+   ],
+   "r_ipsative": -0.359,
+   "r_ipsative_ci": [
+    -0.372,
+    -0.348
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.571,
+   "prefer_a": 0.526,
+   "prefer_b": 0.248,
+   "tie": 0.226,
+   "balance": 0.32,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.179
+  },
+  {
+   "a": "HGree",
+   "b": "XSocB",
+   "a_ko": "탐욕 회피",
+   "b_ko": "사회적 대담성",
+   "same_domain": false,
+   "r": -0.274,
+   "r_ci": [
+    -0.286,
+    -0.26
+   ],
+   "r_ipsative": -0.449,
+   "r_ipsative_ci": [
+    -0.46,
+    -0.438
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.596,
+   "prefer_a": 0.482,
+   "prefer_b": 0.296,
+   "tie": 0.222,
+   "balance": 0.38,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.2
+  },
+  {
+   "a": "HGree",
+   "b": "XSoci",
+   "a_ko": "탐욕 회피",
+   "b_ko": "사교성",
+   "same_domain": false,
+   "r": -0.122,
+   "r_ci": [
+    -0.136,
+    -0.108
+   ],
+   "r_ipsative": -0.362,
+   "r_ipsative_ci": [
+    -0.374,
+    -0.349
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.498,
+   "prefer_a": 0.484,
+   "prefer_b": 0.284,
+   "tie": 0.232,
+   "balance": 0.369,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.082
+  },
+  {
+   "a": "HGree",
+   "b": "XLive",
+   "a_ko": "탐욕 회피",
+   "b_ko": "활력",
+   "same_domain": false,
+   "r": -0.083,
+   "r_ci": [
+    -0.097,
+    -0.068
+   ],
+   "r_ipsative": -0.29,
+   "r_ipsative_ci": [
+    -0.303,
+    -0.278
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.471,
+   "prefer_a": 0.401,
+   "prefer_b": 0.324,
+   "tie": 0.275,
+   "balance": 0.447,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.065
+  },
+  {
+   "a": "HGree",
+   "b": "AForg",
+   "a_ko": "탐욕 회피",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": 0.292,
+   "r_ci": [
+    0.279,
+    0.306
+   ],
+   "r_ipsative": 0.116,
+   "r_ipsative_ci": [
+    0.102,
+    0.13
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.19,
+   "prefer_a": 0.35,
+   "prefer_b": 0.294,
+   "tie": 0.356,
+   "balance": 0.457,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.371
+  },
+  {
+   "a": "HGree",
+   "b": "AGent",
+   "a_ko": "탐욕 회피",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": 0.38,
+   "r_ci": [
+    0.368,
+    0.393
+   ],
+   "r_ipsative": 0.231,
+   "r_ipsative_ci": [
+    0.218,
+    0.245
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.114,
+   "prefer_a": 0.279,
+   "prefer_b": 0.318,
+   "tie": 0.402,
+   "balance": 0.468,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.341
+  },
+  {
+   "a": "HGree",
+   "b": "AFlex",
+   "a_ko": "탐욕 회피",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": 0.304,
+   "r_ci": [
+    0.291,
+    0.316
+   ],
+   "r_ipsative": 0.15,
+   "r_ipsative_ci": [
+    0.137,
+    0.163
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.18,
+   "prefer_a": 0.467,
+   "prefer_b": 0.176,
+   "tie": 0.357,
+   "balance": 0.273,
+   "fair_gender_d_max": null,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.317
+  },
+  {
+   "a": "HGree",
+   "b": "APati",
+   "a_ko": "탐욕 회피",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": 0.214,
+   "r_ci": [
+    0.2,
+    0.227
+   ],
+   "r_ipsative": 0.082,
+   "r_ipsative_ci": [
+    0.067,
+    0.096
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.254,
+   "prefer_a": 0.436,
+   "prefer_b": 0.3,
+   "tie": 0.264,
+   "balance": 0.408,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.237
+  },
+  {
+   "a": "HGree",
+   "b": "COrga",
+   "a_ko": "탐욕 회피",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": -0.058,
+   "r_ci": [
+    -0.072,
+    -0.044
+   ],
+   "r_ipsative": -0.161,
+   "r_ipsative_ci": [
+    -0.175,
+    -0.147
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.455,
+   "prefer_a": 0.518,
+   "prefer_b": 0.221,
+   "tie": 0.261,
+   "balance": 0.299,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.055
+  },
+  {
+   "a": "HGree",
+   "b": "CDili",
+   "a_ko": "탐욕 회피",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.036,
+   "r_ci": [
+    0.022,
+    0.049
+   ],
+   "r_ipsative": -0.163,
+   "r_ipsative_ci": [
+    -0.178,
+    -0.149
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.389,
+   "prefer_a": 0.403,
+   "prefer_b": 0.302,
+   "tie": 0.295,
+   "balance": 0.428,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.009
+  },
+  {
+   "a": "HGree",
+   "b": "CPerf",
+   "a_ko": "탐욕 회피",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.232,
+   "r_ci": [
+    -0.246,
+    -0.218
+   ],
+   "r_ipsative": -0.306,
+   "r_ipsative_ci": [
+    -0.319,
+    -0.293
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.57,
+   "prefer_a": 0.224,
+   "prefer_b": 0.505,
+   "tie": 0.271,
+   "balance": 0.307,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.238
+  },
+  {
+   "a": "HGree",
+   "b": "CPrud",
+   "a_ko": "탐욕 회피",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": 0.076,
+   "r_ci": [
+    0.062,
+    0.091
+   ],
+   "r_ipsative": -0.044,
+   "r_ipsative_ci": [
+    -0.058,
+    -0.03
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.359,
+   "prefer_a": 0.45,
+   "prefer_b": 0.245,
+   "tie": 0.306,
+   "balance": 0.352,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.035
+  },
+  {
+   "a": "HGree",
+   "b": "OAesA",
+   "a_ko": "탐욕 회피",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.046,
+   "r_ci": [
+    0.032,
+    0.06
+   ],
+   "r_ipsative": -0.139,
+   "r_ipsative_ci": [
+    -0.154,
+    -0.125
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.381,
+   "prefer_a": 0.096,
+   "prefer_b": 0.677,
+   "tie": 0.227,
+   "balance": 0.124,
+   "fair_gender_d_max": null,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.022
+  },
+  {
+   "a": "HGree",
+   "b": "OInqu",
+   "a_ko": "탐욕 회피",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": -0.006,
+   "r_ci": [
+    -0.021,
+    0.007
+   ],
+   "r_ipsative": -0.128,
+   "r_ipsative_ci": [
+    -0.142,
+    -0.115
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.418,
+   "prefer_a": 0.113,
+   "prefer_b": 0.638,
+   "tie": 0.249,
+   "balance": 0.151,
+   "fair_gender_d_max": null,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.05
+  },
+  {
+   "a": "HGree",
+   "b": "OCrea",
+   "a_ko": "탐욕 회피",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": -0.053,
+   "r_ci": [
+    -0.067,
+    -0.038
+   ],
+   "r_ipsative": -0.22,
+   "r_ipsative_ci": [
+    -0.234,
+    -0.207
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.451,
+   "prefer_a": 0.102,
+   "prefer_b": 0.666,
+   "tie": 0.232,
+   "balance": 0.133,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.005
+  },
+  {
+   "a": "HGree",
+   "b": "OUnco",
+   "a_ko": "탐욕 회피",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": 0.033,
+   "r_ci": [
+    0.019,
+    0.048
+   ],
+   "r_ipsative": 0.011,
+   "r_ipsative_ci": [
+    -0.005,
+    0.024
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.39,
+   "prefer_a": 0.146,
+   "prefer_b": 0.565,
+   "tie": 0.289,
+   "balance": 0.205,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.075
+  },
+  {
+   "a": "HMode",
+   "b": "EFear",
+   "a_ko": "겸손",
+   "b_ko": "두려움",
+   "same_domain": false,
+   "r": 0.238,
+   "r_ci": [
+    0.223,
+    0.251
+   ],
+   "r_ipsative": 0.292,
+   "r_ipsative_ci": [
+    0.28,
+    0.305
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.235,
+   "prefer_a": 0.337,
+   "prefer_b": 0.364,
+   "tie": 0.299,
+   "balance": 0.48,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": 0.219
+  },
+  {
+   "a": "HMode",
+   "b": "EAnxi",
+   "a_ko": "겸손",
+   "b_ko": "불안",
+   "same_domain": false,
+   "r": 0.158,
+   "r_ci": [
+    0.143,
+    0.171
+   ],
+   "r_ipsative": 0.22,
+   "r_ipsative_ci": [
+    0.205,
+    0.233
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.298,
+   "prefer_a": 0.201,
+   "prefer_b": 0.533,
+   "tie": 0.265,
+   "balance": 0.274,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": 0.136
+  },
+  {
+   "a": "HMode",
+   "b": "EDepe",
+   "a_ko": "겸손",
+   "b_ko": "의존성",
+   "same_domain": false,
+   "r": 0.078,
+   "r_ci": [
+    0.063,
+    0.092
+   ],
+   "r_ipsative": 0.081,
+   "r_ipsative_ci": [
+    0.067,
+    0.094
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.358,
+   "prefer_a": 0.277,
+   "prefer_b": 0.432,
+   "tie": 0.291,
+   "balance": 0.391,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": 0.047
+  },
+  {
+   "a": "HMode",
+   "b": "ESent",
+   "a_ko": "겸손",
+   "b_ko": "감상성",
+   "same_domain": false,
+   "r": 0.202,
+   "r_ci": [
+    0.186,
+    0.215
+   ],
+   "r_ipsative": 0.078,
+   "r_ipsative_ci": [
+    0.065,
+    0.093
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.264,
+   "prefer_a": 0.258,
+   "prefer_b": 0.469,
+   "tie": 0.273,
+   "balance": 0.355,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": 0.088
+  },
+  {
+   "a": "HMode",
+   "b": "XExpr",
+   "a_ko": "겸손",
+   "b_ko": "사회적 표현",
+   "same_domain": false,
+   "r": -0.382,
+   "r_ci": [
+    -0.393,
+    -0.37
+   ],
+   "r_ipsative": -0.467,
+   "r_ipsative_ci": [
+    -0.478,
+    -0.456
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.662,
+   "prefer_a": 0.498,
+   "prefer_b": 0.293,
+   "tie": 0.209,
+   "balance": 0.371,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": -0.348
+  },
+  {
+   "a": "HMode",
+   "b": "XSocB",
+   "a_ko": "겸손",
+   "b_ko": "사회적 대담성",
+   "same_domain": false,
+   "r": -0.452,
+   "r_ci": [
+    -0.463,
+    -0.441
+   ],
+   "r_ipsative": -0.591,
+   "r_ipsative_ci": [
+    -0.601,
+    -0.582
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.704,
+   "prefer_a": 0.457,
+   "prefer_b": 0.337,
+   "tie": 0.205,
+   "balance": 0.424,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": -0.477
+  },
+  {
+   "a": "HMode",
+   "b": "XSoci",
+   "a_ko": "겸손",
+   "b_ko": "사교성",
+   "same_domain": false,
+   "r": -0.109,
+   "r_ci": [
+    -0.122,
+    -0.094
+   ],
+   "r_ipsative": -0.293,
+   "r_ipsative_ci": [
+    -0.306,
+    -0.281
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.489,
+   "prefer_a": 0.463,
+   "prefer_b": 0.312,
+   "tie": 0.225,
+   "balance": 0.402,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": -0.135
+  },
+  {
+   "a": "HMode",
+   "b": "XLive",
+   "a_ko": "겸손",
+   "b_ko": "활력",
+   "same_domain": false,
+   "r": -0.201,
+   "r_ci": [
+    -0.215,
+    -0.187
+   ],
+   "r_ipsative": -0.376,
+   "r_ipsative_ci": [
+    -0.388,
+    -0.365
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.55,
+   "prefer_a": 0.383,
+   "prefer_b": 0.365,
+   "tie": 0.252,
+   "balance": 0.488,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": -0.258
+  },
+  {
+   "a": "HMode",
+   "b": "AForg",
+   "a_ko": "겸손",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": 0.29,
+   "r_ci": [
+    0.277,
+    0.304
+   ],
+   "r_ipsative": 0.151,
+   "r_ipsative_ci": [
+    0.139,
+    0.165
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.191,
+   "prefer_a": 0.34,
+   "prefer_b": 0.33,
+   "tie": 0.33,
+   "balance": 0.492,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": 0.245
+  },
+  {
+   "a": "HMode",
+   "b": "AGent",
+   "a_ko": "겸손",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": 0.402,
+   "r_ci": [
+    0.39,
+    0.415
+   ],
+   "r_ipsative": 0.292,
+   "r_ipsative_ci": [
+    0.279,
+    0.304
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.093,
+   "prefer_a": 0.261,
+   "prefer_b": 0.359,
+   "tie": 0.38,
+   "balance": 0.421,
+   "fair_gender_d_max": null,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.356
+  },
+  {
+   "a": "HMode",
+   "b": "AFlex",
+   "a_ko": "겸손",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": 0.261,
+   "r_ci": [
+    0.248,
+    0.276
+   ],
+   "r_ipsative": 0.135,
+   "r_ipsative_ci": [
+    0.121,
+    0.148
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.215,
+   "prefer_a": 0.438,
+   "prefer_b": 0.225,
+   "tie": 0.336,
+   "balance": 0.339,
+   "fair_gender_d_max": null,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.242
+  },
+  {
+   "a": "HMode",
+   "b": "APati",
+   "a_ko": "겸손",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": 0.17,
+   "r_ci": [
+    0.156,
+    0.184
+   ],
+   "r_ipsative": 0.068,
+   "r_ipsative_ci": [
+    0.054,
+    0.082
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.288,
+   "prefer_a": 0.416,
+   "prefer_b": 0.332,
+   "tie": 0.252,
+   "balance": 0.444,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": 0.163
+  },
+  {
+   "a": "HMode",
+   "b": "COrga",
+   "a_ko": "겸손",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": 0.01,
+   "r_ci": [
+    -0.004,
+    0.025
+   ],
+   "r_ipsative": -0.047,
+   "r_ipsative_ci": [
+    -0.062,
+    -0.033
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.407,
+   "prefer_a": 0.486,
+   "prefer_b": 0.244,
+   "tie": 0.27,
+   "balance": 0.334,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": 0.036
+  },
+  {
+   "a": "HMode",
+   "b": "CDili",
+   "a_ko": "겸손",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": -0.068,
+   "r_ci": [
+    -0.081,
+    -0.052
+   ],
+   "r_ipsative": -0.238,
+   "r_ipsative_ci": [
+    -0.252,
+    -0.225
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.461,
+   "prefer_a": 0.388,
+   "prefer_b": 0.344,
+   "tie": 0.268,
+   "balance": 0.47,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": -0.128
+  },
+  {
+   "a": "HMode",
+   "b": "CPerf",
+   "a_ko": "겸손",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.208,
+   "r_ci": [
+    -0.221,
+    -0.193
+   ],
+   "r_ipsative": -0.235,
+   "r_ipsative_ci": [
+    -0.249,
+    -0.222
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.554,
+   "prefer_a": 0.214,
+   "prefer_b": 0.525,
+   "tie": 0.261,
+   "balance": 0.289,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": -0.206
+  },
+  {
+   "a": "HMode",
+   "b": "CPrud",
+   "a_ko": "겸손",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": 0.026,
+   "r_ci": [
+    0.012,
+    0.04
+   ],
+   "r_ipsative": -0.06,
+   "r_ipsative_ci": [
+    -0.075,
+    -0.046
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.396,
+   "prefer_a": 0.429,
+   "prefer_b": 0.283,
+   "tie": 0.287,
+   "balance": 0.398,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": -0.014
+  },
+  {
+   "a": "HMode",
+   "b": "OAesA",
+   "a_ko": "겸손",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.062,
+   "r_ci": [
+    0.047,
+    0.077
+   ],
+   "r_ipsative": -0.076,
+   "r_ipsative_ci": [
+    -0.09,
+    -0.062
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.369,
+   "prefer_a": 0.09,
+   "prefer_b": 0.693,
+   "tie": 0.217,
+   "balance": 0.115,
+   "fair_gender_d_max": null,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.021
+  },
+  {
+   "a": "HMode",
+   "b": "OInqu",
+   "a_ko": "겸손",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": -0.195,
+   "r_ci": [
+    -0.209,
+    -0.182
+   ],
+   "r_ipsative": -0.291,
+   "r_ipsative_ci": [
+    -0.303,
+    -0.279
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.546,
+   "prefer_a": 0.134,
+   "prefer_b": 0.647,
+   "tie": 0.219,
+   "balance": 0.171,
+   "fair_gender_d_max": null,
+   "min_omega": 0.77,
+   "invariance_r_ea": -0.219
+  },
+  {
+   "a": "HMode",
+   "b": "OCrea",
+   "a_ko": "겸손",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": -0.267,
+   "r_ci": [
+    -0.279,
+    -0.253
+   ],
+   "r_ipsative": -0.413,
+   "r_ipsative_ci": [
+    -0.424,
+    -0.401
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.592,
+   "prefer_a": 0.123,
+   "prefer_b": 0.67,
+   "tie": 0.208,
+   "balance": 0.155,
+   "fair_gender_d_max": null,
+   "min_omega": 0.814,
+   "invariance_r_ea": -0.309
+  },
+  {
+   "a": "HMode",
+   "b": "OUnco",
+   "a_ko": "겸손",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.352,
+   "r_ci": [
+    -0.366,
+    -0.339
+   ],
+   "r_ipsative": -0.338,
+   "r_ipsative_ci": [
+    -0.35,
+    -0.324
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.645,
+   "prefer_a": 0.19,
+   "prefer_b": 0.579,
+   "tie": 0.231,
+   "balance": 0.247,
+   "fair_gender_d_max": null,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.356
+  },
+  {
+   "a": "EFear",
+   "b": "EAnxi",
+   "a_ko": "두려움",
+   "b_ko": "불안",
+   "same_domain": true,
+   "r": 0.503,
+   "r_ci": [
+    0.492,
+    0.514
+   ],
+   "r_ipsative": 0.579,
+   "r_ipsative_ci": [
+    0.57,
+    0.589
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.997,
+   "prefer_a": 0.159,
+   "prefer_b": 0.508,
+   "tie": 0.333,
+   "balance": 0.239,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.874,
+   "invariance_r_ea": 0.506
+  },
+  {
+   "a": "EFear",
+   "b": "EDepe",
+   "a_ko": "두려움",
+   "b_ko": "의존성",
+   "same_domain": true,
+   "r": 0.401,
+   "r_ci": [
+    0.389,
+    0.412
+   ],
+   "r_ipsative": 0.46,
+   "r_ipsative_ci": [
+    0.449,
+    0.471
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.095,
+   "prefer_a": 0.262,
+   "prefer_b": 0.396,
+   "tie": 0.342,
+   "balance": 0.399,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.828,
+   "invariance_r_ea": 0.423
+  },
+  {
+   "a": "EFear",
+   "b": "ESent",
+   "a_ko": "두려움",
+   "b_ko": "감상성",
+   "same_domain": true,
+   "r": 0.171,
+   "r_ci": [
+    0.157,
+    0.185
+   ],
+   "r_ipsative": 0.15,
+   "r_ipsative_ci": [
+    0.136,
+    0.163
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.288,
+   "prefer_a": 0.279,
+   "prefer_b": 0.46,
+   "tie": 0.261,
+   "balance": 0.377,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.864,
+   "invariance_r_ea": 0.176
+  },
+  {
+   "a": "EFear",
+   "b": "XExpr",
+   "a_ko": "두려움",
+   "b_ko": "사회적 표현",
+   "same_domain": false,
+   "r": -0.262,
+   "r_ci": [
+    -0.274,
+    -0.249
+   ],
+   "r_ipsative": -0.206,
+   "r_ipsative_ci": [
+    -0.22,
+    -0.193
+   ],
+   "type": "conflict",
+   "tradeoff": false,
+   "sd_zdiff": 1.588,
+   "prefer_a": 0.505,
+   "prefer_b": 0.294,
+   "tie": 0.202,
+   "balance": 0.368,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.849,
+   "invariance_r_ea": -0.248
+  },
+  {
+   "a": "EFear",
+   "b": "XSocB",
+   "a_ko": "두려움",
+   "b_ko": "사회적 대담성",
+   "same_domain": false,
+   "r": -0.445,
+   "r_ci": [
+    -0.457,
+    -0.434
+   ],
+   "r_ipsative": -0.425,
+   "r_ipsative_ci": [
+    -0.436,
+    -0.413
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.7,
+   "prefer_a": 0.464,
+   "prefer_b": 0.343,
+   "tie": 0.194,
+   "balance": 0.425,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.862,
+   "invariance_r_ea": -0.431
+  },
+  {
+   "a": "EFear",
+   "b": "XSoci",
+   "a_ko": "두려움",
+   "b_ko": "사교성",
+   "same_domain": false,
+   "r": -0.218,
+   "r_ci": [
+    -0.231,
+    -0.204
+   ],
+   "r_ipsative": -0.27,
+   "r_ipsative_ci": [
+    -0.283,
+    -0.258
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.561,
+   "prefer_a": 0.479,
+   "prefer_b": 0.32,
+   "tie": 0.201,
+   "balance": 0.401,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.886,
+   "invariance_r_ea": -0.219
+  },
+  {
+   "a": "EFear",
+   "b": "XLive",
+   "a_ko": "두려움",
+   "b_ko": "활력",
+   "same_domain": false,
+   "r": -0.441,
+   "r_ci": [
+    -0.453,
+    -0.428
+   ],
+   "r_ipsative": -0.482,
+   "r_ipsative_ci": [
+    -0.493,
+    -0.472
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.698,
+   "prefer_a": 0.413,
+   "prefer_b": 0.378,
+   "tie": 0.209,
+   "balance": 0.478,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.853,
+   "invariance_r_ea": -0.478
+  },
+  {
+   "a": "EFear",
+   "b": "AForg",
+   "a_ko": "두려움",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": -0.011,
+   "r_ci": [
+    -0.026,
+    0.004
+   ],
+   "r_ipsative": -0.079,
+   "r_ipsative_ci": [
+    -0.093,
+    -0.065
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.422,
+   "prefer_a": 0.386,
+   "prefer_b": 0.358,
+   "tie": 0.256,
+   "balance": 0.481,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.847,
+   "invariance_r_ea": -0.045
+  },
+  {
+   "a": "EFear",
+   "b": "AGent",
+   "a_ko": "두려움",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": -0.126,
+   "r_ci": [
+    -0.141,
+    -0.112
+   ],
+   "r_ipsative": -0.199,
+   "r_ipsative_ci": [
+    -0.212,
+    -0.185
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.501,
+   "prefer_a": 0.346,
+   "prefer_b": 0.4,
+   "tie": 0.254,
+   "balance": 0.464,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.166
+  },
+  {
+   "a": "EFear",
+   "b": "AFlex",
+   "a_ko": "두려움",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": -0.192,
+   "r_ci": [
+    -0.207,
+    -0.178
+   ],
+   "r_ipsative": -0.252,
+   "r_ipsative_ci": [
+    -0.265,
+    -0.239
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.544,
+   "prefer_a": 0.464,
+   "prefer_b": 0.286,
+   "tie": 0.25,
+   "balance": 0.381,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": -0.171
+  },
+  {
+   "a": "EFear",
+   "b": "APati",
+   "a_ko": "두려움",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": -0.14,
+   "r_ci": [
+    -0.153,
+    -0.125
+   ],
+   "r_ipsative": -0.147,
+   "r_ipsative_ci": [
+    -0.161,
+    -0.133
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.51,
+   "prefer_a": 0.437,
+   "prefer_b": 0.356,
+   "tie": 0.207,
+   "balance": 0.449,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.886,
+   "invariance_r_ea": -0.176
+  },
+  {
+   "a": "EFear",
+   "b": "COrga",
+   "a_ko": "두려움",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": -0.007,
+   "r_ci": [
+    -0.021,
+    0.007
+   ],
+   "r_ipsative": 0.042,
+   "r_ipsative_ci": [
+    0.029,
+    0.056
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.419,
+   "prefer_a": 0.495,
+   "prefer_b": 0.259,
+   "tie": 0.246,
+   "balance": 0.343,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.001
+  },
+  {
+   "a": "EFear",
+   "b": "CDili",
+   "a_ko": "두려움",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": -0.262,
+   "r_ci": [
+    -0.276,
+    -0.248
+   ],
+   "r_ipsative": -0.31,
+   "r_ipsative_ci": [
+    -0.322,
+    -0.297
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.589,
+   "prefer_a": 0.413,
+   "prefer_b": 0.363,
+   "tie": 0.224,
+   "balance": 0.468,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.866,
+   "invariance_r_ea": -0.231
+  },
+  {
+   "a": "EFear",
+   "b": "CPerf",
+   "a_ko": "두려움",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.02,
+   "r_ci": [
+    -0.035,
+    -0.005
+   ],
+   "r_ipsative": 0.058,
+   "r_ipsative_ci": [
+    0.044,
+    0.071
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.429,
+   "prefer_a": 0.22,
+   "prefer_b": 0.515,
+   "tie": 0.265,
+   "balance": 0.299,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.829,
+   "invariance_r_ea": -0.06
+  },
+  {
+   "a": "EFear",
+   "b": "CPrud",
+   "a_ko": "두려움",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": 0.016,
+   "r_ci": [
+    0.002,
+    0.031
+   ],
+   "r_ipsative": 0.039,
+   "r_ipsative_ci": [
+    0.025,
+    0.053
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.403,
+   "prefer_a": 0.441,
+   "prefer_b": 0.298,
+   "tie": 0.261,
+   "balance": 0.403,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.826,
+   "invariance_r_ea": 0.007
+  },
+  {
+   "a": "EFear",
+   "b": "OAesA",
+   "a_ko": "두려움",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": -0.127,
+   "r_ci": [
+    -0.141,
+    -0.113
+   ],
+   "r_ipsative": -0.158,
+   "r_ipsative_ci": [
+    -0.171,
+    -0.144
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.502,
+   "prefer_a": 0.142,
+   "prefer_b": 0.654,
+   "tie": 0.203,
+   "balance": 0.178,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.777,
+   "invariance_r_ea": -0.132
+  },
+  {
+   "a": "EFear",
+   "b": "OInqu",
+   "a_ko": "두려움",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": -0.273,
+   "r_ci": [
+    -0.286,
+    -0.26
+   ],
+   "r_ipsative": -0.237,
+   "r_ipsative_ci": [
+    -0.249,
+    -0.224
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.596,
+   "prefer_a": 0.172,
+   "prefer_b": 0.628,
+   "tie": 0.201,
+   "balance": 0.215,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.77,
+   "invariance_r_ea": -0.251
+  },
+  {
+   "a": "EFear",
+   "b": "OCrea",
+   "a_ko": "두려움",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": -0.316,
+   "r_ci": [
+    -0.329,
+    -0.304
+   ],
+   "r_ipsative": -0.318,
+   "r_ipsative_ci": [
+    -0.331,
+    -0.306
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.623,
+   "prefer_a": 0.157,
+   "prefer_b": 0.642,
+   "tie": 0.201,
+   "balance": 0.197,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.834,
+   "invariance_r_ea": -0.312
+  },
+  {
+   "a": "EFear",
+   "b": "OUnco",
+   "a_ko": "두려움",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.336,
+   "r_ci": [
+    -0.348,
+    -0.324
+   ],
+   "r_ipsative": -0.197,
+   "r_ipsative_ci": [
+    -0.21,
+    -0.183
+   ],
+   "type": "conflict",
+   "tradeoff": false,
+   "sd_zdiff": 1.634,
+   "prefer_a": 0.212,
+   "prefer_b": 0.564,
+   "tie": 0.223,
+   "balance": 0.273,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.333
+  },
+  {
+   "a": "EAnxi",
+   "b": "EDepe",
+   "a_ko": "불안",
+   "b_ko": "의존성",
+   "same_domain": true,
+   "r": 0.556,
+   "r_ci": [
+    0.545,
+    0.565
+   ],
+   "r_ipsative": 0.601,
+   "r_ipsative_ci": [
+    0.592,
+    0.61
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.943,
+   "prefer_a": 0.424,
+   "prefer_b": 0.182,
+   "tie": 0.394,
+   "balance": 0.3,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.828,
+   "invariance_r_ea": 0.575
+  },
+  {
+   "a": "EAnxi",
+   "b": "ESent",
+   "a_ko": "불안",
+   "b_ko": "감상성",
+   "same_domain": true,
+   "r": 0.392,
+   "r_ci": [
+    0.38,
+    0.403
+   ],
+   "r_ipsative": 0.385,
+   "r_ipsative_ci": [
+    0.372,
+    0.396
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.103,
+   "prefer_a": 0.399,
+   "prefer_b": 0.269,
+   "tie": 0.332,
+   "balance": 0.403,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.864,
+   "invariance_r_ea": 0.335
+  },
+  {
+   "a": "EAnxi",
+   "b": "XExpr",
+   "a_ko": "불안",
+   "b_ko": "사회적 표현",
+   "same_domain": false,
+   "r": -0.148,
+   "r_ci": [
+    -0.161,
+    -0.135
+   ],
+   "r_ipsative": -0.095,
+   "r_ipsative_ci": [
+    -0.108,
+    -0.082
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.516,
+   "prefer_a": 0.646,
+   "prefer_b": 0.174,
+   "tie": 0.181,
+   "balance": 0.212,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.849,
+   "invariance_r_ea": -0.145
+  },
+  {
+   "a": "EAnxi",
+   "b": "XSocB",
+   "a_ko": "불안",
+   "b_ko": "사회적 대담성",
+   "same_domain": false,
+   "r": -0.327,
+   "r_ci": [
+    -0.339,
+    -0.315
+   ],
+   "r_ipsative": -0.304,
+   "r_ipsative_ci": [
+    -0.316,
+    -0.291
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.629,
+   "prefer_a": 0.594,
+   "prefer_b": 0.224,
+   "tie": 0.182,
+   "balance": 0.274,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.862,
+   "invariance_r_ea": -0.298
+  },
+  {
+   "a": "EAnxi",
+   "b": "XSoci",
+   "a_ko": "불안",
+   "b_ko": "사교성",
+   "same_domain": false,
+   "r": -0.158,
+   "r_ci": [
+    -0.173,
+    -0.143
+   ],
+   "r_ipsative": -0.204,
+   "r_ipsative_ci": [
+    -0.217,
+    -0.189
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.522,
+   "prefer_a": 0.607,
+   "prefer_b": 0.206,
+   "tie": 0.187,
+   "balance": 0.253,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.874,
+   "invariance_r_ea": -0.152
+  },
+  {
+   "a": "EAnxi",
+   "b": "XLive",
+   "a_ko": "불안",
+   "b_ko": "활력",
+   "same_domain": false,
+   "r": -0.479,
+   "r_ci": [
+    -0.489,
+    -0.468
+   ],
+   "r_ipsative": -0.518,
+   "r_ipsative_ci": [
+    -0.528,
+    -0.508
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.72,
+   "prefer_a": 0.542,
+   "prefer_b": 0.26,
+   "tie": 0.198,
+   "balance": 0.324,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.853,
+   "invariance_r_ea": -0.46
+  },
+  {
+   "a": "EAnxi",
+   "b": "AForg",
+   "a_ko": "불안",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": -0.161,
+   "r_ci": [
+    -0.175,
+    -0.146
+   ],
+   "r_ipsative": -0.242,
+   "r_ipsative_ci": [
+    -0.255,
+    -0.228
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.524,
+   "prefer_a": 0.542,
+   "prefer_b": 0.237,
+   "tie": 0.222,
+   "balance": 0.304,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.847,
+   "invariance_r_ea": -0.152
+  },
+  {
+   "a": "EAnxi",
+   "b": "AGent",
+   "a_ko": "불안",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": -0.252,
+   "r_ci": [
+    -0.266,
+    -0.239
+   ],
+   "r_ipsative": -0.332,
+   "r_ipsative_ci": [
+    -0.345,
+    -0.321
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.582,
+   "prefer_a": 0.498,
+   "prefer_b": 0.261,
+   "tie": 0.241,
+   "balance": 0.344,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.32
+  },
+  {
+   "a": "EAnxi",
+   "b": "AFlex",
+   "a_ko": "불안",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": -0.385,
+   "r_ci": [
+    -0.397,
+    -0.372
+   ],
+   "r_ipsative": -0.456,
+   "r_ipsative_ci": [
+    -0.468,
+    -0.445
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.665,
+   "prefer_a": 0.627,
+   "prefer_b": 0.184,
+   "tie": 0.19,
+   "balance": 0.227,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": -0.398
+  },
+  {
+   "a": "EAnxi",
+   "b": "APati",
+   "a_ko": "불안",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": -0.465,
+   "r_ci": [
+    -0.476,
+    -0.453
+   ],
+   "r_ipsative": -0.476,
+   "r_ipsative_ci": [
+    -0.486,
+    -0.465
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.711,
+   "prefer_a": 0.563,
+   "prefer_b": 0.272,
+   "tie": 0.164,
+   "balance": 0.326,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.874,
+   "invariance_r_ea": -0.489
+  },
+  {
+   "a": "EAnxi",
+   "b": "COrga",
+   "a_ko": "불안",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": -0.086,
+   "r_ci": [
+    -0.102,
+    -0.072
+   ],
+   "r_ipsative": -0.031,
+   "r_ipsative_ci": [
+    -0.046,
+    -0.017
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.474,
+   "prefer_a": 0.65,
+   "prefer_b": 0.157,
+   "tie": 0.193,
+   "balance": 0.194,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.834,
+   "invariance_r_ea": -0.091
+  },
+  {
+   "a": "EAnxi",
+   "b": "CDili",
+   "a_ko": "불안",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": -0.254,
+   "r_ci": [
+    -0.268,
+    -0.241
+   ],
+   "r_ipsative": -0.299,
+   "r_ipsative_ci": [
+    -0.312,
+    -0.286
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.584,
+   "prefer_a": 0.551,
+   "prefer_b": 0.239,
+   "tie": 0.21,
+   "balance": 0.302,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.866,
+   "invariance_r_ea": -0.268
+  },
+  {
+   "a": "EAnxi",
+   "b": "CPerf",
+   "a_ko": "불안",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": 0.067,
+   "r_ci": [
+    0.052,
+    0.081
+   ],
+   "r_ipsative": 0.141,
+   "r_ipsative_ci": [
+    0.127,
+    0.155
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.366,
+   "prefer_a": 0.344,
+   "prefer_b": 0.344,
+   "tie": 0.312,
+   "balance": 0.499,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.829,
+   "invariance_r_ea": 0.03
+  },
+  {
+   "a": "EAnxi",
+   "b": "CPrud",
+   "a_ko": "불안",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": -0.265,
+   "r_ci": [
+    -0.278,
+    -0.251
+   ],
+   "r_ipsative": -0.235,
+   "r_ipsative_ci": [
+    -0.25,
+    -0.222
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.59,
+   "prefer_a": 0.601,
+   "prefer_b": 0.199,
+   "tie": 0.2,
+   "balance": 0.248,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.826,
+   "invariance_r_ea": -0.28
+  },
+  {
+   "a": "EAnxi",
+   "b": "OAesA",
+   "a_ko": "불안",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.121,
+   "r_ci": [
+    0.107,
+    0.137
+   ],
+   "r_ipsative": 0.105,
+   "r_ipsative_ci": [
+    0.091,
+    0.119
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.326,
+   "prefer_a": 0.193,
+   "prefer_b": 0.499,
+   "tie": 0.308,
+   "balance": 0.279,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.094
+  },
+  {
+   "a": "EAnxi",
+   "b": "OInqu",
+   "a_ko": "불안",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": -0.119,
+   "r_ci": [
+    -0.133,
+    -0.106
+   ],
+   "r_ipsative": -0.084,
+   "r_ipsative_ci": [
+    -0.097,
+    -0.07
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.496,
+   "prefer_a": 0.242,
+   "prefer_b": 0.474,
+   "tie": 0.285,
+   "balance": 0.338,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.77,
+   "invariance_r_ea": -0.1
+  },
+  {
+   "a": "EAnxi",
+   "b": "OCrea",
+   "a_ko": "불안",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": -0.188,
+   "r_ci": [
+    -0.201,
+    -0.175
+   ],
+   "r_ipsative": -0.185,
+   "r_ipsative_ci": [
+    -0.198,
+    -0.171
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.541,
+   "prefer_a": 0.227,
+   "prefer_b": 0.495,
+   "tie": 0.278,
+   "balance": 0.314,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.834,
+   "invariance_r_ea": -0.222
+  },
+  {
+   "a": "EAnxi",
+   "b": "OUnco",
+   "a_ko": "불안",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.115,
+   "r_ci": [
+    -0.129,
+    -0.101
+   ],
+   "r_ipsative": 0.004,
+   "r_ipsative_ci": [
+    -0.009,
+    0.018
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.493,
+   "prefer_a": 0.303,
+   "prefer_b": 0.408,
+   "tie": 0.289,
+   "balance": 0.426,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.065
+  },
+  {
+   "a": "EDepe",
+   "b": "ESent",
+   "a_ko": "의존성",
+   "b_ko": "감상성",
+   "same_domain": true,
+   "r": 0.491,
+   "r_ci": [
+    0.48,
+    0.503
+   ],
+   "r_ipsative": 0.439,
+   "r_ipsative_ci": [
+    0.427,
+    0.45
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.009,
+   "prefer_a": 0.272,
+   "prefer_b": 0.357,
+   "tie": 0.37,
+   "balance": 0.433,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.828,
+   "invariance_r_ea": 0.433
+  },
+  {
+   "a": "EDepe",
+   "b": "XExpr",
+   "a_ko": "의존성",
+   "b_ko": "사회적 표현",
+   "same_domain": false,
+   "r": 0.121,
+   "r_ci": [
+    0.108,
+    0.134
+   ],
+   "r_ipsative": 0.098,
+   "r_ipsative_ci": [
+    0.084,
+    0.112
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.326,
+   "prefer_a": 0.568,
+   "prefer_b": 0.184,
+   "tie": 0.248,
+   "balance": 0.244,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.828,
+   "invariance_r_ea": 0.127
+  },
+  {
+   "a": "EDepe",
+   "b": "XSocB",
+   "a_ko": "의존성",
+   "b_ko": "사회적 대담성",
+   "same_domain": false,
+   "r": -0.06,
+   "r_ci": [
+    -0.073,
+    -0.045
+   ],
+   "r_ipsative": -0.121,
+   "r_ipsative_ci": [
+    -0.134,
+    -0.107
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.456,
+   "prefer_a": 0.515,
+   "prefer_b": 0.25,
+   "tie": 0.235,
+   "balance": 0.327,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.828,
+   "invariance_r_ea": -0.092
+  },
+  {
+   "a": "EDepe",
+   "b": "XSoci",
+   "a_ko": "의존성",
+   "b_ko": "사교성",
+   "same_domain": false,
+   "r": 0.282,
+   "r_ci": [
+    0.27,
+    0.297
+   ],
+   "r_ipsative": 0.198,
+   "r_ipsative_ci": [
+    0.185,
+    0.212
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.198,
+   "prefer_a": 0.533,
+   "prefer_b": 0.202,
+   "tie": 0.265,
+   "balance": 0.275,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.828,
+   "invariance_r_ea": 0.266
+  },
+  {
+   "a": "EDepe",
+   "b": "XLive",
+   "a_ko": "의존성",
+   "b_ko": "활력",
+   "same_domain": false,
+   "r": -0.114,
+   "r_ci": [
+    -0.127,
+    -0.099
+   ],
+   "r_ipsative": -0.231,
+   "r_ipsative_ci": [
+    -0.244,
+    -0.218
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.492,
+   "prefer_a": 0.448,
+   "prefer_b": 0.292,
+   "tie": 0.26,
+   "balance": 0.394,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.828,
+   "invariance_r_ea": -0.125
+  },
+  {
+   "a": "EDepe",
+   "b": "AForg",
+   "a_ko": "의존성",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": 0.119,
+   "r_ci": [
+    0.105,
+    0.135
+   ],
+   "r_ipsative": -0.016,
+   "r_ipsative_ci": [
+    -0.031,
+    -0.002
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.327,
+   "prefer_a": 0.431,
+   "prefer_b": 0.274,
+   "tie": 0.295,
+   "balance": 0.388,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.828,
+   "invariance_r_ea": 0.052
+  },
+  {
+   "a": "EDepe",
+   "b": "AGent",
+   "a_ko": "의존성",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": -0.044,
+   "r_ci": [
+    -0.06,
+    -0.029
+   ],
+   "r_ipsative": -0.2,
+   "r_ipsative_ci": [
+    -0.215,
+    -0.187
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.445,
+   "prefer_a": 0.389,
+   "prefer_b": 0.316,
+   "tie": 0.296,
+   "balance": 0.448,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.092
+  },
+  {
+   "a": "EDepe",
+   "b": "AFlex",
+   "a_ko": "의존성",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": -0.135,
+   "r_ci": [
+    -0.149,
+    -0.12
+   ],
+   "r_ipsative": -0.286,
+   "r_ipsative_ci": [
+    -0.301,
+    -0.272
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.506,
+   "prefer_a": 0.534,
+   "prefer_b": 0.204,
+   "tie": 0.262,
+   "balance": 0.277,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": -0.208
+  },
+  {
+   "a": "EDepe",
+   "b": "APati",
+   "a_ko": "의존성",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": -0.209,
+   "r_ci": [
+    -0.223,
+    -0.195
+   ],
+   "r_ipsative": -0.311,
+   "r_ipsative_ci": [
+    -0.325,
+    -0.3
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.555,
+   "prefer_a": 0.491,
+   "prefer_b": 0.307,
+   "tie": 0.202,
+   "balance": 0.385,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.828,
+   "invariance_r_ea": -0.257
+  },
+  {
+   "a": "EDepe",
+   "b": "COrga",
+   "a_ko": "의존성",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": -0.108,
+   "r_ci": [
+    -0.123,
+    -0.094
+   ],
+   "r_ipsative": -0.132,
+   "r_ipsative_ci": [
+    -0.146,
+    -0.118
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.489,
+   "prefer_a": 0.575,
+   "prefer_b": 0.198,
+   "tie": 0.227,
+   "balance": 0.256,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.828,
+   "invariance_r_ea": -0.112
+  },
+  {
+   "a": "EDepe",
+   "b": "CDili",
+   "a_ko": "의존성",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": -0.234,
+   "r_ci": [
+    -0.248,
+    -0.22
+   ],
+   "r_ipsative": -0.381,
+   "r_ipsative_ci": [
+    -0.394,
+    -0.369
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.571,
+   "prefer_a": 0.465,
+   "prefer_b": 0.294,
+   "tie": 0.242,
+   "balance": 0.387,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.828,
+   "invariance_r_ea": -0.292
+  },
+  {
+   "a": "EDepe",
+   "b": "CPerf",
+   "a_ko": "의존성",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.045,
+   "r_ci": [
+    -0.06,
+    -0.031
+   ],
+   "r_ipsative": -0.034,
+   "r_ipsative_ci": [
+    -0.048,
+    -0.02
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.446,
+   "prefer_a": 0.244,
+   "prefer_b": 0.439,
+   "tie": 0.316,
+   "balance": 0.357,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.828,
+   "invariance_r_ea": -0.064
+  },
+  {
+   "a": "EDepe",
+   "b": "CPrud",
+   "a_ko": "의존성",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": -0.321,
+   "r_ci": [
+    -0.334,
+    -0.308
+   ],
+   "r_ipsative": -0.39,
+   "r_ipsative_ci": [
+    -0.402,
+    -0.378
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.625,
+   "prefer_a": 0.518,
+   "prefer_b": 0.25,
+   "tie": 0.232,
+   "balance": 0.326,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.826,
+   "invariance_r_ea": -0.394
+  },
+  {
+   "a": "EDepe",
+   "b": "OAesA",
+   "a_ko": "의존성",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.144,
+   "r_ci": [
+    0.129,
+    0.159
+   ],
+   "r_ipsative": 0.054,
+   "r_ipsative_ci": [
+    0.041,
+    0.069
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.308,
+   "prefer_a": 0.11,
+   "prefer_b": 0.628,
+   "tie": 0.262,
+   "balance": 0.15,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.116
+  },
+  {
+   "a": "EDepe",
+   "b": "OInqu",
+   "a_ko": "의존성",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": -0.188,
+   "r_ci": [
+    -0.202,
+    -0.175
+   ],
+   "r_ipsative": -0.24,
+   "r_ipsative_ci": [
+    -0.253,
+    -0.228
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.541,
+   "prefer_a": 0.164,
+   "prefer_b": 0.584,
+   "tie": 0.253,
+   "balance": 0.219,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.77,
+   "invariance_r_ea": -0.235
+  },
+  {
+   "a": "EDepe",
+   "b": "OCrea",
+   "a_ko": "의존성",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": -0.162,
+   "r_ci": [
+    -0.175,
+    -0.148
+   ],
+   "r_ipsative": -0.25,
+   "r_ipsative_ci": [
+    -0.264,
+    -0.237
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.524,
+   "prefer_a": 0.139,
+   "prefer_b": 0.604,
+   "tie": 0.257,
+   "balance": 0.188,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.828,
+   "invariance_r_ea": -0.231
+  },
+  {
+   "a": "EDepe",
+   "b": "OUnco",
+   "a_ko": "의존성",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.221,
+   "r_ci": [
+    -0.234,
+    -0.208
+   ],
+   "r_ipsative": -0.17,
+   "r_ipsative_ci": [
+    -0.183,
+    -0.156
+   ],
+   "type": "conflict",
+   "tradeoff": false,
+   "sd_zdiff": 1.563,
+   "prefer_a": 0.217,
+   "prefer_b": 0.503,
+   "tie": 0.28,
+   "balance": 0.301,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.193
+  },
+  {
+   "a": "ESent",
+   "b": "XExpr",
+   "a_ko": "감상성",
+   "b_ko": "사회적 표현",
+   "same_domain": false,
+   "r": 0.149,
+   "r_ci": [
+    0.135,
+    0.162
+   ],
+   "r_ipsative": -0.016,
+   "r_ipsative_ci": [
+    -0.031,
+    -0.002
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.305,
+   "prefer_a": 0.593,
+   "prefer_b": 0.177,
+   "tie": 0.229,
+   "balance": 0.23,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.849,
+   "invariance_r_ea": 0.158
+  },
+  {
+   "a": "ESent",
+   "b": "XSocB",
+   "a_ko": "감상성",
+   "b_ko": "사회적 대담성",
+   "same_domain": false,
+   "r": 0.076,
+   "r_ci": [
+    0.062,
+    0.089
+   ],
+   "r_ipsative": -0.143,
+   "r_ipsative_ci": [
+    -0.155,
+    -0.129
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.36,
+   "prefer_a": 0.54,
+   "prefer_b": 0.227,
+   "tie": 0.232,
+   "balance": 0.296,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.862,
+   "invariance_r_ea": 0.179
+  },
+  {
+   "a": "ESent",
+   "b": "XSoci",
+   "a_ko": "감상성",
+   "b_ko": "사교성",
+   "same_domain": false,
+   "r": 0.305,
+   "r_ci": [
+    0.292,
+    0.319
+   ],
+   "r_ipsative": 0.079,
+   "r_ipsative_ci": [
+    0.064,
+    0.094
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.179,
+   "prefer_a": 0.551,
+   "prefer_b": 0.191,
+   "tie": 0.258,
+   "balance": 0.257,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.864,
+   "invariance_r_ea": 0.329
+  },
+  {
+   "a": "ESent",
+   "b": "XLive",
+   "a_ko": "감상성",
+   "b_ko": "활력",
+   "same_domain": false,
+   "r": 0.068,
+   "r_ci": [
+    0.054,
+    0.082
+   ],
+   "r_ipsative": -0.211,
+   "r_ipsative_ci": [
+    -0.224,
+    -0.198
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.365,
+   "prefer_a": 0.475,
+   "prefer_b": 0.267,
+   "tie": 0.257,
+   "balance": 0.36,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.853,
+   "invariance_r_ea": 0.082
+  },
+  {
+   "a": "ESent",
+   "b": "AForg",
+   "a_ko": "감상성",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": 0.289,
+   "r_ci": [
+    0.277,
+    0.303
+   ],
+   "r_ipsative": 0.026,
+   "r_ipsative_ci": [
+    0.011,
+    0.04
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.192,
+   "prefer_a": 0.463,
+   "prefer_b": 0.243,
+   "tie": 0.294,
+   "balance": 0.344,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.847,
+   "invariance_r_ea": 0.2
+  },
+  {
+   "a": "ESent",
+   "b": "AGent",
+   "a_ko": "감상성",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": 0.238,
+   "r_ci": [
+    0.225,
+    0.252
+   ],
+   "r_ipsative": -0.036,
+   "r_ipsative_ci": [
+    -0.05,
+    -0.02
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.234,
+   "prefer_a": 0.42,
+   "prefer_b": 0.278,
+   "tie": 0.301,
+   "balance": 0.398,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.118
+  },
+  {
+   "a": "ESent",
+   "b": "AFlex",
+   "a_ko": "감상성",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": 0.129,
+   "r_ci": [
+    0.116,
+    0.143
+   ],
+   "r_ipsative": -0.164,
+   "r_ipsative_ci": [
+    -0.178,
+    -0.15
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.32,
+   "prefer_a": 0.569,
+   "prefer_b": 0.181,
+   "tie": 0.25,
+   "balance": 0.241,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.086
+  },
+  {
+   "a": "ESent",
+   "b": "APati",
+   "a_ko": "감상성",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": -0.046,
+   "r_ci": [
+    -0.058,
+    -0.031
+   ],
+   "r_ipsative": -0.331,
+   "r_ipsative_ci": [
+    -0.343,
+    -0.318
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.446,
+   "prefer_a": 0.513,
+   "prefer_b": 0.281,
+   "tie": 0.206,
+   "balance": 0.354,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.864,
+   "invariance_r_ea": -0.055
+  },
+  {
+   "a": "ESent",
+   "b": "COrga",
+   "a_ko": "감상성",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": -0.038,
+   "r_ci": [
+    -0.053,
+    -0.023
+   ],
+   "r_ipsative": -0.235,
+   "r_ipsative_ci": [
+    -0.249,
+    -0.221
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.441,
+   "prefer_a": 0.589,
+   "prefer_b": 0.191,
+   "tie": 0.22,
+   "balance": 0.244,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.834,
+   "invariance_r_ea": -0.043
+  },
+  {
+   "a": "ESent",
+   "b": "CDili",
+   "a_ko": "감상성",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.021,
+   "r_ci": [
+    0.007,
+    0.036
+   ],
+   "r_ipsative": -0.289,
+   "r_ipsative_ci": [
+    -0.302,
+    -0.276
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.399,
+   "prefer_a": 0.492,
+   "prefer_b": 0.259,
+   "tie": 0.249,
+   "balance": 0.345,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.864,
+   "invariance_r_ea": 0.025
+  },
+  {
+   "a": "ESent",
+   "b": "CPerf",
+   "a_ko": "감상성",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.028,
+   "r_ci": [
+    -0.042,
+    -0.014
+   ],
+   "r_ipsative": -0.178,
+   "r_ipsative_ci": [
+    -0.192,
+    -0.163
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.434,
+   "prefer_a": 0.307,
+   "prefer_b": 0.412,
+   "tie": 0.281,
+   "balance": 0.427,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.829,
+   "invariance_r_ea": 0.003
+  },
+  {
+   "a": "ESent",
+   "b": "CPrud",
+   "a_ko": "감상성",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": -0.095,
+   "r_ci": [
+    -0.11,
+    -0.081
+   ],
+   "r_ipsative": -0.346,
+   "r_ipsative_ci": [
+    -0.359,
+    -0.333
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.48,
+   "prefer_a": 0.548,
+   "prefer_b": 0.229,
+   "tie": 0.224,
+   "balance": 0.294,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.826,
+   "invariance_r_ea": -0.101
+  },
+  {
+   "a": "ESent",
+   "b": "OAesA",
+   "a_ko": "감상성",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.414,
+   "r_ci": [
+    0.403,
+    0.426
+   ],
+   "r_ipsative": 0.236,
+   "r_ipsative_ci": [
+    0.223,
+    0.249
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.083,
+   "prefer_a": 0.111,
+   "prefer_b": 0.571,
+   "tie": 0.318,
+   "balance": 0.163,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.333
+  },
+  {
+   "a": "ESent",
+   "b": "OInqu",
+   "a_ko": "감상성",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.029,
+   "r_ci": [
+    0.016,
+    0.042
+   ],
+   "r_ipsative": -0.183,
+   "r_ipsative_ci": [
+    -0.196,
+    -0.169
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.394,
+   "prefer_a": 0.191,
+   "prefer_b": 0.529,
+   "tie": 0.28,
+   "balance": 0.265,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.02
+  },
+  {
+   "a": "ESent",
+   "b": "OCrea",
+   "a_ko": "감상성",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.106,
+   "r_ci": [
+    0.093,
+    0.12
+   ],
+   "r_ipsative": -0.127,
+   "r_ipsative_ci": [
+    -0.141,
+    -0.113
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.337,
+   "prefer_a": 0.162,
+   "prefer_b": 0.552,
+   "tie": 0.286,
+   "balance": 0.227,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.084
+  },
+  {
+   "a": "ESent",
+   "b": "OUnco",
+   "a_ko": "감상성",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.046,
+   "r_ci": [
+    -0.061,
+    -0.034
+   ],
+   "r_ipsative": -0.156,
+   "r_ipsative_ci": [
+    -0.168,
+    -0.143
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.446,
+   "prefer_a": 0.258,
+   "prefer_b": 0.461,
+   "tie": 0.281,
+   "balance": 0.359,
+   "fair_gender_d_max": 0.349,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.035
+  },
+  {
+   "a": "XExpr",
+   "b": "XSocB",
+   "a_ko": "사회적 표현",
+   "b_ko": "사회적 대담성",
+   "same_domain": true,
+   "r": 0.768,
+   "r_ci": [
+    0.763,
+    0.774
+   ],
+   "r_ipsative": 0.739,
+   "r_ipsative_ci": [
+    0.732,
+    0.746
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.681,
+   "prefer_a": 0.159,
+   "prefer_b": 0.34,
+   "tie": 0.5,
+   "balance": 0.319,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.849,
+   "invariance_r_ea": 0.716
+  },
+  {
+   "a": "XExpr",
+   "b": "XSoci",
+   "a_ko": "사회적 표현",
+   "b_ko": "사교성",
+   "same_domain": true,
+   "r": 0.645,
+   "r_ci": [
+    0.636,
+    0.654
+   ],
+   "r_ipsative": 0.576,
+   "r_ipsative_ci": [
+    0.566,
+    0.585
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.843,
+   "prefer_a": 0.237,
+   "prefer_b": 0.348,
+   "tie": 0.414,
+   "balance": 0.405,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.849,
+   "invariance_r_ea": 0.677
+  },
+  {
+   "a": "XExpr",
+   "b": "XLive",
+   "a_ko": "사회적 표현",
+   "b_ko": "활력",
+   "same_domain": true,
+   "r": 0.499,
+   "r_ci": [
+    0.489,
+    0.51
+   ],
+   "r_ipsative": 0.409,
+   "r_ipsative_ci": [
+    0.398,
+    0.421
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.001,
+   "prefer_a": 0.178,
+   "prefer_b": 0.472,
+   "tie": 0.351,
+   "balance": 0.274,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.849,
+   "invariance_r_ea": 0.535
+  },
+  {
+   "a": "XExpr",
+   "b": "AForg",
+   "a_ko": "사회적 표현",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": 0.041,
+   "r_ci": [
+    0.028,
+    0.055
+   ],
+   "r_ipsative": -0.191,
+   "r_ipsative_ci": [
+    -0.205,
+    -0.178
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.385,
+   "prefer_a": 0.256,
+   "prefer_b": 0.494,
+   "tie": 0.25,
+   "balance": 0.342,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.847,
+   "invariance_r_ea": -0.001
+  },
+  {
+   "a": "XExpr",
+   "b": "AGent",
+   "a_ko": "사회적 표현",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": -0.075,
+   "r_ci": [
+    -0.089,
+    -0.062
+   ],
+   "r_ipsative": -0.328,
+   "r_ipsative_ci": [
+    -0.341,
+    -0.314
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.467,
+   "prefer_a": 0.223,
+   "prefer_b": 0.532,
+   "tie": 0.245,
+   "balance": 0.295,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.087
+  },
+  {
+   "a": "XExpr",
+   "b": "AFlex",
+   "a_ko": "사회적 표현",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": 0.052,
+   "r_ci": [
+    0.037,
+    0.066
+   ],
+   "r_ipsative": -0.151,
+   "r_ipsative_ci": [
+    -0.166,
+    -0.136
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.377,
+   "prefer_a": 0.313,
+   "prefer_b": 0.395,
+   "tie": 0.292,
+   "balance": 0.443,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.011
+  },
+  {
+   "a": "XExpr",
+   "b": "APati",
+   "a_ko": "사회적 표현",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": -0.105,
+   "r_ci": [
+    -0.119,
+    -0.091
+   ],
+   "r_ipsative": -0.281,
+   "r_ipsative_ci": [
+    -0.294,
+    -0.267
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.486,
+   "prefer_a": 0.327,
+   "prefer_b": 0.459,
+   "tie": 0.214,
+   "balance": 0.416,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.849,
+   "invariance_r_ea": -0.116
+  },
+  {
+   "a": "XExpr",
+   "b": "COrga",
+   "a_ko": "사회적 표현",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": -0.074,
+   "r_ci": [
+    -0.088,
+    -0.06
+   ],
+   "r_ipsative": -0.17,
+   "r_ipsative_ci": [
+    -0.183,
+    -0.156
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.466,
+   "prefer_a": 0.351,
+   "prefer_b": 0.382,
+   "tie": 0.267,
+   "balance": 0.479,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.834,
+   "invariance_r_ea": -0.041
+  },
+  {
+   "a": "XExpr",
+   "b": "CDili",
+   "a_ko": "사회적 표현",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.117,
+   "r_ci": [
+    0.102,
+    0.132
+   ],
+   "r_ipsative": -0.057,
+   "r_ipsative_ci": [
+    -0.07,
+    -0.043
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.329,
+   "prefer_a": 0.254,
+   "prefer_b": 0.474,
+   "tie": 0.272,
+   "balance": 0.349,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.849,
+   "invariance_r_ea": 0.12
+  },
+  {
+   "a": "XExpr",
+   "b": "CPerf",
+   "a_ko": "사회적 표현",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.004,
+   "r_ci": [
+    -0.018,
+    0.01
+   ],
+   "r_ipsative": -0.057,
+   "r_ipsative_ci": [
+    -0.071,
+    -0.042
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.417,
+   "prefer_a": 0.125,
+   "prefer_b": 0.673,
+   "tie": 0.201,
+   "balance": 0.157,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.829,
+   "invariance_r_ea": 0.006
+  },
+  {
+   "a": "XExpr",
+   "b": "CPrud",
+   "a_ko": "사회적 표현",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": -0.146,
+   "r_ci": [
+    -0.161,
+    -0.132
+   ],
+   "r_ipsative": -0.287,
+   "r_ipsative_ci": [
+    -0.3,
+    -0.274
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.514,
+   "prefer_a": 0.314,
+   "prefer_b": 0.437,
+   "tie": 0.25,
+   "balance": 0.418,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.826,
+   "invariance_r_ea": -0.169
+  },
+  {
+   "a": "XExpr",
+   "b": "OAesA",
+   "a_ko": "사회적 표현",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.125,
+   "r_ci": [
+    0.111,
+    0.138
+   ],
+   "r_ipsative": -0.037,
+   "r_ipsative_ci": [
+    -0.051,
+    -0.022
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.323,
+   "prefer_a": 0.055,
+   "prefer_b": 0.807,
+   "tie": 0.138,
+   "balance": 0.063,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.136
+  },
+  {
+   "a": "XExpr",
+   "b": "OInqu",
+   "a_ko": "사회적 표현",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.136,
+   "r_ci": [
+    0.122,
+    0.149
+   ],
+   "r_ipsative": 0.038,
+   "r_ipsative_ci": [
+    0.024,
+    0.051
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.315,
+   "prefer_a": 0.055,
+   "prefer_b": 0.79,
+   "tie": 0.155,
+   "balance": 0.065,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.075
+  },
+  {
+   "a": "XExpr",
+   "b": "OCrea",
+   "a_ko": "사회적 표현",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.27,
+   "r_ci": [
+    0.257,
+    0.282
+   ],
+   "r_ipsative": 0.16,
+   "r_ipsative_ci": [
+    0.148,
+    0.174
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.209,
+   "prefer_a": 0.034,
+   "prefer_b": 0.825,
+   "tie": 0.14,
+   "balance": 0.04,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.203
+  },
+  {
+   "a": "XExpr",
+   "b": "OUnco",
+   "a_ko": "사회적 표현",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": 0.235,
+   "r_ci": [
+    0.223,
+    0.247
+   ],
+   "r_ipsative": 0.223,
+   "r_ipsative_ci": [
+    0.209,
+    0.236
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.237,
+   "prefer_a": 0.065,
+   "prefer_b": 0.744,
+   "tie": 0.192,
+   "balance": 0.08,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.789,
+   "invariance_r_ea": 0.224
+  },
+  {
+   "a": "XSocB",
+   "b": "XSoci",
+   "a_ko": "사회적 대담성",
+   "b_ko": "사교성",
+   "same_domain": true,
+   "r": 0.649,
+   "r_ci": [
+    0.641,
+    0.657
+   ],
+   "r_ipsative": 0.564,
+   "r_ipsative_ci": [
+    0.554,
+    0.573
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.838,
+   "prefer_a": 0.309,
+   "prefer_b": 0.268,
+   "tie": 0.423,
+   "balance": 0.464,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.862,
+   "invariance_r_ea": 0.607
+  },
+  {
+   "a": "XSocB",
+   "b": "XLive",
+   "a_ko": "사회적 대담성",
+   "b_ko": "활력",
+   "same_domain": true,
+   "r": 0.575,
+   "r_ci": [
+    0.567,
+    0.585
+   ],
+   "r_ipsative": 0.481,
+   "r_ipsative_ci": [
+    0.471,
+    0.492
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.921,
+   "prefer_a": 0.222,
+   "prefer_b": 0.381,
+   "tie": 0.397,
+   "balance": 0.369,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.853,
+   "invariance_r_ea": 0.553
+  },
+  {
+   "a": "XSocB",
+   "b": "AForg",
+   "a_ko": "사회적 대담성",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": 0.099,
+   "r_ci": [
+    0.085,
+    0.113
+   ],
+   "r_ipsative": -0.16,
+   "r_ipsative_ci": [
+    -0.174,
+    -0.146
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.343,
+   "prefer_a": 0.294,
+   "prefer_b": 0.435,
+   "tie": 0.271,
+   "balance": 0.404,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.847,
+   "invariance_r_ea": 0.012
+  },
+  {
+   "a": "XSocB",
+   "b": "AGent",
+   "a_ko": "사회적 대담성",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": 0.026,
+   "r_ci": [
+    0.012,
+    0.039
+   ],
+   "r_ipsative": -0.246,
+   "r_ipsative_ci": [
+    -0.259,
+    -0.232
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.396,
+   "prefer_a": 0.259,
+   "prefer_b": 0.476,
+   "tie": 0.265,
+   "balance": 0.353,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.005
+  },
+  {
+   "a": "XSocB",
+   "b": "AFlex",
+   "a_ko": "사회적 대담성",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": 0.164,
+   "r_ci": [
+    0.15,
+    0.177
+   ],
+   "r_ipsative": -0.051,
+   "r_ipsative_ci": [
+    -0.066,
+    -0.036
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.293,
+   "prefer_a": 0.362,
+   "prefer_b": 0.325,
+   "tie": 0.313,
+   "balance": 0.473,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.093
+  },
+  {
+   "a": "XSocB",
+   "b": "APati",
+   "a_ko": "사회적 대담성",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": 0.069,
+   "r_ci": [
+    0.055,
+    0.084
+   ],
+   "r_ipsative": -0.116,
+   "r_ipsative_ci": [
+    -0.132,
+    -0.102
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.364,
+   "prefer_a": 0.36,
+   "prefer_b": 0.401,
+   "tie": 0.239,
+   "balance": 0.473,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.862,
+   "invariance_r_ea": 0.021
+  },
+  {
+   "a": "XSocB",
+   "b": "COrga",
+   "a_ko": "사회적 대담성",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": 0.034,
+   "r_ci": [
+    0.019,
+    0.048
+   ],
+   "r_ipsative": -0.086,
+   "r_ipsative_ci": [
+    -0.101,
+    -0.072
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.39,
+   "prefer_a": 0.401,
+   "prefer_b": 0.322,
+   "tie": 0.277,
+   "balance": 0.446,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.053
+  },
+  {
+   "a": "XSocB",
+   "b": "CDili",
+   "a_ko": "사회적 대담성",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.292,
+   "r_ci": [
+    0.278,
+    0.305
+   ],
+   "r_ipsative": 0.123,
+   "r_ipsative_ci": [
+    0.109,
+    0.137
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.19,
+   "prefer_a": 0.28,
+   "prefer_b": 0.407,
+   "tie": 0.312,
+   "balance": 0.408,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.862,
+   "invariance_r_ea": 0.329
+  },
+  {
+   "a": "XSocB",
+   "b": "CPerf",
+   "a_ko": "사회적 대담성",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": 0.079,
+   "r_ci": [
+    0.064,
+    0.094
+   ],
+   "r_ipsative": 0.001,
+   "r_ipsative_ci": [
+    -0.014,
+    0.016
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.357,
+   "prefer_a": 0.154,
+   "prefer_b": 0.625,
+   "tie": 0.221,
+   "balance": 0.198,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.829,
+   "invariance_r_ea": 0.092
+  },
+  {
+   "a": "XSocB",
+   "b": "CPrud",
+   "a_ko": "사회적 대담성",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": 0.024,
+   "r_ci": [
+    0.009,
+    0.038
+   ],
+   "r_ipsative": -0.132,
+   "r_ipsative_ci": [
+    -0.147,
+    -0.117
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.397,
+   "prefer_a": 0.352,
+   "prefer_b": 0.375,
+   "tie": 0.272,
+   "balance": 0.484,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.826,
+   "invariance_r_ea": 0.063
+  },
+  {
+   "a": "XSocB",
+   "b": "OAesA",
+   "a_ko": "사회적 대담성",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.171,
+   "r_ci": [
+    0.158,
+    0.184
+   ],
+   "r_ipsative": -0.017,
+   "r_ipsative_ci": [
+    -0.032,
+    -0.003
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.287,
+   "prefer_a": 0.074,
+   "prefer_b": 0.765,
+   "tie": 0.161,
+   "balance": 0.089,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.198
+  },
+  {
+   "a": "XSocB",
+   "b": "OInqu",
+   "a_ko": "사회적 대담성",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.27,
+   "r_ci": [
+    0.257,
+    0.283
+   ],
+   "r_ipsative": 0.16,
+   "r_ipsative_ci": [
+    0.146,
+    0.174
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.208,
+   "prefer_a": 0.063,
+   "prefer_b": 0.752,
+   "tie": 0.185,
+   "balance": 0.077,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.304
+  },
+  {
+   "a": "XSocB",
+   "b": "OCrea",
+   "a_ko": "사회적 대담성",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.403,
+   "r_ci": [
+    0.391,
+    0.414
+   ],
+   "r_ipsative": 0.29,
+   "r_ipsative_ci": [
+    0.277,
+    0.302
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.093,
+   "prefer_a": 0.039,
+   "prefer_b": 0.788,
+   "tie": 0.173,
+   "balance": 0.047,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.42
+  },
+  {
+   "a": "XSocB",
+   "b": "OUnco",
+   "a_ko": "사회적 대담성",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": 0.267,
+   "r_ci": [
+    0.255,
+    0.28
+   ],
+   "r_ipsative": 0.234,
+   "r_ipsative_ci": [
+    0.22,
+    0.248
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.211,
+   "prefer_a": 0.091,
+   "prefer_b": 0.689,
+   "tie": 0.219,
+   "balance": 0.117,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.789,
+   "invariance_r_ea": 0.255
+  },
+  {
+   "a": "XSoci",
+   "b": "XLive",
+   "a_ko": "사교성",
+   "b_ko": "활력",
+   "same_domain": true,
+   "r": 0.584,
+   "r_ci": [
+    0.575,
+    0.594
+   ],
+   "r_ipsative": 0.455,
+   "r_ipsative_ci": [
+    0.444,
+    0.467
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.912,
+   "prefer_a": 0.205,
+   "prefer_b": 0.405,
+   "tie": 0.389,
+   "balance": 0.336,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.853,
+   "invariance_r_ea": 0.605
+  },
+  {
+   "a": "XSoci",
+   "b": "AForg",
+   "a_ko": "사교성",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": 0.339,
+   "r_ci": [
+    0.327,
+    0.351
+   ],
+   "r_ipsative": 0.085,
+   "r_ipsative_ci": [
+    0.07,
+    0.1
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.15,
+   "prefer_a": 0.259,
+   "prefer_b": 0.434,
+   "tie": 0.307,
+   "balance": 0.373,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.847,
+   "invariance_r_ea": 0.295
+  },
+  {
+   "a": "XSoci",
+   "b": "AGent",
+   "a_ko": "사교성",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": 0.271,
+   "r_ci": [
+    0.259,
+    0.285
+   ],
+   "r_ipsative": -0.0,
+   "r_ipsative_ci": [
+    -0.015,
+    0.016
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.207,
+   "prefer_a": 0.226,
+   "prefer_b": 0.487,
+   "tie": 0.287,
+   "balance": 0.317,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.215
+  },
+  {
+   "a": "XSoci",
+   "b": "AFlex",
+   "a_ko": "사교성",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": 0.352,
+   "r_ci": [
+    0.34,
+    0.363
+   ],
+   "r_ipsative": 0.126,
+   "r_ipsative_ci": [
+    0.111,
+    0.14
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.138,
+   "prefer_a": 0.337,
+   "prefer_b": 0.332,
+   "tie": 0.331,
+   "balance": 0.496,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.308
+  },
+  {
+   "a": "XSoci",
+   "b": "APati",
+   "a_ko": "사교성",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": 0.17,
+   "r_ci": [
+    0.157,
+    0.184
+   ],
+   "r_ipsative": -0.065,
+   "r_ipsative_ci": [
+    -0.08,
+    -0.051
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.289,
+   "prefer_a": 0.339,
+   "prefer_b": 0.413,
+   "tie": 0.248,
+   "balance": 0.451,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.896,
+   "invariance_r_ea": 0.132
+  },
+  {
+   "a": "XSoci",
+   "b": "COrga",
+   "a_ko": "사교성",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": 0.01,
+   "r_ci": [
+    -0.004,
+    0.025
+   ],
+   "r_ipsative": -0.187,
+   "r_ipsative_ci": [
+    -0.2,
+    -0.173
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.407,
+   "prefer_a": 0.388,
+   "prefer_b": 0.341,
+   "tie": 0.271,
+   "balance": 0.468,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.061
+  },
+  {
+   "a": "XSoci",
+   "b": "CDili",
+   "a_ko": "사교성",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.169,
+   "r_ci": [
+    0.155,
+    0.183
+   ],
+   "r_ipsative": -0.104,
+   "r_ipsative_ci": [
+    -0.119,
+    -0.089
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.289,
+   "prefer_a": 0.289,
+   "prefer_b": 0.423,
+   "tie": 0.288,
+   "balance": 0.406,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.866,
+   "invariance_r_ea": 0.18
+  },
+  {
+   "a": "XSoci",
+   "b": "CPerf",
+   "a_ko": "사교성",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.073,
+   "r_ci": [
+    -0.087,
+    -0.059
+   ],
+   "r_ipsative": -0.24,
+   "r_ipsative_ci": [
+    -0.253,
+    -0.226
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.465,
+   "prefer_a": 0.163,
+   "prefer_b": 0.623,
+   "tie": 0.214,
+   "balance": 0.208,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.829,
+   "invariance_r_ea": -0.06
+  },
+  {
+   "a": "XSoci",
+   "b": "CPrud",
+   "a_ko": "사교성",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": -0.075,
+   "r_ci": [
+    -0.091,
+    -0.06
+   ],
+   "r_ipsative": -0.332,
+   "r_ipsative_ci": [
+    -0.345,
+    -0.319
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.466,
+   "prefer_a": 0.351,
+   "prefer_b": 0.395,
+   "tie": 0.254,
+   "balance": 0.471,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.826,
+   "invariance_r_ea": -0.079
+  },
+  {
+   "a": "XSoci",
+   "b": "OAesA",
+   "a_ko": "사교성",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.197,
+   "r_ci": [
+    0.184,
+    0.21
+   ],
+   "r_ipsative": -0.055,
+   "r_ipsative_ci": [
+    -0.07,
+    -0.042
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.267,
+   "prefer_a": 0.068,
+   "prefer_b": 0.765,
+   "tie": 0.167,
+   "balance": 0.082,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.16
+  },
+  {
+   "a": "XSoci",
+   "b": "OInqu",
+   "a_ko": "사교성",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.03,
+   "r_ci": [
+    0.017,
+    0.042
+   ],
+   "r_ipsative": -0.192,
+   "r_ipsative_ci": [
+    -0.204,
+    -0.178
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.393,
+   "prefer_a": 0.094,
+   "prefer_b": 0.725,
+   "tie": 0.182,
+   "balance": 0.115,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.77,
+   "invariance_r_ea": -0.019
+  },
+  {
+   "a": "XSoci",
+   "b": "OCrea",
+   "a_ko": "사교성",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.183,
+   "r_ci": [
+    0.17,
+    0.196
+   ],
+   "r_ipsative": -0.039,
+   "r_ipsative_ci": [
+    -0.052,
+    -0.025
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.278,
+   "prefer_a": 0.062,
+   "prefer_b": 0.76,
+   "tie": 0.178,
+   "balance": 0.075,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.123
+  },
+  {
+   "a": "XSoci",
+   "b": "OUnco",
+   "a_ko": "사교성",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.006,
+   "r_ci": [
+    -0.019,
+    0.007
+   ],
+   "r_ipsative": -0.119,
+   "r_ipsative_ci": [
+    -0.132,
+    -0.104
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.418,
+   "prefer_a": 0.124,
+   "prefer_b": 0.666,
+   "tie": 0.21,
+   "balance": 0.157,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.001
+  },
+  {
+   "a": "XLive",
+   "b": "AForg",
+   "a_ko": "활력",
+   "b_ko": "용서",
+   "same_domain": false,
+   "r": 0.262,
+   "r_ci": [
+    0.249,
+    0.276
+   ],
+   "r_ipsative": 0.0,
+   "r_ipsative_ci": [
+    -0.015,
+    0.013
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.215,
+   "prefer_a": 0.329,
+   "prefer_b": 0.347,
+   "tie": 0.324,
+   "balance": 0.487,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.847,
+   "invariance_r_ea": 0.252
+  },
+  {
+   "a": "XLive",
+   "b": "AGent",
+   "a_ko": "활력",
+   "b_ko": "온화함",
+   "same_domain": false,
+   "r": 0.296,
+   "r_ci": [
+    0.283,
+    0.311
+   ],
+   "r_ipsative": 0.053,
+   "r_ipsative_ci": [
+    0.039,
+    0.067
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.187,
+   "prefer_a": 0.272,
+   "prefer_b": 0.374,
+   "tie": 0.354,
+   "balance": 0.42,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.257
+  },
+  {
+   "a": "XLive",
+   "b": "AFlex",
+   "a_ko": "활력",
+   "b_ko": "유연성",
+   "same_domain": false,
+   "r": 0.346,
+   "r_ci": [
+    0.334,
+    0.36
+   ],
+   "r_ipsative": 0.136,
+   "r_ipsative_ci": [
+    0.121,
+    0.15
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.143,
+   "prefer_a": 0.419,
+   "prefer_b": 0.209,
+   "tie": 0.371,
+   "balance": 0.333,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.294
+  },
+  {
+   "a": "XLive",
+   "b": "APati",
+   "a_ko": "활력",
+   "b_ko": "인내",
+   "same_domain": false,
+   "r": 0.285,
+   "r_ci": [
+    0.272,
+    0.298
+   ],
+   "r_ipsative": 0.099,
+   "r_ipsative_ci": [
+    0.086,
+    0.114
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.196,
+   "prefer_a": 0.395,
+   "prefer_b": 0.326,
+   "tie": 0.279,
+   "balance": 0.452,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.853,
+   "invariance_r_ea": 0.281
+  },
+  {
+   "a": "XLive",
+   "b": "COrga",
+   "a_ko": "활력",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": 0.138,
+   "r_ci": [
+    0.124,
+    0.152
+   ],
+   "r_ipsative": -0.015,
+   "r_ipsative_ci": [
+    -0.029,
+    -0.001
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.313,
+   "prefer_a": 0.463,
+   "prefer_b": 0.233,
+   "tie": 0.303,
+   "balance": 0.335,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.12
+  },
+  {
+   "a": "XLive",
+   "b": "CDili",
+   "a_ko": "활력",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.414,
+   "r_ci": [
+    0.402,
+    0.428
+   ],
+   "r_ipsative": 0.237,
+   "r_ipsative_ci": [
+    0.223,
+    0.251
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.083,
+   "prefer_a": 0.328,
+   "prefer_b": 0.301,
+   "tie": 0.371,
+   "balance": 0.478,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.853,
+   "invariance_r_ea": 0.376
+  },
+  {
+   "a": "XLive",
+   "b": "CPerf",
+   "a_ko": "활력",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": 0.054,
+   "r_ci": [
+    0.04,
+    0.069
+   ],
+   "r_ipsative": -0.073,
+   "r_ipsative_ci": [
+    -0.088,
+    -0.059
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.376,
+   "prefer_a": 0.177,
+   "prefer_b": 0.553,
+   "tie": 0.269,
+   "balance": 0.243,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.829,
+   "invariance_r_ea": 0.06
+  },
+  {
+   "a": "XLive",
+   "b": "CPrud",
+   "a_ko": "활력",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": 0.086,
+   "r_ci": [
+    0.072,
+    0.1
+   ],
+   "r_ipsative": -0.111,
+   "r_ipsative_ci": [
+    -0.124,
+    -0.096
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.352,
+   "prefer_a": 0.402,
+   "prefer_b": 0.292,
+   "tie": 0.306,
+   "balance": 0.421,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.826,
+   "invariance_r_ea": 0.038
+  },
+  {
+   "a": "XLive",
+   "b": "OAesA",
+   "a_ko": "활력",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.163,
+   "r_ci": [
+    0.15,
+    0.177
+   ],
+   "r_ipsative": -0.079,
+   "r_ipsative_ci": [
+    -0.094,
+    -0.064
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.294,
+   "prefer_a": 0.083,
+   "prefer_b": 0.719,
+   "tie": 0.198,
+   "balance": 0.103,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.16
+  },
+  {
+   "a": "XLive",
+   "b": "OInqu",
+   "a_ko": "활력",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.132,
+   "r_ci": [
+    0.118,
+    0.146
+   ],
+   "r_ipsative": -0.046,
+   "r_ipsative_ci": [
+    -0.061,
+    -0.033
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.318,
+   "prefer_a": 0.094,
+   "prefer_b": 0.687,
+   "tie": 0.219,
+   "balance": 0.12,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.12
+  },
+  {
+   "a": "XLive",
+   "b": "OCrea",
+   "a_ko": "활력",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.332,
+   "r_ci": [
+    0.319,
+    0.345
+   ],
+   "r_ipsative": 0.166,
+   "r_ipsative_ci": [
+    0.152,
+    0.18
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.156,
+   "prefer_a": 0.056,
+   "prefer_b": 0.732,
+   "tie": 0.211,
+   "balance": 0.071,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.318
+  },
+  {
+   "a": "XLive",
+   "b": "OUnco",
+   "a_ko": "활력",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": 0.131,
+   "r_ci": [
+    0.117,
+    0.146
+   ],
+   "r_ipsative": 0.051,
+   "r_ipsative_ci": [
+    0.037,
+    0.066
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.318,
+   "prefer_a": 0.128,
+   "prefer_b": 0.615,
+   "tie": 0.257,
+   "balance": 0.173,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.789,
+   "invariance_r_ea": 0.154
+  },
+  {
+   "a": "AForg",
+   "b": "AGent",
+   "a_ko": "용서",
+   "b_ko": "온화함",
+   "same_domain": true,
+   "r": 0.653,
+   "r_ci": [
+    0.644,
+    0.662
+   ],
+   "r_ipsative": 0.506,
+   "r_ipsative_ci": [
+    0.496,
+    0.516
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.833,
+   "prefer_a": 0.195,
+   "prefer_b": 0.317,
+   "tie": 0.488,
+   "balance": 0.381,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.62
+  },
+  {
+   "a": "AForg",
+   "b": "AFlex",
+   "a_ko": "용서",
+   "b_ko": "유연성",
+   "same_domain": true,
+   "r": 0.569,
+   "r_ci": [
+    0.559,
+    0.579
+   ],
+   "r_ipsative": 0.398,
+   "r_ipsative_ci": [
+    0.386,
+    0.411
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.928,
+   "prefer_a": 0.415,
+   "prefer_b": 0.165,
+   "tie": 0.42,
+   "balance": 0.285,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.529
+  },
+  {
+   "a": "AForg",
+   "b": "APati",
+   "a_ko": "용서",
+   "b_ko": "인내",
+   "same_domain": true,
+   "r": 0.548,
+   "r_ci": [
+    0.538,
+    0.557
+   ],
+   "r_ipsative": 0.401,
+   "r_ipsative_ci": [
+    0.388,
+    0.414
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.951,
+   "prefer_a": 0.376,
+   "prefer_b": 0.273,
+   "tie": 0.35,
+   "balance": 0.421,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.847,
+   "invariance_r_ea": 0.564
+  },
+  {
+   "a": "AForg",
+   "b": "COrga",
+   "a_ko": "용서",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": 0.005,
+   "r_ci": [
+    -0.01,
+    0.02
+   ],
+   "r_ipsative": -0.231,
+   "r_ipsative_ci": [
+    -0.245,
+    -0.217
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.411,
+   "prefer_a": 0.475,
+   "prefer_b": 0.247,
+   "tie": 0.277,
+   "balance": 0.342,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.834,
+   "invariance_r_ea": -0.027
+  },
+  {
+   "a": "AForg",
+   "b": "CDili",
+   "a_ko": "용서",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.104,
+   "r_ci": [
+    0.09,
+    0.119
+   ],
+   "r_ipsative": -0.231,
+   "r_ipsative_ci": [
+    -0.245,
+    -0.218
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.339,
+   "prefer_a": 0.369,
+   "prefer_b": 0.335,
+   "tie": 0.297,
+   "balance": 0.476,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.847,
+   "invariance_r_ea": 0.076
+  },
+  {
+   "a": "AForg",
+   "b": "CPerf",
+   "a_ko": "용서",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.182,
+   "r_ci": [
+    -0.197,
+    -0.167
+   ],
+   "r_ipsative": -0.41,
+   "r_ipsative_ci": [
+    -0.423,
+    -0.397
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.538,
+   "prefer_a": 0.208,
+   "prefer_b": 0.535,
+   "tie": 0.256,
+   "balance": 0.28,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.829,
+   "invariance_r_ea": -0.132
+  },
+  {
+   "a": "AForg",
+   "b": "CPrud",
+   "a_ko": "용서",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": 0.093,
+   "r_ci": [
+    0.078,
+    0.108
+   ],
+   "r_ipsative": -0.159,
+   "r_ipsative_ci": [
+    -0.174,
+    -0.145
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.347,
+   "prefer_a": 0.422,
+   "prefer_b": 0.279,
+   "tie": 0.299,
+   "balance": 0.398,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.826,
+   "invariance_r_ea": 0.055
+  },
+  {
+   "a": "AForg",
+   "b": "OAesA",
+   "a_ko": "용서",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.18,
+   "r_ci": [
+    0.167,
+    0.193
+   ],
+   "r_ipsative": -0.115,
+   "r_ipsative_ci": [
+    -0.13,
+    -0.1
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.281,
+   "prefer_a": 0.078,
+   "prefer_b": 0.706,
+   "tie": 0.216,
+   "balance": 0.099,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.113
+  },
+  {
+   "a": "AForg",
+   "b": "OInqu",
+   "a_ko": "용서",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.039,
+   "r_ci": [
+    0.026,
+    0.054
+   ],
+   "r_ipsative": -0.218,
+   "r_ipsative_ci": [
+    -0.233,
+    -0.206
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.386,
+   "prefer_a": 0.101,
+   "prefer_b": 0.663,
+   "tie": 0.236,
+   "balance": 0.132,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.77,
+   "invariance_r_ea": -0.0
+  },
+  {
+   "a": "AForg",
+   "b": "OCrea",
+   "a_ko": "용서",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.059,
+   "r_ci": [
+    0.044,
+    0.073
+   ],
+   "r_ipsative": -0.237,
+   "r_ipsative_ci": [
+    -0.25,
+    -0.224
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.372,
+   "prefer_a": 0.085,
+   "prefer_b": 0.688,
+   "tie": 0.227,
+   "balance": 0.11,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.834,
+   "invariance_r_ea": -0.001
+  },
+  {
+   "a": "AForg",
+   "b": "OUnco",
+   "a_ko": "용서",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.085,
+   "r_ci": [
+    -0.1,
+    -0.071
+   ],
+   "r_ipsative": -0.245,
+   "r_ipsative_ci": [
+    -0.258,
+    -0.231
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.473,
+   "prefer_a": 0.157,
+   "prefer_b": 0.588,
+   "tie": 0.255,
+   "balance": 0.211,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.073
+  },
+  {
+   "a": "AGent",
+   "b": "AFlex",
+   "a_ko": "온화함",
+   "b_ko": "유연성",
+   "same_domain": true,
+   "r": 0.658,
+   "r_ci": [
+    0.65,
+    0.667
+   ],
+   "r_ipsative": 0.527,
+   "r_ipsative_ci": [
+    0.516,
+    0.537
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.827,
+   "prefer_a": 0.476,
+   "prefer_b": 0.073,
+   "tie": 0.451,
+   "balance": 0.134,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.638
+  },
+  {
+   "a": "AGent",
+   "b": "APati",
+   "a_ko": "온화함",
+   "b_ko": "인내",
+   "same_domain": true,
+   "r": 0.603,
+   "r_ci": [
+    0.594,
+    0.612
+   ],
+   "r_ipsative": 0.479,
+   "r_ipsative_ci": [
+    0.467,
+    0.491
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.891,
+   "prefer_a": 0.426,
+   "prefer_b": 0.224,
+   "tie": 0.35,
+   "balance": 0.345,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.612
+  },
+  {
+   "a": "AGent",
+   "b": "COrga",
+   "a_ko": "온화함",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": 0.003,
+   "r_ci": [
+    -0.011,
+    0.017
+   ],
+   "r_ipsative": -0.225,
+   "r_ipsative_ci": [
+    -0.239,
+    -0.211
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.412,
+   "prefer_a": 0.527,
+   "prefer_b": 0.191,
+   "tie": 0.282,
+   "balance": 0.266,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.004
+  },
+  {
+   "a": "AGent",
+   "b": "CDili",
+   "a_ko": "온화함",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.146,
+   "r_ci": [
+    0.131,
+    0.161
+   ],
+   "r_ipsative": -0.165,
+   "r_ipsative_ci": [
+    -0.18,
+    -0.15
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.307,
+   "prefer_a": 0.407,
+   "prefer_b": 0.272,
+   "tie": 0.322,
+   "balance": 0.4,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.079
+  },
+  {
+   "a": "AGent",
+   "b": "CPerf",
+   "a_ko": "온화함",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.234,
+   "r_ci": [
+    -0.247,
+    -0.22
+   ],
+   "r_ipsative": -0.462,
+   "r_ipsative_ci": [
+    -0.473,
+    -0.45
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.571,
+   "prefer_a": 0.22,
+   "prefer_b": 0.495,
+   "tie": 0.285,
+   "balance": 0.308,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.259
+  },
+  {
+   "a": "AGent",
+   "b": "CPrud",
+   "a_ko": "온화함",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": 0.118,
+   "r_ci": [
+    0.102,
+    0.133
+   ],
+   "r_ipsative": -0.119,
+   "r_ipsative_ci": [
+    -0.133,
+    -0.105
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.328,
+   "prefer_a": 0.469,
+   "prefer_b": 0.221,
+   "tie": 0.31,
+   "balance": 0.32,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.088
+  },
+  {
+   "a": "AGent",
+   "b": "OAesA",
+   "a_ko": "온화함",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.221,
+   "r_ci": [
+    0.208,
+    0.234
+   ],
+   "r_ipsative": -0.051,
+   "r_ipsative_ci": [
+    -0.067,
+    -0.036
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.248,
+   "prefer_a": 0.075,
+   "prefer_b": 0.69,
+   "tie": 0.234,
+   "balance": 0.099,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.166
+  },
+  {
+   "a": "AGent",
+   "b": "OInqu",
+   "a_ko": "온화함",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": -0.003,
+   "r_ci": [
+    -0.017,
+    0.011
+   ],
+   "r_ipsative": -0.262,
+   "r_ipsative_ci": [
+    -0.275,
+    -0.249
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.416,
+   "prefer_a": 0.112,
+   "prefer_b": 0.64,
+   "tie": 0.249,
+   "balance": 0.148,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.77,
+   "invariance_r_ea": -0.037
+  },
+  {
+   "a": "AGent",
+   "b": "OCrea",
+   "a_ko": "온화함",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.095,
+   "r_ci": [
+    0.081,
+    0.109
+   ],
+   "r_ipsative": -0.18,
+   "r_ipsative_ci": [
+    -0.193,
+    -0.166
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.345,
+   "prefer_a": 0.082,
+   "prefer_b": 0.673,
+   "tie": 0.245,
+   "balance": 0.109,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": 0.048
+  },
+  {
+   "a": "AGent",
+   "b": "OUnco",
+   "a_ko": "온화함",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.044,
+   "r_ci": [
+    -0.059,
+    -0.03
+   ],
+   "r_ipsative": -0.189,
+   "r_ipsative_ci": [
+    -0.202,
+    -0.175
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.445,
+   "prefer_a": 0.156,
+   "prefer_b": 0.561,
+   "tie": 0.283,
+   "balance": 0.217,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.081
+  },
+  {
+   "a": "AFlex",
+   "b": "APati",
+   "a_ko": "유연성",
+   "b_ko": "인내",
+   "same_domain": true,
+   "r": 0.591,
+   "r_ci": [
+    0.581,
+    0.601
+   ],
+   "r_ipsative": 0.472,
+   "r_ipsative_ci": [
+    0.46,
+    0.483
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.904,
+   "prefer_a": 0.27,
+   "prefer_b": 0.374,
+   "tie": 0.356,
+   "balance": 0.419,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.583
+  },
+  {
+   "a": "AFlex",
+   "b": "COrga",
+   "a_ko": "유연성",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": 0.015,
+   "r_ci": [
+    0.001,
+    0.029
+   ],
+   "r_ipsative": -0.191,
+   "r_ipsative_ci": [
+    -0.204,
+    -0.177
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.404,
+   "prefer_a": 0.365,
+   "prefer_b": 0.304,
+   "tie": 0.331,
+   "balance": 0.454,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.047
+  },
+  {
+   "a": "AFlex",
+   "b": "CDili",
+   "a_ko": "유연성",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.191,
+   "r_ci": [
+    0.177,
+    0.206
+   ],
+   "r_ipsative": -0.084,
+   "r_ipsative_ci": [
+    -0.099,
+    -0.069
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.272,
+   "prefer_a": 0.243,
+   "prefer_b": 0.412,
+   "tie": 0.345,
+   "balance": 0.371,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.144
+  },
+  {
+   "a": "AFlex",
+   "b": "CPerf",
+   "a_ko": "유연성",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.264,
+   "r_ci": [
+    -0.278,
+    -0.25
+   ],
+   "r_ipsative": -0.475,
+   "r_ipsative_ci": [
+    -0.486,
+    -0.463
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.59,
+   "prefer_a": 0.129,
+   "prefer_b": 0.643,
+   "tie": 0.229,
+   "balance": 0.167,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": -0.254
+  },
+  {
+   "a": "AFlex",
+   "b": "CPrud",
+   "a_ko": "유연성",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": 0.21,
+   "r_ci": [
+    0.196,
+    0.224
+   ],
+   "r_ipsative": 0.014,
+   "r_ipsative_ci": [
+    -0.0,
+    0.029
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.257,
+   "prefer_a": 0.285,
+   "prefer_b": 0.344,
+   "tie": 0.372,
+   "balance": 0.453,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.199
+  },
+  {
+   "a": "AFlex",
+   "b": "OAesA",
+   "a_ko": "유연성",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.135,
+   "r_ci": [
+    0.122,
+    0.148
+   ],
+   "r_ipsative": -0.148,
+   "r_ipsative_ci": [
+    -0.161,
+    -0.134
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.315,
+   "prefer_a": 0.036,
+   "prefer_b": 0.826,
+   "tie": 0.139,
+   "balance": 0.041,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.068
+  },
+  {
+   "a": "AFlex",
+   "b": "OInqu",
+   "a_ko": "유연성",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.072,
+   "r_ci": [
+    0.058,
+    0.086
+   ],
+   "r_ipsative": -0.149,
+   "r_ipsative_ci": [
+    -0.162,
+    -0.136
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.362,
+   "prefer_a": 0.044,
+   "prefer_b": 0.794,
+   "tie": 0.162,
+   "balance": 0.052,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.041
+  },
+  {
+   "a": "AFlex",
+   "b": "OCrea",
+   "a_ko": "유연성",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.126,
+   "r_ci": [
+    0.112,
+    0.14
+   ],
+   "r_ipsative": -0.121,
+   "r_ipsative_ci": [
+    -0.135,
+    -0.107
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.322,
+   "prefer_a": 0.033,
+   "prefer_b": 0.825,
+   "tie": 0.142,
+   "balance": 0.039,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": 0.062
+  },
+  {
+   "a": "AFlex",
+   "b": "OUnco",
+   "a_ko": "유연성",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.031,
+   "r_ci": [
+    -0.044,
+    -0.018
+   ],
+   "r_ipsative": -0.156,
+   "r_ipsative_ci": [
+    -0.169,
+    -0.142
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.436,
+   "prefer_a": 0.074,
+   "prefer_b": 0.719,
+   "tie": 0.207,
+   "balance": 0.094,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.74,
+   "invariance_r_ea": -0.028
+  },
+  {
+   "a": "APati",
+   "b": "COrga",
+   "a_ko": "인내",
+   "b_ko": "조직화",
+   "same_domain": false,
+   "r": 0.101,
+   "r_ci": [
+    0.087,
+    0.115
+   ],
+   "r_ipsative": -0.038,
+   "r_ipsative_ci": [
+    -0.051,
+    -0.024
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.341,
+   "prefer_a": 0.426,
+   "prefer_b": 0.318,
+   "tie": 0.256,
+   "balance": 0.427,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.105
+  },
+  {
+   "a": "APati",
+   "b": "CDili",
+   "a_ko": "인내",
+   "b_ko": "근면",
+   "same_domain": false,
+   "r": 0.189,
+   "r_ci": [
+    0.174,
+    0.203
+   ],
+   "r_ipsative": -0.035,
+   "r_ipsative_ci": [
+    -0.049,
+    -0.019
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.274,
+   "prefer_a": 0.334,
+   "prefer_b": 0.397,
+   "tie": 0.269,
+   "balance": 0.457,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.866,
+   "invariance_r_ea": 0.207
+  },
+  {
+   "a": "APati",
+   "b": "CPerf",
+   "a_ko": "인내",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.093,
+   "r_ci": [
+    -0.107,
+    -0.077
+   ],
+   "r_ipsative": -0.217,
+   "r_ipsative_ci": [
+    -0.231,
+    -0.203
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.478,
+   "prefer_a": 0.218,
+   "prefer_b": 0.568,
+   "tie": 0.214,
+   "balance": 0.278,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.829,
+   "invariance_r_ea": -0.093
+  },
+  {
+   "a": "APati",
+   "b": "CPrud",
+   "a_ko": "인내",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": 0.333,
+   "r_ci": [
+    0.319,
+    0.346
+   ],
+   "r_ipsative": 0.205,
+   "r_ipsative_ci": [
+    0.191,
+    0.219
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.155,
+   "prefer_a": 0.361,
+   "prefer_b": 0.342,
+   "tie": 0.296,
+   "balance": 0.487,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.826,
+   "invariance_r_ea": 0.32
+  },
+  {
+   "a": "APati",
+   "b": "OAesA",
+   "a_ko": "인내",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.05,
+   "r_ci": [
+    0.036,
+    0.064
+   ],
+   "r_ipsative": -0.199,
+   "r_ipsative_ci": [
+    -0.213,
+    -0.186
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.378,
+   "prefer_a": 0.121,
+   "prefer_b": 0.692,
+   "tie": 0.187,
+   "balance": 0.149,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.011
+  },
+  {
+   "a": "APati",
+   "b": "OInqu",
+   "a_ko": "인내",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.087,
+   "r_ci": [
+    0.072,
+    0.101
+   ],
+   "r_ipsative": -0.079,
+   "r_ipsative_ci": [
+    -0.093,
+    -0.065
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.351,
+   "prefer_a": 0.127,
+   "prefer_b": 0.676,
+   "tie": 0.197,
+   "balance": 0.158,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.018
+  },
+  {
+   "a": "APati",
+   "b": "OCrea",
+   "a_ko": "인내",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.111,
+   "r_ci": [
+    0.095,
+    0.125
+   ],
+   "r_ipsative": -0.087,
+   "r_ipsative_ci": [
+    -0.102,
+    -0.073
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.334,
+   "prefer_a": 0.112,
+   "prefer_b": 0.692,
+   "tie": 0.196,
+   "balance": 0.139,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.119
+  },
+  {
+   "a": "APati",
+   "b": "OUnco",
+   "a_ko": "인내",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.036,
+   "r_ci": [
+    -0.05,
+    -0.022
+   ],
+   "r_ipsative": -0.113,
+   "r_ipsative_ci": [
+    -0.127,
+    -0.1
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.439,
+   "prefer_a": 0.18,
+   "prefer_b": 0.611,
+   "tie": 0.21,
+   "balance": 0.227,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.051
+  },
+  {
+   "a": "COrga",
+   "b": "CDili",
+   "a_ko": "조직화",
+   "b_ko": "근면",
+   "same_domain": true,
+   "r": 0.531,
+   "r_ci": [
+    0.52,
+    0.541
+   ],
+   "r_ipsative": 0.443,
+   "r_ipsative_ci": [
+    0.431,
+    0.453
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.969,
+   "prefer_a": 0.17,
+   "prefer_b": 0.43,
+   "tie": 0.4,
+   "balance": 0.283,
+   "fair_gender_d_max": 0.056,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.528
+  },
+  {
+   "a": "COrga",
+   "b": "CPerf",
+   "a_ko": "조직화",
+   "b_ko": "완벽주의",
+   "same_domain": true,
+   "r": 0.467,
+   "r_ci": [
+    0.455,
+    0.478
+   ],
+   "r_ipsative": 0.441,
+   "r_ipsative_ci": [
+    0.429,
+    0.452
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.033,
+   "prefer_a": 0.047,
+   "prefer_b": 0.723,
+   "tie": 0.23,
+   "balance": 0.061,
+   "fair_gender_d_max": 0.056,
+   "min_omega": 0.829,
+   "invariance_r_ea": 0.441
+  },
+  {
+   "a": "COrga",
+   "b": "CPrud",
+   "a_ko": "조직화",
+   "b_ko": "신중함",
+   "same_domain": true,
+   "r": 0.514,
+   "r_ci": [
+    0.502,
+    0.524
+   ],
+   "r_ipsative": 0.457,
+   "r_ipsative_ci": [
+    0.445,
+    0.468
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.986,
+   "prefer_a": 0.22,
+   "prefer_b": 0.353,
+   "tie": 0.427,
+   "balance": 0.383,
+   "fair_gender_d_max": 0.056,
+   "min_omega": 0.826,
+   "invariance_r_ea": 0.527
+  },
+  {
+   "a": "COrga",
+   "b": "OAesA",
+   "a_ko": "조직화",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": -0.024,
+   "r_ci": [
+    -0.04,
+    -0.01
+   ],
+   "r_ipsative": -0.209,
+   "r_ipsative_ci": [
+    -0.224,
+    -0.196
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.431,
+   "prefer_a": 0.064,
+   "prefer_b": 0.804,
+   "tie": 0.132,
+   "balance": 0.074,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.777,
+   "invariance_r_ea": -0.042
+  },
+  {
+   "a": "COrga",
+   "b": "OInqu",
+   "a_ko": "조직화",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.03,
+   "r_ci": [
+    0.017,
+    0.044
+   ],
+   "r_ipsative": -0.075,
+   "r_ipsative_ci": [
+    -0.089,
+    -0.062
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.393,
+   "prefer_a": 0.06,
+   "prefer_b": 0.782,
+   "tie": 0.158,
+   "balance": 0.071,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.77,
+   "invariance_r_ea": -0.002
+  },
+  {
+   "a": "COrga",
+   "b": "OCrea",
+   "a_ko": "조직화",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": -0.01,
+   "r_ci": [
+    -0.024,
+    0.004
+   ],
+   "r_ipsative": -0.156,
+   "r_ipsative_ci": [
+    -0.17,
+    -0.142
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.421,
+   "prefer_a": 0.057,
+   "prefer_b": 0.802,
+   "tie": 0.141,
+   "balance": 0.067,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.834,
+   "invariance_r_ea": -0.017
+  },
+  {
+   "a": "COrga",
+   "b": "OUnco",
+   "a_ko": "조직화",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.238,
+   "r_ci": [
+    -0.252,
+    -0.225
+   ],
+   "r_ipsative": -0.255,
+   "r_ipsative_ci": [
+    -0.268,
+    -0.242
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.574,
+   "prefer_a": 0.106,
+   "prefer_b": 0.712,
+   "tie": 0.182,
+   "balance": 0.13,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.265
+  },
+  {
+   "a": "CDili",
+   "b": "CPerf",
+   "a_ko": "근면",
+   "b_ko": "완벽주의",
+   "same_domain": true,
+   "r": 0.429,
+   "r_ci": [
+    0.417,
+    0.441
+   ],
+   "r_ipsative": 0.349,
+   "r_ipsative_ci": [
+    0.336,
+    0.361
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.068,
+   "prefer_a": 0.115,
+   "prefer_b": 0.564,
+   "tie": 0.321,
+   "balance": 0.169,
+   "fair_gender_d_max": 0.056,
+   "min_omega": 0.829,
+   "invariance_r_ea": 0.459
+  },
+  {
+   "a": "CDili",
+   "b": "CPrud",
+   "a_ko": "근면",
+   "b_ko": "신중함",
+   "same_domain": true,
+   "r": 0.519,
+   "r_ci": [
+    0.509,
+    0.53
+   ],
+   "r_ipsative": 0.409,
+   "r_ipsative_ci": [
+    0.397,
+    0.422
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 0.981,
+   "prefer_a": 0.358,
+   "prefer_b": 0.23,
+   "tie": 0.413,
+   "balance": 0.391,
+   "fair_gender_d_max": 0.056,
+   "min_omega": 0.826,
+   "invariance_r_ea": 0.597
+  },
+  {
+   "a": "CDili",
+   "b": "OAesA",
+   "a_ko": "근면",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.121,
+   "r_ci": [
+    0.107,
+    0.136
+   ],
+   "r_ipsative": -0.148,
+   "r_ipsative_ci": [
+    -0.162,
+    -0.134
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.326,
+   "prefer_a": 0.09,
+   "prefer_b": 0.726,
+   "tie": 0.184,
+   "balance": 0.11,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.05
+  },
+  {
+   "a": "CDili",
+   "b": "OInqu",
+   "a_ko": "근면",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.255,
+   "r_ci": [
+    0.241,
+    0.267
+   ],
+   "r_ipsative": 0.091,
+   "r_ipsative_ci": [
+    0.077,
+    0.105
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.221,
+   "prefer_a": 0.076,
+   "prefer_b": 0.701,
+   "tie": 0.223,
+   "balance": 0.098,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.282
+  },
+  {
+   "a": "CDili",
+   "b": "OCrea",
+   "a_ko": "근면",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.263,
+   "r_ci": [
+    0.249,
+    0.277
+   ],
+   "r_ipsative": 0.069,
+   "r_ipsative_ci": [
+    0.055,
+    0.085
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.214,
+   "prefer_a": 0.065,
+   "prefer_b": 0.731,
+   "tie": 0.204,
+   "balance": 0.082,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.834,
+   "invariance_r_ea": 0.292
+  },
+  {
+   "a": "CDili",
+   "b": "OUnco",
+   "a_ko": "근면",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": 0.008,
+   "r_ci": [
+    -0.006,
+    0.023
+   ],
+   "r_ipsative": -0.097,
+   "r_ipsative_ci": [
+    -0.111,
+    -0.082
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.408,
+   "prefer_a": 0.142,
+   "prefer_b": 0.62,
+   "tie": 0.238,
+   "balance": 0.186,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.02
+  },
+  {
+   "a": "CPerf",
+   "b": "CPrud",
+   "a_ko": "완벽주의",
+   "b_ko": "신중함",
+   "same_domain": true,
+   "r": 0.387,
+   "r_ci": [
+    0.374,
+    0.4
+   ],
+   "r_ipsative": 0.339,
+   "r_ipsative_ci": [
+    0.325,
+    0.353
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.108,
+   "prefer_a": 0.637,
+   "prefer_b": 0.08,
+   "tie": 0.283,
+   "balance": 0.112,
+   "fair_gender_d_max": 0.056,
+   "min_omega": 0.826,
+   "invariance_r_ea": 0.418
+  },
+  {
+   "a": "CPerf",
+   "b": "OAesA",
+   "a_ko": "완벽주의",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": 0.119,
+   "r_ci": [
+    0.104,
+    0.134
+   ],
+   "r_ipsative": -0.002,
+   "r_ipsative_ci": [
+    -0.018,
+    0.013
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.328,
+   "prefer_a": 0.169,
+   "prefer_b": 0.511,
+   "tie": 0.32,
+   "balance": 0.249,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.165
+  },
+  {
+   "a": "CPerf",
+   "b": "OInqu",
+   "a_ko": "완벽주의",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.251,
+   "r_ci": [
+    0.237,
+    0.264
+   ],
+   "r_ipsative": 0.198,
+   "r_ipsative_ci": [
+    0.185,
+    0.212
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.224,
+   "prefer_a": 0.172,
+   "prefer_b": 0.46,
+   "tie": 0.369,
+   "balance": 0.272,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.293
+  },
+  {
+   "a": "CPerf",
+   "b": "OCrea",
+   "a_ko": "완벽주의",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.237,
+   "r_ci": [
+    0.222,
+    0.25
+   ],
+   "r_ipsative": 0.158,
+   "r_ipsative_ci": [
+    0.143,
+    0.173
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.236,
+   "prefer_a": 0.148,
+   "prefer_b": 0.486,
+   "tie": 0.365,
+   "balance": 0.234,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.829,
+   "invariance_r_ea": 0.247
+  },
+  {
+   "a": "CPerf",
+   "b": "OUnco",
+   "a_ko": "완벽주의",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": 0.019,
+   "r_ci": [
+    0.004,
+    0.032
+   ],
+   "r_ipsative": 0.037,
+   "r_ipsative_ci": [
+    0.023,
+    0.053
+   ],
+   "type": "independent",
+   "tradeoff": false,
+   "sd_zdiff": 1.401,
+   "prefer_a": 0.266,
+   "prefer_b": 0.385,
+   "tie": 0.349,
+   "balance": 0.408,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.789,
+   "invariance_r_ea": 0.002
+  },
+  {
+   "a": "CPrud",
+   "b": "OAesA",
+   "a_ko": "신중함",
+   "b_ko": "심미성",
+   "same_domain": false,
+   "r": -0.031,
+   "r_ci": [
+    -0.046,
+    -0.017
+   ],
+   "r_ipsative": -0.258,
+   "r_ipsative_ci": [
+    -0.272,
+    -0.245
+   ],
+   "type": "independent",
+   "tradeoff": true,
+   "sd_zdiff": 1.436,
+   "prefer_a": 0.076,
+   "prefer_b": 0.762,
+   "tie": 0.162,
+   "balance": 0.091,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.777,
+   "invariance_r_ea": -0.059
+  },
+  {
+   "a": "CPrud",
+   "b": "OInqu",
+   "a_ko": "신중함",
+   "b_ko": "탐구심",
+   "same_domain": false,
+   "r": 0.194,
+   "r_ci": [
+    0.18,
+    0.207
+   ],
+   "r_ipsative": 0.079,
+   "r_ipsative_ci": [
+    0.066,
+    0.093
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.269,
+   "prefer_a": 0.054,
+   "prefer_b": 0.755,
+   "tie": 0.191,
+   "balance": 0.066,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.235
+  },
+  {
+   "a": "CPrud",
+   "b": "OCrea",
+   "a_ko": "신중함",
+   "b_ko": "창의성",
+   "same_domain": false,
+   "r": 0.116,
+   "r_ci": [
+    0.103,
+    0.129
+   ],
+   "r_ipsative": -0.044,
+   "r_ipsative_ci": [
+    -0.059,
+    -0.031
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.33,
+   "prefer_a": 0.052,
+   "prefer_b": 0.772,
+   "tie": 0.175,
+   "balance": 0.064,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.826,
+   "invariance_r_ea": 0.163
+  },
+  {
+   "a": "CPrud",
+   "b": "OUnco",
+   "a_ko": "신중함",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.153,
+   "r_ci": [
+    -0.167,
+    -0.139
+   ],
+   "r_ipsative": -0.202,
+   "r_ipsative_ci": [
+    -0.215,
+    -0.189
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.519,
+   "prefer_a": 0.118,
+   "prefer_b": 0.669,
+   "tie": 0.214,
+   "balance": 0.15,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.162
+  },
+  {
+   "a": "OAesA",
+   "b": "OInqu",
+   "a_ko": "심미성",
+   "b_ko": "탐구심",
+   "same_domain": true,
+   "r": 0.347,
+   "r_ci": [
+    0.334,
+    0.36
+   ],
+   "r_ipsative": 0.212,
+   "r_ipsative_ci": [
+    0.197,
+    0.225
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.143,
+   "prefer_a": 0.317,
+   "prefer_b": 0.242,
+   "tie": 0.441,
+   "balance": 0.433,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.361
+  },
+  {
+   "a": "OAesA",
+   "b": "OCrea",
+   "a_ko": "심미성",
+   "b_ko": "창의성",
+   "same_domain": true,
+   "r": 0.384,
+   "r_ci": [
+    0.371,
+    0.396
+   ],
+   "r_ipsative": 0.229,
+   "r_ipsative_ci": [
+    0.215,
+    0.242
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.11,
+   "prefer_a": 0.274,
+   "prefer_b": 0.25,
+   "tie": 0.476,
+   "balance": 0.477,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.414
+  },
+  {
+   "a": "OAesA",
+   "b": "OUnco",
+   "a_ko": "심미성",
+   "b_ko": "비관습성",
+   "same_domain": true,
+   "r": 0.241,
+   "r_ci": [
+    0.228,
+    0.254
+   ],
+   "r_ipsative": 0.17,
+   "r_ipsative_ci": [
+    0.157,
+    0.186
+   ],
+   "type": "weak",
+   "tradeoff": false,
+   "sd_zdiff": 1.232,
+   "prefer_a": 0.43,
+   "prefer_b": 0.195,
+   "tie": 0.375,
+   "balance": 0.312,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.777,
+   "invariance_r_ea": 0.254
+  },
+  {
+   "a": "OInqu",
+   "b": "OCrea",
+   "a_ko": "탐구심",
+   "b_ko": "창의성",
+   "same_domain": true,
+   "r": 0.462,
+   "r_ci": [
+    0.451,
+    0.473
+   ],
+   "r_ipsative": 0.37,
+   "r_ipsative_ci": [
+    0.357,
+    0.382
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.037,
+   "prefer_a": 0.23,
+   "prefer_b": 0.285,
+   "tie": 0.485,
+   "balance": 0.447,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.55
+  },
+  {
+   "a": "OInqu",
+   "b": "OUnco",
+   "a_ko": "탐구심",
+   "b_ko": "비관습성",
+   "same_domain": true,
+   "r": 0.372,
+   "r_ci": [
+    0.359,
+    0.383
+   ],
+   "r_ipsative": 0.352,
+   "r_ipsative_ci": [
+    0.339,
+    0.364
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.121,
+   "prefer_a": 0.375,
+   "prefer_b": 0.201,
+   "tie": 0.424,
+   "balance": 0.349,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.77,
+   "invariance_r_ea": 0.364
+  },
+  {
+   "a": "OCrea",
+   "b": "OUnco",
+   "a_ko": "창의성",
+   "b_ko": "비관습성",
+   "same_domain": true,
+   "r": 0.461,
+   "r_ci": [
+    0.45,
+    0.473
+   ],
+   "r_ipsative": 0.429,
+   "r_ipsative_ci": [
+    0.417,
+    0.44
+   ],
+   "type": "complement",
+   "tradeoff": false,
+   "sd_zdiff": 1.038,
+   "prefer_a": 0.39,
+   "prefer_b": 0.157,
+   "tie": 0.452,
+   "balance": 0.288,
+   "fair_gender_d_max": 0.212,
+   "min_omega": 0.789,
+   "invariance_r_ea": 0.496
+  }
+ ]
+}

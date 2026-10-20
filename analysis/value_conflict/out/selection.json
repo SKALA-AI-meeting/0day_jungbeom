@@ -1,0 +1,544 @@
+{
+ "rules": {
+  "X1": "정서성(E) 측면은 딜레마 극으로 쓰지 않음",
+  "X2": "ipsative 대립만 있는 쌍은 원점수 r 95% CI 상한 < 0",
+  "X3": "점수 ≥ 만점의 60%",
+  "X4": "한 측면은 한 쌍에만 사용"
+ },
+ "pool": {
+  "candidates_before_x1": 61,
+  "excluded_by_x1": 29,
+  "scored": 32,
+  "max_score": 18
+ },
+ "weights": {
+  "reliability": 1,
+  "dispersion": 2,
+  "balance": 2,
+  "job": 2,
+  "observability": 1,
+  "fairness": 1
+ },
+ "facet_meta": {
+  "HSinc": [
+   2,
+   2,
+   "P19"
+  ],
+  "HFair": [
+   2,
+   2,
+   "P20"
+  ],
+  "HGree": [
+   1,
+   1,
+   "P19"
+  ],
+  "HMode": [
+   1,
+   2,
+   "P19"
+  ],
+  "XExpr": [
+   1,
+   2,
+   "BM91"
+  ],
+  "XSocB": [
+   1,
+   2,
+   "BM91"
+  ],
+  "XSoci": [
+   1,
+   1,
+   "BM91"
+  ],
+  "XLive": [
+   0,
+   1,
+   "-"
+  ],
+  "AForg": [
+   1,
+   2,
+   "P19"
+  ],
+  "AGent": [
+   1,
+   2,
+   "MBS98"
+  ],
+  "AFlex": [
+   2,
+   2,
+   "MBS98"
+  ],
+  "APati": [
+   1,
+   2,
+   "MBS98"
+  ],
+  "COrga": [
+   2,
+   1,
+   "BM91,J13"
+  ],
+  "CDili": [
+   2,
+   2,
+   "BM91,J13"
+  ],
+  "CPerf": [
+   1,
+   2,
+   "J13"
+  ],
+  "CPrud": [
+   2,
+   2,
+   "BM91,J13"
+  ],
+  "OAesA": [
+   0,
+   0,
+   "-"
+  ],
+  "OInqu": [
+   1,
+   1,
+   "BM91"
+  ],
+  "OCrea": [
+   1,
+   2,
+   "-"
+  ],
+  "OUnco": [
+   1,
+   2,
+   "-"
+  ]
+ },
+ "refs": {
+  "BM91": "Barrick & Mount (1991), Personnel Psychology 44(1) — 성실성이 직군 전반의 성과를 일관되게 예측",
+  "J13": "Judge et al. (2013), J. Applied Psychology 98(6), 875–925 — 측면(facet) 수준이 성과 예측에 중요",
+  "MBS98": "Mount, Barrick & Stewart (1998), Human Performance 11 — 대인 상호작용·팀 직무에서 원만성·정서안정성",
+  "P19": "Pletzer et al. (2019), J. Vocational Behavior 112, 369–383 — 정직-겸손이 직장 일탈 최강 예측요인",
+  "P20": "Pletzer et al. (2020), Personality and Individual Differences 152 — 공정성 측면의 일탈 설명력이 6요인 전체에 근접"
+ },
+ "chosen": [
+  {
+   "a": "HMode",
+   "b": "XSocB",
+   "a_ko": "겸손",
+   "b_ko": "사회적 대담성",
+   "same_domain": false,
+   "r": -0.452,
+   "r_ci": [
+    -0.463,
+    -0.441
+   ],
+   "r_ipsative": -0.591,
+   "r_ipsative_ci": [
+    -0.601,
+    -0.582
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.704,
+   "prefer_a": 0.457,
+   "prefer_b": 0.337,
+   "tie": 0.205,
+   "balance": 0.424,
+   "fair_gender_d_max": NaN,
+   "min_omega": 0.814,
+   "invariance_r_ea": -0.477,
+   "excluded_x1": false,
+   "relation": "대립(원점수)",
+   "pt_reliability": 2,
+   "pt_dispersion": 2,
+   "pt_balance": 2,
+   "pt_job": 1.0,
+   "pt_observability": 2.0,
+   "pt_fairness": 1,
+   "score": 15.0,
+   "controls": [
+    "COrga",
+    "CPrud"
+   ]
+  },
+  {
+   "a": "HFair",
+   "b": "OUnco",
+   "a_ko": "공정성",
+   "b_ko": "비관습성",
+   "same_domain": false,
+   "r": -0.216,
+   "r_ci": [
+    -0.229,
+    -0.203
+   ],
+   "r_ipsative": -0.386,
+   "r_ipsative_ci": [
+    -0.398,
+    -0.375
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.559,
+   "prefer_a": 0.399,
+   "prefer_b": 0.324,
+   "tie": 0.277,
+   "balance": 0.448,
+   "fair_gender_d_max": NaN,
+   "min_omega": 0.789,
+   "invariance_r_ea": -0.259,
+   "excluded_x1": false,
+   "relation": "대립(원점수)",
+   "pt_reliability": 1,
+   "pt_dispersion": 2,
+   "pt_balance": 2,
+   "pt_job": 1.5,
+   "pt_observability": 2.0,
+   "pt_fairness": 1,
+   "score": 15.0,
+   "controls": [
+    "CPerf"
+   ]
+  },
+  {
+   "a": "XExpr",
+   "b": "CPrud",
+   "a_ko": "사회적 표현",
+   "b_ko": "신중함",
+   "same_domain": false,
+   "r": -0.146,
+   "r_ci": [
+    -0.161,
+    -0.132
+   ],
+   "r_ipsative": -0.287,
+   "r_ipsative_ci": [
+    -0.3,
+    -0.274
+   ],
+   "type": "weak",
+   "tradeoff": true,
+   "sd_zdiff": 1.514,
+   "prefer_a": 0.314,
+   "prefer_b": 0.437,
+   "tie": 0.25,
+   "balance": 0.418,
+   "fair_gender_d_max": 0.107,
+   "min_omega": 0.826,
+   "invariance_r_ea": -0.169,
+   "excluded_x1": false,
+   "relation": "상대적 우선순위 대립(ipsative)",
+   "pt_reliability": 2,
+   "pt_dispersion": 1,
+   "pt_balance": 2,
+   "pt_job": 1.5,
+   "pt_observability": 2.0,
+   "pt_fairness": 2,
+   "score": 15.0,
+   "controls": []
+  },
+  {
+   "a": "AGent",
+   "b": "CPerf",
+   "a_ko": "온화함",
+   "b_ko": "완벽주의",
+   "same_domain": false,
+   "r": -0.234,
+   "r_ci": [
+    -0.247,
+    -0.22
+   ],
+   "r_ipsative": -0.462,
+   "r_ipsative_ci": [
+    -0.473,
+    -0.45
+   ],
+   "type": "conflict",
+   "tradeoff": true,
+   "sd_zdiff": 1.571,
+   "prefer_a": 0.22,
+   "prefer_b": 0.495,
+   "tie": 0.285,
+   "balance": 0.308,
+   "fair_gender_d_max": 0.446,
+   "min_omega": 0.786,
+   "invariance_r_ea": -0.259,
+   "excluded_x1": false,
+   "relation": "대립(원점수)",
+   "pt_reliability": 1,
+   "pt_dispersion": 2,
+   "pt_balance": 1,
+   "pt_job": 1.0,
+   "pt_observability": 2.0,
+   "pt_fairness": 1,
+   "score": 12.0,
+   "controls": [
+    "XExpr",
+    "XSocB",
+    "OUnco"
+   ]
+  }
+ ],
+ "top_scored": [
+  {
+   "a_ko": "겸손",
+   "b_ko": "사회적 대담성",
+   "relation": "대립(원점수)",
+   "r": -0.452,
+   "r_ipsative": -0.591,
+   "balance": 0.424,
+   "sd_zdiff": 1.704,
+   "score": 15.0
+  },
+  {
+   "a_ko": "공정성",
+   "b_ko": "비관습성",
+   "relation": "대립(원점수)",
+   "r": -0.216,
+   "r_ipsative": -0.386,
+   "balance": 0.448,
+   "sd_zdiff": 1.559,
+   "score": 15.0
+  },
+  {
+   "a_ko": "사회적 표현",
+   "b_ko": "신중함",
+   "relation": "상대적 우선순위 대립(ipsative)",
+   "r": -0.146,
+   "r_ipsative": -0.287,
+   "balance": 0.418,
+   "sd_zdiff": 1.514,
+   "score": 15.0
+  },
+  {
+   "a_ko": "사회적 표현",
+   "b_ko": "인내",
+   "relation": "상대적 우선순위 대립(ipsative)",
+   "r": -0.105,
+   "r_ipsative": -0.281,
+   "balance": 0.416,
+   "sd_zdiff": 1.486,
+   "score": 13.0
+  },
+  {
+   "a_ko": "겸손",
+   "b_ko": "사회적 표현",
+   "relation": "대립(원점수)",
+   "r": -0.382,
+   "r_ipsative": -0.467,
+   "balance": 0.371,
+   "sd_zdiff": 1.662,
+   "score": 13.0
+  },
+  {
+   "a_ko": "사교성",
+   "b_ko": "신중함",
+   "relation": "상대적 우선순위 대립(ipsative)",
+   "r": -0.075,
+   "r_ipsative": -0.332,
+   "balance": 0.471,
+   "sd_zdiff": 1.466,
+   "score": 12.5
+  },
+  {
+   "a_ko": "겸손",
+   "b_ko": "사교성",
+   "relation": "상대적 우선순위 대립(ipsative)",
+   "r": -0.109,
+   "r_ipsative": -0.293,
+   "balance": 0.402,
+   "sd_zdiff": 1.489,
+   "score": 12.5
+  },
+  {
+   "a_ko": "겸손",
+   "b_ko": "근면",
+   "relation": "상대적 우선순위 대립(ipsative)",
+   "r": -0.068,
+   "r_ipsative": -0.238,
+   "balance": 0.47,
+   "sd_zdiff": 1.461,
+   "score": 12.0
+  },
+  {
+   "a_ko": "온화함",
+   "b_ko": "완벽주의",
+   "relation": "대립(원점수)",
+   "r": -0.234,
+   "r_ipsative": -0.462,
+   "balance": 0.308,
+   "sd_zdiff": 1.571,
+   "score": 12.0
+  },
+  {
+   "a_ko": "겸손",
+   "b_ko": "활력",
+   "relation": "상대적 우선순위 대립(ipsative)",
+   "r": -0.201,
+   "r_ipsative": -0.376,
+   "balance": 0.488,
+   "sd_zdiff": 1.55,
+   "score": 11.5
+  },
+  {
+   "a_ko": "탐욕 회피",
+   "b_ko": "사회적 대담성",
+   "relation": "대립(원점수)",
+   "r": -0.274,
+   "r_ipsative": -0.449,
+   "balance": 0.38,
+   "sd_zdiff": 1.596,
+   "score": 11.5
+  },
+  {
+   "a_ko": "탐욕 회피",
+   "b_ko": "사회적 표현",
+   "relation": "대립(원점수)",
+   "r": -0.234,
+   "r_ipsative": -0.359,
+   "balance": 0.32,
+   "sd_zdiff": 1.571,
+   "score": 11.5
+  },
+  {
+   "a_ko": "탐욕 회피",
+   "b_ko": "완벽주의",
+   "relation": "대립(원점수)",
+   "r": -0.232,
+   "r_ipsative": -0.306,
+   "balance": 0.307,
+   "sd_zdiff": 1.57,
+   "score": 11.5
+  },
+  {
+   "a_ko": "유연성",
+   "b_ko": "완벽주의",
+   "relation": "대립(원점수)",
+   "r": -0.264,
+   "r_ipsative": -0.475,
+   "balance": 0.167,
+   "sd_zdiff": 1.59,
+   "score": 11.0
+  },
+  {
+   "a_ko": "겸손",
+   "b_ko": "창의성",
+   "relation": "대립(원점수)",
+   "r": -0.267,
+   "r_ipsative": -0.413,
+   "balance": 0.155,
+   "sd_zdiff": 1.592,
+   "score": 11.0
+  },
+  {
+   "a_ko": "조직화",
+   "b_ko": "비관습성",
+   "relation": "대립(원점수)",
+   "r": -0.238,
+   "r_ipsative": -0.255,
+   "balance": 0.13,
+   "sd_zdiff": 1.574,
+   "score": 10.5
+  },
+  {
+   "a_ko": "공정성",
+   "b_ko": "사회적 대담성",
+   "relation": "상대적 우선순위 대립(ipsative)",
+   "r": -0.088,
+   "r_ipsative": -0.39,
+   "balance": 0.186,
+   "sd_zdiff": 1.475,
+   "score": 10.0
+  },
+  {
+   "a_ko": "겸손",
+   "b_ko": "비관습성",
+   "relation": "대립(원점수)",
+   "r": -0.352,
+   "r_ipsative": -0.338,
+   "balance": 0.247,
+   "sd_zdiff": 1.645,
+   "score": 10.0
+  },
+  {
+   "a_ko": "탐욕 회피",
+   "b_ko": "사교성",
+   "relation": "상대적 우선순위 대립(ipsative)",
+   "r": -0.122,
+   "r_ipsative": -0.362,
+   "balance": 0.369,
+   "sd_zdiff": 1.498,
+   "score": 9.0
+  },
+  {
+   "a_ko": "진실성",
+   "b_ko": "사회적 대담성",
+   "relation": "상대적 우선순위 대립(ipsative)",
+   "r": -0.029,
+   "r_ipsative": -0.245,
+   "balance": 0.327,
+   "sd_zdiff": 1.435,
+   "score": 9.0
+  }
+ ],
+ "complements": [
+  {
+   "a_ko": "사회적 표현",
+   "b_ko": "사회적 대담성",
+   "r": 0.768
+  },
+  {
+   "a_ko": "온화함",
+   "b_ko": "유연성",
+   "r": 0.658
+  },
+  {
+   "a_ko": "용서",
+   "b_ko": "온화함",
+   "r": 0.653
+  },
+  {
+   "a_ko": "사회적 대담성",
+   "b_ko": "사교성",
+   "r": 0.649
+  },
+  {
+   "a_ko": "사회적 표현",
+   "b_ko": "사교성",
+   "r": 0.645
+  },
+  {
+   "a_ko": "온화함",
+   "b_ko": "인내",
+   "r": 0.603
+  },
+  {
+   "a_ko": "유연성",
+   "b_ko": "인내",
+   "r": 0.591
+  },
+  {
+   "a_ko": "사교성",
+   "b_ko": "활력",
+   "r": 0.584
+  },
+  {
+   "a_ko": "사회적 대담성",
+   "b_ko": "활력",
+   "r": 0.575
+  },
+  {
+   "a_ko": "용서",
+   "b_ko": "유연성",
+   "r": 0.569
+  }
+ ]
+}

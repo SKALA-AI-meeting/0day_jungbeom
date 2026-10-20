@@ -50,11 +50,15 @@ const fmt = (t) => new Date(t * 1000).toLocaleString('ko-KR', { month: 'numeric'
     <section v-if="!needToken" class="card">
       <p v-if="!rows.length" class="muted">아직 세션이 없어요. 지원자 화면에서 대화를 시작해 보세요.</p>
       <table v-else>
-        <thead><tr><th>별칭</th><th>카테고리</th><th>진행</th><th>상태</th><th>메시지</th><th>근거</th><th>리포트</th><th>시작</th></tr></thead>
+        <thead><tr><th>별칭</th><th>시나리오</th><th>가치 축 · 선택</th><th>진행</th><th>상태</th><th>메시지</th><th>근거</th><th>리포트</th><th>시작</th></tr></thead>
         <tbody>
           <tr v-for="r in rows" :key="r.id" @click="$router.push(`/admin/${r.id}`)">
             <td><b>{{ r.alias }}</b></td>
             <td>{{ r.category }}</td>
+            <td>
+              <template v-if="r.axis"><span class="small">{{ r.axis }}</span><br /><span class="chip" :class="r.choice ? 'blue' : 'gray'">{{ r.choice || '미선택' }}</span></template>
+              <span v-else class="muted small">–</span>
+            </td>
             <td>
               <div class="bar"><i v-for="(k, i) in MS" :key="k" :class="{ on: i <= r.milestone_idx }" :title="MS_LABEL[k]" /></div>
               <small class="muted">{{ MS_LABEL[MS[r.milestone_idx]] }}</small>

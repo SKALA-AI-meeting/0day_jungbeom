@@ -18,7 +18,10 @@ from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 
 from .llm import BaseLLM
-from .scenarios import MILESTONE_KEYS, MIN_TURNS_PER_MILESTONE, SCENARIO_BY_ID
+from .dilemmas import persuade_beat
+from .scenarios import MILESTONE_KEYS, MIN_TURNS_PER_MILESTONE, get_scenario
+
+MAX_TURNS_WAITING_CHOICE = 4  # dilemma: wait up to this many turns for a choice before moving on
 
 log = logging.getLogger("dayzero.graph")
 FALLBACK_LINE = "잠깐 연결이 불안정했어요. 방금 내용 한 번만 다시 말씀해 주실래요?"
@@ -41,7 +44,7 @@ class TurnState(TypedDict, total=False):
 def _ctx(state: TurnState, config) -> tuple[BaseLLM, dict, dict]:
     llm: BaseLLM = config["configurable"]["llm"]
     sess = state["session"]
-    scn = SCENARIO_BY_ID[sess["scenario_id"]]
+    scn = get_scenario(sess["scenario_id"])
     names = {"user": sess["alias"], **{pid: p["name"] for pid, p in scn["personas"].items()}}
     return llm, scn, names
 
@@ -142,9 +145,16 @@ async def react(state: TurnState, config) -> dict:
 
 
 def gate(state: TurnState, config) -> dict:
-    turns = state["session"]["turns_in_milestone"] + 1
+    sess = state["session"]
+    turns = sess["turns_in_milestone"] + 1
     idx = state["milestone_idx"]
-    if turns < MIN_TURNS_PER_MILESTONE:
+    waiting_choice = (
+        get_scenario(sess["scenario_id"]).get("kind") == "dilemma"
+        and MILESTONE_KEYS[idx] == "compromise"
+        and not sess.get("choice")
+        and turns < MAX_TURNS_WAITING_CHOICE
+    )
+    if turns < MIN_TURNS_PER_MILESTONE or waiting_choice:
         return {"decision": "stay", "turns_after": turns, "milestone_idx_after": idx}
     if idx >= len(MILESTONE_KEYS) - 1:
         return {"decision": "finish", "turns_after": turns, "milestone_idx_after": idx}
@@ -161,6 +171,8 @@ async def beat(state: TurnState, config) -> dict:
     nxt = state["milestone_idx_after"]
     key = MILESTONE_KEYS[nxt]
     b = scn["beats"][key]
+    if scn.get("kind") == "dilemma" and key == "persuade":
+        b = persuade_beat(scn, state["session"].get("choice"))
     write({"type": "milestone", "index": nxt, "key": key})
     write({"type": "typing", "speaker": b["speaker"]})
     directive = (

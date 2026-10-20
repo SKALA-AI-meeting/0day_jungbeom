@@ -8,7 +8,8 @@ from typing import AsyncIterator
 from . import store
 from .graph import GRAPH
 from .llm import BaseLLM, get_llm
-from .scenarios import COMPETENCIES, MILESTONES, MILESTONE_KEYS, SCENARIO_BY_ID
+from .criteria import AXES, CRITERIA
+from .scenarios import COMPETENCIES, MILESTONES, MILESTONE_KEYS, get_scenario
 
 PAINPOINTS = json.loads((Path(__file__).parent / "data" / "painpoints.json").read_text(encoding="utf-8"))
 _locks: dict[str, asyncio.Lock] = {}
@@ -32,7 +33,7 @@ def _lock(session_id: str) -> asyncio.Lock:
 
 
 async def create_session(alias: str, scenario_id: str) -> dict:
-    scn = SCENARIO_BY_ID[scenario_id]
+    scn = get_scenario(scenario_id)
     beat = scn["beats"]["communicate"]
     names = {"user": alias, **{pid: p["name"] for pid, p in scn["personas"].items()}}
     directive = f"채널에 처음 말을 건다. 아래 내용을 빠짐없이 전달하되 네 말투로. BEAT: {beat['must_convey']}"
@@ -55,6 +56,7 @@ async def create_session(alias: str, scenario_id: str) -> dict:
         "messages": [{"idx": 0, "speaker": beat["speaker"], "text": text, "ts": now, "milestone": MILESTONE_KEYS[0]}],
         "observations": [],
         "notes": "",
+        "choice": None,
         "report": None,
     }
     store.save(doc)
@@ -65,14 +67,30 @@ def candidate_view(doc: dict) -> dict:
     """Never leak observations, beats or persona stances to the candidate."""
     from .scenarios import public_scenario
 
-    scn = SCENARIO_BY_ID[doc["scenario_id"]]
+    scn = get_scenario(doc["scenario_id"])
     # PRD 5.5: situations stay hidden during the session, and are explained afterwards (debriefing).
-    debrief = (
-        [{"key": m["key"], "label": m["label"], "situation": scn["beats"][m["key"]]["must_convey"]} for m in MILESTONES]
-        if doc["status"] == "completed"
-        else None
-    )
+    debrief = None
+    if doc["status"] == "completed":
+        beats = dict(scn["beats"])
+        if scn.get("kind") == "dilemma":
+            from .dilemmas import persuade_beat
+
+            beats["persuade"] = persuade_beat(scn, doc.get("choice"))
+        debrief = [{"key": m["key"], "label": m["label"], "situation": beats[m["key"]]["must_convey"]} for m in MILESTONES]
+        if scn.get("kind") == "dilemma":
+            ax = AXES[scn["axis"]]
+            a, b = ax["poles"]
+            debrief.append({
+                "key": "axis", "label": "가치 딜레마",
+                "situation": f"이 상황은 '{ax['name']}' — {ax['question']} — 처럼 사람마다 우선순위가 다른 가치를 보기 위한 것이었어요. "
+                f"어느 쪽도 정답이 아니며, 선택보다 선택의 근거와 상대를 대하는 방식이 기록됩니다.",
+            })
+    dilemma = None
+    if scn.get("kind") == "dilemma" and doc["milestone_idx"] >= MILESTONE_KEYS.index("compromise"):
+        dilemma = {"prompt": scn["dilemma"]["prompt"], "options": [{"id": o["id"], "label": o["label"]} for o in scn["dilemma"]["options"]]}
     return {
+        "dilemma": dilemma,
+        "choice": {"option": doc["choice"]["option"]} if doc.get("choice") else None,
         "id": doc["id"],
         "alias": doc["alias"],
         "status": doc["status"],
@@ -85,7 +103,7 @@ def candidate_view(doc: dict) -> dict:
     }
 
 
-async def run_turn(session_id: str, text: str) -> AsyncIterator[dict]:
+async def run_turn(session_id: str, text: str, choice_id: str | None = None) -> AsyncIterator[dict]:
     async with _lock(session_id):
         sess = store.load(session_id)
         if sess is None:
@@ -103,6 +121,14 @@ async def run_turn(session_id: str, text: str) -> AsyncIterator[dict]:
             "ts": time.time(),
             "milestone": MILESTONE_KEYS[sess["milestone_idx"]],
         }
+        if choice_id:
+            scn = get_scenario(sess["scenario_id"])
+            opt = next((o for o in (scn.get("dilemma") or {}).get("options", []) if o["id"] == choice_id), None)
+            if opt is None or sess.get("choice") or MILESTONE_KEYS[sess["milestone_idx"]] != "compromise":
+                yield {"type": "error", "message": "지금은 선택을 제출할 수 없어요."}
+                return
+            sess["choice"] = {"option": opt["id"], "pole": opt["pole"], "msg_idx": user_idx, "ts": user_msg["ts"]}
+            user_msg["choice"] = opt["id"]
         yield {"type": "user_message", "message": user_msg}
 
         state = {
@@ -144,7 +170,9 @@ async def run_turn(session_id: str, text: str) -> AsyncIterator[dict]:
             sess["status"] = "completed"
             sess["ended_at"] = time.time()
         store.save(sess)
-        yield {"type": "state", "milestone_idx": after, "status": sess["status"]}
+        yield {"type": "state", "milestone_idx": after, "status": sess["status"], **({"choice": {"option": sess["choice"]["option"]}} if sess.get("choice") else {})}
+        if after >= MILESTONE_KEYS.index("compromise") and get_scenario(sess["scenario_id"]).get("kind") == "dilemma":
+            yield {"type": "dilemma", "dilemma": candidate_view(sess)["dilemma"]}
         if completed:
             await ensure_report(session_id)
             yield {"type": "completed"}
@@ -167,7 +195,7 @@ async def ensure_report(session_id: str, attempts: int = 3) -> None:
     sess = store.load(session_id)
     if sess is None or (sess.get("report") or {}).get("status") == "ready":
         return
-    scn = SCENARIO_BY_ID[sess["scenario_id"]]
+    scn = get_scenario(sess["scenario_id"])
     for n in range(attempts):  # F-34: retry automatically, then mark failed
         try:
             summary = await llm().summarize(scn, sess["observations"], sess["notes"])
@@ -211,8 +239,27 @@ def build_report(sess: dict, summaries: dict[str, str]) -> dict:
     }
 
 
+def _choice_detail(doc: dict, scn: dict) -> dict | None:
+    if scn.get("kind") != "dilemma":
+        return None
+    ax = AXES[scn["axis"]]
+    ch = doc.get("choice")
+    out = {"axis": ax, "axis_ranking": scn["axis_ranking"], "options": scn["dilemma"]["options"], "pole_of": scn["dilemma"]["pole_of"],
+           "population": CRITERIA["meta"], "choice": None}
+    if ch:
+        opt = next(o for o in scn["dilemma"]["options"] if o["id"] == ch["option"])
+        rationale = next((m["text"] for m in doc["messages"] if m["idx"] == ch["msg_idx"]), "")
+        pole_label = "통합안" if ch["pole"] == "both" else next(p["label"] for p in ax["poles"] if p["side"] == ch["pole"])
+        out["choice"] = {**ch, "label": opt["label"], "pole_label": pole_label, "rationale": rationale}
+    return out
+
+
 def admin_row(doc: dict) -> dict:
+    scn = get_scenario(doc["scenario_id"])
+    det = _choice_detail(doc, scn)
     return {
+        "axis": det["axis"]["name"] if det else None,
+        "choice": det["choice"]["pole_label"] if det and det["choice"] else None,
         "id": doc["id"],
         "alias": doc["alias"],
         "category": doc["category"],
@@ -227,9 +274,10 @@ def admin_row(doc: dict) -> dict:
 
 
 def admin_view(doc: dict) -> dict:
-    scn = SCENARIO_BY_ID[doc["scenario_id"]]
+    scn = get_scenario(doc["scenario_id"])
     return {
         **doc,
         "scenario": scn,
-        "painpoints": PAINPOINTS.get(scn["painpoint_key"]),
+        "painpoints": PAINPOINTS.get(scn["painpoint_key"]) if scn.get("painpoint_key") else None,
+        "dilemma": _choice_detail(doc, scn),
     }

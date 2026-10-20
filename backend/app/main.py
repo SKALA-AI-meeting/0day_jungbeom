@@ -11,7 +11,9 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 load_dotenv()
 
 from . import service, store  # noqa: E402
-from .scenarios import COMPETENCIES, MILESTONES, SCENARIOS, SCENARIO_BY_ID, public_scenario  # noqa: E402
+from .criteria import CRITERIA  # noqa: E402
+from .dilemmas import public_options  # noqa: E402
+from .scenarios import COMPETENCIES, MILESTONES, SCENARIOS, get_scenario, public_scenario  # noqa: E402
 
 app = FastAPI(title="Day Zero - 협업 인성 관찰 (PR1)")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
@@ -31,6 +33,7 @@ class NewSession(BaseModel):
 
 class Msg(BaseModel):
     text: str = Field(min_length=1, max_length=1500)
+    choice_id: str | None = Field(default=None, max_length=10)
 
 
 class Notes(BaseModel):
@@ -55,12 +58,23 @@ def meta():
         "competencies": COMPETENCIES,
         "milestones": MILESTONES,
         "scenarios": [public_scenario(s) for s in SCENARIOS],
+        "dilemma": public_options(),
     }
+
+
+@app.get("/api/scenarios/{scenario_id}")
+def preview_scenario(scenario_id: str):
+    try:
+        return public_scenario(get_scenario(scenario_id))
+    except KeyError:
+        raise HTTPException(404, "알 수 없는 시나리오예요.")
 
 
 @app.post("/api/sessions")
 async def create_session(body: NewSession):
-    if body.scenario_id not in SCENARIO_BY_ID:
+    try:
+        get_scenario(body.scenario_id)
+    except KeyError:
         raise HTTPException(400, "알 수 없는 시나리오예요.")
     doc = await service.create_session(body.alias.strip(), body.scenario_id)
     return service.candidate_view(doc)
@@ -76,7 +90,7 @@ async def post_message(session_id: str, body: Msg):
     _get(session_id)
 
     async def gen():
-        async for ev in service.run_turn(session_id, body.text.strip()):
+        async for ev in service.run_turn(session_id, body.text.strip(), body.choice_id):
             yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
         yield 'data: {"type":"done"}\n\n'
 
@@ -116,6 +130,11 @@ async def regenerate_report(session_id: str):
     store.save(doc)
     await service.ensure_report(session_id)
     return service.admin_view(_get(session_id))
+
+
+@app.get("/api/admin/criteria", dependencies=[Depends(admin_guard)])
+def admin_criteria():
+    return CRITERIA
 
 
 @app.get("/api/admin/painpoints", dependencies=[Depends(admin_guard)])

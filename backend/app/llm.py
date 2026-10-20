@@ -56,7 +56,7 @@ def persona_system(scn: dict, pid: str) -> str:
     p = scn["personas"][pid]
     other = scn["personas"]["peer" if pid == "lead" else "lead"]
     return f"""너는 메신저 팀 채널에 참여한 '{p['name']}'({p['role']})이다. 한국어 메신저 말투로 1~3문장만 쓴다.
-회사: {COMPANY}
+회사: {scn.get('company') or COMPANY}
 진행 상황: {scn['background']}
 너의 성격: {p['character']}
 너의 입장: {p['stance']}

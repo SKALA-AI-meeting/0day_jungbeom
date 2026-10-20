@@ -15,10 +15,13 @@ const notes = ref('')
 const noteState = ref('')
 const error = ref('')
 const chatEl = ref(null)
+const pickedOpt = ref(null)
 
 const personas = computed(() => Object.fromEntries((sess.value?.scenario.personas || []).map((p) => [p.id, p])))
 const whoOf = (sp) => (sp === 'user' ? { name: sess.value.alias } : personas.value[sp])
 const done = computed(() => sess.value?.status === 'completed')
+const choosing = computed(() => sess.value?.dilemma && !sess.value.choice && !done.value)
+const optLabel = (id) => sess.value?.dilemma?.options.find((o) => o.id === id)?.label || ''
 
 async function load() {
   const [m, s] = await Promise.all([api.meta(), api.getSession(props.id)])
@@ -38,6 +41,7 @@ watch(() => [messages.value.length, typing.value], scrollDown)
 async function send() {
   const text = draft.value.trim()
   if (!text || sending.value || done.value) return
+  const choiceId = choosing.value ? pickedOpt.value : null
   draft.value = ''
   sending.value = true
   error.value = ''
@@ -51,8 +55,11 @@ async function send() {
       } else if (ev.type === 'state') {
         sess.value.milestone_idx = ev.milestone_idx
         sess.value.status = ev.status
-      } else if (ev.type === 'error') error.value = ev.message
-    })
+        if (ev.choice) sess.value.choice = ev.choice
+      } else if (ev.type === 'dilemma') sess.value.dilemma = ev.dilemma
+      else if (ev.type === 'error') error.value = ev.message
+    }, choiceId)
+    if (choiceId) pickedOpt.value = null
   } catch (e) {
     error.value = e.message
   } finally {
@@ -123,7 +130,7 @@ async function finish() {
 
       <div ref="chatEl" class="msgs">
         <template v-for="m in messages" :key="m.idx">
-          <ChatBubble :message="m" :who="whoOf(m.speaker)" :mine="m.speaker === 'user'" />
+          <ChatBubble :message="m" :who="whoOf(m.speaker)" :mine="m.speaker === 'user'" :tag="m.choice ? optLabel(m.choice) : ''" />
         </template>
         <div v-if="typing" class="typing">{{ personas[typing]?.emoji }} {{ personas[typing]?.name }} 입력 중…</div>
 
@@ -136,16 +143,25 @@ async function finish() {
         </div>
       </div>
 
+      <div v-if="choosing" class="choice">
+        <div class="choice-h"><b>결정이 필요해요</b><span class="muted small">{{ sess.dilemma.prompt }}</span></div>
+        <div class="opts">
+          <button v-for="o in sess.dilemma.options" :key="o.id" class="opt" :class="{ on: pickedOpt === o.id }" @click="pickedOpt = pickedOpt === o.id ? null : o.id">
+            <span class="radio" />{{ o.label }}
+          </button>
+        </div>
+        <small class="muted">{{ pickedOpt ? '아래에 이유를 적고 보내면 선택이 함께 전달돼요.' : '선택하지 않고 대화만 이어가도 돼요. 선택은 한 번만 할 수 있어요.' }}</small>
+      </div>
       <p v-if="error" class="chip red err">{{ error }}</p>
       <footer>
         <textarea
           v-model="draft"
           rows="2"
           :disabled="sending || done"
-          :placeholder="done ? '종료된 대화예요' : 'Enter로 전송, Shift+Enter로 줄바꿈'"
+          :placeholder="done ? '종료된 대화예요' : pickedOpt ? '이 선택을 한 이유를 적어 주세요' : 'Enter로 전송, Shift+Enter로 줄바꿈'"
           @keydown="onKey"
         />
-        <button class="btn primary" :disabled="sending || done || !draft.trim()" @click="send">보내기</button>
+        <button class="btn primary" :disabled="sending || done || !draft.trim()" @click="send">{{ pickedOpt ? '선택과 함께 보내기' : '보내기' }}</button>
       </footer>
     </section>
 
@@ -174,6 +190,14 @@ async function finish() {
 .chat footer { display: flex; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line); }
 .chat textarea { flex: 1; resize: none; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
 .err { margin: 0 16px 8px; }
+.choice { margin: 0 16px 8px; padding: 12px 14px; border: 1.5px solid var(--brand); border-radius: 12px; background: color-mix(in srgb, var(--brand-soft) 50%, var(--panel)); }
+.choice-h { display: flex; gap: 10px; align-items: baseline; margin-bottom: 8px; flex-wrap: wrap; }
+.opts { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.opt { display: flex; gap: 10px; align-items: center; text-align: left; padding: 9px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); }
+.opt:hover { border-color: var(--brand); }
+.opt.on { border-color: var(--brand); background: var(--brand-soft); font-weight: 600; }
+.radio { width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid var(--line); }
+.opt.on .radio { border: 4px solid var(--brand); }
 .notes { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .notes h3 { display: flex; justify-content: space-between; align-items: baseline; }
 .notes textarea { flex: 1; resize: none; margin-top: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); line-height: 1.6; }

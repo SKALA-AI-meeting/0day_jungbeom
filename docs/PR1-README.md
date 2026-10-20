@@ -21,6 +21,12 @@ cd frontend && npm install && npm run dev                  # http://localhost:51
 - `ADMIN_TOKEN` 을 설정하면 `/api/admin/*` 에 `x-admin-token` 헤더가 필요(화면에서 입력). 미설정 시 열려 있음.
 - `backend/scripts/smoke_real.py <delay|scope|conflict|workload>` : 실제 LLM 으로 스크립트 대화를 돌려 근거를 출력
 
+## PR2: 데이터 기반 가치 딜레마 (`feat/value-conflict-criteria`)
+- 공개 HEXACO 데이터(N=21,270)로 대립·상보·독립 관계를 판정하고, 대립 축 4개(V1 겸양↔주도, V2 원칙↔파격, V3 즉시 공유↔숙고, V4 관용↔기준)를 선정 → [docs/criteria/](criteria/01-analysis-results.md)
+- 지원자: 직무·산업 선택 → 숨겨진 축의 상황 → 타협 단계에서 선택지 + 이유 → 반대 극의 페르소나가 설득
+- 관리자: 공개 표본 분포 위에 지원자의 선택 위치, 근거 원문, 축 선정 근거·배정 이유를 표시 (점수화 없음)
+- 분석 재현: `analysis/` (원자료는 `data/raw/`, 커밋하지 않음)
+
 ## 구조
 
 ```
@@ -30,7 +36,10 @@ backend/app/
   llm.py        director / persona / observer 프롬프트 (OpenAILLM, MockLLM)
   service.py    세션 수명주기, SSE 이벤트, 리포트 생성(실패 시 3회 재시도 후 failed)
   store.py      SQLite 문서 저장 / main.py FastAPI
-frontend/src/   Home · Session(채팅+단계+노트) · AdminList · AdminDetail
+  criteria.py   가치 축(V1~V4, data/criteria.json) + 직무·산업 → 축 배정
+  dilemmas.py   축별 딜레마 템플릿, 'dl.<job>.<industry>' 시나리오 생성, 선택 기반 설득 비트
+frontend/src/   Home · Session(채팅+단계+노트+선택) · AdminList · AdminDetail
+analysis/value_conflict/  analyze → select_pairs → robustness → export_criteria
 docs/painpoints.{json,md}   카테고리별 현업 painpoint 웹 조사(출처·한계 병기)
 ```
 

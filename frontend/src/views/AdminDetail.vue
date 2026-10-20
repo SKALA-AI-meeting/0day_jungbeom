@@ -85,6 +85,23 @@ const heat = (c) => {
   return { background: `color-mix(in srgb, var(--brand) ${Math.round(a * 100)}%, transparent)` }
 }
 const SRC = { survey: '설문', article: '기사', paper: '논문', report: '보고서' }
+const pct = (x) => `${Math.round(x * 100)}%`
+const FACET_ROLE = { lead: '팀장이', peer: '동료가' }
+const dl = computed(() => d.value?.dilemma)
+const poleOf = (side) => dl.value.axis.poles.find((p) => p.side === side)
+const personaFor = (side) => Object.entries(dl.value.pole_of).find(([, s]) => s === side)?.[0]
+const marker = computed(() => {
+  const c = dl.value?.choice
+  if (!c) return null
+  const st = dl.value.axis.stats
+  // a on the left, tie in the middle, b on the right
+  if (c.pole === 'a') return (st.prefer_a / 2) * 100
+  if (c.pole === 'b') return (1 - st.prefer_b / 2) * 100
+  return (st.prefer_a + st.tie / 2) * 100
+})
+function jumpMsg(idx) {
+  jump({ msg_idx: idx })
+}
 </script>
 
 <template>
@@ -117,6 +134,61 @@ const SRC = { survey: '설문', article: '기사', paper: '논문', report: '보
             </div>
             <small class="muted">메시지 {{ msCount(m.key) }}개 · 근거 {{ msObs(m.key).length }}건</small>
           </button>
+        </div>
+      </section>
+
+      <!-- 1.5 value dilemma (PR2) -->
+      <section v-if="dl" class="card dl">
+        <h2>가치 딜레마 <span class="chip blue">{{ dl.axis.id }} · {{ dl.axis.name }}</span></h2>
+        <p class="muted small q">{{ dl.axis.question }} — 선택은 <b>성향 정보</b>이며 좋고 나쁨이 아닙니다.</p>
+
+        <div class="dist">
+          <div class="dist-lbl">
+            <span><b>{{ poleOf('a').label }}</b> · {{ poleOf('a').desc }}<br /><small class="muted">{{ FACET_ROLE[personaFor('a')] }} 대변</small></span>
+            <span class="r"><b>{{ poleOf('b').label }}</b> · {{ poleOf('b').desc }}<br /><small class="muted">{{ FACET_ROLE[personaFor('b')] }} 대변</small></span>
+          </div>
+          <div class="bar3">
+            <i class="pa" :style="{ width: pct(dl.axis.stats.prefer_a) }">{{ pct(dl.axis.stats.prefer_a) }}</i>
+            <i class="pt" :style="{ width: pct(dl.axis.stats.tie) }">{{ pct(dl.axis.stats.tie) }}</i>
+            <i class="pb" :style="{ width: pct(dl.axis.stats.prefer_b) }">{{ pct(dl.axis.stats.prefer_b) }}</i>
+            <span v-if="marker !== null" class="mk" :style="{ left: marker + '%' }">▼ 지원자</span>
+          </div>
+          <small class="muted">공개 설문 표본 N={{ dl.population.n.toLocaleString() }}명의 측면 점수 차(±{{ dl.population.pref_gap }}점 기준) 분포 · {{ dl.population.note }}</small>
+        </div>
+
+        <div class="two">
+          <div class="pick" :class="{ none: !dl.choice }">
+            <h3>지원자의 선택</h3>
+            <template v-if="dl.choice">
+              <span class="chip" :class="dl.choice.pole === 'both' ? 'amber' : 'blue'">{{ dl.choice.pole_label }}</span>
+              <p class="opt-l">{{ dl.choice.label }}</p>
+              <blockquote @click="jumpMsg(dl.choice.msg_idx)">“{{ dl.choice.rationale }}” <small>→ 대화에서 보기</small></blockquote>
+            </template>
+            <p v-else class="muted">아직 선택하지 않았어요{{ d.status === 'completed' ? ' (선택 없이 종료)' : '' }}.</p>
+            <details class="small">
+              <summary>제시된 선택지 {{ dl.options.length }}개</summary>
+              <ul><li v-for="o in dl.options" :key="o.id"><b>{{ o.pole === 'both' ? '통합안' : poleOf(o.pole).label }}</b> — {{ o.label }}</li></ul>
+            </details>
+          </div>
+          <div class="basis">
+            <h3>이 축의 데이터 근거</h3>
+            <table class="kv">
+              <tr><th>관계 유형</th><td>{{ dl.axis.relation }} · {{ poleOf('a').facet_ko }} ↔ {{ poleOf('b').facet_ko }}</td></tr>
+              <tr><th>상관 r [95% CI]</th><td>{{ dl.axis.stats.r }} [{{ dl.axis.stats.r_ci[0] }}, {{ dl.axis.stats.r_ci[1] }}]</td></tr>
+              <tr><th>상대 우선순위 r</th><td>{{ dl.axis.stats.r_ipsative }}</td></tr>
+              <tr><th>동아시아 표본 r</th><td>{{ dl.axis.stats.r_east_asia }} (n={{ dl.population.n_east_asia }})</td></tr>
+              <tr><th>절반 재현 r</th><td>{{ dl.axis.stats.split_half.map((h) => h.r).join(' / ') }}</td></tr>
+              <tr><th>딜레마 균형</th><td>{{ dl.axis.stats.balance }} (0.5 = 완전 균형)</td></tr>
+              <tr><th>선정 점수</th><td>{{ dl.axis.score }} / {{ dl.axis.max_score }}</td></tr>
+            </table>
+            <h3>직무·산업에서 이 축을 고른 이유</h3>
+            <ol class="rank">
+              <li v-for="(r, i) in dl.axis_ranking" :key="r.axis" :class="{ top: i === 0 }">
+                <b>{{ r.name }}</b> <small class="muted">직무 {{ r.job_w }}×1.5 + 산업 {{ r.industry_w }} = {{ r.total }}</small>
+                <div v-if="i === 0" class="small muted">{{ r.why }}</div>
+              </li>
+            </ol>
+          </div>
         </div>
       </section>
 
@@ -193,6 +265,7 @@ const SRC = { survey: '설문', article: '기사', paper: '논문', report: '보
         </div>
         <div class="card">
           <h2>시나리오 근거 · 현업 painpoint</h2>
+          <p v-if="!d.painpoints" class="muted small">직무·산업 맞춤 시나리오는 위 '가치 딜레마'의 데이터 근거로 선정돼요.</p>
           <template v-if="d.painpoints">
             <p class="small">{{ d.painpoints.summary }}</p>
             <ul class="src">
@@ -215,7 +288,7 @@ const SRC = { survey: '설문', article: '기사', paper: '논문', report: '보
             <span>{{ MS_LABEL[m.milestone] }} 단계</span>
           </div>
           <div :id="`m-${m.idx}`">
-            <ChatBubble :message="m" :who="whoOf(m.speaker)" :mine="m.speaker === 'user'" :highlight="hl === m.idx" :badges="[...new Set((obsByMsg[m.idx] || []).map((o) => o.competency))]" />
+            <ChatBubble :message="m" :who="whoOf(m.speaker)" :mine="m.speaker === 'user'" :highlight="hl === m.idx" :tag="m.choice ? (dl?.options.find((o) => o.id === m.choice)?.label || '') : ''" :badges="[...new Set((obsByMsg[m.idx] || []).map((o) => o.competency))]" />
           </div>
         </template>
       </div>
@@ -268,6 +341,26 @@ h2 small { font-weight: 500; font-size: 12px; }
 blockquote { margin: 6px 0; padding: 6px 12px; border-left: 3px solid var(--line); color: var(--muted); }
 
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.dl .q { margin: -4px 0 12px; }
+.dl h3 { font-size: 14px; margin: 14px 0 8px; }
+.dist { margin-bottom: 6px; }
+.dist-lbl { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; margin-bottom: 6px; }
+.dist-lbl .r { text-align: right; }
+.bar3 { position: relative; display: flex; height: 30px; border-radius: 8px; overflow: visible; margin: 22px 0 6px; font-size: 12px; font-weight: 700; color: #fff; }
+.bar3 i { display: grid; place-items: center; font-style: normal; }
+.bar3 .pa { background: #2563eb; border-radius: 8px 0 0 8px; }
+.bar3 .pt { background: #94a3b8; }
+.bar3 .pb { background: #ea580c; border-radius: 0 8px 8px 0; }
+.mk { position: absolute; top: -20px; transform: translateX(-50%); color: var(--ink); font-size: 12px; white-space: nowrap; }
+.pick blockquote { cursor: pointer; }
+.pick blockquote:hover { border-left-color: var(--brand); }
+.opt-l { font-weight: 600; margin: 8px 0 4px; }
+.kv { width: 100%; border-collapse: collapse; font-size: 13px; }
+.kv th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px 8px 4px 0; width: 42%; }
+.kv td { padding: 4px 0; }
+.rank { padding-left: 18px; margin: 0; font-size: 13px; }
+.rank li { margin: 4px 0; color: var(--muted); }
+.rank li.top { color: var(--ink); }
 .notes { white-space: pre-wrap; margin: 0; font-family: inherit; }
 .src { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 12px; }
 

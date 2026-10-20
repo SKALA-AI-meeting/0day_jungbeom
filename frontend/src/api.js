@@ -19,6 +19,7 @@ async function req(method, url, body, admin = false) {
 
 export const api = {
   meta: () => req('GET', '/api/meta'),
+  preview: (scenarioId) => req('GET', `/api/scenarios/${scenarioId}`),
   createSession: (alias, scenario_id) => req('POST', '/api/sessions', { alias, scenario_id }),
   getSession: (id) => req('GET', `/api/sessions/${id}`),
   saveNotes: (id, text) => req('PUT', `/api/sessions/${id}/notes`, { text }),
@@ -29,11 +30,11 @@ export const api = {
 }
 
 /** POST a candidate message and stream SSE events to onEvent. */
-export async function sendMessage(id, text, onEvent) {
+export async function sendMessage(id, text, onEvent, choiceId = null) {
   const res = await fetch(`/api/sessions/${id}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(choiceId ? { text, choice_id: choiceId } : { text }),
   })
   if (!res.ok || !res.body) throw new Error(`전송 실패 (${res.status})`)
   const reader = res.body.getReader()

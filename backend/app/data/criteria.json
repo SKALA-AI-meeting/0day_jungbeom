@@ -1,0 +1,228 @@
+{
+ "meta": {
+  "source": "openpsychometrics.org IPIP-HEXACO (240 items)",
+  "n": 21270,
+  "n_east_asia": 668,
+  "pref_gap": 0.5,
+  "note": "공개 온라인 표본 기준의 '사람 간 선호 분포'이며 한국 지원자 규준이 아님. 점수화에 쓰지 않는다."
+ },
+ "axes": [
+  {
+   "id": "V1",
+   "name": "겸양 ↔ 주도",
+   "question": "성과와 주도권을 앞에서 드러낼 것인가, 물러서서 남을 세울 것인가",
+   "maps_to": [
+    "C02",
+    "C01"
+   ],
+   "poles": [
+    {
+     "side": "a",
+     "facet": "HMode",
+     "facet_ko": "겸손",
+     "label": "겸양",
+     "desc": "공을 내세우지 않고 동료를 앞세운다"
+    },
+    {
+     "side": "b",
+     "facet": "XSocB",
+     "facet_ko": "사회적 대담성",
+     "label": "주도",
+     "desc": "앞에 나서서 이끌고 성과를 분명히 드러낸다"
+    }
+   ],
+   "relation": "대립(원점수)",
+   "controls": [
+    "COrga",
+    "CPrud"
+   ],
+   "score": 15.0,
+   "max_score": 18,
+   "stats": {
+    "r": -0.452,
+    "r_ci": [
+     -0.463,
+     -0.441
+    ],
+    "r_ipsative": -0.591,
+    "r_east_asia": -0.477,
+    "prefer_a": 0.457,
+    "prefer_b": 0.337,
+    "tie": 0.205,
+    "balance": 0.424,
+    "split_half": [
+     {
+      "r": -0.444,
+      "balance": 0.425
+     },
+     {
+      "r": -0.46,
+      "balance": 0.423
+     }
+    ]
+   }
+  },
+  {
+   "id": "V2",
+   "name": "원칙 ↔ 파격",
+   "question": "절차와 규칙을 지킬 것인가, 관행을 깨고 우회할 것인가",
+   "maps_to": [
+    "C03",
+    "C05"
+   ],
+   "poles": [
+    {
+     "side": "a",
+     "facet": "HFair",
+     "facet_ko": "공정성",
+     "label": "원칙",
+     "desc": "정해진 규칙과 절차를 지킨다"
+    },
+    {
+     "side": "b",
+     "facet": "OUnco",
+     "facet_ko": "비관습성",
+     "label": "파격",
+     "desc": "관행을 깨고 더 빠른 길로 우회한다"
+    }
+   ],
+   "relation": "대립(원점수)",
+   "controls": [
+    "CPerf"
+   ],
+   "score": 15.0,
+   "max_score": 18,
+   "stats": {
+    "r": -0.216,
+    "r_ci": [
+     -0.229,
+     -0.203
+    ],
+    "r_ipsative": -0.386,
+    "r_east_asia": -0.259,
+    "prefer_a": 0.399,
+    "prefer_b": 0.324,
+    "tie": 0.277,
+    "balance": 0.448,
+    "split_half": [
+     {
+      "r": -0.221,
+      "balance": 0.46
+     },
+     {
+      "r": -0.21,
+      "balance": 0.438
+     }
+    ]
+   }
+  },
+  {
+   "id": "V3",
+   "name": "즉시 공유 ↔ 숙고",
+   "question": "불확실해도 바로 말할 것인가, 확인한 뒤 신중하게 말할 것인가",
+   "maps_to": [
+    "C01",
+    "C03"
+   ],
+   "poles": [
+    {
+     "side": "a",
+     "facet": "XExpr",
+     "facet_ko": "사회적 표현",
+     "label": "즉시 공유",
+     "desc": "생각과 상황을 바로 말하고 반응한다"
+    },
+    {
+     "side": "b",
+     "facet": "CPrud",
+     "facet_ko": "신중함",
+     "label": "숙고",
+     "desc": "확인하고 결과를 따져 본 뒤 말한다"
+    }
+   ],
+   "relation": "상대적 우선순위 대립(ipsative)",
+   "controls": [],
+   "score": 15.0,
+   "max_score": 18,
+   "stats": {
+    "r": -0.146,
+    "r_ci": [
+     -0.161,
+     -0.132
+    ],
+    "r_ipsative": -0.287,
+    "r_east_asia": -0.169,
+    "prefer_a": 0.314,
+    "prefer_b": 0.437,
+    "tie": 0.25,
+    "balance": 0.418,
+    "split_half": [
+     {
+      "r": -0.14,
+      "balance": 0.414
+     },
+     {
+      "r": -0.152,
+      "balance": 0.422
+     }
+    ]
+   }
+  },
+  {
+   "id": "V4",
+   "name": "관용 ↔ 기준",
+   "question": "동료의 사정과 관계를 배려할 것인가, 품질 기준을 끝까지 지킬 것인가",
+   "maps_to": [
+    "C02",
+    "C05"
+   ],
+   "poles": [
+    {
+     "side": "a",
+     "facet": "AGent",
+     "facet_ko": "온화함",
+     "label": "관용",
+     "desc": "사정을 이해하고 너그럽게 넘어간다"
+    },
+    {
+     "side": "b",
+     "facet": "CPerf",
+     "facet_ko": "완벽주의",
+     "label": "기준",
+     "desc": "품질 기준에 못 미치면 고친다"
+    }
+   ],
+   "relation": "대립(원점수)",
+   "controls": [
+    "XExpr",
+    "XSocB",
+    "OUnco"
+   ],
+   "score": 12.0,
+   "max_score": 18,
+   "stats": {
+    "r": -0.234,
+    "r_ci": [
+     -0.247,
+     -0.22
+    ],
+    "r_ipsative": -0.462,
+    "r_east_asia": -0.259,
+    "prefer_a": 0.22,
+    "prefer_b": 0.495,
+    "tie": 0.285,
+    "balance": 0.308,
+    "split_half": [
+     {
+      "r": -0.239,
+      "balance": 0.303
+     },
+     {
+      "r": -0.229,
+      "balance": 0.313
+     }
+    ]
+   }
+  }
+ ]
+}

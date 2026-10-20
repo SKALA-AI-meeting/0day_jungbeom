@@ -1,0 +1,54 @@
+[
+ {
+  "pair": "HMode-XSocB",
+  "r_all": -0.452,
+  "r_east_asia": -0.477,
+  "half1": {
+   "r": -0.444,
+   "balance": 0.425
+  },
+  "half2": {
+   "r": -0.46,
+   "balance": 0.423
+  }
+ },
+ {
+  "pair": "HFair-OUnco",
+  "r_all": -0.216,
+  "r_east_asia": -0.259,
+  "half1": {
+   "r": -0.221,
+   "balance": 0.46
+  },
+  "half2": {
+   "r": -0.21,
+   "balance": 0.438
+  }
+ },
+ {
+  "pair": "XExpr-CPrud",
+  "r_all": -0.146,
+  "r_east_asia": -0.169,
+  "half1": {
+   "r": -0.14,
+   "balance": 0.414
+  },
+  "half2": {
+   "r": -0.152,
+   "balance": 0.422
+  }
+ },
+ {
+  "pair": "AGent-CPerf",
+  "r_all": -0.234,
+  "r_east_asia": -0.259,
+  "half1": {
+   "r": -0.239,
+   "balance": 0.303
+  },
+  "half2": {
+   "r": -0.229,
+   "balance": 0.313
+  }
+ }
+]
