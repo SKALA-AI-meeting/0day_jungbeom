@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="$lang$">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$title$ · $subtitle$</title>
+$for(css)$
+<link rel="stylesheet" href="$css$">
+$endfor$
+</head>
+<body>
+<div class="layout">
+<nav id="TOC" role="doc-toc">
+$table-of-contents$
+</nav>
+<main>
+<header id="title-block-header">
+<h1 class="title">$title$</h1>
+<p class="subtitle">$subtitle$</p>
+<p class="date">$date$</p>
+</header>
+$body$
+</main>
+</div>
+</body>
+</html>
