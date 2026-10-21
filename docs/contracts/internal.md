@@ -114,7 +114,7 @@ MCP 서버·report-worker·토론 그래프가 쓰는 내부 REST와 평가 저�
 | 필드 | 값 |
 |---|---|
 | run_id | 평가 실행 id. 워커가 `uuid5(session_id, "evaluate:" + eval_round)`로 정한다. `eval_round`는 큐 메시지 `report.generate`의 값(첫 발행 1). 큐 재시도는 같은 round라 같은 평가를 재사용한다. 리포트 재생성 때 api는 최신 `evaluation_runs.has_failed`가 true면 `sessions.eval_round`를 +1(새 run_id로 다시 평가), 아니면 그대로(재사용) 두고 그 값으로 발행한다. 파일럿 재실행 안정성 측정만 별도 run_id를 쓴다 |
-| rubric_version, prompt_versions, model | 척도 버전(`get_rubric`), 평가 프롬프트 버전 맵 `{common: prompts/evaluator/common.md 해시, <element>: prompts/evaluator/<element>.md 해시}`(5요소 모두), `MODEL_EVALUATOR` 모델 이름. 단일 `prompt_version` 필드는 없다 |
+| rubric_version, prompt_versions, model | 척도 버전(`get_rubric`), 평가 프롬프트 버전 맵 `{common: prompts/evaluator/common.md 해시, <element>: prompts/evaluator/<element>.md 해시}`(5요소 모두). 해시는 채용 건 복사본 `positions.scenario.prompts[\"evaluator/<file>.md\"]` 내용으로 계산한다(복사본에 평가 파일이 없는 옛 채용 건만 카탈로그 현재 파일), `MODEL_EVALUATOR` 모델 이름. 단일 `prompt_version` 필드는 없다 |
 | dimensions[] (DimensionEvaluation) | `dimension_id`(19개 차원마다 정확히 한 행) · `level` 1~5 ∣ null · `no_record_reason`(level null일 때만): `no_activity` ∣ `evaluate_failed` ∣ `not_applicable` ∣ `event_not_fired` ∣ `auto_submitted_blank` · `evidence_refs[]`([api.md](api.md) "근거 참조" 형식) · `rationale` 1~3문장 · `confidence` `high`∣`medium`∣`low`, 기록 없음이면 null |
 | elements[] (ElementSummary) | `element` · `level`(워커가 차원 평균 반올림, .5 올림, 모두 기록 없음이면 null) · `summary`(평가 에이전트 1~2줄) · `dimension_count` · `no_record_count` |
 

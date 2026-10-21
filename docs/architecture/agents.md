@@ -147,7 +147,7 @@ agent(LLM, 도구 바인딩) ⇄ tools(search_materials·get_material) … 최�
 
 - 모델이 질문을 보고 `search_materials`·`get_material` 호출 여부와 인자를 스스로 고른다. 도구 호출은 응답당 최대 3회, 넘으면 지금까지의 결과로 답한다.
 - 열린 자료만 검색된다. 잠겨 있으면(`not_released`) "키워드가 정해지면 자료를 찾을 수 있어요"로 답한다.
-- answer: 질문·요약·초안 도움. 인용한 자료 id를 `cited_material_ids`로 내고 본문에 출처 제목을 붙인다. 도구 호출 내역은 `assistant_calls`에 사실로 기록한다. 토론방 대화·다른 참여자 정보는 보지 않는다.
+- answer: 질문·요약·초안 도움. 인용한 자료 id를 `cited_material_ids`로 내고 본문에 출처 제목을 붙인다. 답 본문에서는 이번 응답이 받은 자료의 id 표기를 지우고, 남은 맨 id는 자료 제목으로 바꾼다(지원자에게 내부 id가 보이지 않게, `cited_material_ids`는 그대로). 도구 호출 내역은 `assistant_calls`에 사실로 기록한다. 토론방 대화·다른 참여자 정보는 보지 않는다.
 - guard: 공통 금지 패턴. 60회 초과는 api가 429로 막아 그래프가 호출되지 않는다.
 
 ## guard (`app/agent/guard/`)
@@ -204,7 +204,9 @@ D18·D19 개정과 R5-14. 세션 종료 후 report-worker의 `evaluate` 노드�
 - 요소 `level`은 모델이 내지 않는다. 워커가 차원 평균 반올림(.5 올림)으로 계산한다. 모델은 `summary`만 쓴다.
 - 검증 경계(R5-14, 정본 [product/rubric.md](../product/rubric.md) 7.3): 형식 오류(스키마 위반·차원 누락·중복·금지어)나 근거 부재(수준이 있는데 지원자 근거 단위 0개)면 **그 요소 호출 전체를 1회 재요청**한다(차원별 실패 사유를 붙여서). 그래도 남은 실패 차원은 워커가 `evaluate_failed`로 둔다. 수준 4·5에 지원자 근거 단위가 1개뿐이면 거부하지 않고 수준 3·확신도 최대 medium으로 깎고, 확신도 상한 위반도 워커가 상한으로 깎는다(clamp). LLM 전송 오류·타임아웃은 저장하지 않고 큐 재시도로 넘긴다.
 
-**버전**: 평가 프롬프트 파일(`prompts/evaluator/common.md`와 `prompts/evaluator/<element>.md` 5개)마다 개별 해시를 `prompt_versions` 맵(형식은 [contracts/internal.md](../contracts/internal.md) EvaluationSave)으로, 세션 척도 버전을 `rubric_version`으로, 실제 모델 id를 `model`로 `save_evaluation`에 함께 저장한다(api가 `evaluation_runs`에 보관). 단일 `prompt_version` 필드는 쓰지 않는다. 프롬프트는 카탈로그(`scenarios/missions/debate/prompts/`)에 두고, 평가 프롬프트와 평가 금지 패턴(`guard_patterns.yaml`의 평가용 목록)은 채용 건 생성 때 `positions.scenario`에 복사된다. 워커는 그 스냅샷을 읽어 같은 채용 건의 지원자를 같은 프롬프트로 평가한다. 스냅샷이 없는 옛 채용 건만 마운트된 카탈로그의 현재 파일을 읽는다.
+**버전**: 평가 프롬프트 파일(`prompts/evaluator/common.md`와 `prompts/evaluator/<element>.md` 5개)마다 개별 해시를 `prompt_versions` 맵(형식은 [contracts/internal.md](../contracts/internal.md) EvaluationSave)으로, 세션 척도 버전을 `rubric_version`으로, 실제 모델 id를 `model`로 `save_evaluation`에 함께 저장한다(api가 `evaluation_runs`에 보관). 단일 `prompt_version` 필드는 쓰지 않는다.
+
+**평가 프롬프트 고정**: 채용 건 생성 때 api `scenario.assemble`이 카탈로그 `prompts/` 전체를 `positions.scenario.prompts`에 복사한다(따로 둔 열 없음). 워커는 내부 `GET /internal/sessions/{id}`의 `position.scenario.prompts`에서 `"evaluator/*.md"`(common과 5요소)와 `"guard_patterns.yaml"`의 `evaluator_forbidden`을 읽고, `prompt_versions` 해시(키 `{common, persuasion, listening, inclusion, flexibility, honesty}`)도 이 복사본 내용으로 계산한다. draft의 금지어 검사도 같은 복사본을 쓴다. 복사본에 평가 파일이나 `evaluator_forbidden`이 하나라도 없으면(옛 채용 건) 마운트된 카탈로그의 현재 파일로 폴백하고 info 로그 1줄을 남긴다.
 
 **리포트 요약 문장과의 관계**: 요소 서술(`elements[].summary`)은 이 평가 호출이 쓰고 draft에서 다시 만들지 않는다. 리포트의 카드 장면(`cards[].scene`)은 LLM 없이 카드의 고정 문장 `report_template`을 그대로 쓴다. draft 단계에는 LLM 호출이 없다. 리포트용 요약 호출은 검증으로 차원 행이 바뀐 요소의 summary 재작성 1회뿐이다. 평가 호출이 실패해 요소의 모든 차원이 `evaluate_failed`면 요소 서술은 템플릿 고정 문장으로 대신하고, 차원 수준을 템플릿이나 다른 모델로 메우지 않는다.
 
