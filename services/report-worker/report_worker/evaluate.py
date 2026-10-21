@@ -9,6 +9,10 @@
   1회 다시 요청한다. 재요청 결과에서도 실패한 차원만 `evaluate_failed`로 두고 나머지는 재요청
   결과를 쓴다. 워커는 수준·근거를 고쳐 쓰지 않는다.
 - 확신도 상한 위반은 거부하지 않고 상한으로 깎는다(clamp).
+- 핵심 카드가 하나도 발동하지 않았는데 `rationale`에 "보조 장면" 표시 없이 수준을 낸 차원은 거부하지
+  않고 `event_not_fired`로 바꾼다(rubric.md 2.4: 부재로만 낮게 보지 않는다).
+- 검증으로 차원 행(evaluate_failed, 수준 상한 3, event_not_fired)이 모델 출력과 달라진 요소만 최종
+  차원 행으로 summary를 1회 다시 쓰게 한다. 실패하면 고정 문장. 입력에 다른 요소 결과는 없다.
 - LLM 전송 오류·타임아웃은 여기서 잡지 않는다(저장 없이 큐 재시도).
 검증·clamp·요소 수준은 순수 함수라 단위 테스트한다.
 """
@@ -43,6 +47,12 @@ FAILED_RATIONALE = (
     "원문 기록 확인을 권장합니다. (사유: {code})"
 )
 CAPPED_MARK = " (근거 1개로 수준 상한 3 적용)"
+SUPPORT_MARK = "보조 장면"
+NOT_FIRED_MARK = " (핵심 카드 미발생·보조 장면 표시 없음으로 이벤트 미발생 처리)"
+REWRITE_FALLBACK = (
+    "일부 차원 판단이 검증 단계에서 바뀌어 요약을 다시 쓰지 못했습니다. "
+    "차원별 판단을 확인해 주세요."
+)
 REF_PATTERN = re.compile(r"^(msg|slot|proposal|contribution):(.+)$")
 
 
@@ -280,6 +290,17 @@ def confidence_cap(
     return cap
 
 
+def not_fired(row: dict[str, Any], dimension: dict[str, Any], fired_cards: set[str]) -> bool:
+    """핵심 카드가 하나도 발동하지 않았는데 보조 장면 표시 없이 수준을 낸 행."""
+    core = dimension.get("core_cards") or []
+    return (
+        row["level"] is not None
+        and bool(core)
+        and not any(c in fired_cards for c in core)
+        and SUPPORT_MARK not in row["rationale"]
+    )
+
+
 def _lower(a: str, b: str) -> str:
     return a if CONFIDENCE_ORDER[a] <= CONFIDENCE_ORDER[b] else b
 
@@ -357,6 +378,33 @@ def retry_block(errors: dict[str, str]) -> str:
     )
 
 
+def summary_prompt(
+    element_rubric: dict[str, Any], rows: list[dict[str, Any]], labels: dict[str, str]
+) -> str:
+    """요약 재작성 입력: 이 요소의 최종 차원 행만(세션 기록·다른 요소 결과 없음)."""
+    names = {d["dimension_id"]: d.get("name") for d in element_rubric["dimensions"]}
+    final = [
+        {
+            "dimension_id": r["dimension_id"],
+            "name": names.get(r["dimension_id"]),
+            "level": r["level"],
+            "no_record": labels.get(r["no_record_reason"], r["no_record_reason"])
+            if r["no_record_reason"]
+            else None,
+            "rationale": r["rationale"],
+        }
+        for r in rows
+    ]
+    return "\n\n".join(
+        [
+            f"[요소] {element_rubric['element']}",
+            "[요약 재작성]\n워커 검증으로 이 요소의 차원 판단이 바뀌었습니다. "
+            '아래 최종 차원 행만 보고 공통 지침 "요약 재작성"대로 summary를 다시 써 주세요.',
+            "[최종 차원]\n" + json.dumps(final, ensure_ascii=False),
+        ]
+    )
+
+
 def parse_json(text: str) -> Any:
     cleaned = text.strip()
     if cleaned.startswith("```"):
@@ -381,6 +429,26 @@ class EvalContext:
 
     def element_cards(self, element: str) -> list[str]:
         return [c["card_id"] for c in self.rubric.get("cards", []) if c.get("element") == element]
+
+
+async def rewrite_summary(
+    llm: LLM,
+    ctx: EvalContext,
+    element_rubric: dict[str, Any],
+    rows: list[dict[str, Any]],
+    usage: dict[str, Any],
+) -> str:
+    """최종 차원 행으로 summary만 1회 다시 쓴다. 형식·금지어 실패면 고정 문장."""
+    labels = {r["code"]: r["label"] for r in ctx.rubric.get("no_record_reasons", [])}
+    text = await complete_tracked(
+        llm, ctx.prompts.common, summary_prompt(element_rubric, rows, labels), usage
+    )
+    out = parse_json(text)
+    summary = out.get("summary") if isinstance(out, dict) else None
+    if not isinstance(summary, str) or not summary.strip() or has_forbidden(summary, ctx.forbidden):
+        log.info("summary_rewrite_failed element=%s", element_rubric["element"])
+        return REWRITE_FALLBACK
+    return summary
 
 
 async def evaluate_element(
@@ -409,6 +477,7 @@ async def evaluate_element(
             fix_refs(parse_json(text), ctx.refs), dimension_ids, ctx.refs, ctx.forbidden
         )
     rows = []
+    changed = False  # 워커가 수준·기록 없음을 바꾼 차원이 있으면 모델 summary와 어긋날 수 있다
     for dimension in dimensions:
         dimension_id = dimension["dimension_id"]
         row = checked.valid.get(dimension_id)
@@ -416,14 +485,31 @@ async def evaluate_element(
             code = reason_code(checked.errors.get(dimension_id) or checked.errors.get("_format"))
             log.info("evaluate_failed dimension=%s reason=%s", dimension_id, code)
             rows.append(failed_row(dimension_id, code))
+            changed = True
+            continue
+        if not_fired(row, dimension, ctx.fired_cards):
+            log.info("event_not_fired dimension=%s (no support mark)", dimension_id)
+            rows.append(
+                {
+                    **row,
+                    "level": None,
+                    "no_record_reason": "event_not_fired",
+                    "confidence": None,
+                    "rationale": row["rationale"] + NOT_FIRED_MARK,
+                }
+            )
+            changed = True
             continue
         units = ctx.refs.counted_units(row["evidence_refs"], dimension_id)
         if row["level"] is not None and row["level"] >= 4 and units < 2:
             row = {**row, "level": 3, "rationale": row["rationale"] + CAPPED_MARK}
+            changed = True
         cap = confidence_cap(dimension, units, ctx.element_cards(element), ctx.fired_cards)
         rows.append(clamp(row, cap))
     if all(r["no_record_reason"] == "evaluate_failed" for r in rows):
         summary = FAILED_SUMMARY
+    elif changed:
+        summary = await rewrite_summary(llm, ctx, element_rubric, rows, usage)
     else:
         summary = checked.summary or FAILED_SUMMARY
     return rows, element_summary(element, rows, summary)
