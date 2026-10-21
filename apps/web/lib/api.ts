@@ -66,6 +66,9 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   return data as T;
 }
 
+/** 계약의 /assets/... 경로(avatar_url)는 api 서버가 서빙한다. 웹 출처와 다르니 api 주소를 붙인다 */
+export const assetUrl = (url: string) => (url.startsWith("/assets/") ? `${API_URL}${url}` : url);
+
 /** WS 주소: /ws/sessions/{id}?token=<세션 JWT> */
 export function sessionSocketUrl(sessionId: string, token: string) {
   return `${WS_URL}/ws/sessions/${sessionId}?token=${encodeURIComponent(token)}`;

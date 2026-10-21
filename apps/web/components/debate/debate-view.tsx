@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import { Button, Tabs, Wordmark, cn } from "@/components/ui";
 
 import { ChatRoom } from "./chat";
-import { DecisionPanel, type KeywordOption } from "./decision-panel";
+import { DecisionPanel } from "./decision-panel";
 import { SessionGuide } from "./link-screens";
 import { ProposalEditor } from "./proposal-editor";
 import { phaseRemaining, typingSeats, type PanelTab } from "./reducer";
@@ -110,12 +110,10 @@ const ENDED_TEXT: Record<EndReason, string> = {
 export function DebateView({
   auth,
   initial,
-  keywordOptions,
   onExit,
 }: {
   auth: SessionAuth;
   initial: StateSnapshot;
-  keywordOptions: KeywordOption[];
   onExit: (reason: EndReason) => void;
 }) {
   const session = useDebateSession(auth, initial);
@@ -137,7 +135,7 @@ export function DebateView({
         snap={snap}
         flash={view.flash}
         locked={locked}
-        keywordOptions={keywordOptions}
+        keywordOptions={snap.keyword_options.map((o) => ({ key: o.option_key, label: o.label }))}
         onConfirm={session.confirmSlot}
       />
     ),

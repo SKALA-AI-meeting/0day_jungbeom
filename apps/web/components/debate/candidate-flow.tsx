@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 
 import { Toaster } from "@/components/ui";
 import { api, ApiError, MOCK } from "@/lib/api";
-import { KEYWORD_OPTIONS } from "@/mocks/debate";
 
 import { DebateView } from "./debate-view";
 import { DebriefScreen } from "./debrief-screen";
@@ -221,7 +220,6 @@ export function CandidateFlow({ token }: { token: string }) {
             refreshToken,
           }}
           initial={stage.snap}
-          keywordOptions={KEYWORD_OPTIONS}
           onExit={(reason) =>
             void toDebrief(stage.entry, reason, stage.snap.session.session_minutes)
           }

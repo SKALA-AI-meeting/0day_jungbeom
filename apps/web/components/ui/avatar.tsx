@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { assetUrl } from "@/lib/api";
+
 import { cn } from "./cn";
 
 /** 옛 화면의 사람 종류 색. 새 화면은 seat를 쓴다 */
@@ -103,7 +105,7 @@ export function Avatar({
           // 임의 주소(avatar_url)를 고정 크기로만 그리므로 next/image 최적화가 필요 없다
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={image}
+            src={assetUrl(image)}
             alt=""
             draggable={false}
             onError={() => setFailedSrc(image)}

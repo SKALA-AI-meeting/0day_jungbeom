@@ -316,7 +316,7 @@ export function ChatRoom({
   );
 }
 
-function Composer({
+export function Composer({
   locked,
   onSend,
   onTyping,

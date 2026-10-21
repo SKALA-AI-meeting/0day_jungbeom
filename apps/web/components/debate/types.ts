@@ -116,6 +116,7 @@ export type SessionInfo = {
 export type StateSnapshot = {
   session: SessionInfo;
   phases: { phase: Phase; budget_min: number; deadline_t_min: number }[];
+  keyword_options: { option_key: string; label: string }[];
   participants: Participant[];
   slots: Slot[];
   messages: Message[];
