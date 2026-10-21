@@ -1,6 +1,6 @@
 """Task execution (one agent job = one trace). START | TURN | REPORT | ACCOUNT_REVIEW (RUN, or RESUME after approval).
 
-New task types register a handler in HANDLERS (run, and resume if the graph can pause for a person).
+New task types register a Handler in HANDLERS (handlers.py: run, and resume if the graph can pause for a person).
 
 Data in and out goes through business-mcp (Spring /internal/**); the agent never writes the business DB.
 Retry: the caller (HTTP background loop or RabbitMQ consumer) retries retryable failures; only the final
@@ -14,8 +14,9 @@ import time
 
 from langgraph.types import Command
 
-from . import detector
+from . import artifacts, detector
 from .graph import build_graph
+from .handlers import Handler, Registry
 from .harness import guardrails, instructions, memory, runtime, tools
 from .harness.events import EventPublisher, Sink, spring_sink
 from .harness.loop import LimitExceeded
@@ -118,10 +119,10 @@ async def _run(msg: dict, ctx: TaskContext) -> dict:
     if handler is None:
         raise NonRetryable(f"unknown task type {kind}")
     if mode == "RESUME":
-        if handler.get("resume") is None:
+        if not handler.resumable:
             raise NonRetryable(f"{kind} cannot be resumed")
-        return await handler["resume"](msg)
-    return await handler["run"](msg, ctx)
+        return await handler.resume(msg)
+    return await handler.run(msg, ctx)
 
 
 def _names(st: dict, scn: dict) -> dict:
@@ -141,7 +142,8 @@ async def _start(msg: dict) -> dict:
     directive = instructions.render("directive_opening", must_convey=beat["must_convey"])
     reply = await llm().speak(scn_c, beat["speaker"], [], _names(st, scn), directive, meta={"idx": 0, "milestone": MILESTONE_KEYS[0]})
     m0 = {"idx": 0, "speaker": beat["speaker"], "text": reply["text"], "sources": reply.get("sources") or [], "milestone": MILESTONE_KEYS[0], "ts": time.time()}
-    await tools.call("business", "init_session", {"session_id": sid, "condition": condition, "message": m0})
+    shared = artifacts.without_checkpoints(artifacts.catalog(scn, st["scenario_id"]))  # planted checkpoints stay in the agent
+    await tools.call("business", "init_session", {"session_id": sid, "condition": condition, "message": m0, "artifacts": shared})
     return {"messages": [m0], "milestone_idx": 0}
 
 
@@ -162,11 +164,15 @@ async def _turn(msg: dict, ctx: TaskContext) -> dict:
     final = await g.ainvoke(state, config=cfg)
     after, new = final["milestone_idx_after"], final["new_messages"]
     entry = {"key": MILESTONE_KEYS[after], "entered_idx": new[-1]["idx"], "ts": new[-1]["ts"]} if after != st["milestone_idx"] else None
-    res = await tools.call("business", "append_turn", {
+    turn = {
         "session_id": sid, "new_messages": new, "observations": final.get("observations", []),
         "milestone_idx_after": after, "turns_after": final["turns_after"], "milestone_log_entry": entry,
         "completed": bool(final.get("completed")),
-    })
+    }
+    if final.get("dialogue") is not None:  # dialogue ledger (item 6); absent keeps what Spring has
+        turn["dialogue"] = final["dialogue"]
+    # quiet: TURN streams to the candidate and these args carry observer evidence and the ledger (the span is still traced)
+    res = await tools.call("business", "append_turn", turn, quiet=True)
     user_msg = next(m for m in st["messages"] if m["idx"] == user_idx)
     _spawn(_detect_background(sid, user_msg, prior))
     return {"new_messages": new, "milestone_idx": after, "status": res.get("status"), "completed": bool(final.get("completed"))}
@@ -232,10 +238,10 @@ async def _report_resume(msg: dict) -> dict:
     return {"approved": bool(decision.get("approved")), "saved": bool(out.get("saved"))}
 
 
-# Task registry: add a type here (and a TaskHandler on the Spring side) to plug in a new agent workflow.
-HANDLERS: dict[str, dict] = {
-    "START": {"run": lambda msg, ctx: _start(msg), "resume": None},
-    "TURN": {"run": _turn, "resume": None},
-    "REPORT": {"run": lambda msg, ctx: _report_run(msg), "resume": _report_resume},
-    "ACCOUNT_REVIEW": {"run": _review_run, "resume": _review_resume},
-}
+# Task registry: add a Handler here (and a TaskHandler on the Spring side) to plug in a new agent workflow.
+HANDLERS: Registry = Registry([
+    Handler("START", lambda msg, ctx: _start(msg), description="세션 시작: 상대 조건 배정, 같이 볼 과제 시드, 첫 메시지"),
+    Handler("TURN", _turn, description="지원자 한 턴: 관찰 근거, 팀원 응답, 단계 전환, 대화 장부"),
+    Handler("REPORT", lambda msg, ctx: _report_run(msg), _report_resume, description="역량 리포트 작성, 관리자 승인 뒤 저장"),
+    Handler("ACCOUNT_REVIEW", _review_run, _review_resume, description="지원자 계정 심사, 애매하면 관리자 승인"),
+])

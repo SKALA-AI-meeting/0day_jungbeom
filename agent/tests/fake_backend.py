@@ -1,16 +1,32 @@
-"""Minimal in-memory stand-in for Spring Boot's /internal/** (tests only; the real rules live in Spring)."""
+"""Minimal in-memory stand-in for Spring Boot's /internal/** (tests only; the real rules live in Spring).
+
+Mirrors docs/architecture/api-contract.md: artifacts (init, replace-all), annotations (annotate() plays the candidate's
+browser POST), the dialogue ledger (turn), the artifact/annotation GET endpoints, and all three in the session state.
+"""
 import json
 import time
 
 import httpx
 
 MILESTONES = ["communicate", "coordinate", "compromise", "persuade"]
+ARTIFACT_FIELDS = {"id", "kind", "title", "owner", "status", "summary", "lang", "body"}
+MARK_KINDS = {"question", "risk", "suggest", "ok"}
+MAX_ANNOTATIONS = 40
+
+
+class Rejected(Exception):
+    """What Spring would answer with a 4xx (status, detail)."""
+
+    def __init__(self, status: int, detail: str) -> None:
+        super().__init__(f"{status} {detail}")
+        self.status, self.detail = status, detail
 
 
 class FakeBackend:
     def __init__(self) -> None:
         self.sessions: dict[str, dict] = {}
         self.accounts: dict[int, dict] = {}
+        self._annotation_id = 0
 
     def account(self, **fields) -> dict:
         aid = len(self.accounts) + 1
@@ -22,7 +38,8 @@ class FakeBackend:
     def create(self, sid: str, scenario_id: str, alias: str = "지원자") -> dict:
         s = {"id": sid, "alias": alias, "company": "테스트", "scenario_id": scenario_id, "status": "active", "milestone_idx": 0,
              "turns_in_milestone": 0, "condition": None, "choice": None, "milestone_log": [], "notes": "", "report_status": "none",
-             "created_at": time.time(), "ended_at": None, "messages": [], "observations": [], "detections": {}, "report": None}
+             "created_at": time.time(), "ended_at": None, "messages": [], "observations": [], "detections": {}, "report": None,
+             "artifacts": [], "annotations": [], "dialogue": None}
         self.sessions[sid] = s
         return s
 
@@ -37,7 +54,55 @@ class FakeBackend:
         s["messages"].append(m)
         return idx
 
+    def annotate(self, sid: str, artifact_id: str, *, line_start: int | None = None, line_end: int | None = None,
+                 quote: str | None = None, kind: str = "risk", text: str = "여기 확인이 필요해 보여요.") -> dict:
+        """The candidate's POST /api/sessions/{id}/annotations, with Spring's validation. Raises Rejected like a 4xx."""
+        s = self.sessions[sid]
+        if s["status"] != "active":
+            raise Rejected(409, "진행 중인 세션이 아니에요.")
+        art = next((a for a in s["artifacts"] if a["id"] == artifact_id), None)
+        if art is None:
+            raise Rejected(404, "과제를 찾을 수 없어요.")
+        if kind not in MARK_KINDS:
+            raise Rejected(400, "마크업 종류가 올바르지 않아요.")
+        text = (text or "").strip()
+        if not 1 <= len(text) <= 500:
+            raise Rejected(400, "내용은 1~500자로 적어 주세요.")
+        lines = art["body"].split("\n")
+        if line_start is not None:
+            line_end = line_start if line_end is None else line_end
+            if not 1 <= line_start <= line_end <= len(lines):
+                raise Rejected(400, "줄 범위가 올바르지 않아요.")
+        if quote is not None and (not quote.strip() or len(quote) > 300 or quote not in art["body"]):
+            raise Rejected(400, "인용한 문장이 과제에 없어요.")
+        if line_start is None and quote is None:
+            raise Rejected(400, "줄이나 인용 중 하나는 있어야 해요.")
+        if len(s["annotations"]) >= MAX_ANNOTATIONS:
+            raise Rejected(409, "마크업은 세션당 40개까지 남길 수 있어요.")
+        self._annotation_id += 1
+        n = {"id": self._annotation_id, "artifact_id": artifact_id, "anchor": {"line_start": line_start, "line_end": line_end, "quote": quote},
+             "kind": kind, "text": text, "msg_idx": len(s["messages"]), "created_at": time.time()}
+        s["annotations"].append(n)
+        return n
+
+    def _artifacts(self, items: list[dict]) -> list[dict]:
+        ids = [a.get("id") for a in items]
+        if len(set(ids)) != len(ids):
+            raise Rejected(400, "과제 id가 겹쳐요.")
+        for a in items:
+            if set(a) != ARTIFACT_FIELDS:  # strict on purpose: planted checkpoints must never reach Spring
+                raise Rejected(400, f"과제 필드가 계약과 달라요: {sorted(set(a) ^ ARTIFACT_FIELDS)}")
+            if a["kind"] not in ("design", "result", "code") or a["owner"] not in ("lead", "peer", "team") or len(a["body"]) > 6000:
+                raise Rejected(400, "과제 형식이 올바르지 않아요.")
+        return [dict(a) for a in items]
+
     def handle(self, req: httpx.Request) -> httpx.Response:
+        try:
+            return self._handle(req)
+        except Rejected as e:
+            return httpx.Response(e.status, json={"detail": e.detail})
+
+    def _handle(self, req: httpx.Request) -> httpx.Response:
         assert req.headers.get("X-Internal-Key")
         parts = req.url.path.strip("/").split("/")
         body = json.loads(req.content) if req.content else None
@@ -63,14 +128,31 @@ class FakeBackend:
         s = self.sessions[sid]
         op = parts[3]
         if op == "state":
-            return httpx.Response(200, json=s)
+            return httpx.Response(200, json={**s, "annotations": sorted(s["annotations"], key=lambda n: n["id"])})
         if op == "init":
             if s["messages"]:
                 return httpx.Response(409, json={"detail": "이미 시작된 세션이에요."})
+            if body.get("artifacts") is not None:  # replace-all
+                s["artifacts"] = self._artifacts(body["artifacts"])
+                keep = {a["id"] for a in s["artifacts"]}
+                s["annotations"] = [n for n in s["annotations"] if n["artifact_id"] in keep]
             s["condition"] = body["condition"]
             s["messages"].append(body["message"])
             s["milestone_log"] = [{"key": "communicate", "entered_idx": 0, "ts": time.time()}]
             return httpx.Response(200, json={"ok": True})
+        if op == "artifacts":
+            if len(parts) == 4:
+                return httpx.Response(200, json=[{**{k: a[k] for k in ("id", "kind", "title", "owner", "status", "summary", "lang")},
+                                                  "line_count": len(a["body"].split("\n")),
+                                                  "annotation_count": sum(n["artifact_id"] == a["id"] for n in s["annotations"])}
+                                                 for a in s["artifacts"]])
+            art = next((a for a in s["artifacts"] if a["id"] == parts[4]), None)
+            if art is None:
+                return httpx.Response(404, json={"detail": "과제를 찾을 수 없어요."})
+            return httpx.Response(200, json={**art, "annotations": [n for n in s["annotations"] if n["artifact_id"] == art["id"]]})
+        if op == "annotations":
+            since = int(req.url.params.get("since_idx", 0))
+            return httpx.Response(200, json=[n for n in sorted(s["annotations"], key=lambda n: n["id"]) if n["msg_idx"] >= since])
         if op == "turn":
             if s["status"] != "active":
                 return httpx.Response(409, json={"detail": "이미 종료된 세션이에요."})
@@ -83,6 +165,9 @@ class FakeBackend:
             if body.get("milestone_log_entry"):
                 s["milestone_log"].append(body["milestone_log_entry"])
             s["milestone_idx"], s["turns_in_milestone"] = body["milestone_idx_after"], body["turns_after"]
+            if body.get("dialogue") is not None:  # opaque to Spring: replaces sessions.dialogue_json
+                assert isinstance(body["dialogue"], dict)
+                s["dialogue"] = body["dialogue"]
             if body.get("completed"):
                 s["status"], s["ended_at"] = "completed", time.time()
             return httpx.Response(200, json={"status": s["status"], "milestone_idx": s["milestone_idx"]})

@@ -53,7 +53,7 @@ const jobLabel = (id) => meta.value?.dilemma.jobs.find((x) => x.id === id)?.labe
 
 const MS = ['communicate', 'coordinate', 'compromise', 'persuade']
 const STATUS = { active: ['blue', '진행 중'], completed: ['green', '완료'] }
-const REPORT = { ready: ['green', '리포트 준비됨'], awaiting_approval: ['amber', '승인 대기'], pending: ['blue', '생성 중'], failed: ['red', '실패'], rejected: ['gray', '반려됨'], none: ['gray', '대기'] }
+const REPORT = { ready: ['green', '리포트 준비됨'], awaiting_approval: ['amber', '승인 대기'], pending: ['blue', '생성 중'], failed: ['red', '실패'], rejected: ['gray', '반려됨'], dismissed: ['gray', '넘김'], none: ['gray', '대기'] }
 const TASK = { QUEUED: 'gray', RUNNING: 'blue', WAITING_APPROVAL: 'amber', DONE: 'green', FAILED: 'red', REJECTED: 'gray' }
 const traceOf = (t) => {
   const tr = Array.isArray(t.trace) ? t.trace : []
@@ -96,7 +96,7 @@ const fmt = (t) => new Date(typeof t === 'number' ? t * 1000 : t).toLocaleString
             <td><span class="chip" :class="STATUS[r.status][0]">{{ STATUS[r.status][1] }}</span></td>
             <td>{{ r.messages }}</td>
             <td>{{ r.observations }}</td>
-            <td><span class="chip" :class="REPORT[r.report_status][0]">{{ REPORT[r.report_status][1] }}</span></td>
+            <td><span class="chip" :class="(REPORT[r.report_status] || REPORT.none)[0]">{{ (REPORT[r.report_status] || REPORT.none)[1] }}</span></td>
             <td class="muted small">{{ fmt(r.created_at) }}</td>
           </tr>
         </tbody>

@@ -36,12 +36,31 @@ const KIND = {
   ACCOUNT_REVIEW: ['blue', '계정 승인'],
   REPORT: ['amber', '리포트 공개'],
   ACCOUNT_REVIEW_ERROR: ['red', '검토 실패'],
+  REPORT_FAILED: ['red', '리포트 실패'],
 }
 const REC = {
   approve: ['green', '에이전트 의견 · 승인해도 될 것 같아요'],
   reject: ['red', '에이전트 의견 · 반려를 권해요'],
   ask: ['amber', '에이전트 의견 · 사람이 판단해 주세요'],
   manual: ['gray', '에이전트가 끝내지 못했어요 · 직접 판단'],
+  retry: ['amber', '에이전트 의견 · 다시 만들어 보세요'],
+}
+// Button labels come with the item (item.actions); these are the fallbacks per kind.
+const ACTIONS = { REPORT: { approve: '공개 승인', reject: '반려' }, ACCOUNT_REVIEW_ERROR: { approve: '직접 승인', reject: '직접 반려' }, REPORT_FAILED: { approve: '다시 만들기', reject: '넘기기' } }
+const act = (it, which) => it.actions?.[which] || ACTIONS[it.kind]?.[which] || (which === 'approve' ? '승인' : '반려')
+// How a decision is carried out. A task waiting for approval resumes on its thread; other kinds call their own endpoint.
+// Each returns { taskId, fresh } to follow on the next page, or { manual: true } when nothing runs afterwards.
+const DECIDE = {
+  REPORT_FAILED: async (it, d) => {
+    if (!d.approved) { await api.dismissReport(it.sessionId); return { manual: true } }
+    const r = await api.requestReport(it.sessionId)
+    return { taskId: r.taskId, fresh: true } // a new task: its first approval request is a fresh one
+  },
+  default: async (it, d) => {
+    if (it.taskId) { await api.approve(it.taskId, d.approved, d.comment); return { taskId: it.taskId } }
+    await api.decideAccount(it.accountId, d.approved, d.comment)
+    return { manual: true }
+  },
 }
 const FIELD = { nickname: '별칭', email: '이메일', desired_job: '희망 직무', industry: '관심 산업', experience_years: '경력', bio: '소개' }
 const SOURCE = { rule: '규칙', model: '모델', harness: '하네스' }
@@ -72,18 +91,12 @@ async function submit() {
   const jobs = []
   for (const it of items.value) {
     const d = decisions[it.id]
-    const name = it.subject?.label || ''
+    const base = { kind: it.kind, name: it.subject?.label || '', approved: d.approved, label: act(it, d.approved ? 'approve' : 'reject') }
     try {
-      if (it.taskId) {
-        await api.approve(it.taskId, d.approved, d.comment)
-        jobs.push({ taskId: it.taskId, kind: it.kind, name, approved: d.approved })
-      } else {
-        await api.decideAccount(it.accountId, d.approved, d.comment)
-        jobs.push({ manual: true, kind: it.kind, name, approved: d.approved })
-      }
+      jobs.push({ ...base, ...(await (DECIDE[it.kind] || DECIDE.default)(it, d)) })
     } catch (e) {
       // e.g. 409: someone else already decided it in another tab
-      jobs.push({ kind: it.kind, name, approved: d.approved, error: e.message })
+      jobs.push({ ...base, error: e.message })
     }
   }
   refreshInbox().catch(() => {})
@@ -115,7 +128,7 @@ async function submit() {
             </span>
             <span class="chip" :class="KIND[it.kind]?.[0] || 'gray'">{{ KIND[it.kind]?.[1] || it.kind }}</span>
             <span class="ttl"><b>{{ it.subject?.label || '–' }}</b> <span class="muted small">{{ it.title }}</span></span>
-            <span v-if="decisions[it.id]" class="chip" :class="decisions[it.id].approved ? 'green' : 'red'">{{ decisions[it.id].approved ? '승인' : '반려' }}</span>
+            <span v-if="decisions[it.id]" class="chip" :class="decisions[it.id].approved ? 'green' : 'red'">{{ act(it, decisions[it.id].approved ? 'approve' : 'reject') }}</span>
             <span class="muted small when">{{ fmt(it.createdAt) }}</span>
           </button>
 
@@ -146,11 +159,17 @@ async function submit() {
               <div v-for="(c, cid) in it.draft" :key="cid"><b>{{ cid }} {{ c.name }}</b> <span class="muted small">근거 {{ c.count }}건</span><p>{{ c.summary }}</p></div>
               <RouterLink v-if="it.sessionId" :to="`/admin/sessions/${it.sessionId}`" class="small">대화와 근거 전체 보기 →</RouterLink>
             </div>
+            <div v-else-if="it.kind === 'REPORT_FAILED'" class="draft">
+              <span class="small"><b>{{ act(it, 'approve') }}</b> · 리포트 작업을 새로 시작해요. 초안이 나오면 이 체크리스트에 다시 올라와요.</span>
+              <span class="small"><b>{{ act(it, 'reject') }}</b> · 리포트 없이 이 세션을 체크리스트에서 내려요.</span>
+              <RouterLink v-if="it.sessionId" :to="`/admin/sessions/${it.sessionId}`" class="small">세션 상세 보기 →</RouterLink>
+            </div>
 
             <div class="acts">
-              <input v-model="comments[it.id]" class="text" maxlength="500" placeholder="메모 (선택) · 에이전트와 기록에 남아요" />
-              <button class="btn danger" @click="decide(it, false)">반려</button>
-              <button class="btn primary" @click="decide(it, true)">승인</button>
+              <input v-if="it.kind !== 'REPORT_FAILED'" v-model="comments[it.id]" class="text" maxlength="500" placeholder="메모 (선택) · 에이전트와 기록에 남아요" />
+              <span v-else class="spacer" />
+              <button class="btn danger" @click="decide(it, false)">{{ act(it, 'reject') }}</button>
+              <button class="btn primary" @click="decide(it, true)">{{ act(it, 'approve') }}</button>
             </div>
           </div>
           <div v-else-if="decisions[it.id]" class="sum">
@@ -201,7 +220,7 @@ async function submit() {
 .draft { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--bg); }
 .draft p { margin: 2px 0 0; font-size: 13px; }
 .acts { display: flex; gap: 8px; }
-.acts .text { flex: 1; }
+.acts .text, .acts .spacer { flex: 1; }
 .sum { display: flex; justify-content: space-between; align-items: center; padding: 0 16px 12px 50px; }
 .bar { position: sticky; bottom: 0; margin-top: 18px; display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.06); transition: border-color 0.3s; }
 .bar.ready { border-color: var(--ok); }

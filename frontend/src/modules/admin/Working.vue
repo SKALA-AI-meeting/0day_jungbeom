@@ -1,32 +1,43 @@
 <script setup>
 // After the checklist: the agent resumes each paused task on its own thread. Follow them to the end, then the dashboard.
+// A task that stops for a person again (a resumed one asking anew, or a retried report reaching its draft) is settled too:
+// it is back on the checklist, so this page forwards there instead of waiting.
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { api, auth, streamTask } from '../../api'
 import CheckMark from '../../components/CheckMark.vue'
 import StageChecklist from '../../components/StageChecklist.vue'
+import { refreshInbox } from '../../state/inbox'
 
 const route = useRoute()
 const router = useRouter()
 const after = typeof route.query.next === 'string' && route.query.next.startsWith('/admin') ? route.query.next : '/admin'
-const KIND = { ACCOUNT_REVIEW: '계정 승인', REPORT: '리포트 공개', ACCOUNT_REVIEW_ERROR: '계정 직접 결정' }
+const KIND = { ACCOUNT_REVIEW: '계정 승인', REPORT: '리포트 공개', ACCOUNT_REVIEW_ERROR: '계정 직접 결정', REPORT_FAILED: '리포트 다시 만들기' }
 const TOOL = {
   'business.decide_account': '계정 상태 저장',
   'business.save_report': '리포트 저장',
   'business.get_account': '가입 정보 다시 불러오기',
   'business.get_session_state': '세션 불러오기',
+  'business.list_artifacts': '같이 본 과제 불러오기',
+  'business.list_annotations': '지원자 마크업 불러오기',
 }
+const SETTLED = ['done', 'failed', 'again']
 const jobs = ref([])
 const leaving = ref(false)
 let alive = true
 let auto
 
-const allDone = computed(() => jobs.value.length > 0 && jobs.value.every((j) => ['done', 'failed'].includes(j.status)))
+const allDone = computed(() => jobs.value.length > 0 && jobs.value.every((j) => SETTLED.includes(j.status)))
 const okCount = computed(() => jobs.value.filter((j) => j.status === 'done').length)
+const againCount = computed(() => jobs.value.filter((j) => j.status === 'again').length)
+const dest = computed(() => (againCount.value ? { path: '/admin/inbox', query: { next: after } } : after))
 
+const MANUAL_NOTE = { REPORT_FAILED: '리포트 없이 넘겼어요' }
 function job(j) {
-  return reactive({ ...j, steps: [], status: j.error ? 'failed' : j.manual ? 'done' : 'running', note: j.error || '' })
+  return reactive({ ...j, steps: [], status: j.error ? 'failed' : j.manual ? 'done' : 'running', note: j.error || (j.manual && MANUAL_NOTE[j.kind]) || '' })
 }
+const verdict = (j) => j.label || (j.approved ? '승인' : '반려')
+const eul = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return c >= 0 && c < 11172 && c % 28 ? '을' : '를' } // 을/를 by the last syllable
 
 function step(j, key, label, status) {
   let s = j.steps.find((x) => x.key === key)
@@ -34,16 +45,39 @@ function step(j, key, label, status) {
   s.status = status
 }
 
+/** It asked a person again: keep what led up to the request on the card and settle. */
+function backOnList(j, before = []) {
+  j.steps = [...before, ...j.steps]
+  j.steps.forEach((s) => { if (s.status === 'running') s.status = 'done' })
+  j.status = 'again'
+  j.note = '다시 체크리스트에 올라왔어요'
+}
+
 async function follow(j) {
-  let resumed = false // the replay starts with the run that asked for approval; show only what happened after it
+  // A resumed task replays the run that asked for approval first: show only what happened after it.
+  // A fresh task (a retried report) has nothing to skip.
+  let resumed = !!j.fresh
+  let before = [] // steps shown before the latest approval request
+  const stop = new AbortController()
   try {
     await streamTask(j.taskId, auth.admin(), (ev) => {
       const d = ev.data || {}
-      if (ev.type === 'APPROVAL_REQUIRED') { resumed = true; j.steps = []; return }
+      if (ev.type === 'APPROVAL_REQUIRED') {
+        // replayed (already answered) or a new request? The task's status tells: only a new one is still waiting.
+        resumed = true
+        before = j.steps
+        j.steps = []
+        api.task(j.taskId, auth.admin()).then((t) => {
+          if (t?.status !== 'WAITING_APPROVAL' || j.status !== 'running') return
+          backOnList(j, before)
+          stop.abort()
+        }).catch(() => {})
+        return
+      }
       if (ev.type === 'DONE') {
         j.steps.forEach((s) => { if (s.status === 'running') s.status = 'done' })
         j.status = 'done'
-        j.note = j.approved ? '승인을 반영했어요' : '반려를 반영했어요'
+        j.note = `${verdict(j)}${eul(verdict(j))} 반영했어요`
       } else if (ev.type === 'FAILED') {
         j.status = 'failed'
         j.note = d.error || '작업이 실패했어요'
@@ -51,13 +85,14 @@ async function follow(j) {
       else if (ev.type === 'PROGRESS') step(j, `p:${d.stage}`, d.label, d.status === 'done' ? 'done' : 'running')
       else if (ev.type === 'TOOL_START') step(j, `t:${d.tool}`, TOOL[d.tool] || d.tool, 'running')
       else if (ev.type === 'TOOL_END') step(j, `t:${d.tool}`, TOOL[d.tool] || d.tool, d.ok === false ? 'failed' : 'done')
-    })
+    }, stop.signal)
   } catch (e) {
-    if (j.status === 'running') { j.status = 'failed'; j.note = e.message }
+    if (j.status === 'running' && e.name !== 'AbortError') { j.status = 'failed'; j.note = e.message }
   }
   if (j.status === 'running') {
     // stream closed without a terminal event: read the task once
     const t = await api.task(j.taskId, auth.admin()).catch(() => null)
+    if (t?.status === 'WAITING_APPROVAL') return backOnList(j, before)
     j.status = t && ['DONE', 'REJECTED'].includes(t.status) ? 'done' : 'failed'
     if (j.status === 'failed') j.note = t?.error || '결과를 확인하지 못했어요'
   }
@@ -76,7 +111,8 @@ onMounted(async () => {
     if (t) { j.kind = t.type; j.approved = t.status !== 'REJECTED' }
   }))
   await Promise.all(jobs.value.filter((j) => j.taskId && !j.error).map(follow))
-  if (alive) auto = setTimeout(() => { leaving.value = true; setTimeout(() => alive && router.replace(after), 350) }, 1800)
+  if (againCount.value) refreshInbox().catch(() => {})
+  if (alive) auto = setTimeout(() => { leaving.value = true; setTimeout(() => alive && router.replace(dest.value), 350) }, againCount.value ? 2600 : 1800)
 })
 onBeforeUnmount(() => { alive = false; clearTimeout(auto) })
 </script>
@@ -90,30 +126,35 @@ onBeforeUnmount(() => { alive = false; clearTimeout(auto) })
       </Transition>
       <div>
         <h1>{{ allDone ? '모두 반영했어요' : '에이전트가 결정을 반영하는 중' }}</h1>
-        <p class="sub">{{ allDone ? `${okCount}/${jobs.length}건 완료 · 잠시 뒤 대시보드로 이동해요` : '멈췄던 작업이 같은 스레드에서 이어서 실행돼요. 승인한 항목만 저장돼요.' }}</p>
+        <p class="sub">
+          <template v-if="!allDone">멈췄던 작업이 같은 스레드에서 이어서 실행돼요. 승인한 항목만 저장돼요.</template>
+          <template v-else-if="againCount">{{ okCount }}/{{ jobs.length }}건 완료 · {{ againCount }}건이 다시 사람의 결정을 기다려요. 잠시 뒤 체크리스트로 이동해요</template>
+          <template v-else>{{ okCount }}/{{ jobs.length }}건 완료 · 잠시 뒤 대시보드로 이동해요</template>
+        </p>
       </div>
     </div>
 
     <TransitionGroup tag="ul" name="job" class="jobs">
       <li v-for="(j, i) in jobs" :key="j.taskId || `m${i}`" class="card job" :class="j.status" :style="{ transitionDelay: `${i * 60}ms` }">
         <div class="top">
-          <span class="chip" :class="j.approved ? 'green' : 'red'">{{ j.approved ? '승인' : '반려' }}</span>
+          <span class="chip" :class="j.approved ? 'green' : 'red'">{{ verdict(j) }}</span>
           <b>{{ j.name || '–' }}</b>
           <span class="muted small">{{ KIND[j.kind] || j.kind }}</span>
           <span class="state">
             <CheckMark v-if="j.status === 'done'" :size="20" />
+            <CheckMark v-else-if="j.status === 'again'" :size="20" tone="brand" />
             <span v-else-if="j.status === 'failed'" class="x">!</span>
             <span v-else class="dot" />
           </span>
         </div>
         <StageChecklist v-if="j.steps.length" :steps="j.steps" compact />
-        <p v-if="j.note" class="note" :class="{ bad: j.status === 'failed' }">{{ j.note }}</p>
+        <p v-if="j.note" class="note" :class="{ bad: j.status === 'failed', again: j.status === 'again' }">{{ j.note }}</p>
         <p v-else-if="j.manual" class="note">계정 상태를 직접 바꿨어요</p>
       </li>
     </TransitionGroup>
 
     <div class="foot">
-      <RouterLink :to="after" class="btn" :class="{ primary: allDone }">대시보드로</RouterLink>
+      <RouterLink :to="dest" class="btn" :class="{ primary: allDone }">{{ againCount ? '체크리스트로' : '대시보드로' }}</RouterLink>
     </div>
   </main>
 </template>
@@ -129,6 +170,7 @@ onBeforeUnmount(() => { alive = false; clearTimeout(auto) })
 .job { padding: 14px 16px; transition: border-color 0.3s; }
 .job.done { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
 .job.failed { border-color: #fca5a5; }
+.job.again { border-color: color-mix(in srgb, var(--brand) 45%, var(--line)); }
 .top { display: flex; gap: 10px; align-items: center; margin-bottom: 4px; }
 .top b { flex: 1; }
 .state { width: 20px; height: 20px; display: grid; place-items: center; }
@@ -136,6 +178,7 @@ onBeforeUnmount(() => { alive = false; clearTimeout(auto) })
 .x { width: 20px; height: 20px; border-radius: 50%; background: #dc2626; color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
 .note { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
 .note.bad { color: #b91c1c; }
+.note.again { color: var(--brand); font-weight: 600; }
 .foot { margin-top: 18px; display: flex; justify-content: flex-end; }
 .job-enter-active { transition: opacity 0.35s, transform 0.35s; }
 .job-enter-from { opacity: 0; transform: translateY(8px); }

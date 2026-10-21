@@ -15,12 +15,13 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
+// any role a manifest names works here: no per-role code in the router or the shell
+modules.forEach((m) => auth.register(m.role))
 const LOGIN = Object.fromEntries(modules.filter((m) => m.role).map((m) => [m.role, m.login]))
-const HAS = { admin: () => auth.admin(), candidate: () => auth.candidate() }
 
 router.beforeEach((to) => {
   const need = to.meta.role
-  if (need && !HAS[need]()) return { path: LOGIN[need], query: { next: to.fullPath } }
+  if (need && !auth.token(need)) return { path: LOGIN[need] || '/', query: { next: to.fullPath } }
 })
 router.afterEach((to) => {
   document.title = to.meta.title ? `${to.meta.title} · Day Zero` : 'Day Zero · 협업 대화 관찰'

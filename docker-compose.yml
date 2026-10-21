@@ -28,6 +28,8 @@ services:
       INTERNAL_KEY: ${INTERNAL_KEY:-change-me-internal-key}
       JWT_SECRET: ${JWT_SECRET:-change-me-jwt-secret-at-least-32-bytes-long}
       SEED_DEMO: "true"
+      TASK_STALE_MINUTES: ${TASK_STALE_MINUTES:-10}          # watchdog: QUEUED/RUNNING without progress -> FAILED
+      TASK_WATCHDOG_INTERVAL_MS: ${TASK_WATCHDOG_INTERVAL_MS:-60000}
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
@@ -43,6 +45,7 @@ services:
       RABBIT_URL: amqp://guest:guest@rabbitmq:5672/
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       LLM_FALLBACK_MODEL: ${LLM_FALLBACK_MODEL:-gpt-4.1-mini}
+      DIALOGUE_HARNESS: ${DIALOGUE_HARNESS:-1}                # 0 = previous dialogue flow (before/after evaluation)
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }

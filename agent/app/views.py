@@ -1,13 +1,14 @@
 """Pure view functions over a session state from Spring Boot (scenario catalog lives with the agent).
 
 Spring calls these over internal HTTP (POST /agent/views/*); they read nothing and write nothing.
+The planted artifact checkpoints (app/artifacts.py) appear only in the admin view, as artifact_checks.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from . import detector
+from . import artifacts, detector
 from .criteria import AXES, CRITERIA
 from .dilemmas import persuade_beat
 from .personas import public_mode
@@ -17,7 +18,8 @@ PAINPOINTS = json.loads((Path(__file__).parent / "data" / "painpoints.json").rea
 
 
 def candidate_view(doc: dict) -> dict:
-    """Never leak observations, beats, persona stances or the hidden axis to the candidate."""
+    """Never leak observations, beats, persona stances, the hidden axis, artifact checkpoints or the dialogue ledger.
+    (Spring adds the public artifacts + annotations itself.)"""
     scn = get_scenario(doc["scenario_id"])
     debrief = None
     if doc["status"] == "completed":  # PRD 5.5: situations are explained only afterwards
@@ -104,4 +106,5 @@ def admin_view(doc: dict) -> dict:
         "dilemma": choice_detail(doc, scn),
         "condition": condition_detail(doc),
         "detector": detector.summarize(doc),
+        "artifact_checks": artifacts.artifact_checks(doc["scenario_id"], doc.get("artifacts") or [], doc.get("annotations") or [], scn=scn),
     }

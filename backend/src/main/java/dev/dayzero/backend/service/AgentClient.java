@@ -4,6 +4,7 @@ import dev.dayzero.backend.config.AppProperties;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -62,6 +63,16 @@ public class AgentClient {
 
     public void submit(Map<String, Object> taskMessage) {
         http.post().uri("/agent/tasks").body(taskMessage).retrieve().toBodilessEntity();
+    }
+
+    /** Task types the agent serves: [{type, resumable, description}]. Empty when the agent is unreachable or predates it. */
+    @SuppressWarnings("unchecked")
+    public Optional<List<Map<String, Object>>> handlers() {
+        try {
+            return Optional.ofNullable(http.get().uri("/agent/handlers").retrieve().body(List.class));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     private <T> T call(java.util.function.Supplier<T> s) {

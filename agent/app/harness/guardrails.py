@@ -6,7 +6,9 @@ Tool policy (also in docs/architecture/harness.md):
                                                   only clear-cut cases are decided without a person
   automatic writes  : business.init_session, business.append_turn, business.save_detection
                       (conversation log bookkeeping; the business rules are enforced again by Spring Boot)
-  read-only         : every rag.* and detector.describe_rubric / get_session_detections
+  read-only         : every rag.*, detector.describe_rubric / get_session_detections,
+                      business.get_session_state / list_conditions / get_account / list_artifacts / get_artifact / list_annotations
+  event redaction   : tools.REDACTED_ARGS (observations, dialogue, report, …) never appear in TOOL_START args
 """
 from __future__ import annotations
 

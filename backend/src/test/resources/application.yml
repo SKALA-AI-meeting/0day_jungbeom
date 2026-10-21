@@ -13,3 +13,8 @@ dayzero:
   dispatch: none
   invite-ttl-hours: 72
   seed-demo: true
+  task-stale-minutes: 10
+  # inert in tests (first sweep after a day); tests call TaskWatchdog.sweep() directly
+  task-watchdog-interval-ms: 86400000
+  # no agent in tests: ask for its task types once
+  agent-check-attempts: 1

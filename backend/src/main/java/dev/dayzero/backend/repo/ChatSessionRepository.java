@@ -4,5 +4,5 @@ import dev.dayzero.backend.domain.ChatSession;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ChatSessionRepository extends JpaRepository<ChatSession, String> {
-    java.util.List<ChatSession> findByCompanyIdOrderByCreatedAtDesc(Long companyId); java.util.List<ChatSession> findByConditionJsonIsNotNull(); java.util.List<ChatSession> findByAccountIdOrderByCreatedAtDesc(Long accountId);
+    java.util.List<ChatSession> findByCompanyIdOrderByCreatedAtDesc(Long companyId); java.util.List<ChatSession> findByConditionJsonIsNotNull(); java.util.List<ChatSession> findByAccountIdOrderByCreatedAtDesc(Long accountId); java.util.List<ChatSession> findByCompanyIdAndReportStatusOrderByCreatedAtAsc(Long companyId, String reportStatus);
 }

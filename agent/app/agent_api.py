@@ -4,6 +4,7 @@ POST /agent/tasks          run a task in the background (HTTP dispatch mode) -> 
 GET  /agent/meta           scenario catalog for the UI (proxied by Spring /api/meta)
 GET  /agent/scenarios/{id} public scenario (no beats, stances or hidden axis)
 POST /agent/views/{kind}   candidate | admin view over a state from Spring;  /agent/views/admin-rows for lists
+GET  /agent/handlers       task types this agent runs [{type, resumable, description}] (Spring checks its TaskHandlers)
 GET  /agent/health         checkpointer, model mode, prompt versions
 """
 from __future__ import annotations
@@ -68,6 +69,11 @@ async def submit(msg: dict):
             raise HTTPException(400, f"{k} is required")
     runner._spawn(runner.run_with_retries(msg))
     return {"accepted": msg["taskId"]}
+
+
+@app.get("/agent/handlers", dependencies=[Depends(internal)])
+def handlers():
+    return runner.HANDLERS.describe()
 
 
 @app.get("/agent/meta", dependencies=[Depends(internal)])

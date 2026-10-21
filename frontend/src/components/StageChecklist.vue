@@ -50,7 +50,5 @@ defineProps({
 @keyframes spin { to { transform: rotate(360deg); } }
 .step-enter-active { transition: opacity 0.35s ease, transform 0.35s ease; }
 .step-enter-from { opacity: 0; transform: translateY(-6px); }
-@media (prefers-reduced-motion: reduce) { .running .ring, .skipped .ring { border-style: dotted; opacity: 0.6; }
-.skipped b { font-weight: 500; text-decoration: line-through; text-decoration-color: var(--line); }
-.waiting .ring { animation: none; } .step-enter-active { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .running .ring, .waiting .ring { animation: none; } .step-enter-active { transition: none; } }
 </style>

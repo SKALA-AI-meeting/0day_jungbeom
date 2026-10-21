@@ -1,8 +1,13 @@
+import { api } from '../../api'
+
 export default {
   id: 'admin',
   role: 'admin',
   login: '/admin/login',
   home: '/admin/inbox', // the issue checklist comes first; it forwards to the dashboard when nothing is waiting
+  signOutTo: '/admin/login',
+  brand: '채용 담당자',
+  who: async () => (await api.adminMe()).company,
   nav: [
     { to: '/admin/inbox', label: '이슈 체크리스트', badge: 'inbox' },
     { to: '/admin', label: '대시보드', exact: true },

@@ -15,7 +15,8 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * All business rules of an assessment session live here (single place, PDF 5-1):
  * invite validity, one turn at a time, choice only once and only in the compromise milestone,
- * status transitions, automatic report task on completion, company isolation.
+ * status transitions, automatic report task on completion, company isolation, restarting a failed opening.
+ * Shared work items and markups: ArtifactService.
  */
 @Service
 public class SessionService {
@@ -31,13 +32,16 @@ public class SessionService {
     private final AiTaskRepository taskRepo;
     private final TaskService tasks;
     private final AgentClient agent;
+    private final ArtifactService artifacts;
     private final Json json;
     private final AppProperties props;
 
     public SessionService(ChatSessionRepository sessions, InviteRepository invites, MessageRepository messages, ObservationRepository observations,
-                          DetectionRepository detections, AiTaskRepository taskRepo, TaskService tasks, AgentClient agent, Json json, AppProperties props) {
+                          DetectionRepository detections, AiTaskRepository taskRepo, TaskService tasks, AgentClient agent, ArtifactService artifacts,
+                          Json json, AppProperties props) {
         this.sessions = sessions; this.invites = invites; this.messages = messages; this.observations = observations;
-        this.detections = detections; this.taskRepo = taskRepo; this.tasks = tasks; this.agent = agent; this.json = json; this.props = props;
+        this.detections = detections; this.taskRepo = taskRepo; this.tasks = tasks; this.agent = agent; this.artifacts = artifacts;
+        this.json = json; this.props = props;
     }
 
     // ---------------------------------------------------------------- invites
@@ -164,6 +168,57 @@ public class SessionService {
         if ("active".equals(s.status)) complete(s);
     }
 
+    /**
+     * Loop closure for a failed opening: while nobody has spoken yet and the latest START failed, the candidate
+     * asks for a new START (the agent re-seeds condition, work items and the opening message).
+     */
+    @Transactional
+    public Map<String, Object> restart(AuthUser u, String id) {
+        ChatSession s = authorized(id, u);
+        if (!u.isCandidate()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "평가는 지원자만 다시 시작할 수 있어요.");
+        if (!"active".equals(s.status)) throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 종료된 세션이에요.");
+        if (messages.countBySessionId(id) > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 대화가 시작된 세션이에요.");
+        String status = startStatus(id);
+        if ("running".equals(status)) throw new ResponseStatusException(HttpStatus.CONFLICT, "팀원들이 아직 대화를 준비하고 있어요. 잠시만 기다려 주세요.");
+        if (!"failed".equals(status)) throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 시작된 세션이에요.");
+        AiTask start = tasks.create("START", s.id, s.company.id, u.accountId(), u.subject(), Map.of());
+        return Map.of("taskId", start.id);
+    }
+
+    /** running | failed | done — done once the opening message exists, otherwise the latest START decides. */
+    public String startStatus(String id) {
+        if (messages.countBySessionId(id) > 0) return "done";
+        Optional<AiTask> start = taskRepo.findBySessionIdAndTypeOrderByCreatedAtDesc(id, "START").stream().findFirst();
+        if (start.isEmpty()) return "failed"; // nothing will write the opening: let the candidate start it again
+        if (TaskService.ACTIVE.contains(start.get().status)) return "running";
+        return "DONE".equals(start.get().status) ? "done" : "failed";
+    }
+
+    @Transactional
+    public Map<String, Object> annotate(AuthUser u, String id, String artifactId, Integer lineStart, Integer lineEnd, String quote, String kind, String text) {
+        ChatSession s = authorized(id, u);
+        if (!u.isCandidate()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "마크업은 지원자만 남길 수 있어요.");
+        return artifacts.publicAnnotation(artifacts.annotate(s, artifactId, lineStart, lineEnd, quote, kind, text));
+    }
+
+    @Transactional
+    public void deleteAnnotation(AuthUser u, String id, Long annotationId) {
+        ChatSession s = authorized(id, u);
+        if (!u.isCandidate()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "마크업은 지원자만 지울 수 있어요.");
+        artifacts.deleteAnnotation(s, annotationId);
+    }
+
+    /** REPORT_FAILED "넘기기": the admin decides not to retry; the item leaves the checklist. */
+    @Transactional
+    public Map<String, Object> dismissReport(AuthUser u, String id) {
+        ChatSession s = authorized(id, u);
+        if (!u.isAdmin()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 넘길 수 있어요.");
+        if (!"failed".equals(s.reportStatus)) throw new ResponseStatusException(HttpStatus.CONFLICT, "만들지 못한 리포트만 넘길 수 있어요.");
+        s.reportStatus = "dismissed";
+        sessions.save(s);
+        return Map.of("report_status", s.reportStatus);
+    }
+
     private void complete(ChatSession s) {
         s.status = "completed";
         s.endedAt = OffsetDateTime.now();
@@ -190,6 +245,9 @@ public class SessionService {
         for (Detection d : detections.findBySessionId(id)) det.put(String.valueOf(d.msgIdx), json.any(d.docJson));
         st.put("detections", det);
         st.put("report", json.any(s.reportJson));
+        st.put("artifacts", artifacts.internalList(id));
+        st.put("annotations", artifacts.internalAnnotations(id, 0));
+        st.put("dialogue", json.any(s.dialogueJson));
         return st;
     }
 
@@ -221,6 +279,7 @@ public class SessionService {
     public Map<String, Object> init(String id, Map<String, Object> body) {
         ChatSession s = load(id);
         if (messages.countBySessionId(id) > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 시작된 세션이에요.");
+        if (body.get("artifacts") != null) artifacts.replaceAll(id, body.get("artifacts"));
         s.conditionJson = json.write(body.get("condition"));
         Map<String, Object> msg = (Map<String, Object>) body.get("message");
         saveAgentMessage(id, msg, 0);
@@ -254,6 +313,11 @@ public class SessionService {
         }
         s.milestoneIdx = after;
         s.turnsInMilestone = num(body.getOrDefault("turns_after", s.turnsInMilestone + 1));
+        Object dialogue = body.get("dialogue"); // the agent's ledger, replaced whole; absent / null keeps the last one
+        if (dialogue != null) {
+            if (!(dialogue instanceof Map)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "dialogue는 객체여야 해요.");
+            s.dialogueJson = json.write(dialogue);
+        }
         sessions.save(s);
         boolean completed = Boolean.TRUE.equals(body.get("completed"));
         if (completed) complete(s);
@@ -278,17 +342,26 @@ public class SessionService {
     }
 
     // ---------------------------------------------------------------- views (computed by the agent's catalog)
+    /** The candidate's screen: never the dialogue ledger, observations or planted checkpoints. */
     public Map<String, Object> candidateView(AuthUser u, String id) {
         authorized(id, u);
-        Map<String, Object> v = new LinkedHashMap<>(agent.view("candidate", state(id)));
+        Map<String, Object> st = state(id);
+        st.remove("dialogue");
+        Map<String, Object> v = new LinkedHashMap<>(agent.view("candidate", st));
+        v.remove("dialogue");
+        v.remove("artifact_checks");
+        v.put("artifacts", artifacts.publicList(id));
+        v.put("start_status", startStatus(id));
         v.put("busy", !taskRepo.findBySessionIdAndTypeAndStatusIn(id, "TURN", TaskService.ACTIVE).isEmpty()
                 || !taskRepo.findBySessionIdAndTypeAndStatusIn(id, "START", TaskService.ACTIVE).isEmpty());
         return v;
     }
 
     public Map<String, Object> adminView(AuthUser u, String id) {
-        authorized(id, u);
-        Map<String, Object> v = new LinkedHashMap<>(agent.view("admin", state(id)));
+        ChatSession s = authorized(id, u);
+        Map<String, Object> v = new LinkedHashMap<>(agent.view("admin", state(id))); // the agent adds artifact_checks
+        v.put("artifacts", artifacts.publicList(id));
+        v.put("dialogue", json.any(s.dialogueJson));
         List<Map<String, Object>> recent = new ArrayList<>();
         for (AiTask t : taskRepo.findBySessionIdOrderByCreatedAtDesc(id)) {
             recent.add(taskMap(t));

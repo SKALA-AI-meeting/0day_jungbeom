@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from collections import Counter
 
 import pytest
@@ -9,7 +10,7 @@ from app.detector import kappa, tki_label
 from app.dilemmas import build_cached, persuade_beat
 from app.harness import context, guardrails, instructions, recovery
 from app.harness.loop import LimitExceeded, Limits
-from app.llm import persona_system, strip_boilerplate
+from app.llm import clean_line, persona_system, strip_boilerplate
 from app.personas import CONDITIONS, MODES, allocate
 from app.scenarios import public_scenario
 from mcp_servers.detector.rules import features, rule_estimate
@@ -44,12 +45,16 @@ def test_minimization_balances_modes():
     assert max(lead.values()) - min(lead.values()) <= 2 and max(peer.values()) - min(peer.values()) <= 2
 
 
-def test_persona_card_from_versioned_prompt():
+def test_persona_card_from_versioned_prompt(monkeypatch):
     scn = {**build_cached("dl.dev.saas"), "condition": {"lead": "competing", "peer": "avoiding"}}
-    lead, peer = persona_system(scn, "lead"), persona_system(scn, "peer")
-    assert MODES["competing"]["rules"][0] in lead and MODES["avoiding"]["rules"][0] in peer
-    assert "search_company_docs" in lead and "[절대 규칙]" in peer and "$" not in lead
-    assert {"persona", "director", "observer", "summarize"} <= set(instructions.versions())
+    for flag in ("0", "1"):
+        monkeypatch.setenv("DIALOGUE_HARNESS", flag)
+        lead, peer = persona_system(scn, "lead"), persona_system(scn, "peer")
+        assert MODES["competing"]["rules"][0] in lead and MODES["avoiding"]["rules"][0] in peer
+        assert "search_company_docs" in lead and "[절대 규칙]" in peer
+        assert not re.search(r"\$\{?[A-Za-z_]", lead), "no unrendered $placeholder"  # LaTeX like $22\%$ is fine
+    assert "$22\\%$" in lead and "$$\\text{재참여율}" in lead, "$$ in the template renders as a literal $"
+    assert {"persona", "persona_dialogue", "director", "director_dialogue", "ledger", "observer", "summarize"} <= set(instructions.versions())
 
 
 def test_detector_rules():
@@ -65,6 +70,14 @@ def test_kappa_tki_and_boilerplate():
     assert kappa([(True, True), (False, False)] * 5) == 1.0
     assert tki_label(4.5, 1.5) == "competing" and tki_label(3, 3) == "compromising"
     assert strip_boilerplate("좋은 계획이네요. 필요한 부분에서 제가 도와드릴 수 있다면 언제든지 말씀해 주세요.") == "좋은 계획이네요."
+
+
+def test_clean_line_keeps_markdown_line_breaks():
+    md = "두 안을 견줘 보면:\n\n| 안 | 일정 |\n|---|---|\n| 부분 검토 | 금요일 |\n\n- **필수 항목**만 먼저\n- $22\\%$ 기준"
+    assert clean_line(md) == md
+    assert clean_line(md + "\n필요하시면 언제든지 말씀해 주세요.") == md  # boilerplate on its own last line goes
+    assert clean_line("[한서윤] 첫 줄.\n둘째 줄. 필요한 부분이 있으면 언제든 말씀해 주세요.") == "첫 줄.\n둘째 줄."
+    assert clean_line("음...") == "음..."
 
 
 def test_context_budget_folds_old_messages():
@@ -114,3 +127,10 @@ def test_recovery_retries_then_falls_back(monkeypatch):
 
     with pytest.raises(ValueError):
         asyncio.run(recovery.with_recovery(bad))
+
+
+def test_tool_events_never_carry_evaluation_args():
+    from app.harness.tools import _summary
+    s = _summary({"session_id": "abc", "observations": [{"quote": "비밀"}], "dialogue": {"summary": "장부"}, "report": {"C01": 1}, "milestone_idx_after": 1})
+    assert s["session_id"] == "abc" and s["milestone_idx_after"] == 1
+    assert "비밀" not in json.dumps(s, ensure_ascii=False) and "장부" not in json.dumps(s, ensure_ascii=False)

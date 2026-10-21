@@ -79,9 +79,17 @@ async def _invoke(server: str, tool: str, args: dict):
     return res.data if res.data is not None else (res.structured_content or {})
 
 
+# Arguments that carry evaluation data (observer evidence, ledger, report, review, detections): TOOL_START events can reach
+# the candidate's stream, so these are summarized by size only. The full call is still in the trace span.
+REDACTED_ARGS = {"observations", "dialogue", "report", "review", "detection", "artifacts"}
+
+
 def _summary(args: dict) -> dict:
     out = {}
     for k, v in args.items():
+        if k in REDACTED_ARGS:
+            out[k] = f"[{len(v)}개]" if isinstance(v, (list, dict)) else "[생략]"
+            continue
         s = v if isinstance(v, (int, float, bool)) or v is None else str(v)
         out[k] = s[:80] if isinstance(s, str) else s
     return out

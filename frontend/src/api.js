@@ -39,6 +39,9 @@ export const api = {
   saveNotes: (sid, text) => req('PUT', `/api/sessions/${sid}/notes`, { text }, cand()),
   finish: (sid) => req('POST', `/api/sessions/${sid}/finish`, null, cand()),
   submitTurn: (sid, text, choiceId) => req('POST', '/api/ai/tasks', { type: 'TURN', sessionId: sid, text, choiceId }, cand()),
+  restartSession: (sid) => req('POST', `/api/sessions/${sid}/restart`, null, cand()), // 202 { taskId }: only when the opening failed
+  addAnnotation: (sid, artifactId, anchor, kind, text) => req('POST', `/api/sessions/${sid}/annotations`, { artifactId, anchor, kind, text }, cand()),
+  deleteAnnotation: (sid, annotationId) => req('DELETE', `/api/sessions/${sid}/annotations/${annotationId}`, null, cand()),
   myTasks: (token) => req('GET', '/api/ai/tasks?mine=true', null, token),
 
   // admin
@@ -53,13 +56,17 @@ export const api = {
   adminInvites: () => req('GET', '/api/admin/invites', null, admin()),
   adminInvite: (alias, email) => req('POST', '/api/admin/invites', { alias, email: email || null }, admin()),
   requestReport: (sid) => req('POST', '/api/ai/tasks', { type: 'REPORT', sessionId: sid }, admin()),
+  dismissReport: (sid) => req('POST', `/api/admin/sessions/${sid}/report/dismiss`, null, admin()),
   approve: (taskId, approved, comment) => req('POST', `/api/ai/tasks/${taskId}/approval`, { approved, comment }, admin()),
   task: (taskId, token) => req('GET', `/api/ai/tasks/${taskId}`, null, token),
 }
 
-/** Read a text/event-stream with fetch so the bearer token stays in a header (EventSource cannot set headers). */
-export async function streamSSE(url, token, onEvent) {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' } })
+/**
+ * Read a text/event-stream with fetch so the bearer token stays in a header (EventSource cannot set headers).
+ * Pass an AbortSignal to stop listening early; the promise then rejects with an AbortError.
+ */
+export async function streamSSE(url, token, onEvent, signal) {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' }, signal })
   if (!res.ok || !res.body) {
     if (res.status === 401) auth.expired(token)
     const err = new Error(`진행 상황을 받지 못했어요 (${res.status})`)
@@ -89,6 +96,6 @@ export async function streamSSE(url, token, onEvent) {
 }
 
 /** Progress events of one task (TOKEN, TOOL_START, TOOL_END, PROGRESS, APPROVAL_REQUIRED, DONE, FAILED). */
-export const streamTask = (taskId, token, onEvent) => streamSSE(`/api/ai/tasks/${taskId}/stream`, token, onEvent)
+export const streamTask = (taskId, token, onEvent, signal) => streamSSE(`/api/ai/tasks/${taskId}/stream`, token, onEvent, signal)
 /** The signed-in candidate's account review, stage names only. */
 export const streamReview = (onEvent) => streamSSE('/api/me/review/stream', auth.candidate(), onEvent)

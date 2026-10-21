@@ -1,8 +1,12 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { api, auth, streamTask } from '../../api'
+import ArtifactTable from '../../components/ArtifactTable.vue'
+import ArtifactViewer from '../../components/ArtifactViewer.vue'
 import ChatBubble from '../../components/ChatBubble.vue'
 import { COMP_COLOR, MODE_LABEL, MODE_POS, MS_LABEL, SIGNAL, kappaWord } from '../../constants'
+import { normArtifacts, normCheck } from '../../utils/artifacts'
+import { renderMarkdown } from '../../utils/markdown'
 
 const props = defineProps({ id: String })
 const d = ref(null)
@@ -109,7 +113,7 @@ const heat = (c) => {
   return { background: `color-mix(in srgb, var(--brand) ${Math.round(a * 100)}%, transparent)` }
 }
 const SRC = { survey: '설문', article: '기사', paper: '논문', report: '보고서' }
-const REPORT_CHIP = { ready: ['green', '준비됨'], awaiting_approval: ['amber', '승인 대기'], pending: ['blue', '생성 중'], failed: ['red', '실패'], rejected: ['gray', '반려됨'], none: ['gray', '대기'] }
+const REPORT_CHIP = { ready: ['green', '준비됨'], awaiting_approval: ['amber', '승인 대기'], pending: ['blue', '생성 중'], failed: ['red', '실패'], rejected: ['gray', '반려됨'], dismissed: ['gray', '넘김'], none: ['gray', '대기'] }
 const pct = (x) => `${Math.round(x * 100)}%`
 const FACET_ROLE = { lead: '팀장이', peer: '동료가' }
 const dl = computed(() => d.value?.dilemma)
@@ -132,6 +136,24 @@ const py = (v) => 220 - ((v - 1) / 4) * 200
 function jumpMsg(idx) {
   jump({ msg_idx: idx })
 }
+
+// shared artifacts: the candidate's markups next to the planted checkpoints (an objective signal, not a score)
+const arts = computed(() => normArtifacts(d.value?.artifacts, d.value?.annotations))
+const checks = computed(() => (d.value?.artifact_checks || []).map(normCheck))
+const spottedN = computed(() => checks.value.filter((c) => c.spotted).length)
+const artTitle = (id) => arts.value.find((a) => a.id === id)?.title || id
+const viewer = ref({ id: null, line: null })
+const openArt = computed(() => arts.value.find((a) => a.id === viewer.value.id) || null)
+const markupsOf = (c) => {
+  const a = arts.value.find((x) => x.id === c.artifactId)
+  return (a?.annotations || []).filter((n) => c.annotationIds.map(String).includes(String(n.id)))
+}
+
+// dialogue ledger the turn harness keeps (api-contract §2); read-only here
+const ledger = computed(() => d.value?.dialogue || null)
+const WHO = (w) => (w === 'user' ? d.value.alias : personas.value[w]?.name || w)
+const ISSUE = { open: ['amber', '열림'], agreed: ['green', '합의'], parked: ['gray', '보류'] }
+const positions = computed(() => Object.entries(ledger.value?.positions || {}).filter(([, p]) => p && (p.claim || p.conceded)))
 </script>
 
 <template>
@@ -181,6 +203,33 @@ function jumpMsg(idx) {
             <small class="muted">메시지 {{ msCount(m.key) }}개 · 근거 {{ msObs(m.key).length }}건</small>
           </button>
         </div>
+      </section>
+
+      <!-- 1.2 shared artifacts + planted checkpoints (item 4) -->
+      <section v-if="arts.length" class="card">
+        <h2>같이 확인한 과제 · 마크업 <small class="muted">행을 누르면 과제와 지원자 마크업을 열어요</small></h2>
+        <ArtifactTable :artifacts="arts" :personas="personas" :checks="checks" :active="viewer.id" @open="(a) => (viewer = { id: a.id, line: null })" />
+        <template v-if="checks.length">
+          <h3 class="sub-h">
+            심어 둔 확인 지점 <span class="chip" :class="spottedN ? 'green' : 'gray'">{{ spottedN }}/{{ checks.length }} 발견</span>
+          </h3>
+          <p class="muted small chk-note">과제마다 일부러 넣어 둔 문제예요. 지원자의 마크업 줄 범위가 그 줄 ±1 안에 들면 ‘발견’이에요. 대화로만 짚은 경우는 여기에 잡히지 않으니 대화 원문과 함께 보세요.</p>
+          <table class="agree chk">
+            <thead><tr><th>과제</th><th>줄</th><th>심어 둔 문제</th><th>결과</th><th>지원자 마크업</th></tr></thead>
+            <tbody>
+              <tr v-for="c in checks" :key="`${c.artifactId}:${c.line}`" class="clk" @click="viewer = { id: c.artifactId, line: c.line }">
+                <td>{{ artTitle(c.artifactId) }}</td>
+                <td><b>L{{ c.line }}</b></td>
+                <td>{{ c.issue }}</td>
+                <td><span class="chip" :class="c.spotted ? 'green' : 'amber'">{{ c.spotted ? '발견' : '놓침' }}</span></td>
+                <td class="small">
+                  <template v-if="markupsOf(c).length"><div v-for="n in markupsOf(c)" :key="n.id">“{{ n.text }}”</div></template>
+                  <span v-else class="muted">–</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
       </section>
 
       <!-- 1.5 value dilemma (PR2) -->
@@ -352,7 +401,7 @@ function jumpMsg(idx) {
         <div class="sum">
           <div v-for="c in comps" :key="c.id" class="sc" :style="{ borderTopColor: COMP_COLOR[c.id].fg }">
             <div class="sc-h"><span class="cid" :style="{ background: COMP_COLOR[c.id].bg, color: COMP_COLOR[c.id].fg }">{{ c.id }}</span><b>{{ c.name }}</b></div>
-            <p v-if="reportComp(c.id)" :class="{ muted: reportComp(c.id).empty }">{{ reportComp(c.id).summary }}</p>
+            <div v-if="reportComp(c.id)" class="md sum-t" :class="{ muted: reportComp(c.id).empty }" v-html="renderMarkdown(reportComp(c.id).summary)" />
             <p v-else class="muted">{{ d.status === 'completed' ? '리포트를 생성하는 중이에요.' : '세션이 끝나면 요약이 만들어져요.' }}</p>
           </div>
         </div>
@@ -375,6 +424,48 @@ function jumpMsg(idx) {
           <blockquote>“{{ o.quote }}”</blockquote>
           <small class="muted">클릭하면 오른쪽 대화의 해당 위치로 이동 →</small>
         </article>
+      </section>
+
+      <!-- 4.5 dialogue ledger (item 6) -->
+      <section class="card ledger">
+        <h2>대화 장부 <small class="muted">에이전트가 턴마다 정리한 쟁점·약속·입장 · 읽기 전용</small></h2>
+        <p v-if="!ledger" class="muted small">기록된 장부가 없어요. 이전 방식으로 진행된 세션이거나(DIALOGUE_HARNESS=0) 아직 대화가 짧아요.</p>
+        <template v-else>
+          <div v-if="ledger.summary" class="md lsum" v-html="renderMarkdown(ledger.summary)" />
+          <div class="two">
+            <div>
+              <h3>쟁점 <small class="muted">{{ (ledger.issues || []).length }}개</small></h3>
+              <ul v-if="ledger.issues?.length" class="lst">
+                <li v-for="i in ledger.issues" :key="i.id">
+                  <span class="chip" :class="ISSUE[i.status]?.[0] || 'gray'">{{ ISSUE[i.status]?.[1] || i.status }}</span>
+                  <b>{{ i.title }}</b>
+                  <small class="muted">{{ WHO(i.raised_by) }} 제기<template v-if="i.last_idx != null"> · <a href="#" @click.prevent="jumpMsg(i.last_idx)">#{{ i.last_idx }}</a></template></small>
+                </li>
+              </ul>
+              <p v-else class="muted small">정리된 쟁점이 없어요.</p>
+            </div>
+            <div>
+              <h3>약속 <small class="muted">{{ (ledger.commitments || []).length }}개</small></h3>
+              <ul v-if="ledger.commitments?.length" class="lst">
+                <li v-for="(c, k) in ledger.commitments" :key="k">
+                  <b>{{ WHO(c.who) }}</b> {{ c.what }}
+                  <small class="muted"><template v-if="c.due">· {{ c.due }} </template><template v-if="c.idx != null">· <a href="#" @click.prevent="jumpMsg(c.idx)">#{{ c.idx }}</a></template></small>
+                </li>
+              </ul>
+              <p v-else class="muted small">기록된 약속이 없어요.</p>
+            </div>
+          </div>
+          <template v-if="positions.length">
+            <h3>입장</h3>
+            <div class="pos">
+              <div v-for="[w, p] in positions" :key="w" class="pc" :class="w">
+                <b>{{ WHO(w) }}</b>
+                <p v-if="p.claim">{{ p.claim }}</p>
+                <small v-if="p.conceded" class="muted">양보한 점 · {{ p.conceded }}</small>
+              </div>
+            </div>
+          </template>
+        </template>
       </section>
 
       <!-- 5. notes + pain points -->
@@ -414,6 +505,8 @@ function jumpMsg(idx) {
         </template>
       </div>
     </aside>
+
+    <ArtifactViewer :artifact="openArt" :personas="personas" :checks="checks" :focus-line="viewer.line" @close="viewer = { id: null, line: null }" />
   </main>
   <p v-else class="page muted">{{ error || '불러오는 중…' }}</p>
 </template>
@@ -453,6 +546,21 @@ h2 small { font-weight: 500; font-size: 12px; }
 .sc { border: 1px solid var(--line); border-top: 3px solid; border-radius: 10px; padding: 12px 14px; }
 .sc-h { display: flex; gap: 8px; align-items: center; }
 .sc p { margin: 8px 0 0; font-size: 14px; }
+.sum-t { margin-top: 8px; font-size: 14px; }
+.sub-h { font-size: 14px; margin: 18px 0 6px; display: flex; gap: 8px; align-items: center; }
+.chk-note { margin: 0 0 8px; line-height: 1.55; }
+.chk td { vertical-align: top; }
+.clk { cursor: pointer; }
+.clk:hover td { background: var(--bg); }
+.ledger h3 { font-size: 14px; margin: 14px 0 8px; }
+.lsum { font-size: 14px; padding: 10px 12px; border-radius: 10px; background: var(--bg); }
+.lst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+.lst li { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.pos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pc { border: 1px solid var(--line); border-left: 4px solid var(--brand); border-radius: 10px; padding: 8px 12px; font-size: 13.5px; }
+.pc.lead { border-left-color: #0f766e; }
+.pc.peer { border-left-color: #b45309; }
+.pc p { margin: 4px 0; }
 
 .ev { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-top: 10px; cursor: pointer; transition: 0.15s; }
 .ev:hover { border-color: var(--brand); background: var(--bg); }
@@ -523,5 +631,5 @@ blockquote { margin: 6px 0; padding: 6px 12px; border-left: 3px solid var(--line
 .div { text-align: center; margin: 14px 0 4px; position: relative; }
 .div::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--line); }
 .div span { position: relative; background: var(--panel); padding: 0 10px; font-size: 12px; font-weight: 700; color: var(--brand); }
-@media (max-width: 1100px) { .ext-grid { grid-template-columns: 1fr; } .wrap { grid-template-columns: 1fr; } .trans { position: static; max-height: 70vh; } .two, .sum, .tl { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .ext-grid { grid-template-columns: 1fr; } .wrap { grid-template-columns: 1fr; } .trans { position: static; max-height: 70vh; } .two, .sum, .tl, .pos { grid-template-columns: 1fr; } }
 </style>

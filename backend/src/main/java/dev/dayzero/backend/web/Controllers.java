@@ -33,6 +33,9 @@ public final class Controllers {
     public record TaskReq(@NotBlank String type, String sessionId, @Size(max = 1500) String text, @Size(max = 10) String choiceId) {}
     public record ApprovalReq(boolean approved, @Size(max = 500) String comment) {}
     public record InviteReq(@Size(max = 20) String alias, @Email String email) {}
+    /** Checked in SessionService/ArtifactService in the contract's order (409 / 404 / 400), not by bean validation. */
+    public record AnnotationReq(String artifactId, AnchorReq anchor, String kind, String text) {}
+    public record AnchorReq(Integer lineStart, Integer lineEnd, String quote) {}
 
     @RestController
     @RequestMapping("/api/auth")
@@ -142,6 +145,24 @@ public final class Controllers {
             sessions.finish(u, id);
             return sessions.candidateView(u, id);
         }
+
+        /** A new START after the opening failed (0 messages, latest START FAILED); 409 otherwise. */
+        @PostMapping("/{id}/restart") public ResponseEntity<Map<String, Object>> restart(@AuthenticationPrincipal AuthUser u, @PathVariable String id) {
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(sessions.restart(u, id));
+        }
+
+        /** Markups on the shared work items. */
+        @PostMapping("/{id}/annotations")
+        public ResponseEntity<Map<String, Object>> annotate(@AuthenticationPrincipal AuthUser u, @PathVariable String id, @RequestBody AnnotationReq r) {
+            AnchorReq a = r.anchor() == null ? new AnchorReq(null, null, null) : r.anchor();
+            return ResponseEntity.status(HttpStatus.CREATED).body(sessions.annotate(u, id, r.artifactId(), a.lineStart(), a.lineEnd(), a.quote(), r.kind(), r.text()));
+        }
+
+        @DeleteMapping("/{id}/annotations/{annotationId}")
+        public ResponseEntity<Void> deleteAnnotation(@AuthenticationPrincipal AuthUser u, @PathVariable String id, @PathVariable Long annotationId) {
+            sessions.deleteAnnotation(u, id, annotationId);
+            return ResponseEntity.noContent().build();
+        }
     }
 
     /** The AI task contract (PDF table 5-8): create 202, get, stream, approval, mine. */
@@ -171,7 +192,14 @@ public final class Controllers {
         @GetMapping("/{id}") public Map<String, Object> get(@AuthenticationPrincipal AuthUser u, @PathVariable String id) {
             AiTask t = tasks.get(id);
             tasks.authorize(t, u);
-            return sessions.taskMap(t);
+            return view(t, u);
+        }
+
+        /** Run traces (span names, prompt versions) are for the company; a candidate gets the task without them. */
+        private Map<String, Object> view(AiTask t, AuthUser u) {
+            Map<String, Object> m = sessions.taskMap(t);
+            if (!u.isAdmin()) m.remove("trace");
+            return m;
         }
 
         @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -188,7 +216,7 @@ public final class Controllers {
         }
 
         @GetMapping public List<Map<String, Object>> mine(@AuthenticationPrincipal AuthUser u, @RequestParam(defaultValue = "true") boolean mine) {
-            return tasks.mine(u).stream().map(sessions::taskMap).toList();
+            return tasks.mine(u).stream().map(t -> view(t, u)).toList();
         }
     }
 
@@ -214,6 +242,10 @@ public final class Controllers {
 
         @GetMapping("/sessions") public List<Map<String, Object>> list(@AuthenticationPrincipal AuthUser u) { return sessions.adminRows(u); }
         @GetMapping("/sessions/{id}") public Map<String, Object> get(@AuthenticationPrincipal AuthUser u, @PathVariable String id) { return sessions.adminView(u, id); }
+        /** REPORT_FAILED "넘기기" (retry is POST /api/ai/tasks {type: REPORT}). */
+        @PostMapping("/sessions/{id}/report/dismiss") public Map<String, Object> dismissReport(@AuthenticationPrincipal AuthUser u, @PathVariable String id) {
+            return sessions.dismissReport(u, id);
+        }
 
         @PostMapping("/invites") public ResponseEntity<Map<String, Object>> invite(@AuthenticationPrincipal AuthUser u, @Valid @RequestBody InviteReq r) {
             Invite i = sessions.createInvite(auth.companyOf(u), r.alias(), r.email());
@@ -239,7 +271,10 @@ public final class Controllers {
         private final SessionService sessions;
         private final TaskService tasks;
         private final AccountService accounts;
-        public Internal(SessionService sessions, TaskService tasks, AccountService accounts) { this.sessions = sessions; this.tasks = tasks; this.accounts = accounts; }
+        private final ArtifactService artifacts;
+        public Internal(SessionService sessions, TaskService tasks, AccountService accounts, ArtifactService artifacts) {
+            this.sessions = sessions; this.tasks = tasks; this.accounts = accounts; this.artifacts = artifacts;
+        }
 
         @GetMapping("/accounts/{id}") public Map<String, Object> account(@PathVariable Long id) { return accounts.internalView(id); }
         @PostMapping("/accounts/{id}/decision") public Map<String, Object> decision(@PathVariable Long id, @RequestBody Map<String, Object> body) { return accounts.decide(id, body); }
@@ -248,6 +283,18 @@ public final class Controllers {
         @GetMapping("/conditions") public List<Map<String, Object>> conditions() { return sessions.conditions(); }
         @PostMapping("/sessions/{id}/init") public Map<String, Object> init(@PathVariable String id, @RequestBody Map<String, Object> body) { return sessions.init(id, body); }
         @PostMapping("/sessions/{id}/turn") public Map<String, Object> turn(@PathVariable String id, @RequestBody Map<String, Object> body) { return sessions.applyTurn(id, body); }
+        @GetMapping("/sessions/{id}/artifacts") public List<Map<String, Object>> artifacts(@PathVariable String id) {
+            sessions.load(id);
+            return artifacts.summaries(id);
+        }
+        @GetMapping("/sessions/{id}/artifacts/{artifactId}") public Map<String, Object> artifact(@PathVariable String id, @PathVariable String artifactId) {
+            sessions.load(id);
+            return artifacts.internalOne(id, artifactId);
+        }
+        @GetMapping("/sessions/{id}/annotations") public List<Map<String, Object>> annotations(@PathVariable String id, @RequestParam(name = "since_idx", defaultValue = "0") int sinceIdx) {
+            sessions.load(id);
+            return artifacts.internalAnnotations(id, sinceIdx);
+        }
         @PostMapping("/sessions/{id}/detections") public Map<String, Object> detection(@PathVariable String id, @RequestBody Map<String, Object> body) {
             Object idx = body.get("msg_idx");
             if (!(idx instanceof Number n)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "msg_idx가 필요해요.");

@@ -1,8 +1,12 @@
+import { api } from '../../api'
+
 export default {
   id: 'candidate',
   role: 'candidate',
   login: '/login',
   home: '/me',
+  signOutTo: '/',
+  who: async () => (await api.me()).nickname,
   nav: [
     { to: '/me', label: '내 평가' },
     { to: '/me/start', label: '새 평가 시작' },

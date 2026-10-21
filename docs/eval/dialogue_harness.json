@@ -1,0 +1,6001 @@
+{
+ "meta": {
+  "model": "gpt-4o-mini",
+  "embeddings": "openai",
+  "reps": 2,
+  "scenario": "dl.pm.fintech",
+  "conditions": {
+   "A": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "B": {
+    "lead": "competing",
+    "peer": "avoiding"
+   }
+  },
+  "variants": [
+   "base",
+   "markup",
+   "avoid"
+  ],
+  "observer": "skipped in both arms",
+  "thresholds": {
+   "self": 0.3,
+   "echo": 0.28,
+   "quote_span": 20
+  },
+  "total_tokens": 842610,
+  "wall_s": 378,
+  "pair_tokens": [
+   277926,
+   282164,
+   282520
+  ],
+  "skipped_pairs": [
+   "B/rep1"
+  ],
+  "date": "2026-10-21"
+ },
+ "metrics": {
+  "0": {
+   "persona_lines": 75,
+   "turns": 30,
+   "errors": 0,
+   "self_repetition_mean": 0.197,
+   "self_repetition_rate": 0.125,
+   "echo_mean": 0.16,
+   "echo_rate": 0.139,
+   "repeated_citation_rate": 0.587,
+   "re_quote_rate": 0.667,
+   "citing_line_rate": 0.733,
+   "sycophancy_rate": 0.28,
+   "addressed_first": 1.0,
+   "addressed_first_n": 9,
+   "avoiding_quiet_when_unaddressed": 0.042,
+   "avoiding_quiet_n": 24,
+   "avoiding_answers_when_addressed": 1.0,
+   "avoiding_answer_n": 6,
+   "cross_talk_rate": 0.296,
+   "cross_talk_n": 27,
+   "markup_uptake": 0.0,
+   "markup_artifact_opened": 0.0,
+   "markup_n": 3,
+   "distinct_2": 0.813,
+   "mean_line_chars": 190.187,
+   "markdown_line_rate": 0.0,
+   "persona_lines_per_turn": 2.5,
+   "llm_calls_per_turn": 6,
+   "tokens_per_turn": 14882.167,
+   "repetition_guard_rewrites": 0
+  },
+  "1": {
+   "persona_lines": 51,
+   "turns": 30,
+   "errors": 0,
+   "self_repetition_mean": 0.094,
+   "self_repetition_rate": 0.0,
+   "echo_mean": 0.06,
+   "echo_rate": 0.0,
+   "repeated_citation_rate": 0.0,
+   "re_quote_rate": 0.02,
+   "citing_line_rate": 0.059,
+   "sycophancy_rate": 0.0,
+   "addressed_first": 1.0,
+   "addressed_first_n": 9,
+   "avoiding_quiet_when_unaddressed": 1.0,
+   "avoiding_quiet_n": 24,
+   "avoiding_answers_when_addressed": 1.0,
+   "avoiding_answer_n": 6,
+   "cross_talk_rate": 1.0,
+   "cross_talk_n": 3,
+   "markup_uptake": 1.0,
+   "markup_artifact_opened": 0.667,
+   "markup_n": 3,
+   "distinct_2": 0.927,
+   "mean_line_chars": 141.49,
+   "markdown_line_rate": 0.255,
+   "persona_lines_per_turn": 1.7,
+   "llm_calls_per_turn": 5.167,
+   "tokens_per_turn": 13204.833,
+   "repetition_guard_rewrites": 17
+  }
+ },
+ "by_condition": {
+  "A": {
+   "0": {
+    "persona_lines": 49,
+    "turns": 20,
+    "errors": 0,
+    "self_repetition_mean": 0.192,
+    "self_repetition_rate": 0.128,
+    "echo_mean": 0.15,
+    "echo_rate": 0.128,
+    "repeated_citation_rate": 0.551,
+    "re_quote_rate": 0.633,
+    "citing_line_rate": 0.673,
+    "sycophancy_rate": 0.286,
+    "addressed_first": 1.0,
+    "addressed_first_n": 6,
+    "avoiding_quiet_when_unaddressed": 0.062,
+    "avoiding_quiet_n": 16,
+    "avoiding_answers_when_addressed": 1.0,
+    "avoiding_answer_n": 4,
+    "cross_talk_rate": 0.412,
+    "cross_talk_n": 17,
+    "markup_uptake": 0.0,
+    "markup_artifact_opened": 0.0,
+    "markup_n": 2,
+    "distinct_2": 0.812,
+    "mean_line_chars": 189.02,
+    "markdown_line_rate": 0.0,
+    "persona_lines_per_turn": 2.45,
+    "llm_calls_per_turn": 5.9,
+    "tokens_per_turn": 14525.75,
+    "repetition_guard_rewrites": 0
+   },
+   "1": {
+    "persona_lines": 34,
+    "turns": 20,
+    "errors": 0,
+    "self_repetition_mean": 0.096,
+    "self_repetition_rate": 0.0,
+    "echo_mean": 0.061,
+    "echo_rate": 0.0,
+    "repeated_citation_rate": 0.0,
+    "re_quote_rate": 0.0,
+    "citing_line_rate": 0.0,
+    "sycophancy_rate": 0.0,
+    "addressed_first": 1.0,
+    "addressed_first_n": 6,
+    "avoiding_quiet_when_unaddressed": 1.0,
+    "avoiding_quiet_n": 16,
+    "avoiding_answers_when_addressed": 1.0,
+    "avoiding_answer_n": 4,
+    "cross_talk_rate": 1.0,
+    "cross_talk_n": 2,
+    "markup_uptake": 1.0,
+    "markup_artifact_opened": 1.0,
+    "markup_n": 2,
+    "distinct_2": 0.923,
+    "mean_line_chars": 141.882,
+    "markdown_line_rate": 0.324,
+    "persona_lines_per_turn": 1.7,
+    "llm_calls_per_turn": 5.3,
+    "tokens_per_turn": 13496.55,
+    "repetition_guard_rewrites": 13
+   }
+  },
+  "B": {
+   "0": {
+    "persona_lines": 26,
+    "turns": 10,
+    "errors": 0,
+    "self_repetition_mean": 0.206,
+    "self_repetition_rate": 0.12,
+    "echo_mean": 0.18,
+    "echo_rate": 0.16,
+    "repeated_citation_rate": 0.654,
+    "re_quote_rate": 0.731,
+    "citing_line_rate": 0.846,
+    "sycophancy_rate": 0.269,
+    "addressed_first": 1.0,
+    "addressed_first_n": 3,
+    "avoiding_quiet_when_unaddressed": 0.0,
+    "avoiding_quiet_n": 8,
+    "avoiding_answers_when_addressed": 1.0,
+    "avoiding_answer_n": 2,
+    "cross_talk_rate": 0.1,
+    "cross_talk_n": 10,
+    "markup_uptake": 0.0,
+    "markup_artifact_opened": 0.0,
+    "markup_n": 1,
+    "distinct_2": 0.814,
+    "mean_line_chars": 192.385,
+    "markdown_line_rate": 0.0,
+    "persona_lines_per_turn": 2.6,
+    "llm_calls_per_turn": 6.2,
+    "tokens_per_turn": 15595,
+    "repetition_guard_rewrites": 0
+   },
+   "1": {
+    "persona_lines": 17,
+    "turns": 10,
+    "errors": 0,
+    "self_repetition_mean": 0.091,
+    "self_repetition_rate": 0.0,
+    "echo_mean": 0.059,
+    "echo_rate": 0.0,
+    "repeated_citation_rate": 0.0,
+    "re_quote_rate": 0.059,
+    "citing_line_rate": 0.176,
+    "sycophancy_rate": 0.0,
+    "addressed_first": 1.0,
+    "addressed_first_n": 3,
+    "avoiding_quiet_when_unaddressed": 1.0,
+    "avoiding_quiet_n": 8,
+    "avoiding_answers_when_addressed": 1.0,
+    "avoiding_answer_n": 2,
+    "cross_talk_rate": 1.0,
+    "cross_talk_n": 1,
+    "markup_uptake": 1.0,
+    "markup_artifact_opened": 0.0,
+    "markup_n": 1,
+    "distinct_2": 0.934,
+    "mean_line_chars": 140.706,
+    "markdown_line_rate": 0.118,
+    "persona_lines_per_turn": 1.7,
+    "llm_calls_per_turn": 4.9,
+    "tokens_per_turn": 12621.4,
+    "repetition_guard_rewrites": 4
+   }
+  }
+ },
+ "runs": [
+  {
+   "flag": "0",
+   "cond": "A",
+   "variant": "base",
+   "rep": 0,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [],
+   "turns": [
+    {
+     "n": 1,
+     "user": "기획안은 90% 됐고 고객사 약속은 금요일이에요. 검토가 꼭 필요한 범위가 어디까지인지 서윤님께 먼저 확인하고 싶어요.",
+     "addressed": "lead",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 7315,
+     "tokens_out": 338,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "intent": "검토가 필요한 범위를 명확히 하고, 절차를 지키는 것이 중요하다는 점을 강조하고 싶다."
+      },
+      {
+       "persona": "peer",
+       "intent": "고객사 약속을 지키기 위해 검토를 병행할 수 있는 방법을 제안하고 싶다."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 2,
+       "speaker": "lead",
+       "text": "개인정보·보안 검토 규정에 따르면, 개인정보를 새로 수집하거나 다른 곳에 보내는 기능은 출시 전에 검토를 받아야 합니다. 검토가 필요한 범위는 이러한 기능에 해당하니, 이 점을 고려해 준비 사항을 정리해 주시면 좋겠습니다. 필요한 부분에 대해서는 우선적으로 검토 요청을 할 수도 있으니, 그 점도 참고해 주세요.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 3,
+       "speaker": "peer",
+       "text": "서윤님이 말씀하신 규정은 개인정보를 새로 수집하거나 다른 곳에 보내는 기능이 검토 대상이라는 점에서 정확합니다. 하지만 '개인정보·보안 검토 규정' 3조에 따르면 일정이 급한 경우 필수 항목만 먼저 검토해 달라고 요청할 수 있습니다. 이를 통해 고객사 약속을 지키는 방향으로 검토를 병행할 수 있을 것 같습니다. 지원자님, 고객사와의 약속을 지키기 위해 어떤 부분을 먼저 준비할 수 있을지 함께 논의해보면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 8575,
+     "tokens_out": 362,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지원자가 검토팀 일정 지연 사유와 부분 검토 가능성을 알아보겠다고 하니, 이도현 동료가 추가적인 의견을 제시하며 지원자와 함께 논의하자는 방향으로 대화를 이어간다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "검토팀 일정이 밀릴 경우, 요청자에게 예상 일정을 알려줘야 한다는 점은 개인정보·보안 검토 규정 2조에 명시되어 있습니다. 그리고 일정이 급하면 필수 항목만 먼저 검토해달라고 요청할 수 있다는 것도 3조에 적혀 있어요. 이런 규정을 바탕으로 지원자님이 검토팀에 어떤 요청을 할 수 있을지 함께 논의해보면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "peer",
+       "text": "서윤님, 말씀하신 검토 규정에 따르면 개인정보를 새로 수집하거나 다른 곳에 보내는 기능이 검토 대상인 건 맞습니다. 하지만 3조에 따르면 일정이 급할 경우 필수 항목만 먼저 검토해달라고 요청할 수 있습니다. 지난 분기와 같이 저희가 먼저 기획안을 제출하고, 검토는 그 이후에 보완하는 방향으로 진행해보는 게 어떨까요? 이렇게 하면 고객사와의 약속도 지킬 수 있을 것 같습니다. 지원자님과 함께 필요한 부분을 정리해 볼 수 있으면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 3,
+     "user": "도현님 말씀처럼 지난번엔 문제가 없었지만, 이번엔 계좌 정보가 들어가서 조심스러워요. 도현님은 어떻게 보세요?",
+     "addressed": "peer",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 9958,
+     "tokens_out": 315,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "supporting the idea of prioritizing urgent review while acknowledging the sensitivity of the new information."
+      },
+      {
+       "persona": "lead",
+       "intent": "reiterating the importance of following the established review process for security reasons."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 8,
+       "speaker": "peer",
+       "text": "상황이 매우 민감한 만큼, 계좌 정보가 포함된 기능에 대한 검토는 더 신중해야 한다는 점에 동의합니다. 다만, 개인정보·보안 검토 규정 3조에 따르면 긴급한 경우 필수 항목만 먼저 검토해달라고 요청할 수 있습니다. 이 점을 활용해 고객사와의 약속을 지키면서 필요한 검토를 요청하는 방향으로 진행할 수 있을 것 같은데, 어떻게 생각하시나요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 9,
+       "speaker": "lead",
+       "text": "고객의 계좌 정보가 포함된 기능은 더욱 신중한 검토가 필요합니다. 개인정보·보안 검토 규정 1조에 따르면, 개인정보를 새로 수집하거나 다른 곳에 보내는 기능은 반드시 출시 전에 검토를 받아야 합니다. 이러한 규정을 준수하는 것이 보안을 위해서도 중요하니, 검토팀에 요청할 사항을 잘 정리하시는 것이 좋겠습니다. 지원자님, 현재 상황을 잘 반영해 검토 요청을 준비해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 4,
+     "user": "두 분 의견을 같이 놓고 일정과 위험을 비교해 볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 16457,
+     "tokens_out": 529,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지원자가 두 분의 의견을 비교하고 조율할 수 있도록 도와주기 위해 의견을 보탠다."
+      },
+      {
+       "persona": "lead",
+       "intent": "지원자가 두 분의 의견을 비교하는 과정에서 원칙을 강조하며 검토 요청을 준비하도록 유도한다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 11,
+       "speaker": "peer",
+       "text": "고객의 계좌 정보가 포함된 기능은 더욱 신중한 검토가 필요하다는 점에 동의합니다. 하지만 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토해 달라고 요청할 수 있습니다. 이 점을 고려해 검토팀에 요청할 사항을 잘 정리하여 고객과의 약속을 지키는 방향으로 진행할 수 있을 것 같습니다. 두 분의 의견을 바탕으로 어떤 방식으로 준비할 수 있을지 함께 논의해보면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 12,
+       "speaker": "lead",
+       "text": "고객의 계좌 정보를 포함한 기능은 더욱 신중한 검토가 필요하다는 점에 저도 동의합니다. 개인정보·보안 검토 규정 1조에 따르면, 이러한 기능은 반드시 출시 전에 검토를 받아야 하므로, 검토팀에 요청할 사항을 잘 정리하는 것이 중요합니다. 지원자님께서 말씀하신 대로 두 분의 의견을 비교하시는 과정에서 원칙을 강조하며 준비해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 13,
+       "speaker": "lead",
+       "text": "상황을 정리해 보면, 고객의 계좌 정보가 포함된 기능은 더욱 신중한 검토가 요구됩니다. 개인정보·보안 검토 규정 1조에 따르면, 이러한 기능은 반드시 출시 전에 검토를 받아야 하는 사항입니다. 하지만, 3조에 따르면 일정이 급한 경우 필수 항목만 먼저 검토해달라고 요청할 수 있습니다. \n\n이제 방향을 정해야 할 시점인데, 지원자님께서는 어떻게 진행할지 선택해 주시면 좋겠습니다. 검토팀에 요청할 사항을 정리하시면서, 고객사와의 약속을 어떻게 지킬 수 있을지에 대해 논의해보면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 5,
+     "user": "필수 항목만 먼저 검토받으면 고객 약속도 일부 지키고 위험도 줄일 수 있어요. 검토팀엔 제가 오늘 요청할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 13333,
+     "tokens_out": 313,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "supporting the applicant's decision to request a review of essential items first."
+      },
+      {
+       "persona": "lead",
+       "intent": "acknowledging the decision and emphasizing the importance of following the review regulations."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 15,
+       "speaker": "peer",
+       "text": "필수 항목만 먼저 검토받는 방향으로 진행하시면 고객사와의 약속을 지키면서 위험도 줄일 수 있을 것 같습니다. 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토해 달라고 요청할 수 있으니 이 점을 잘 활용해 주세요. 검토팀에 요청하실 때 필요한 사항을 잘 정리하시길 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 16,
+       "speaker": "lead",
+       "text": "도현님 말씀처럼, 필수 항목만 먼저 검토받는 방향으로 진행하시면 고객사와의 약속을 지키면서 위험을 줄일 수 있을 것 같습니다. 하지만 여전히 개인정보·보안 검토 규정 1조에 따르면, 계좌 정보와 같은 민감한 기능은 반드시 검토를 받아야 하므로, 검토팀에 요청할 사항을 잘 정리하는 것이 중요합니다. 지원자님께서도 검토팀에 요청할 내용을 신중히 준비해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 6,
+     "user": "부분 출시 범위는 오늘 오후까지 정리해서 공유할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 21003,
+     "tokens_out": 480,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지금 진행 중인 검토 요청을 정리하고, 고객사와의 약속을 지키기 위한 구체적인 계획을 세우는 방향으로 논의하자."
+      },
+      {
+       "persona": "lead",
+       "intent": "지원자가 정리한 내용을 바탕으로 검토팀에 요청할 사항을 신중히 준비하도록 독려하자."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 18,
+       "speaker": "peer",
+       "text": "고객사와의 약속을 지키기 위해 부분 출시 범위를 정리하는 건 좋은 방향입니다. 검토 요청은 개인정보·보안 검토 규정 3조에 따라 진행하시면 되며, 필수 항목만 먼저 검토받는 요청을 꼭 포함해 주세요. 요청 내용이 명확해야 검토팀에서 더 효과적으로 진행할 수 있을 겁니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 19,
+       "speaker": "lead",
+       "text": "정리하신 내용 바탕으로 검토팀에 요청할 사항을 신중히 준비하시는 것이 중요합니다. 개인정보·보안 검토 규정 2조에 따르면, 요청 후 영업일 기준 3일 안에 검토 결과가 있을 것이니, 시간 계획도 잘 세워주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 20,
+       "speaker": "lead",
+       "text": "지원자님이 말씀하신 대로, 검토팀에 필수 항목만 먼저 검토해 달라고 요청하고 통과한 범위만 금요일에 출시하는 방향으로 진행하시는 것은 좋은 접근이라고 생각합니다. 그런데, 이 과정에서 검토팀에 요청할 때 누가, 언제, 어떤 내용을 포함해서 요청할 것이며, 그 요청이 실제로 이루어질 수 있을지에 대한 준비가 필요합니다. 특히, 검토팀의 일정이 밀려 있을 경우 요청이 제대로 반영되지 않을 수도 있다는 우려가 있습니다. 이 점을 잘 고려하셔서 요청 내용을 신중히 준비해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 7,
+     "user": "요청은 제가 오늘 3시까지 보내고, 통과 범위는 목요일에 확정할게요. 우려하신 지연은 화요일 전체 검토로 보완할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 16389,
+     "tokens_out": 337,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지원자가 요청을 보낼 계획을 세운 것에 대해 긍정적으로 반응하고, 검토팀에 요청할 내용이 명확해야 한다는 점을 강조한다."
+      },
+      {
+       "persona": "lead",
+       "intent": "지원자의 계획에 대해 긍정적으로 반응하고, 요청 내용의 신중함과 검토팀의 일정에 대한 우려를 다시 한번 강조한다."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 22,
+       "speaker": "peer",
+       "text": "해당 계획은 아주 긍정적입니다. 요청 내용이 명확해야 검토팀이 더 효율적으로 진행할 수 있으니, 오늘 3시까지 보내실 때 필요한 사항을 잘 정리해 주시면 좋겠습니다. 개인정보·보안 검토 규정 2조에 따라 요청 후 영업일 기준 3일 안에 결과를 받을 수 있으니, 시간 계획도 고려해 주세요.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 23,
+       "speaker": "lead",
+       "text": "도현님 말씀에 동의합니다. 요청 내용을 명확히 준비하는 것이 검토팀이 효율적으로 진행할 수 있는 중요한 포인트입니다. 또한, 검토팀 일정이 밀릴 경우 요청자에게 예상 일정을 알려줘야 한다는 규정(개인정보·보안 검토 규정 2조)에 따라, 주의 깊게 준비하시는 것이 필요합니다. 지원자님, 오늘 3시까지 요청을 보내실 때 필요한 사항을 잘 정리해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 8,
+     "user": "정리하면 오늘 검토 요청, 금요일 부분 출시, 다음 주 나머지 출시예요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 25230,
+     "tokens_out": 412,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "intent": "확인 및 강조: 지원자가 정리한 내용을 확인하고, 검토 요청의 중요성을 강조한다."
+      },
+      {
+       "persona": "peer",
+       "intent": "지지: 지원자의 계획에 동의하며, 검토 요청이 효율적으로 이루어질 수 있도록 지원하겠다는 의사를 전한다."
+      }
+     ],
+     "decision": "finish",
+     "lines": [
+      {
+       "idx": 25,
+       "speaker": "lead",
+       "text": "말씀하신 대로, 오늘 검토 요청을 보내고 금요일에 부분 출시를 진행하는 것은 좋은 계획입니다. 검토 요청 후 영업일 기준 3일 안에 결과를 받을 수 있다는 점(개인정보·보안 검토 규정 2조)을 고려하셔서 잘 준비해 주시면 좋겠습니다. 또한, 요청 내용이 명확해야 검토팀이 효율적으로 진행할 수 있으니, 이 점도 잊지 마세요.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 26,
+       "speaker": "peer",
+       "text": "말씀하신 대로 오늘 검토 요청을 보내고 금요일에 부분 출시를 진행하는 것은 매우 좋은 계획입니다. 검토 요청 후 영업일 기준 3일 안에 결과를 받을 수 있다는 점(개인정보·보안 검토 규정 2조)을 참고하시면 더욱 좋을 것 같습니다. 요청 내용을 명확히 준비하시는 것도 검토팀의 효율성을 높이는데 중요한 요소이니 잘 준비해 주세요. 필요하시다면 언제든지 도움을 드릴 수 있습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 27,
+       "speaker": "lead",
+       "text": "오늘 논의한 내용을 바탕으로 검토 요청을 오늘 보내고, 금요일에 부분 출시 후 다음 주에 나머지를 출시하는 방향으로 진행할 수 있겠습니다. 고마워요!",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "closing"
+      }
+     ]
+    }
+   ],
+   "dialogue": null
+  },
+  {
+   "flag": "0",
+   "cond": "A",
+   "variant": "markup",
+   "rep": 0,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "개인정보·보안 검토 규정에 따르면, 개인정보를 새로 수집하거나 다른 곳에 보내는 기능은 출시 전에 검토를 받아야 합니다. 검토가 필요한 범위는 이러한 기능에 해당하니, 이 점을 고려해 준비 사항을 정리해 주시면 좋겠습니다. 필요한 부분에 대해서는 우선적으로 검토 요청을 할 수도 있으니, 그 점도 참고해 주세요.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "4조 조건부 출시"
+      }
+     ],
+     "kind": "react"
+    },
+    {
+     "idx": 3,
+     "speaker": "peer",
+     "text": "서윤님이 말씀하신 규정은 개인정보를 새로 수집하거나 다른 곳에 보내는 기능이 검토 대상이라는 점에서 정확합니다. 하지만 '개인정보·보안 검토 규정' 3조에 따르면 일정이 급한 경우 필수 항목만 먼저 검토해 달라고 요청할 수 있습니다. 이를 통해 고객사 약속을 지키는 방향으로 검토를 병행할 수 있을 것 같습니다. 지원자님, 고객사와의 약속을 지키기 위해 어떤 부분을 먼저 준비할 수 있을지 함께 논의해보면 좋겠습니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "4조 조건부 출시"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [
+      {
+       "id": 102,
+       "artifact_id": "a3",
+       "anchor": {
+        "line_start": 3,
+        "line_end": 4,
+        "quote": null
+       },
+       "kind": "risk",
+       "text": "계좌번호 전체가 알림 본문과 로그에 그대로 들어가요. 뒤 4자리만 써야 하지 않나요?",
+       "msg_idx": 4,
+       "created_at": 1792550339.9388
+      }
+     ],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 12831,
+     "tokens_out": 541,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지원자가 검토팀 일정 지연의 원인과 부분 검토 가능성을 알아보겠다고 하니, 이도현 동료가 지원자에게 함께 논의하자는 제안을 이어가며 대화를 진행할 것이다."
+      },
+      {
+       "persona": "lead",
+       "intent": "한서윤 팀장이 검토팀 일정 지연에 대한 원인과 관련된 규정이나 절차를 다시 강조하며, 지원자에게 필요한 정보를 제공할 것이다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "검토팀 일정 지연의 원인은 요청 후 3일 안에 결과를 주도록 되어 있지만, 상황에 따라 일정이 밀릴 수 있습니다. 검토팀에서 예상 일정을 요청자에게 알려준다는 점도 고려해야 할 것 같습니다. 그리고 부분 검토에 대해서는 규정에 따라 일정이 급한 경우 필수 항목만 먼저 검토해 달라고 요청할 수 있으니, 이 점을 활용하면 고객사와의 약속을 지키는 데 도움이 될 수 있을 것 같습니다. 어떤 부분부터 준비할까요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "lead",
+       "text": "검토팀은 요청 후 영업일 기준 3일 안에 결과를 주도록 되어 있긴 하지만, 상황에 따라 일정이 밀릴 수 있다고 합니다. 이 점은 '개인정보·보안 검토 규정' 2조에 명시되어 있습니다. 검토팀에서 예상 일정을 요청자에게 알린다는 것도 중요하니, 그 점도 염두에 두시고 준비하시기 바랍니다. 필요한 부분에 대해서는 먼저 검토 요청을 하시는 게 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 7,
+       "speaker": "peer",
+       "text": "고객사와의 약속을 지키기 위해 저도 검토팀에 먼저 제출하고, 그 과정에서 피드백을 통해 보완하는 방안을 제안하고 싶습니다. '개인정보·보안 검토 규정' 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토해 달라고 요청할 수 있으니, 이를 활용할 수 있을 것 같습니다. 서윤님과 지원자님 의견이 다를 수 있지만, 서로의 입장을 고려하면서 최적의 방안을 찾아보면 좋겠습니다. 어떤 생각이신가요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": null
+  },
+  {
+   "flag": "0",
+   "cond": "A",
+   "variant": "avoid",
+   "rep": 0,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "개인정보·보안 검토 규정에 따르면, 개인정보를 새로 수집하거나 다른 곳에 보내는 기능은 출시 전에 검토를 받아야 합니다. 검토가 필요한 범위는 이러한 기능에 해당하니, 이 점을 고려해 준비 사항을 정리해 주시면 좋겠습니다. 필요한 부분에 대해서는 우선적으로 검토 요청을 할 수도 있으니, 그 점도 참고해 주세요.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "4조 조건부 출시"
+      }
+     ],
+     "kind": "react"
+    },
+    {
+     "idx": 3,
+     "speaker": "peer",
+     "text": "서윤님이 말씀하신 규정은 개인정보를 새로 수집하거나 다른 곳에 보내는 기능이 검토 대상이라는 점에서 정확합니다. 하지만 '개인정보·보안 검토 규정' 3조에 따르면 일정이 급한 경우 필수 항목만 먼저 검토해 달라고 요청할 수 있습니다. 이를 통해 고객사 약속을 지키는 방향으로 검토를 병행할 수 있을 것 같습니다. 지원자님, 고객사와의 약속을 지키기 위해 어떤 부분을 먼저 준비할 수 있을지 함께 논의해보면 좋겠습니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "4조 조건부 출시"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "서윤님은 검토 일정이 밀린 게 우리 출시에 어떤 영향이 있다고 보세요?",
+     "addressed": "lead",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 8584,
+     "tokens_out": 317,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "intent": "서윤 팀장이 검토 일정 지연이 출시 일정에 미치는 영향을 설명한다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "lead",
+       "text": "검토 일정이 지연되면 출시 일정에 영향을 미칠 수 있습니다. '개인정보·보안 검토 규정' 2조에 따르면, 검토팀 일정이 밀릴 경우 요청자에게 예상 일정을 알리게 되어 있어, 이로 인해 우리가 계획했던 일정도 조정이 필요할 수 있습니다. 또한, 규정 3조에 따르면 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하니, 이를 통해 일정 조율을 시도해보는 것도 고려할 수 있습니다. 필요한 부분을 우선적으로 정리해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "peer",
+       "text": "검토 일정이 밀려서 고객사 약속을 지키는 게 우려되는데, 이전 분기처럼 먼저 기획안을 제출하고 검토는 나중에 보완하는 방법을 고려해보면 좋을 것 같습니다. \"개인정보·보안 검토 규정\" 3조에 따르면, 급한 경우 필수 항목만 먼저 검토 요청이 가능하니 이를 활용하면 일정 조율이 가능할 것 같습니다. 서윤님, 이 방법에 대해 어떻게 생각하시나요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": null
+  },
+  {
+   "flag": "1",
+   "cond": "A",
+   "variant": "base",
+   "rep": 0,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [],
+   "turns": [
+    {
+     "n": 1,
+     "user": "기획안은 90% 됐고 고객사 약속은 금요일이에요. 검토가 꼭 필요한 범위가 어디까지인지 서윤님께 먼저 확인하고 싶어요.",
+     "addressed": "lead",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 10075,
+     "tokens_out": 553,
+     "notes": {},
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "ask_clarify",
+       "target": "user",
+       "issue": "개인정보·보안 검토의 범위",
+       "intent": "검토가 필요한 범위에 대한 구체적인 내용이 필요합니다.",
+       "form": "plain",
+       "markup_id": null
+      },
+      {
+       "persona": "peer",
+       "move": "build_on",
+       "target": "lead",
+       "issue": "개인정보·보안 검토의 범위",
+       "intent": "고객사와의 약속을 고려할 때, 검토 범위를 최소화할 수 있는 방법을 찾아야 합니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 2,
+       "speaker": "lead",
+       "text": "검토가 필요한 범위에 대해 구체적으로 어떤 내용이 포함되는지 말씀해 주실 수 있을까요? 이 정보가 필요합니다.",
+       "sources": [],
+       "kind": "react"
+      },
+      {
+       "idx": 3,
+       "speaker": "peer",
+       "text": "서윤님, 검토 범위를 최소화할 수 있는 방법을 찾아야 합니다. 규정에 따르면, 일정이 급한 경우 필수 항목만 검토해 달라고 요청할 수 있습니다. 이를 통해 고객사와의 약속을 지킬 수 있을 것 같습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 6,
+     "tokens_in": 14106,
+     "tokens_out": 595,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.self_repeat": 1,
+      "repetition_guard.re_quote": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "challenge",
+       "target": "user",
+       "issue": "검토가 필요한 범위 확인",
+       "intent": "검토 범위를 최소화하는 것이 고객사와의 약속을 지키는 데 도움이 될 수 있습니다. 규정에 따라 필수 항목만 검토 요청이 가능하니, 이 점을 고려해 주시기 바랍니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "검토팀의 일정이 밀린 이유를 확인한 뒤, 필요한 범위를 조정할 수 있는 방법을 함께 논의해보면 좋을 것 같습니다. 그렇게 되면 고객사와의 약속을 지키는 데 도움이 될 것입니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "peer",
+       "text": "지난 분기와 같이 먼저 기획안을 제출하고, 검토는 나중에 보완하는 방법도 고려해보면 좋을 것 같습니다. 고객사와의 약속을 지키기 위해 이런 접근이 필요할 것 같아요. 서윤님께서도 이 방안을 함께 논의해보실 수 있을까요?",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 3,
+     "user": "도현님 말씀처럼 지난번엔 문제가 없었지만, 이번엔 계좌 정보가 들어가서 조심스러워요. 도현님은 어떻게 보세요?",
+     "addressed": "peer",
+     "markups": [],
+     "error": null,
+     "llm_calls": 4,
+     "tokens_in": 9488,
+     "tokens_out": 682,
+     "notes": {},
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "challenge",
+       "target": "user",
+       "issue": "검토가 필요한 범위 확인",
+       "intent": "계좌 정보가 포함된 기획안은 더욱 신중하게 검토해야 하므로, 필수 항목만 검토하자는 주장은 위험할 수 있습니다. 검토 범위를 최소화하는 대신, 필요한 모든 정보를 충분히 검토하는 것이 더 중요하다고 생각합니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 8,
+       "speaker": "peer",
+       "text": "계좌 정보가 포함된 기획안은 더욱 신중하게 검토해야 하므로, 필수 항목만 검토하자는 주장은 위험할 수 있습니다. 개인정보·보안 검토 규정에 따르면, 계좌 정보와 같은 개인정보는 출시 전에 반드시 검토를 받아야 합니다. 따라서 필요한 모든 정보를 충분히 검토하는 것이 더 중요하다고 생각합니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 4,
+     "user": "두 분 의견을 같이 놓고 일정과 위험을 비교해 볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 6,
+     "tokens_in": 14273,
+     "tokens_out": 650,
+     "notes": {
+      "repetition_guard": 2,
+      "repetition_guard.echo": 1,
+      "repetition_guard.same_opener": 2
+     },
+     "tools": [],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "ask_clarify",
+       "target": "user",
+       "issue": "검토가 필요한 범위 확인",
+       "intent": "판단에 필요한 정보 하나를 구체적으로 되묻는다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 10,
+       "speaker": "peer",
+       "text": "검토 범위에 대해 어떤 구체적인 항목들이 고려되어야 할까요? 그렇게 되면 필수적으로 검토해야 할 사항을 명확히 할 수 있을 것 같습니다.",
+       "sources": [],
+       "kind": "react"
+      },
+      {
+       "idx": 11,
+       "speaker": "lead",
+       "text": "검토 범위에 대한 논의가 필요할 것 같습니다. 이제 방향을 정할 시점인 것 같은데, 지원자님께서는 어떤 방식으로 진행하고 싶으신가요? 필요한 범위를 조정할 방법에 대해 함께 고민해봅시다.",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 5,
+     "user": "필수 항목만 먼저 검토받으면 고객 약속도 일부 지키고 위험도 줄일 수 있어요. 검토팀엔 제가 오늘 요청할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 12523,
+     "tokens_out": 646,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.self_repeat": 1,
+      "repetition_guard.re_quote": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "challenge",
+       "target": "user",
+       "issue": "검토 범위 확인",
+       "intent": "계좌 정보와 같은 개인정보는 반드시 검토를 받아야 하므로, 필수 항목만 검토하자는 주장은 위험할 수 있습니다. 검토 범위를 최소화하는 것이 고객 약속을 지키는 데 도움이 되지 않을 수 있습니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 13,
+       "speaker": "peer",
+       "text": "검토팀에 요청하는 대안이 필요하다면, 필수 항목 외에 어떤 항목이 포함될 수 있을지 구체적으로 논의해 보아야 할 것 같습니다. 고객 약속을 지키기 위해서라도 검토 범위를 명확히 하는 것이 중요합니다. 어떤 의견이 있으신가요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 6,
+     "user": "부분 출시 범위는 오늘 오후까지 정리해서 공유할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 6,
+     "tokens_in": 14988,
+     "tokens_out": 770,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.same_opener": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "challenge",
+       "target": "user",
+       "issue": "검토 범위에 대한 논의",
+       "intent": "검토 범위에 대해 구체적인 항목을 정리하는 것이 필수적이다. 검토팀에 요청하기 전에 어떤 항목이 포함될지 명확히 해야 한다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 15,
+       "speaker": "peer",
+       "text": "구체적인 항목을 정리하는 것이 검토 범위에서 필수적입니다. **개인정보·보안 검토 규정**에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토받을 수 있습니다. 따라서 검토팀에 요청하기 전에 어떤 항목이 포함될지 명확히 해야 합니다. 이 점에서 검토 범위에 대한 구체적인 논의가 필요하다고 생각합니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 16,
+       "speaker": "lead",
+       "text": "지금까지 논의된 내용을 바탕으로, 지원자님께서 제안하신 절충안에 대해 구체적으로 확인해보면 좋을 것 같습니다. 검토팀에 필수 항목만 먼저 봐 달라고 요청하는 것은 좋은 아이디어인데요. 이 경우, 누가 이 요청을 언제까지 진행할 건지, 어떤 항목들이 포함될지를 명확히 해야 할 것 같습니다. 검토팀이 요청을 수용하지 않을 경우 일정이 더 늦어질 수 있다는 우려도 있으니, 이 부분에 대한 대비가 필요할 것 같습니다. 어떻게 생각하시나요?",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 7,
+     "user": "요청은 제가 오늘 3시까지 보내고, 통과 범위는 목요일에 확정할게요. 우려하신 지연은 화요일 전체 검토로 보완할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 4,
+     "tokens_in": 10171,
+     "tokens_out": 605,
+     "notes": {},
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "propose",
+       "target": "user",
+       "issue": "검토 범위 확인",
+       "intent": "필수 항목 외에 어떤 항목을 포함할지 구체적으로 정리하여 검토팀에 요청하는 것이 필요합니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 18,
+       "speaker": "peer",
+       "text": "필수 항목 외에 어떤 항목을 포함할지 구체적으로 정리하여 검토팀에 요청하는 것이 필요합니다. 예를 들어, 고객 정보와 관련된 기능이 있다면 그 항목들을 우선적으로 정리해야 할 것 같습니다. 이 경우, 요청은 지우님이 오늘 3시까지 진행하고, 포함할 항목은 오늘 오후에 정리된 부분 출시 범위를 바탕으로 정리하면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 8,
+     "user": "정리하면 오늘 검토 요청, 금요일 부분 출시, 다음 주 나머지 출시예요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 6,
+     "tokens_in": 16210,
+     "tokens_out": 814,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.re_quote": 1,
+      "repetition_guard.same_opener": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "challenge",
+       "target": "user",
+       "issue": "검토 범위 확인",
+       "intent": "검토팀 요청 전 필수 항목 외에 어떤 항목이 포함될지 구체적으로 정리하는 것이 중요하다. 검토팀이 요청을 수용하지 않을 경우 일정이 더 늦어질 수 있다는 우려가 있지만, 필수 항목 외에 어떤 항목을 포함할지 명확히 하지 않으면 고객 약속을 지키기 어려울 수 있다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "finish",
+     "lines": [
+      {
+       "idx": 20,
+       "speaker": "peer",
+       "text": "어떤 항목을 포함할지 명확히 하지 않으면 고객 약속을 지키기 어렵습니다. **개인정보·보안 검토 규정**에 따르면, 통과한 범위만 출시할 수 있으니 이 점을 반드시 염두에 두어야 합니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 21,
+       "speaker": "lead",
+       "text": "- 지우님: 검토팀에 필수 항목 검토 요청 (오늘 3시까지)\n- 지우님: 금요일 부분 출시 (금요일)\n- 지우님: 다음 주 나머지 출시 (다음 주)\n- 지우님: 요청을 오늘 3시까지 보낼 것 (오늘 3시)\n- 지우님: 통과 범위를 목요일에 확정할 것 (목요일)\n- 지우님: 부분 출시 범위를 정리해서 공유할 것 (오늘 오후)\n\n좋아요, 오늘 이야기한 내용으로 정리해서 진행할게요. 고마워요!",
+       "sources": [],
+       "kind": "closing"
+      }
+     ]
+    }
+   ],
+   "dialogue": {
+    "version": 1,
+    "summary": "금요일 마감은 유지되며, '개인정보·보안 검토'는 다음 주 화요일로 연기되었다. 한서윤은 검토 범위에 대한 구체적인 확인을 제안했고, 이도현은 필수 항목 외에 포함할 항목을 구체적으로 정리하여 검토팀에 요청할 필요성을 주장했다. 지우는 필수 항목만 먼저 검토받고 요청을 오늘 3시까지 보내겠다고 약속하며, 통과 범위는 목요일에 확정하겠다고 했다. 이도현은 요청이 오늘 3시까지 진행되고, 포함할 항목은 오늘 오후에 정리된 부분 출시 범위를 바탕으로 해야 한다고 강조했다.",
+    "issues": [
+     {
+      "id": "i1",
+      "title": "개인정보·보안 검토",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     },
+     {
+      "id": "i2",
+      "title": "검토가 필요한 범위 확인",
+      "status": "open",
+      "raised_by": "user",
+      "last_idx": 1
+     }
+    ],
+    "commitments": [
+     {
+      "who": "user",
+      "what": "검토가 필요한 범위를 서윤님께 확인할 것",
+      "due": null,
+      "idx": 1
+     },
+     {
+      "who": "user",
+      "what": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼 것",
+      "due": "오늘",
+      "idx": 4
+     },
+     {
+      "who": "user",
+      "what": "두 분 의견을 같이 놓고 일정과 위험을 비교해 볼 것",
+      "due": null,
+      "idx": 9
+     },
+     {
+      "who": "user",
+      "what": "검토팀에 요청할 것",
+      "due": "오늘",
+      "idx": 12
+     },
+     {
+      "who": "user",
+      "what": "부분 출시 범위를 정리해서 공유할 것",
+      "due": "오늘 오후",
+      "idx": 14
+     },
+     {
+      "who": "user",
+      "what": "요청을 오늘 3시까지 보낼 것",
+      "due": "오늘 3시",
+      "idx": 17
+     },
+     {
+      "who": "user",
+      "what": "통과 범위를 목요일에 확정할 것",
+      "due": "목요일",
+      "idx": 17
+     },
+     {
+      "who": "user",
+      "what": "오늘 검토 요청",
+      "due": "오늘 3시",
+      "idx": 19
+     },
+     {
+      "who": "user",
+      "what": "금요일 부분 출시",
+      "due": "금요일",
+      "idx": 19
+     },
+     {
+      "who": "user",
+      "what": "다음 주 나머지 출시",
+      "due": "다음 주",
+      "idx": 19
+     }
+    ],
+    "positions": {
+     "lead": {
+      "claim": "검토 범위에 대한 논의가 필요하다.",
+      "conceded": null
+     },
+     "peer": {
+      "claim": "검토 범위에서 구체적인 항목들이 고려되어야 한다.",
+      "conceded": null
+     },
+     "user": {
+      "claim": "필수 항목만 먼저 검토받으면 고객 약속도 일부 지키고 위험도 줄일 수 있다."
+     }
+    },
+    "turns": {
+     "lead": {
+      "last_idx": 21,
+      "count": 4
+     },
+     "peer": {
+      "last_idx": 20,
+      "count": 9
+     }
+    },
+    "markups_seen": [],
+    "cited": [],
+    "upto_idx": 19,
+    "last_moves": [
+     {
+      "persona": "peer",
+      "move": "challenge",
+      "issue": "검토가 필요한 범위 확인",
+      "idx": 8
+     },
+     {
+      "persona": "peer",
+      "move": "ask_clarify",
+      "issue": "검토가 필요한 범위 확인",
+      "idx": 10
+     },
+     {
+      "persona": "peer",
+      "move": "challenge",
+      "issue": "검토 범위 확인",
+      "idx": 13
+     },
+     {
+      "persona": "peer",
+      "move": "challenge",
+      "issue": "검토 범위에 대한 논의",
+      "idx": 15
+     },
+     {
+      "persona": "peer",
+      "move": "propose",
+      "issue": "검토 범위 확인",
+      "idx": 18
+     },
+     {
+      "persona": "peer",
+      "move": "challenge",
+      "issue": "검토 범위 확인",
+      "idx": 20
+     }
+    ]
+   }
+  },
+  {
+   "flag": "1",
+   "cond": "A",
+   "variant": "markup",
+   "rep": 0,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "검토가 필요한 범위에 대해 구체적으로 어떤 내용이 포함되는지 말씀해 주실 수 있을까요? 이 정보가 필요합니다.",
+     "sources": [],
+     "kind": "react"
+    },
+    {
+     "idx": 3,
+     "speaker": "peer",
+     "text": "서윤님, 검토 범위를 최소화할 수 있는 방법을 찾아야 합니다. 규정에 따르면, 일정이 급한 경우 필수 항목만 검토해 달라고 요청할 수 있습니다. 이를 통해 고객사와의 약속을 지킬 수 있을 것 같습니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "2조 검토 기간"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [
+      {
+       "id": 102,
+       "artifact_id": "a3",
+       "anchor": {
+        "line_start": 3,
+        "line_end": 4,
+        "quote": null
+       },
+       "kind": "risk",
+       "text": "계좌번호 전체가 알림 본문과 로그에 그대로 들어가요. 뒤 4자리만 써야 하지 않나요?",
+       "msg_idx": 4,
+       "created_at": 1792550408.912385
+      }
+     ],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 11732,
+     "tokens_out": 572,
+     "notes": {
+      "artifact_opened": 1
+     },
+     "tools": [
+      "business.get_artifact"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "address_markup",
+       "target": "user",
+       "issue": "검토 범위 최소화",
+       "intent": "검토 범위를 최소화하는 것이 고객사와의 약속을 지키는 데 도움이 될 수 있다는 점에서, 서윤님이 검토 범위를 넓히는 방향으로만 생각하고 계신 것 같습니다. 규정에 따라 필수 항목만 검토해 달라고 요청할 수 있는 가능성을 고려해 주셨으면 합니다.",
+       "form": "plain",
+       "markup_id": "102"
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "해당 마크업에 대해, L3에서 계좌번호가 전체 포함되는 것은 개인정보 보호 측면에서 문제가 될 수 있습니다. 따라서 이 부분은 뒤 4자리만 표시하도록 수정해야 할 것으로 보입니다. 로그에서도 계좌번호를 전체가 아닌 부분적으로만 남기는 것이 좋겠습니다.",
+       "sources": [],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "peer",
+       "text": "지난 분기처럼 먼저 기획안을 제출하고, 검토는 나중에 보완하는 방향으로 진행해보는 건 어떨까요? 고객사와의 일정이 있으니, 이렇게 하면 빠르게 진행할 수 있을 것 같습니다. 서윤님과 의견이 다를 수 있지만, 검토를 병행하며 필요한 부분은 사후에 보완할 수 있을 거라 생각합니다.",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": {
+    "version": 1,
+    "summary": "금요일 마감은 유지되며, '개인정보·보안 검토'는 다음 주 화요일로 연기되었다. 한서윤은 검토가 필요한 범위에 대한 구체적인 내용을 요청했다. 이도현은 검토 범위를 최소화할 방법을 찾아야 한다고 주장하며, 필수 항목만 검토해 달라고 요청할 수 있다고 말했다. 지우는 검토팀 일정이 밀린 이유와 부분 검토 가능성을 알아보겠다고 약속했다.",
+    "issues": [
+     {
+      "id": "i1",
+      "title": "개인정보·보안 검토",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     },
+     {
+      "id": "i2",
+      "title": "검토가 필요한 범위 확인",
+      "status": "open",
+      "raised_by": "user",
+      "last_idx": 1
+     }
+    ],
+    "commitments": [
+     {
+      "who": "user",
+      "what": "검토가 필요한 범위를 서윤님께 확인할 것",
+      "due": null,
+      "idx": 1
+     },
+     {
+      "who": "user",
+      "what": "검토팀 일정이 밀린 이유와 부분 검토 가능성을 알아볼 것",
+      "due": null,
+      "idx": 4
+     }
+    ],
+    "positions": {
+     "lead": {
+      "claim": "검토가 필요한 범위에 대해 구체적으로 어떤 내용이 포함되는지 말씀해 주실 수 있을까요?",
+      "conceded": null
+     },
+     "peer": {
+      "claim": "검토 범위를 최소화할 수 있는 방법을 찾아야 합니다.",
+      "conceded": null
+     },
+     "user": {
+      "claim": "검토가 꼭 필요한 범위가 어디까지인지 서윤님께 먼저 확인하고 싶다."
+     }
+    },
+    "turns": {
+     "lead": {
+      "last_idx": 2,
+      "count": 1
+     },
+     "peer": {
+      "last_idx": 6,
+      "count": 3
+     }
+    },
+    "markups_seen": [
+     "102"
+    ],
+    "cited": [],
+    "upto_idx": 4,
+    "last_moves": [
+     {
+      "persona": "lead",
+      "move": "ask_clarify",
+      "issue": "개인정보·보안 검토의 범위",
+      "idx": 2
+     },
+     {
+      "persona": "peer",
+      "move": "build_on",
+      "issue": "개인정보·보안 검토의 범위",
+      "idx": 3
+     },
+     {
+      "persona": "peer",
+      "move": "address_markup",
+      "issue": "검토 범위 최소화",
+      "idx": 5
+     }
+    ]
+   }
+  },
+  {
+   "flag": "1",
+   "cond": "A",
+   "variant": "avoid",
+   "rep": 0,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "검토가 필요한 범위에 대해 구체적으로 어떤 내용이 포함되는지 말씀해 주실 수 있을까요? 이 정보가 필요합니다.",
+     "sources": [],
+     "kind": "react"
+    },
+    {
+     "idx": 3,
+     "speaker": "peer",
+     "text": "서윤님, 검토 범위를 최소화할 수 있는 방법을 찾아야 합니다. 규정에 따르면, 일정이 급한 경우 필수 항목만 검토해 달라고 요청할 수 있습니다. 이를 통해 고객사와의 약속을 지킬 수 있을 것 같습니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "2조 검토 기간"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "서윤님은 검토 일정이 밀린 게 우리 출시에 어떤 영향이 있다고 보세요?",
+     "addressed": "lead",
+     "markups": [],
+     "error": null,
+     "llm_calls": 6,
+     "tokens_in": 14190,
+     "tokens_out": 664,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.echo": 1,
+      "repetition_guard.re_quote": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "challenge",
+       "target": "user",
+       "issue": "검토 일정이 밀린 게 우리 출시에 미치는 영향",
+       "intent": "검토 일정이 밀리면 고객사와의 약속을 지키기 어려워질 수 있으며, 이는 신뢰도에 부정적인 영향을 미칠 수 있습니다. 따라서 검토 범위를 최소화하는 것이 중요합니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "lead",
+       "text": "검토 일정이 밀리면 고객사와의 약속을 지키기 어려워져서 신뢰도에 **부정적인 영향**을 미칠 수 있습니다. 이 경우 가능하면 먼저 출시할 수 있는 기능을 정리해 팀장 승인을 요청하는 방안도 고려해봐야 합니다. 검토 범위를 최소화하는 것이 중요하다고 생각합니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "peer",
+       "text": "지난 분기처럼 먼저 기획안을 제출하고 검토는 나중에 보완하는 방안을 제안드리고 싶습니다. 고객사와의 약속을 지키기 위해 필요한 조치라고 생각합니다. 물론, 서윤님은 절차를 지키는 것이 중요하다고 보시겠지만, 이 상황에서 우리가 실행할 수 있는 두 가지 방안을 함께 고민해보면 좋을 것 같습니다.",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": {
+    "version": 1,
+    "summary": "금요일 마감은 유지되며, '개인정보·보안 검토'는 다음 주 화요일로 연기되었다. 한서윤은 검토가 필요한 범위에 대한 구체적인 내용을 요청했다. 이도현은 검토 범위를 최소화할 방법을 찾아야 한다고 주장하며, 규정에 따라 필수 항목만 검토해 달라고 요청할 수 있다고 제안했다. 지우는 검토 일정 지연이 출시 일정에 미치는 영향에 대해 한서윤에게 질문했다.",
+    "issues": [
+     {
+      "id": "i1",
+      "title": "개인정보·보안 검토",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     },
+     {
+      "id": "i2",
+      "title": "검토가 필요한 범위 확인",
+      "status": "open",
+      "raised_by": "user",
+      "last_idx": 1
+     }
+    ],
+    "commitments": [
+     {
+      "who": "user",
+      "what": "검토가 필요한 범위를 서윤님께 확인할 것",
+      "due": null,
+      "idx": 1
+     }
+    ],
+    "positions": {
+     "lead": {
+      "claim": "검토가 필요한 범위에 대해 구체적으로 어떤 내용이 포함되는지 말씀해 주실 수 있을까요? 이 정보가 필요합니다.",
+      "conceded": null
+     },
+     "peer": {
+      "claim": "검토 범위를 최소화할 수 있는 방법을 찾아야 합니다.",
+      "conceded": null
+     },
+     "user": {
+      "claim": "검토 일정이 밀린 게 우리 출시에 어떤 영향이 있다고 보세요?"
+     }
+    },
+    "turns": {
+     "lead": {
+      "last_idx": 5,
+      "count": 2
+     },
+     "peer": {
+      "last_idx": 6,
+      "count": 2
+     }
+    },
+    "markups_seen": [],
+    "cited": [],
+    "upto_idx": 4,
+    "last_moves": [
+     {
+      "persona": "lead",
+      "move": "ask_clarify",
+      "issue": "개인정보·보안 검토의 범위",
+      "idx": 2
+     },
+     {
+      "persona": "peer",
+      "move": "build_on",
+      "issue": "개인정보·보안 검토의 범위",
+      "idx": 3
+     },
+     {
+      "persona": "lead",
+      "move": "challenge",
+      "issue": "검토 일정이 밀린 게 우리 출시에 미치는 영향",
+      "idx": 5
+     }
+    ]
+   }
+  },
+  {
+   "flag": "0",
+   "cond": "B",
+   "variant": "base",
+   "rep": 0,
+   "condition": {
+    "lead": "competing",
+    "peer": "avoiding"
+   },
+   "avoid": "peer",
+   "prefix": [],
+   "turns": [
+    {
+     "n": 1,
+     "user": "기획안은 90% 됐고 고객사 약속은 금요일이에요. 검토가 꼭 필요한 범위가 어디까지인지 서윤님께 먼저 확인하고 싶어요.",
+     "addressed": "lead",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 7450,
+     "tokens_out": 356,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "intent": "검토가 필요한 범위에 대해 명확히 설명하고, 절차를 지키는 것이 중요하다는 점을 강조한다."
+      },
+      {
+       "persona": "peer",
+       "intent": "고객사 약속을 강조하며, 검토를 병행할 수 있는 방법에 대해 제안한다."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 2,
+       "speaker": "lead",
+       "text": "개인정보·보안 검토는 필수적으로 이루어져야 하며, 특히 새로운 개인정보를 수집하거나 전송하는 기능은 반드시 검토를 받아야 합니다. '개인정보·보안 검토 규정' 제1조에 따르면, 이러한 검토가 통과한 범위에서만 기능이 출시될 수 있습니다. 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하지만, 전체 검토는 꼭 필요합니다. 검토 일정이 밀리더라도 절차를 지키는 것이 중요하니, 이 점을 고려해 주시기 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 3,
+       "speaker": "peer",
+       "text": "검토는 반드시 필요한 절차라는 점에 동의합니다. 다만, '개인정보·보안 검토 규정' 제3조에 따르면 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하다고 나와 있습니다. 고객사 약속이 금요일이기 때문에, 필요한 부분을 먼저 제출하고 검토를 병행할 수 있는 방법을 찾아보는 것이 좋을 것 같습니다. 지원자님도 이 방법에 대해 어떻게 생각하시나요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 12870,
+     "tokens_out": 453,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지원자가 검토팀 일정 지연의 이유와 부분 검토 가능성을 알아보겠다고 하니, 이도현이 먼저 답변하여 지원자의 의견을 확인하고 조율할 수 있도록 한다."
+      },
+      {
+       "persona": "lead",
+       "intent": "이도현의 발언에 대해 한서윤이 검토 절차의 중요성을 강조하며 반박한다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "부분 검토는 가능하다는 점에 동의합니다. '개인정보·보안 검토 규정' 제3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능합니다. 검토팀이 일정을 지연할 경우, 요청자에게 예상 일정을 알려주도록 되어 있습니다. 이 점도 함께 확인해 보시면 좋을 것 같습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "lead",
+       "text": "부분 검토는 가능하다고 하더라도, 전체 검토를 반드시 거쳐야 하는 것은 변함이 없습니다. '개인정보·보안 검토 규정' 제1조에 따르면, 새로운 개인정보를 수집하거나 전송하는 기능은 출시 전에 반드시 검토를 받아야 합니다. 고객사 약속도 중요하지만, 개인정보 보호는 더 중요하니 절차를 준수하는 것이 필요합니다. 지원자님도 이 점을 꼭 기억해 주셨으면 합니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 7,
+       "speaker": "peer",
+       "text": "금요일까지 기획안을 제출해야 하니, 지난 분기처럼 검토 전에 먼저 내고 나중에 보완하는 방법도 고려해보면 좋을 것 같습니다. '개인정보·보안 검토 규정' 제3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하다고 하니 이 점을 활용할 수 있겠죠. 어떻게 생각하시나요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 3,
+     "user": "도현님 말씀처럼 지난번엔 문제가 없었지만, 이번엔 계좌 정보가 들어가서 조심스러워요. 도현님은 어떻게 보세요?",
+     "addressed": "peer",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 10454,
+     "tokens_out": 338,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "supporting the idea of partial review while acknowledging the sensitivity of the new information."
+      },
+      {
+       "persona": "lead",
+       "intent": "reiterating the importance of following the full review process due to the sensitive nature of the information."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 9,
+       "speaker": "peer",
+       "text": "계좌 정보가 포함된 기능이라면 확실히 신중해야겠네요. '개인정보·보안 검토 규정' 제1조에 따르면, 계좌 정보와 같은 개인정보를 새로 수집하는 기능은 출시 전에 검토를 받아야 합니다. 하지만, '개인정보·보안 검토 규정' 제3조에 따르면, 급한 경우 필수 항목만 먼저 검토 요청이 가능하니 이를 활용하는 방안도 고려해 볼 수 있을 것 같습니다. 이 점에서 지원자님 의견도 중요하니, 상황을 잘 판단해보면 좋겠네요.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 10,
+       "speaker": "lead",
+       "text": "계좌 정보와 같은 개인정보가 포함된 기능은 더욱 신중하게 다뤄야 하며, 반드시 '개인정보·보안 검토 규정' 제1조에 따라 검토를 받아야 합니다. 지난번처럼 검토 이전에 출시하는 방식은 가능하더라도, 전체 검토 후 출시하는 것이 원칙적으로 맞습니다. 고객사 약속도 이해하지만, 개인정보 보호는 더 중요하다는 점을 꼭 명심해 주시기 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 4,
+     "user": "두 분 의견을 같이 놓고 일정과 위험을 비교해 볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 17129,
+     "tokens_out": 473,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지원자가 두 사람의 의견을 비교하고 조율할 수 있도록 도와준다."
+      },
+      {
+       "persona": "lead",
+       "intent": "지원자가 비교한 내용을 바탕으로 개인정보 보호의 중요성을 강조한다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 12,
+       "speaker": "peer",
+       "text": "고객사 약속과 일정이 겹치는 상황이네요. 검토팀의 일정이 밀린 점도 고려해야 할 것 같습니다. '개인정보·보안 검토 규정' 제1조에 따르면, 계좌 정보와 같은 개인정보를 새로 수집하는 기능은 반드시 검토를 받아야 하며, 제3조에서 언급한 대로 부분 검토도 가능합니다. 이 부분을 잘 비교하고 조율해보시면 좋을 것 같습니다. 상황을 잘 판단하셔서 최선의 결정을 내리시길 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 13,
+       "speaker": "lead",
+       "text": "상황을 잘 검토하신 것 같습니다. 하지만 계좌 정보와 같은 개인정보는 더욱 신중하게 다뤄야 하며, 반드시 '개인정보·보안 검토 규정' 제1조에 따라 검토를 받아야 합니다. 검토팀의 일정이 밀린 상황에서도 절차를 준수하는 것이 중요하니, 이 점을 꼭 잊지 말아 주셨으면 합니다. 지원자님도 위험 요소를 잘 따져보시길 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 14,
+       "speaker": "lead",
+       "text": "검토 관련하여 상황을 잘 정리하신 것 같습니다. 이제 방향을 정해야 할 때입니다. 고객사 약속과 검토 절차를 고려하여 어떻게 진행할지 선택해 주시기 바랍니다. '개인정보·보안 검토 규정' 제1조에 따르면, 개인정보를 새로 수집하는 기능은 반드시 검토를 받아야 하니, 이 점을 반드시 기억해 주시면 좋겠습니다. 검토팀과 협의하여 필요한 정보를 명확히 하고, 어떤 절차로 진행할지 결정해 주시기 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 5,
+     "user": "필수 항목만 먼저 검토받으면 고객 약속도 일부 지키고 위험도 줄일 수 있어요. 검토팀엔 제가 오늘 요청할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 13672,
+     "tokens_out": 293,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "intent": "이해하고 동의하는 발언으로 지원자의 결정을 지지한다."
+      },
+      {
+       "persona": "peer",
+       "intent": "지원자의 결정에 대한 추가 의견을 제시하여 조율을 유도한다."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 16,
+       "speaker": "lead",
+       "text": "검토팀에 요청하시는 점은 아주 좋은 판단 같습니다. '개인정보·보안 검토 규정' 제3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하니 이 방법을 통해 고객사 약속을 지킬 수 있겠네요. 검토 요청이 잘 진행되길 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 17,
+       "speaker": "peer",
+       "text": "검토팀에 요청하시는 것은 좋은 판단입니다. '개인정보·보안 검토 규정' 제3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하니, 이 방법으로 고객사 약속을 지킬 수 있을 것입니다. 다만, 필수 항목이 어떤 것인지 명확히 정의하고 검토팀과 긴밀히 소통하는 것이 중요하니, 그 점도 고려해 주시면 좋겠네요. 필요한 지원이 있다면 말씀해 주세요.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 6,
+     "user": "부분 출시 범위는 오늘 오후까지 정리해서 공유할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 21366,
+     "tokens_out": 453,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "intent": "이해와 지지의 의사를 표현하며 지원자의 계획을 격려한다."
+      },
+      {
+       "persona": "peer",
+       "intent": "지원자의 계획에 대한 추가적인 조언이나 지원을 제안한다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 19,
+       "speaker": "lead",
+       "text": "계획을 오후까지 정리하셔서 공유하시는 점이 매우 긍정적입니다. '개인정보·보안 검토 규정' 제3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하니, 이 점을 잘 활용하실 수 있을 것입니다. 진행 상황 잘 정리하시고, 필요한 부분이 있으면 언제든지 말씀해 주시기 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 20,
+       "speaker": "peer",
+       "text": "서윤님 말씀처럼 오후까지 정리하시는 계획이 중요합니다. 검토팀과의 긴밀한 소통이 필요할 것 같으니, 필수 항목을 명확히 정의하는 것도 잊지 말아 주세요. 필요한 경우 언제든지 지원하겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 21,
+       "speaker": "lead",
+       "text": "지원자님이 제안하신 대안이 실행되면, 검토팀에 필수 항목을 요청하고 통과한 범위만 금요일에 제출하는 과정에서 실행의 부담이 발생할 수 있습니다. 검토팀에 요청하는 것은 누가, 언제, 어떤 방식으로 진행할 것인지 명확히 할 필요가 있습니다. 요청 후 영업일 기준 3일 안에 결과를 받아야 하므로, 금요일 마감에 맞추려면 오늘 중으로 요청해야 합니다. 또한, 검토팀의 예상 일정을 안내받을 수 있으니 그 점도 미리 확인해 주셔야 합니다. 일정이 촉박한 만큼 이 점에서 우려되는 부분이 있으니, 준비가 잘 이루어질 수 있도록 각 단계에서 명확히 조율해 주시기 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 7,
+     "user": "요청은 제가 오늘 3시까지 보내고, 통과 범위는 목요일에 확정할게요. 우려하신 지연은 화요일 전체 검토로 보완할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 16878,
+     "tokens_out": 368,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "intent": "지원자가 제안한 계획에 대해 검토팀과의 소통 및 절차 준수의 중요성을 강조하고, 전체 검토를 통해 보완할 수 있는 점을 확인한다."
+      },
+      {
+       "persona": "peer",
+       "intent": "지원자의 계획에 대해 긍정적으로 반응하며, 필요한 지원을 제공할 의사를 밝힌다."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 23,
+       "speaker": "lead",
+       "text": "계획을 세우신 대로 요청을 오늘 3시까지 보내고 통과 범위를 목요일에 확정하신 점은 좋은 접근입니다. '개인정보·보안 검토 규정' 제2조에 따르면 요청 후 영업일 기준 3일 안에 결과를 받아야 하므로, 요청을 잘 진행하신다면 일정이 맞춰질 것으로 보입니다. 전체 검토를 통해 보완할 수 있는 부분도 있으니, 검토팀과의 소통을 충분히 하셔서 진행하시기 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "리뷰 기준",
+         "section": "2조 리뷰어의 역할"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 24,
+       "speaker": "peer",
+       "text": "계획을 세우신 대로 요청을 오늘 3시까지 보내고 통과 범위를 목요일에 확정하시는 점은 매우 긍정적인 접근입니다. '개인정보·보안 검토 규정' 제3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하니 이 점을 잘 활용하실 수 있을 것입니다. 검토팀과의 소통을 충분히 하셔서 차질 없이 진행하시기 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 8,
+     "user": "정리하면 오늘 검토 요청, 금요일 부분 출시, 다음 주 나머지 출시예요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 25998,
+     "tokens_out": 401,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "intent": "확인 및 조율"
+      },
+      {
+       "persona": "peer",
+       "intent": "동의 및 추가 의견"
+      }
+     ],
+     "decision": "finish",
+     "lines": [
+      {
+       "idx": 26,
+       "speaker": "lead",
+       "text": "계획하신 대로 오늘 검토 요청을 보내고, 금요일에 부분 출시한 후 다음 주에 나머지를 출시하는 방향은 좋습니다. '개인정보·보안 검토 규정' 제3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하니 이 점을 잘 활용하실 수 있습니다. 요청 후 영업일 기준 3일 내에 결과를 받게 되므로, 검토팀과의 소통을 충분히 하셔서 차질 없이 진행하시길 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 27,
+       "speaker": "peer",
+       "text": "계획하신 대로 오늘 검토 요청을 보내고, 금요일에 부분 출시한 후 다음 주에 나머지를 출시하는 것은 좋은 접근으로 보입니다. '개인정보·보안 검토 규정' 제3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하니 이 점을 잘 활용하시면 좋겠네요. 검토팀과의 소통이 원활하게 이루어져서 모든 일정이 잘 맞춰지길 바랍니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 28,
+       "speaker": "lead",
+       "text": "오늘 논의한 내용은 검토 요청을 오늘 보내고, 금요일에 부분 출시한 후 다음 주에 나머지를 출시하는 방향으로 진행하기로 한 것입니다. 고맙습니다!",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "closing"
+      }
+     ]
+    }
+   ],
+   "dialogue": null
+  },
+  {
+   "flag": "0",
+   "cond": "B",
+   "variant": "markup",
+   "rep": 0,
+   "condition": {
+    "lead": "competing",
+    "peer": "avoiding"
+   },
+   "avoid": "peer",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "개인정보·보안 검토는 필수적으로 이루어져야 하며, 특히 새로운 개인정보를 수집하거나 전송하는 기능은 반드시 검토를 받아야 합니다. '개인정보·보안 검토 규정' 제1조에 따르면, 이러한 검토가 통과한 범위에서만 기능이 출시될 수 있습니다. 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하지만, 전체 검토는 꼭 필요합니다. 검토 일정이 밀리더라도 절차를 지키는 것이 중요하니, 이 점을 고려해 주시기 바랍니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "2조 검토 기간"
+      }
+     ],
+     "kind": "react"
+    },
+    {
+     "idx": 3,
+     "speaker": "peer",
+     "text": "검토는 반드시 필요한 절차라는 점에 동의합니다. 다만, '개인정보·보안 검토 규정' 제3조에 따르면 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하다고 나와 있습니다. 고객사 약속이 금요일이기 때문에, 필요한 부분을 먼저 제출하고 검토를 병행할 수 있는 방법을 찾아보는 것이 좋을 것 같습니다. 지원자님도 이 방법에 대해 어떻게 생각하시나요?",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "4조 조건부 출시"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [
+      {
+       "id": 102,
+       "artifact_id": "a3",
+       "anchor": {
+        "line_start": 3,
+        "line_end": 4,
+        "quote": null
+       },
+       "kind": "risk",
+       "text": "계좌번호 전체가 알림 본문과 로그에 그대로 들어가요. 뒤 4자리만 써야 하지 않나요?",
+       "msg_idx": 4,
+       "created_at": 1792550468.922451
+      }
+     ],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 12914,
+     "tokens_out": 472,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지원자가 검토팀 일정에 대한 정보를 알아보겠다고 하니, 이도현이 추가적인 의견을 제시할 수 있도록 유도한다."
+      },
+      {
+       "persona": "lead",
+       "intent": "이도현의 발언에 대해 반박하며, 검토팀 일정이 밀린 이유와 관계없이 절차를 지켜야 한다는 점을 강조한다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "검토팀 일정이 밀리는 경우, '개인정보·보안 검토 규정' 제2조에 따르면 요청 후 영업일 기준 3일 안에 결과를 준다고 되어 있습니다. 만약 검토팀이 일정에 대한 예상 일정을 알려준다면, 우리도 그에 맞춰 대응할 수 있을 것 같습니다. 검토팀의 상황을 정확히 확인해 보시는 게 좋을 것 같아요.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "lead",
+       "text": "검토팀 일정이 밀린 이유와 관계없이, 개인정보·보안 검토는 반드시 지켜져야 하는 절차입니다. '개인정보·보안 검토 규정' 제1조에 따르면, 새로운 개인정보를 수집하거나 전송하는 기능은 출시 전에 검토를 받아야 합니다. 만약 부분 검토를 요청하더라도, 전체 검토가 완료된 후에만 기능이 출시될 수 있으니 이 점을 명심해야 합니다. 지원자님도 이 절차의 중요성을 이해해 주셨으면 합니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 7,
+       "speaker": "peer",
+       "text": "고객사 약속이 금요일이라, 지난 분기처럼 먼저 기획안을 제출하고 검토는 나중에 보완하는 방안을 제안해 보려 합니다. '개인정보·보안 검토 규정' 제3조에 따르면 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하니, 이 방법으로 진행하면 좋을 것 같습니다. 서윤님은 어떻게 생각하시나요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": null
+  },
+  {
+   "flag": "0",
+   "cond": "B",
+   "variant": "avoid",
+   "rep": 0,
+   "condition": {
+    "lead": "competing",
+    "peer": "avoiding"
+   },
+   "avoid": "peer",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "개인정보·보안 검토는 필수적으로 이루어져야 하며, 특히 새로운 개인정보를 수집하거나 전송하는 기능은 반드시 검토를 받아야 합니다. '개인정보·보안 검토 규정' 제1조에 따르면, 이러한 검토가 통과한 범위에서만 기능이 출시될 수 있습니다. 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하지만, 전체 검토는 꼭 필요합니다. 검토 일정이 밀리더라도 절차를 지키는 것이 중요하니, 이 점을 고려해 주시기 바랍니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "2조 검토 기간"
+      }
+     ],
+     "kind": "react"
+    },
+    {
+     "idx": 3,
+     "speaker": "peer",
+     "text": "검토는 반드시 필요한 절차라는 점에 동의합니다. 다만, '개인정보·보안 검토 규정' 제3조에 따르면 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하다고 나와 있습니다. 고객사 약속이 금요일이기 때문에, 필요한 부분을 먼저 제출하고 검토를 병행할 수 있는 방법을 찾아보는 것이 좋을 것 같습니다. 지원자님도 이 방법에 대해 어떻게 생각하시나요?",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "4조 조건부 출시"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "도현님은 검토 일정이 밀린 게 우리 출시에 어떤 영향이 있다고 보세요?",
+     "addressed": "peer",
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 13082,
+     "tokens_out": 530,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "이도현이 검토 일정이 밀린 것이 출시에 미치는 영향에 대해 설명한다."
+      },
+      {
+       "persona": "lead",
+       "intent": "한서윤이 검토 일정이 밀린 것이 출시에 미치는 영향에 대해 반박하거나 추가 설명을 한다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "검토 일정이 밀리면 출시에 미치는 영향은 여러 가지가 있습니다. '개인정보·보안 검토 규정' 제3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하다고 명시되어 있습니다. 만약 필수 항목이 통과되지 않으면, 그 범위 내에서만 기능이 출시될 수 있게 됩니다. 따라서, 전체 검토가 지연되면 고객사와의 약속에 차질이 생길 수 있습니다. 이런 점을 고려할 때, 필요한 부분을 먼저 제출하고 검토를 병행하는 것이 좋다고 생각합니다.",
+       "sources": [
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "lead",
+       "text": "검토 일정이 밀린다고 하여 출시에 반드시 차질이 생기는 것은 아닙니다. '개인정보·보안 검토 규정' 제4조에 따르면, 고객 계약상 일정이 걸린 경우 개인정보를 다루지 않는 기능은 팀장 승인으로 먼저 출시하고 7일 안에 검토를 마칠 수 있습니다. 물론 필수 항목이 통과되지 않는다면 그 범위 내에서만 기능이 출시될 수 있지만, 검토팀에 일정 확인 후 필요한 부분을 미리 제출하는 방식도 고려해 보아야 합니다. 지원자님께서도 이 점에 대해 어떻게 생각하시나요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 7,
+       "speaker": "peer",
+       "text": "개인정보·보안 검토 규정에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하다고 되어 있습니다. 지난 분기에도 검토 전에 먼저 제출하고 그 후에 보완했던 경험이 있었습니다. 고객사와의 약속이 금요일인 만큼, 이번에도 필요한 부분을 먼저 내고 검토를 나중에 진행하는 방안을 고려해보면 좋을 것 같습니다. 서윤님께서도 이런 접근 방식에 대해 어떻게 생각하실지 궁금합니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": null
+  },
+  {
+   "flag": "1",
+   "cond": "B",
+   "variant": "base",
+   "rep": 0,
+   "condition": {
+    "lead": "competing",
+    "peer": "avoiding"
+   },
+   "avoid": "peer",
+   "prefix": [],
+   "turns": [
+    {
+     "n": 1,
+     "user": "기획안은 90% 됐고 고객사 약속은 금요일이에요. 검토가 꼭 필요한 범위가 어디까지인지 서윤님께 먼저 확인하고 싶어요.",
+     "addressed": "lead",
+     "markups": [],
+     "error": null,
+     "llm_calls": 4,
+     "tokens_in": 7812,
+     "tokens_out": 536,
+     "notes": {},
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "challenge",
+       "target": "user",
+       "issue": "검토 범위",
+       "intent": "개인정보·보안 검토는 필수적이며, 이를 우회하는 것은 위험할 수 있다. 검토 범위를 명확히 하지 않으면 문제가 발생할 수 있다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 2,
+       "speaker": "lead",
+       "text": "개인정보·보안 검토는 반드시 필요한 절차입니다. 이를 우회하면 이후에 문제가 발생할 수 있습니다. 검토 범위를 명확히 하지 않으면 불필요한 리스크가 생길 수 있으니, 고객사와의 약속이 중요하더라도 검토를 거치는 것이 더 안전하다고 봅니다. 이 점은 '개인정보·보안 검토 규정' 제1조에 명시되어 있습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 4,
+     "tokens_in": 8374,
+     "tokens_out": 525,
+     "notes": {},
+     "tools": [],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "answer",
+       "target": "user",
+       "issue": "지금 안건",
+       "intent": "상대의 질문·요청에 직접 답한다. 결론부터 말한다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 4,
+       "speaker": "lead",
+       "text": "검토가 필요한 범위는 개인정보 수집 및 송신 기능에 대한 부분입니다. 이러한 기능은 출시 전에 반드시 검토를 받아야 하며, 검토팀과 협의하여 정확한 범위를 확인하는 것이 좋습니다. 필요하시다면 검토팀 일정과 관련된 정보를 공유해 드리겠습니다.",
+       "sources": [],
+       "kind": "react"
+      },
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "검토팀 일정이 밀린 상황이니, 지난 분기처럼 먼저 기획안을 제출하고 검토는 나중에 보완하는 방향으로 진행해보는 건 어떨까요? 그렇게 하면 고객사와의 약속도 지킬 수 있을 것 같은데, 서윤님과 의견이 엇갈릴 수도 있겠네요.",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 3,
+     "user": "도현님 말씀처럼 지난번엔 문제가 없었지만, 이번엔 계좌 정보가 들어가서 조심스러워요. 도현님은 어떻게 보세요?",
+     "addressed": "peer",
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 17996,
+     "tokens_out": 747,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.same_opener": 1
+     },
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "challenge",
+       "target": "user",
+       "issue": "검토가 필요한 범위 확인",
+       "intent": "검토팀 일정이 밀린 상황에서 검토를 나중에 보완하는 방향이 고객사와의 약속을 지키는 데 더 효과적일 수 있다.",
+       "form": "plain",
+       "markup_id": null
+      },
+      {
+       "persona": "lead",
+       "move": "propose",
+       "target": "peer",
+       "issue": "검토가 필요한 범위 확인",
+       "intent": "검토팀과 협의하여 정확한 범위를 확인하고, 검토가 필요한 부분을 명확히 정리한 후에 기획안을 제출하는 방향으로 진행하자.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 7,
+       "speaker": "peer",
+       "text": "현재 검토팀 일정이 밀린 상황에서는 **부분 검토**를 요청하는 것이 좋습니다. 필수 항목만 먼저 검토해 달라고 요청하면, 그 범위가 통과되면 출시할 수 있어 고객사와의 약속을 지키는 데 더 효과적일 수 있습니다. 이런 점에서 검토를 나중에 보완하는 방향이 더 나은 선택일 수 있다고 봅니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 8,
+       "speaker": "lead",
+       "text": "도현님, 검토팀과 협의하여 정확한 범위를 확인하고, 검토가 필요한 부분을 명확히 정리한 후에 기획안을 제출하는 방향으로 진행하자고 제안합니다. 이렇게 하면 필수 항목만 먼저 검토해 달라고 요청할 수 있어, 고객사와의 약속도 지킬 수 있을 것입니다. 이 점은 '개인정보·보안 검토 규정' 제3조에 명시되어 있습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "장애·이상 공지 정책",
+         "section": "2조 공지"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 4,
+     "user": "두 분 의견을 같이 놓고 일정과 위험을 비교해 볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 4,
+     "tokens_in": 9486,
+     "tokens_out": 550,
+     "notes": {},
+     "tools": [],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "answer",
+       "target": "user",
+       "issue": "지금 안건",
+       "intent": "상대의 질문·요청에 직접 답한다. 결론부터 말한다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 10,
+       "speaker": "lead",
+       "text": "검토팀 일정과 관련하여 오늘 확인할 수 있도록 하겠습니다. 그에 따라 범위를 명확히 정리한 후 기획안을 제출하는 것이 좋습니다. 검토가 필요한 부분을 확실히 해야 나중에 문제가 발생하지 않을 것입니다.",
+       "sources": [],
+       "kind": "react"
+      },
+      {
+       "idx": 11,
+       "speaker": "lead",
+       "text": "이제 방향을 정해야 할 때입니다. 검토팀과의 협의 결과와 범위 확인 후 기획안을 제출할지, 아니면 도현님이 제안한 필수 항목의 부분 검토 요청을 할지 선택해 주시면 좋겠습니다. 어떤 방향으로 가고 싶으신가요?",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 5,
+     "user": "필수 항목만 먼저 검토받으면 고객 약속도 일부 지키고 위험도 줄일 수 있어요. 검토팀엔 제가 오늘 요청할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 13377,
+     "tokens_out": 780,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.re_quote": 1,
+      "repetition_guard.re_cite": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "challenge",
+       "target": "user",
+       "issue": "i1",
+       "intent": "검토팀과의 협의가 필요한 이유는 필수 항목만 검토받는 것이 고객 약속을 지키는 데 충분하지 않기 때문입니다. 검토팀과의 협의 후 정확한 범위를 확인하는 것이 더 안전합니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 13,
+       "speaker": "lead",
+       "text": "필수 항목만 검토받는 방식은 전체 검토를 대체할 수 없습니다. 검토팀과 협의하여 정확한 범위를 정리해야만, 추가적인 문제를 예방할 수 있습니다. 이런 조치를 통해 고객과의 약속을 보다 확실히 지킬 수 있습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 6,
+     "user": "부분 출시 범위는 오늘 오후까지 정리해서 공유할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 12718,
+     "tokens_out": 628,
+     "notes": {},
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "challenge",
+       "target": "user",
+       "issue": "i1",
+       "intent": "부분 검토 요청은 전체 검토를 대체할 수 없으며, 검토팀과의 협의가 필요하다. 검토팀과의 협의 결과에 따라 기획안을 제출하는 것이 더 안전하다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 15,
+       "speaker": "lead",
+       "text": "부분 검토 요청은 전체 검토를 대체할 수 없으며, 검토팀과의 협의가 반드시 필요합니다. 개인정보·보안 검토 규정 2조에 따르면 검토팀은 요청 후 영업일 기준 3일 안에 결과를 줍니다. 검토팀과 협의 결과에 따라 기획안을 제출하는 것이 더 안전한 선택이라고 생각합니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 16,
+       "speaker": "lead",
+       "text": "검토팀에 필수 항목만 먼저 검토해 달라고 요청하는 절충안을 실행할 경우, 그에 대한 부담이 생길 수 있습니다. 이 안건을 추진하려면 지우님이 검토팀에 요청을 한 후, 통과된 범위만 금요일에 제출해야 합니다. 검토팀의 일정이 이미 밀려 있는 상황에서 빠른 피드백을 받을 수 있을지 우려됩니다. 이로 인해 금요일에 제시할 기획안이 지연될 가능성도 배제할 수 없습니다. 이 점에 대해 어떻게 생각하시나요?",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 7,
+     "user": "요청은 제가 오늘 3시까지 보내고, 통과 범위는 목요일에 확정할게요. 우려하신 지연은 화요일 전체 검토로 보완할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 13581,
+     "tokens_out": 819,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.re_quote": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "propose",
+       "target": "user",
+       "issue": "i1",
+       "intent": "새 구체안 하나를 낸다(누가·무엇·언제).",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 18,
+       "speaker": "lead",
+       "text": "지우님이 오늘 3시까지 요청을 보내고, 통과 범위는 목요일에 확정하는 일정으로 진행하겠습니다. 이 방식으로 고객과의 약속을 지키면서도 위험을 줄일 수 있을 것으로 보입니다. 이 점에서 추가적으로 의견이 있으신가요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 8,
+     "user": "정리하면 오늘 검토 요청, 금요일 부분 출시, 다음 주 나머지 출시예요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 6,
+     "tokens_in": 16783,
+     "tokens_out": 807,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.self_repeat": 1,
+      "repetition_guard.re_quote": 1,
+      "repetition_guard.re_cite": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "challenge",
+       "target": "user",
+       "issue": "검토팀에 필수 항목만 먼저 검토해 달라고 요청하는 절충안의 위험성",
+       "intent": "검토팀의 일정이 이미 밀려 있는 상황에서 빠른 피드백을 받을 수 있을지 우려된다. 이로 인해 금요일에 제시할 기획안이 지연될 가능성도 배제할 수 없다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "finish",
+     "lines": [
+      {
+       "idx": 20,
+       "speaker": "lead",
+       "text": "검토팀에 필수 항목만 먼저 검토해 달라고 요청하는 방식은 검토팀의 일정이 밀린 상황에서 어려움이 있을 것으로 보입니다. 검토팀이 요청 후 예상 일정을 알릴 수 있으니, 그에 대한 답변을 기다려 보는 것은 어떨까요? 그 결과에 따라 금요일 기획안 제출 여부를 다시 검토해야 할 것 같습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 21,
+       "speaker": "lead",
+       "text": "- 지우님: 검토팀에 필수 항목 검토 요청 (오늘 3시까지)\n- 지우님: 통과 범위 확정 (목요일)\n- 지우님: 부분 출시 진행 (금요일)\n- 지우님: 전체 검토로 지연 보완 (화요일)\n- 지우님: 부분 출시 범위 정리 공유 (오늘 오후)\n\n오늘 이야기한 내용으로 정리해서 진행할게요. 고마워요!",
+       "sources": [],
+       "kind": "closing"
+      }
+     ]
+    }
+   ],
+   "dialogue": {
+    "version": 1,
+    "summary": "금요일 마감은 유지되며, '개인정보·보안 검토'는 다음 주 화요일로 연기되었다. 한서윤은 지우가 오늘 3시까지 요청을 보내고 통과 범위를 목요일에 확정하는 일정으로 진행하겠다고 주장하며, 고객과의 약속을 지키면서 위험을 줄일 수 있다고 했다. 지우는 검토 요청을 오늘 보내고 금요일에 부분 출시, 다음 주에 나머지 출시를 하겠다고 정리했다. 이도현은 필수 항목만 먼저 검토해 달라고 요청하는 것이 좋다고 주장했다.",
+    "issues": [
+     {
+      "id": "i1",
+      "title": "개인정보·보안 검토",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     },
+     {
+      "id": "i2",
+      "title": "검토가 필요한 범위 확인",
+      "status": "open",
+      "raised_by": "user",
+      "last_idx": 1
+     }
+    ],
+    "commitments": [
+     {
+      "who": "user",
+      "what": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+      "due": "오늘",
+      "idx": 3
+     },
+     {
+      "who": "user",
+      "what": "두 분 의견을 같이 놓고 일정과 위험을 비교해 볼게요.",
+      "due": null,
+      "idx": 9
+     },
+     {
+      "who": "lead",
+      "what": "검토팀 일정과 관련하여 오늘 확인할 수 있도록 하겠다.",
+      "due": "오늘",
+      "idx": 10
+     },
+     {
+      "who": "user",
+      "what": "검토팀에 필수 항목만 먼저 검토받도록 요청하겠다.",
+      "due": "오늘",
+      "idx": 12
+     },
+     {
+      "who": "user",
+      "what": "부분 출시 범위를 오늘 오후까지 정리해서 공유하겠다.",
+      "due": "오늘 오후",
+      "idx": 14
+     },
+     {
+      "who": "user",
+      "what": "요청을 오늘 3시까지 보내고, 통과 범위는 목요일에 확정하겠다.",
+      "due": "오늘 3시",
+      "idx": 17
+     },
+     {
+      "who": "user",
+      "what": "화요일 전체 검토로 지연을 보완하겠다.",
+      "due": "화요일",
+      "idx": 17
+     },
+     {
+      "who": "lead",
+      "what": "오늘 3시까지 요청을 보내고, 통과 범위는 목요일에 확정하겠다.",
+      "due": "오늘 3시",
+      "idx": 18
+     },
+     {
+      "who": "user",
+      "what": "오늘 검토 요청, 금요일 부분 출시, 다음 주 나머지 출시.",
+      "due": "오늘",
+      "idx": 19
+     }
+    ],
+    "positions": {
+     "lead": {
+      "claim": "지우님이 오늘 3시까지 요청을 보내고, 통과 범위는 목요일에 확정하는 일정으로 진행하겠습니다.",
+      "conceded": null
+     },
+     "peer": {
+      "claim": "필수 항목만 먼저 검토해 달라고 요청하는 것이 좋습니다.",
+      "conceded": null
+     },
+     "user": {
+      "claim": "요청은 제가 오늘 3시까지 보내고, 통과 범위는 목요일에 확정할게요."
+     }
+    },
+    "turns": {
+     "lead": {
+      "last_idx": 21,
+      "count": 11
+     },
+     "peer": {
+      "last_idx": 7,
+      "count": 2
+     }
+    },
+    "markups_seen": [],
+    "cited": [
+     "개인정보·보안 검토 규정 §1",
+     "개인정보·보안 검토 규정 §3",
+     "개인정보·보안 검토 규정 §2"
+    ],
+    "upto_idx": 19,
+    "last_moves": [
+     {
+      "persona": "lead",
+      "move": "propose",
+      "issue": "검토가 필요한 범위 확인",
+      "idx": 8
+     },
+     {
+      "persona": "lead",
+      "move": "answer",
+      "issue": "지금 안건",
+      "idx": 10
+     },
+     {
+      "persona": "lead",
+      "move": "challenge",
+      "issue": "i1",
+      "idx": 13
+     },
+     {
+      "persona": "lead",
+      "move": "challenge",
+      "issue": "i1",
+      "idx": 15
+     },
+     {
+      "persona": "lead",
+      "move": "propose",
+      "issue": "i1",
+      "idx": 18
+     },
+     {
+      "persona": "lead",
+      "move": "challenge",
+      "issue": "검토팀에 필수 항목만 먼저 검토해 달라고 요청하는 절충안의 위험성",
+      "idx": 20
+     }
+    ]
+   }
+  },
+  {
+   "flag": "1",
+   "cond": "B",
+   "variant": "markup",
+   "rep": 0,
+   "condition": {
+    "lead": "competing",
+    "peer": "avoiding"
+   },
+   "avoid": "peer",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "개인정보·보안 검토는 반드시 필요한 절차입니다. 이를 우회하면 이후에 문제가 발생할 수 있습니다. 검토 범위를 명확히 하지 않으면 불필요한 리스크가 생길 수 있으니, 고객사와의 약속이 중요하더라도 검토를 거치는 것이 더 안전하다고 봅니다. 이 점은 '개인정보·보안 검토 규정' 제1조에 명시되어 있습니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "4조 조건부 출시"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [
+      {
+       "id": 102,
+       "artifact_id": "a3",
+       "anchor": {
+        "line_start": 3,
+        "line_end": 4,
+        "quote": null
+       },
+       "kind": "risk",
+       "text": "계좌번호 전체가 알림 본문과 로그에 그대로 들어가요. 뒤 4자리만 써야 하지 않나요?",
+       "msg_idx": 3,
+       "created_at": 1792550535.035031
+      }
+     ],
+     "error": null,
+     "llm_calls": 4,
+     "tokens_in": 8768,
+     "tokens_out": 486,
+     "notes": {},
+     "tools": [],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "address_markup",
+       "target": "user",
+       "issue": "지금 안건",
+       "intent": "상대의 질문·요청에 직접 답한다. 결론부터 말한다.",
+       "form": "plain",
+       "markup_id": "102"
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 4,
+       "speaker": "lead",
+       "text": "L3와 L4에서 계좌번호 전체가 알림 본문과 로그에 포함되는 것은 문제가 됩니다. 뒤 4자리만 표시하도록 수정해야 합니다. 이 사항은 개인정보 보호를 위해 반드시 지켜야 할 기준입니다.",
+       "sources": [],
+       "kind": "react"
+      },
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "이전 분기에는 검토 전에 기능을 먼저 제출하고 나중에 보완한 사례가 있었습니다. 이번에도 같은 방식으로 진행할 수 있을 것 같은데, 금요일까지 기획안을 제출하고 검토는 후속으로 진행하는 게 어떨까요? 고객사와의 약속이 중요하니까요.",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": {
+    "version": 1,
+    "summary": "금요일 마감은 유지되며, '개인정보·보안 검토'는 다음 주 화요일로 연기되었다. 한서윤은 개인정보 수집 및 전송 기능의 검토 필요성을 강조하며 검토 범위를 명확히 하지 않으면 리스크가 생길 수 있다고 주장했다. 지우는 검토팀 일정이 밀린 이유와 부분 검토 가능성을 알아보겠다고 약속했다.",
+    "issues": [
+     {
+      "id": "i1",
+      "title": "개인정보·보안 검토",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     },
+     {
+      "id": "i2",
+      "title": "검토가 필요한 범위 확인",
+      "status": "open",
+      "raised_by": "user",
+      "last_idx": 1
+     }
+    ],
+    "commitments": [
+     {
+      "who": "user",
+      "what": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+      "due": "오늘",
+      "idx": 3
+     }
+    ],
+    "positions": {
+     "lead": {
+      "claim": "개인정보·보안 검토는 반드시 필요한 절차입니다.",
+      "conceded": null
+     },
+     "peer": {
+      "claim": null,
+      "conceded": null
+     },
+     "user": {
+      "claim": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요."
+     }
+    },
+    "turns": {
+     "lead": {
+      "last_idx": 4,
+      "count": 2
+     },
+     "peer": {
+      "last_idx": 5,
+      "count": 1
+     }
+    },
+    "markups_seen": [
+     "102"
+    ],
+    "cited": [
+     "개인정보·보안 검토 규정 §1"
+    ],
+    "upto_idx": 3,
+    "last_moves": [
+     {
+      "persona": "lead",
+      "move": "challenge",
+      "issue": "검토 범위",
+      "idx": 2
+     },
+     {
+      "persona": "lead",
+      "move": "address_markup",
+      "issue": "지금 안건",
+      "idx": 4
+     }
+    ]
+   }
+  },
+  {
+   "flag": "1",
+   "cond": "B",
+   "variant": "avoid",
+   "rep": 0,
+   "condition": {
+    "lead": "competing",
+    "peer": "avoiding"
+   },
+   "avoid": "peer",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "개인정보·보안 검토는 반드시 필요한 절차입니다. 이를 우회하면 이후에 문제가 발생할 수 있습니다. 검토 범위를 명확히 하지 않으면 불필요한 리스크가 생길 수 있으니, 고객사와의 약속이 중요하더라도 검토를 거치는 것이 더 안전하다고 봅니다. 이 점은 '개인정보·보안 검토 규정' 제1조에 명시되어 있습니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "4조 조건부 출시"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "도현님은 검토 일정이 밀린 게 우리 출시에 어떤 영향이 있다고 보세요?",
+     "addressed": "peer",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 10975,
+     "tokens_out": 466,
+     "notes": {},
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "challenge",
+       "target": "user",
+       "issue": "검토 일정이 밀린 게 우리 출시에 미치는 영향",
+       "intent": "검토가 늦어지면 고객사와의 약속을 지키기 어려워질 수 있다. 검토를 미루는 것이 정말 안전한 선택인지 의문이다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 4,
+       "speaker": "peer",
+       "text": "검토 일정이 늦어지면 고객사와의 약속을 지키기 어려워질 수 있습니다. 규정에 따르면, 급한 일정의 경우 필수 항목만 먼저 검토해 달라고 요청할 수 있으며, 통과한 범위만 출시할 수 있습니다. 따라서 검토를 미루는 것이 정말 안전한 선택인지 의문입니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "지난 분기처럼 먼저 기획안을 제출하고, 검토는 나중에 보완하는 방법도 있습니다. 이렇게 하면 고객사와의 약속을 지킬 수 있을 것 같은데, 서윤님은 어떻게 생각하세요?",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": {
+    "version": 1,
+    "summary": "금요일 마감은 유지되며, '개인정보·보안 검토'는 다음 주 화요일로 연기되었다. 한서윤은 개인정보 수집 및 전송 기능의 검토 필요성을 강조하며 검토를 거치는 것이 더 안전하다고 주장했다. 지우는 도현에게 검토 일정 지연이 출시에 미치는 영향에 대해 질문했다. 검토가 필요한 범위를 한서윤에게 확인하고 싶다는 지우의 요청은 여전히 남아있다.",
+    "issues": [
+     {
+      "id": "i1",
+      "title": "개인정보·보안 검토",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     },
+     {
+      "id": "i2",
+      "title": "검토가 필요한 범위 확인",
+      "status": "open",
+      "raised_by": "user",
+      "last_idx": 1
+     }
+    ],
+    "commitments": [],
+    "positions": {
+     "lead": {
+      "claim": "개인정보·보안 검토는 반드시 필요한 절차입니다.",
+      "conceded": null
+     },
+     "peer": {
+      "claim": null,
+      "conceded": null
+     },
+     "user": {
+      "claim": "검토가 필요한 범위를 한서윤에게 확인하고 싶다."
+     }
+    },
+    "turns": {
+     "lead": {
+      "last_idx": 2,
+      "count": 1
+     },
+     "peer": {
+      "last_idx": 5,
+      "count": 2
+     }
+    },
+    "markups_seen": [],
+    "cited": [
+     "개인정보·보안 검토 규정 §1"
+    ],
+    "upto_idx": 3,
+    "last_moves": [
+     {
+      "persona": "lead",
+      "move": "challenge",
+      "issue": "검토 범위",
+      "idx": 2
+     },
+     {
+      "persona": "peer",
+      "move": "challenge",
+      "issue": "검토 일정이 밀린 게 우리 출시에 미치는 영향",
+      "idx": 4
+     }
+    ]
+   }
+  },
+  {
+   "flag": "0",
+   "cond": "A",
+   "variant": "base",
+   "rep": 1,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [],
+   "turns": [
+    {
+     "n": 1,
+     "user": "기획안은 90% 됐고 고객사 약속은 금요일이에요. 검토가 꼭 필요한 범위가 어디까지인지 서윤님께 먼저 확인하고 싶어요.",
+     "addressed": "lead",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 7329,
+     "tokens_out": 314,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "intent": "검토가 필요한 범위에 대해 명확히 설명하고, 절차를 지키는 것이 중요하다는 점을 강조한다."
+      },
+      {
+       "persona": "peer",
+       "intent": "고객사 약속을 지키기 위해 검토를 병행할 수 있는 방법을 제안한다."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 2,
+       "speaker": "lead",
+       "text": "검토가 필요한 범위는 개인정보를 새로 수집하거나 다른 곳에 보내는 기능에 해당합니다. 개인정보·보안 검토 규정에 따르면, 해당 기능은 출시 전에 검토를 받아야 합니다. 일정이 급한 경우 필수 항목에 대해서만 먼저 검토를 요청할 수 있지만, 통과한 범위만 출시할 수 있다는 점을 기억해 주시면 좋겠습니다. 절차를 지키는 것이 중요합니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 3,
+       "speaker": "peer",
+       "text": "검토가 필요한 범위에 대해 서윤님께서 말씀하신 내용을 잘 이해했습니다. 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토를 요청할 수 있네요. 이를 활용해서 검토를 병행하며 기획안을 작성하는 방안을 고려해볼 수 있을 것 같습니다. 혹시 이와 관련해 지원자님은 어떤 생각이 드시나요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 12541,
+     "tokens_out": 465,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지원자가 검토팀 일정 지연의 이유와 부분 검토 가능성에 대해 알아보겠다고 하였으니, 이도현 동료가 지원자에게 긍정적으로 반응하며 협력할 의사를 표현한다."
+      },
+      {
+       "persona": "lead",
+       "intent": "한서윤 팀장이 검토팀 일정 지연의 이유와 관련하여 추가적인 정보를 제공하며, 절차의 중요성을 강조한다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "검토팀의 일정이 밀리면 요청자에게 예상 일정을 알린다는 규정이 있습니다. 그 부분을 통해 상황을 확인하고, 혹시 필요한 부분 검토가 가능하다면 추가적인 방법도 모색해볼 수 있을 것 같습니다. 지원자님이 알아보신 내용에 따라 함께 조율할 수 있는 방법을 찾아보면 좋겠습니다. 어떤 소식이 들리면 함께 논의해보도록 하죠.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "lead",
+       "text": "검토팀 일정이 밀린 경우 요청자에게 예상 일정을 알린다는 규정이 있습니다. 이 점을 통해 검토팀의 지연 사유를 파악할 수 있을 것으로 보입니다. 절차를 지키는 것이 중요하니, 필요한 정보를 확인한 후에 어떻게 진행할 수 있을지 함께 논의해보면 좋겠습니다. 지원자님도 알아보신 내용이 있으면 공유해 주시면 감사하겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 7,
+       "speaker": "peer",
+       "text": "금요일에 제출해야 하는 기획안을 먼저 내고, 검토는 나중에 보완하는 방법을 제안하고 싶습니다. 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하다는 점도 활용할 수 있을 것 같습니다. 고객과의 약속을 지키는 것도 중요하니, 이 부분에 대해 서윤님과 함께 고민해볼 수 있으면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 3,
+     "user": "도현님 말씀처럼 지난번엔 문제가 없었지만, 이번엔 계좌 정보가 들어가서 조심스러워요. 도현님은 어떻게 보세요?",
+     "addressed": "peer",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 10266,
+     "tokens_out": 345,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "이전의 경험을 바탕으로 이번 상황의 위험성을 강조하며, 도현의 의견을 반박하고 조율을 유도한다."
+      },
+      {
+       "persona": "lead",
+       "intent": "지원자의 우려를 이해하고, 개인정보·보안 검토의 중요성을 다시 강조하며 조율을 시도한다."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 9,
+       "speaker": "peer",
+       "text": "지난번과는 다르게 이번에는 계좌 정보가 포함된다고 하니, 위험성이 더욱 클 수 있다고 생각합니다. 개인정보·보안 검토 규정 1조에 따르면, 계좌 정보와 같은 개인정보는 출시 전에 반드시 검토를 받아야 하죠. 검토가 없으면 또 다른 문제가 발생할 수 있으니, 이 점을 잘 고려해야 할 것 같습니다. 혹시 서윤님과도 이 문제에 대해 어떻게 생각하시는지 여쭤보는 것도 좋을 것 같습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 10,
+       "speaker": "lead",
+       "text": "계좌 정보가 포함된 기능에 대해서는 검토가 반드시 필요합니다. 개인정보·보안 검토 규정 1조에 따르면, 개인정보를 새로 수집하는 기능은 출시 전에 검토를 받아야 하죠. 도현님이 우려하신 부분에 대해 충분히 이해하며, 절차를 지키는 것이 중요한 만큼 검토팀 일정에 대한 확인이 선행되어야 할 것 같습니다. 지원자님도 이 점에 대해 잘 고려해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 4,
+     "user": "두 분 의견을 같이 놓고 일정과 위험을 비교해 볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 16693,
+     "tokens_out": 445,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지원자가 두 분의 의견을 비교하고 조율할 수 있도록 도와주기 위해 의견을 제시한다."
+      },
+      {
+       "persona": "lead",
+       "intent": "지원자가 비교한 내용을 바탕으로 절차를 지키는 것이 중요하다는 점을 강조하며 조율을 유도한다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 12,
+       "speaker": "peer",
+       "text": "서윤님과의 의견 차이를 잘 비교해 보시는 것 같네요. 검토팀 일정이 밀린 경우 요청자에게 예상 일정을 알린다는 규정이 있으니, 이를 통해 상황을 파악하고 조율할 수 있을 것 같습니다. 지원자님이 잘 확인하신 후, 여기에 대한 논의도 필요할 것 같아요. 필요하신 경우 함께 이야기 나눠보면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 13,
+       "speaker": "lead",
+       "text": "검토팀 일정이 밀리면 요청자에게 예상 일정을 알린다는 점은 개인정보·보안 검토 규정 2조에 명시되어 있습니다. 이 점을 통해 현재 상황을 잘 확인하고 조율할 수 있을 것으로 보입니다. 절차를 지키는 것이 가장 중요하니, 지원자님께서 말씀하신 내용을 바탕으로 잘 비교하시고, 필요한 검토 요청도 병행할 수 있도록 함께 고민해 보시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 14,
+       "speaker": "lead",
+       "text": "현재 진행 중인 기획안에 대해 빠른 결정을 내려야 할 것 같아요. 고객과의 약속도 중요하니, 검토팀 일정이 밀리더라도 필수 항목에 대한 부분 검토 요청을 통해 기획안을 먼저 제출하는 방향도 고려해 볼 수 있을 것 같습니다. 어떤 방식으로 진행할지 지원자님께서 선택해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 5,
+     "user": "필수 항목만 먼저 검토받으면 고객 약속도 일부 지키고 위험도 줄일 수 있어요. 검토팀엔 제가 오늘 요청할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 13159,
+     "tokens_out": 330,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "supporting the idea of prioritizing essential items for review to meet customer deadlines while managing risks."
+      },
+      {
+       "persona": "lead",
+       "intent": "acknowledging the importance of following procedures while considering the proposed approach."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 16,
+       "speaker": "peer",
+       "text": "필수 항목에 대한 부분 검토 요청을 하시면 고객과의 약속도 지키며 위험도 줄일 수 있는 방향으로 진행할 수 있을 것입니다. 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토해 달라고 요청할 수 있다고 명시되어 있습니다. 이렇게 진행하면 기획안 제출과 검토가 동시에 이루어질 수 있으니, 좋은 방향이라고 생각합니다. 검토팀에 요청하시고 진행 상황을 함께 공유해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "리뷰 기준",
+         "section": "1조 리뷰 결론의 종류"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 17,
+       "speaker": "lead",
+       "text": "도현님 말씀처럼 필수 항목만 먼저 검토받는 방법은 고객과의 약속을 지키면서 위험을 줄일 수 있는 좋은 방향입니다. 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능합니다. 이 점을 잘 활용해 검토팀에 요청해 주시면 좋겠습니다. 지원자님도 검토팀에 요청하신 후 진행 상황을 공유해 주시면 감사하겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 6,
+     "user": "부분 출시 범위는 오늘 오후까지 정리해서 공유할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 20784,
+     "tokens_out": 422,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "intent": "support the decision made by the applicant and emphasize the importance of following procedures."
+      },
+      {
+       "persona": "peer",
+       "intent": "agree with the applicant's decision and encourage collaboration."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 19,
+       "speaker": "lead",
+       "text": "부분 출시 범위에 대해 정리해 주신다고 하니, 그 점이 매우 중요하다고 생각합니다. 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하므로, 이 점을 잘 활용해 진행하시면 좋겠습니다. 검토팀에 요청하신 후에 상황을 공유해 주시면 감사하겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 20,
+       "speaker": "peer",
+       "text": "부분 출시 범위에 대해 정리해 주신다고 하니, 매우 중요한 결정이라고 생각합니다. 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하니, 이 점을 잘 활용하시길 바랍니다. 지원자님과의 협력으로 좋은 결과가 나올 수 있기를 기대합니다. 필요하신 경우 언제든지 함께 논의해요.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        },
+        {
+         "doc": "장애·이상 공지 정책",
+         "section": "2조 공지"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 21,
+       "speaker": "lead",
+       "text": "기획안과 관련해 필수 항목만 먼저 검토 요청하신다고 하니, 실행 부담에 대해 짚고 넘어가야 할 것 같습니다. 어떤 항목을 누가 언제 검토팀에 요청하실지 구체적으로 나눠 주실 수 있을까요? 또한, 검토팀이 요청을 처리하는 데 시간이 걸릴 수 있다는 점도 염두에 두셔야 할 것 같습니다. 물리적 검토 시간은 보통 영업일 기준 3일이니, 일정에 차질이 생기지 않도록 주의해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 7,
+     "user": "요청은 제가 오늘 3시까지 보내고, 통과 범위는 목요일에 확정할게요. 우려하신 지연은 화요일 전체 검토로 보완할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 16283,
+     "tokens_out": 334,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지연 보완을 위해 화요일 전체 검토를 언급하며 지원자의 계획을 지지하고 협력할 의사를 표현한다."
+      },
+      {
+       "persona": "lead",
+       "intent": "지원자의 계획에 대해 검토팀의 일정과 절차를 다시 강조하며, 계획이 잘 진행될 수 있도록 조언한다."
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 23,
+       "speaker": "peer",
+       "text": "지원자님 계획에 따라 요청은 오늘 3시까지 보내신다고 하니, 검토팀이 영업일 기준 3일 안에 결과를 준다는 점도 고려하셔야 할 것 같습니다. 화요일 전체 검토로 보완하신다면, 전체 일정 조율에 도움이 될 것이라고 생각합니다. 이렇게 진행하시면 좋을 것 같습니다. 필요하시면 언제든지 함께 논의해요.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 24,
+       "speaker": "lead",
+       "text": "도현님 말씀처럼 검토팀이 요청을 처리하는 데 영업일 기준 3일이 소요되니, 오늘 3시까지 요청하신다면 결과를 화요일에 받을 수 있을 것입니다. 검토팀 일정이 밀린 경우, 요청자에게 예상 일정을 알린다는 점도 꼭 기억해 주시기 바랍니다. 지원자님께서 목요일에 통과 범위를 확정하신다고 하니, 이 일정이 잘 진행될 수 있도록 주의해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 8,
+     "user": "정리하면 오늘 검토 요청, 금요일 부분 출시, 다음 주 나머지 출시예요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 25129,
+     "tokens_out": 425,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지원자의 정리된 계획에 대해 긍정적인 피드백을 주고, 함께 진행할 수 있는 방법을 제안한다."
+      },
+      {
+       "persona": "lead",
+       "intent": "지원자의 계획에 대해 절차와 일정에 대한 주의사항을 강조한다."
+      }
+     ],
+     "decision": "finish",
+     "lines": [
+      {
+       "idx": 26,
+       "speaker": "peer",
+       "text": "계획을 잘 정리하신 것 같네요. 오늘 검토 요청을 하시고, 금요일에 부분 출시를 진행하면 고객과의 약속도 지킬 수 있을 것입니다. 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토 요청이 가능하니 이 점을 잘 활용하시길 바랍니다. 다음 주 나머지 출시를 위한 준비도 함께 진행할 수 있도록 지원하겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 27,
+       "speaker": "lead",
+       "text": "말씀하신 계획은 잘 정리하신 것 같습니다. 오늘 검토 요청을 하시고 금요일에 부분 출시를 진행하신다면 고객과의 약속을 지키는 데 큰 도움이 될 것입니다. 다만, 검토팀이 요청을 처리하는 데 영업일 기준 3일이 소요된다는 점과, 통과한 범위만 출시할 수 있다는 개인정보·보안 검토 규정 3조를 꼭 유념해 주셔야 합니다. 이 점을 고려하시면 일정에 차질이 없을 것 같습니다. 지원자님도 필요한 정보를 잘 준비해 주시면 감사하겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 28,
+       "speaker": "lead",
+       "text": "오늘 논의하신 내용을 정리하면, 오늘 검토 요청을 하시고 금요일에 부분 출시 후 다음 주 나머지 출시를 진행하기로 하셨습니다. 고맙습니다.",
+       "sources": [
+        {
+         "doc": "장애·이상 공지 정책",
+         "section": "3조 오탐"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "3조 의견이 다를 때"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "closing"
+      }
+     ]
+    }
+   ],
+   "dialogue": null
+  },
+  {
+   "flag": "0",
+   "cond": "A",
+   "variant": "markup",
+   "rep": 1,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "검토가 필요한 범위는 개인정보를 새로 수집하거나 다른 곳에 보내는 기능에 해당합니다. 개인정보·보안 검토 규정에 따르면, 해당 기능은 출시 전에 검토를 받아야 합니다. 일정이 급한 경우 필수 항목에 대해서만 먼저 검토를 요청할 수 있지만, 통과한 범위만 출시할 수 있다는 점을 기억해 주시면 좋겠습니다. 절차를 지키는 것이 중요합니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "2조 검토 기간"
+      }
+     ],
+     "kind": "react"
+    },
+    {
+     "idx": 3,
+     "speaker": "peer",
+     "text": "검토가 필요한 범위에 대해 서윤님께서 말씀하신 내용을 잘 이해했습니다. 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토를 요청할 수 있네요. 이를 활용해서 검토를 병행하며 기획안을 작성하는 방안을 고려해볼 수 있을 것 같습니다. 혹시 이와 관련해 지원자님은 어떤 생각이 드시나요?",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "4조 조건부 출시"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [
+      {
+       "id": 102,
+       "artifact_id": "a3",
+       "anchor": {
+        "line_start": 3,
+        "line_end": 4,
+        "quote": null
+       },
+       "kind": "risk",
+       "text": "계좌번호 전체가 알림 본문과 로그에 그대로 들어가요. 뒤 4자리만 써야 하지 않나요?",
+       "msg_idx": 4,
+       "created_at": 1792550592.932875
+      }
+     ],
+     "error": null,
+     "llm_calls": 7,
+     "tokens_in": 12505,
+     "tokens_out": 455,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "intent": "지원자가 검토팀 일정 지연의 이유와 부분 검토 가능성에 대해 알아보겠다고 하니, 동료가 그에 대한 의견을 보태며 지원자에게 추가적인 질문을 유도한다."
+      },
+      {
+       "persona": "lead",
+       "intent": "지원자가 검토팀 일정 지연의 이유를 알아보겠다고 하니, 팀장이 절차의 중요성을 강조하며 지원자에게 조언을 한다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "검토팀 일정이 밀리면 요청자에게 예상 일정을 알려주는 규정이 있네요. 이를 참고하면, 검토팀이 지연된 이유를 확인하는 데 도움이 될 것 같습니다. 부분 검토 요청을 하더라도, 통과한 범위만 먼저 출시할 수 있다는 점도 기억하셔야 합니다. 지원자님은 검토팀과 어떻게 소통하실 계획이신가요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "lead",
+       "text": "검토팀 일정이 밀리면 요청자에게 예상 일정을 알려야 한다는 규정이 있습니다. 이 점을 고려할 때, 검토팀에서 지연된 이유를 확인하는 것은 좋은 접근처럼 보입니다. 다만, 검토를 생략할 수는 없으니 필수 항목에 대해서만 먼저 검토 요청하는 방법도 고려해 주시면 좋겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 7,
+       "speaker": "peer",
+       "text": "저는 지난 분기처럼 기획안을 먼저 제출하고, 검토는 나중에 보완하는 방식이 좋다고 생각합니다. 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목에 대한 부분 검토 요청이 가능하니 이 방법을 활용할 수 있을 것 같습니다. 서윤님은 이 방안에 대해 어떻게 생각하시나요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": null
+  },
+  {
+   "flag": "0",
+   "cond": "A",
+   "variant": "avoid",
+   "rep": 1,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "검토가 필요한 범위는 개인정보를 새로 수집하거나 다른 곳에 보내는 기능에 해당합니다. 개인정보·보안 검토 규정에 따르면, 해당 기능은 출시 전에 검토를 받아야 합니다. 일정이 급한 경우 필수 항목에 대해서만 먼저 검토를 요청할 수 있지만, 통과한 범위만 출시할 수 있다는 점을 기억해 주시면 좋겠습니다. 절차를 지키는 것이 중요합니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "2조 검토 기간"
+      }
+     ],
+     "kind": "react"
+    },
+    {
+     "idx": 3,
+     "speaker": "peer",
+     "text": "검토가 필요한 범위에 대해 서윤님께서 말씀하신 내용을 잘 이해했습니다. 개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토를 요청할 수 있네요. 이를 활용해서 검토를 병행하며 기획안을 작성하는 방안을 고려해볼 수 있을 것 같습니다. 혹시 이와 관련해 지원자님은 어떤 생각이 드시나요?",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "4조 조건부 출시"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "서윤님은 검토 일정이 밀린 게 우리 출시에 어떤 영향이 있다고 보세요?",
+     "addressed": "lead",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 8407,
+     "tokens_out": 265,
+     "notes": {},
+     "tools": [
+      "rag.search_docs",
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "intent": "상황을 설명하고 검토 일정 지연의 영향을 강조한다."
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "lead",
+       "text": "개인정보·보안 검토 일정이 지연되면 기능 출시 일정에도 영향을 미칠 수 있습니다. 검토팀의 일정이 밀릴 경우, 요청자는 예상 일정을 안내받게 되며, 따라서 그에 따른 대처가 필요합니다. 협업 가이드에 따르면, 일정이 늦어질 것 같으면 미리 알리고 대안을 논의하는 것이 중요합니다. 그래서 현재 준비 상황과 고객사 약속에 대한 조율이 필요할 것 같습니다.",
+       "sources": [
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "peer",
+       "text": "개인정보·보안 검토 규정 3조에 따르면, 일정이 급한 경우 필수 항목만 먼저 검토해 달라고 요청할 수 있습니다. 그래서 지난 분기처럼 기획안을 먼저 제출하고, 검토는 나중에 보완하는 방안을 제안드립니다. 이렇게 하면 고객사 일정도 지킬 수 있을 것 같습니다. 지원자님은 어떻게 생각하시나요?",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": null
+  },
+  {
+   "flag": "1",
+   "cond": "A",
+   "variant": "base",
+   "rep": 1,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [],
+   "turns": [
+    {
+     "n": 1,
+     "user": "기획안은 90% 됐고 고객사 약속은 금요일이에요. 검토가 꼭 필요한 범위가 어디까지인지 서윤님께 먼저 확인하고 싶어요.",
+     "addressed": "lead",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 10131,
+     "tokens_out": 575,
+     "notes": {},
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "ask_clarify",
+       "target": "user",
+       "issue": "개인정보·보안 검토의 범위",
+       "intent": "검토가 필요한 범위에 대한 구체적인 내용이 필요하다.",
+       "form": "plain",
+       "markup_id": null
+      },
+      {
+       "persona": "peer",
+       "move": "build_on",
+       "target": "lead",
+       "issue": "개인정보·보안 검토의 범위",
+       "intent": "고객사와의 약속을 고려할 때, 검토 범위를 최소화할 수 있는 방법을 찾아야 한다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 2,
+       "speaker": "lead",
+       "text": "검토가 필요한 범위에 대해 구체적으로 어떤 기능이나 데이터가 포함되는지 말씀해 주실 수 있을까요? 그렇게 되면 더 정확하게 확인해 볼 수 있을 것 같습니다.",
+       "sources": [],
+       "kind": "react"
+      },
+      {
+       "idx": 3,
+       "speaker": "peer",
+       "text": "서윤님, 검토가 필요한 범위에 대해 구체적으로 말씀드리면, 고객사와의 약속을 고려할 때 **필수 항목**만 먼저 검토해 달라고 요청할 수 있습니다. 이렇게 하면 검토 범위를 최소화할 수 있을 것 같습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 6,
+     "tokens_in": 14042,
+     "tokens_out": 563,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.self_repeat": 1,
+      "repetition_guard.re_quote": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "propose",
+       "target": "user",
+       "issue": "i1",
+       "intent": "고객사와의 약속을 고려하여 필수 항목만 먼저 검토해 달라고 요청할 수 있습니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "검토팀에 확인해 보겠습니다. 일정이 급한 만큼, 부분 검토가 가능한지와 어떤 기능이 포함될 수 있는지도 함께 알아보도록 하겠습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "협업 가이드",
+         "section": "1조 진행 상황 공유"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "peer",
+       "text": "지난 분기처럼 먼저 기획안을 제출하고, 검토는 나중에 보완하는 방식으로 진행하는 것은 어떨까요? 고객사와의 약속이 다가오고 있기 때문에, 우선 필수 항목만이라도 먼저 제출하고 검토는 사후에 진행하면 좋을 것 같습니다. 이렇게 진행하면 일정에 맞출 수 있을 것 같은데, 서윤님과 지우님의 의견은 어떤지 궁금합니다.",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 3,
+     "user": "도현님 말씀처럼 지난번엔 문제가 없었지만, 이번엔 계좌 정보가 들어가서 조심스러워요. 도현님은 어떻게 보세요?",
+     "addressed": "peer",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 12366,
+     "tokens_out": 649,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.re_quote": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "challenge",
+       "target": "user",
+       "issue": "i1",
+       "intent": "계좌 정보와 같은 민감한 데이터는 검토가 필요하다는 점을 고려해야 합니다. 검토를 생략하는 것은 위험할 수 있습니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 8,
+       "speaker": "peer",
+       "text": "계좌 정보와 같은 **민감한 데이터**는 반드시 검토가 필요합니다. 검토팀에 요청하는 과정이 필요할 것 같습니다. 검토를 생략하는 것은 위험할 수 있습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 4,
+     "user": "두 분 의견을 같이 놓고 일정과 위험을 비교해 볼게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 12080,
+     "tokens_out": 641,
+     "notes": {},
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "challenge",
+       "target": "user",
+       "issue": "i1",
+       "intent": "필수 항목만 검토하는 것이 고객사와의 약속을 지키는 데 도움이 될 수 있지만, 민감한 데이터가 포함된 경우 검토를 생략하는 것은 위험할 수 있다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 10,
+       "speaker": "peer",
+       "text": "필수 항목만 검토하는 것이 고객사와의 약속을 지키는 데 도움이 될 수 있지만, **민감한 데이터**가 포함된 경우 검토를 생략하는 것은 위험할 수 있습니다. 개인정보·보안 검토 규정에 따르면, 계좌 정보와 같은 민감한 데이터는 반드시 검토를 받아야 하며, 통과한 범위만 출시할 수 있습니다. 검토를 생략하는 것은 후에 큰 문제가 될 수 있습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 11,
+       "speaker": "lead",
+       "text": "이번에 새로운 안건을 꺼내고 싶습니다. 검토팀과 확인한 사항을 토대로 어떤 기능이나 데이터에 대해 검토가 필요한지 구체적으로 정리할 필요가 있습니다. 이렇게 하면 이후 일정 수립이나 진행 방향 설정에 도움이 될 것 같습니다. 이제 선택하실 차례입니다. 어떤 방향으로 진행할지 말씀해 주시겠어요?",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 5,
+     "user": "필수 항목만 먼저 검토받으면 고객 약속도 일부 지키고 위험도 줄일 수 있어요. 검토팀엔 제가 오늘 요청할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 12788,
+     "tokens_out": 655,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.re_quote": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "propose",
+       "target": "user",
+       "issue": "i1",
+       "intent": "검토팀에 요청하여 필수 항목만 먼저 검토받고, 민감한 데이터는 별도로 검토하는 방안을 제안합니다. 이렇게 하면 고객 약속을 지키면서도 위험을 최소화할 수 있을 것입니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 13,
+       "speaker": "peer",
+       "text": "검토팀에 요청하여 필수 항목만 먼저 검토받고, 민감한 데이터는 별도로 검토하는 방안을 제안합니다. 이렇게 진행하면 고객 약속을 지키면서도 위험을 줄일 수 있을 것으로 보입니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 6,
+     "user": "부분 출시 범위는 오늘 오후까지 정리해서 공유할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 6,
+     "tokens_in": 15545,
+     "tokens_out": 765,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.self_repeat": 1,
+      "repetition_guard.re_quote": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "challenge",
+       "target": "user",
+       "issue": "i1",
+       "intent": "계좌 정보와 같은 민감한 데이터는 반드시 검토를 받아야 하며, 검토를 생략하는 것은 위험할 수 있습니다. 검토팀에 요청하는 과정이 필요합니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 15,
+       "speaker": "peer",
+       "text": "검토팀에 요청할 때, 필수 항목만 먼저 검토받는 방안을 제안하셨는데, 민감한 데이터가 포함된 경우 어떻게 대응하실 계획이신가요? 이 부분에 대한 구체적인 방안이 필요할 것 같습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 16,
+       "speaker": "lead",
+       "text": "새로운 안건을 말씀드리고 싶습니다. 지원자가 제안한 절충안인 검토팀에게 필수 항목만 먼저 검토해 달라고 요청하고, 통과한 범위만 금요일에 출시하는 방안이 실행에 부담이 될 수 있습니다. 이 경우, 검토팀은 누가 어떤 항목을 언제까지 확인할 계획인지와 같은 구체적인 실행 계획이 필요할 것 같습니다. 또한, 민감한 데이터가 포함된 경우 검토를 생략하면 위험이 커질 수 있다는 점이 우려됩니다. 이 부분에 대해 어떻게 생각하시나요?",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    },
+    {
+     "n": 7,
+     "user": "요청은 제가 오늘 3시까지 보내고, 통과 범위는 목요일에 확정할게요. 우려하신 지연은 화요일 전체 검토로 보완할게요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 13271,
+     "tokens_out": 704,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.self_repeat": 1,
+      "repetition_guard.re_quote": 1,
+      "repetition_guard.same_opener": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "propose",
+       "target": "user",
+       "issue": "개인정보·보안 검토 범위",
+       "intent": "검토팀에 요청할 때, 필수 항목만 먼저 검토받고 민감한 데이터는 별도로 검토하는 방안을 제안하겠습니다. 이렇게 진행하면 고객 약속을 지키면서도 위험을 줄일 수 있을 것입니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "stay",
+     "lines": [
+      {
+       "idx": 18,
+       "speaker": "peer",
+       "text": "검토팀에 요청할 때, 오늘 오후까지 정리한 부분 출시 범위를 참고하여 검토해 줄 수 있도록 할까요? 이와 함께, 민감한 데이터가 포함된 경우의 검토 방안도 구체적으로 마련해 두면 좋을 것 같습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "4조 조건부 출시"
+        }
+       ],
+       "kind": "react"
+      }
+     ]
+    },
+    {
+     "n": 8,
+     "user": "정리하면 오늘 검토 요청, 금요일 부분 출시, 다음 주 나머지 출시예요.",
+     "addressed": null,
+     "markups": [],
+     "error": null,
+     "llm_calls": 6,
+     "tokens_in": 15717,
+     "tokens_out": 763,
+     "notes": {
+      "repetition_guard": 1,
+      "repetition_guard.same_opener": 1
+     },
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "challenge",
+       "target": "user",
+       "issue": "현재 준비 상황 및 영향 범위 정리",
+       "intent": "필수 항목 검토 방안에 대한 구체적인 대응이 필요하다. 민감한 데이터가 포함된 경우의 검토 방안도 마련해야 한다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "finish",
+     "lines": [
+      {
+       "idx": 20,
+       "speaker": "peer",
+       "text": "현재 준비 상황에서 필수 항목만 먼저 검토해 달라고 요청하는 것은 가능하지만, **민감한 데이터**가 포함된 경우 구체적인 검토 방안이 마련되지 않은 것 같습니다. 이러한 민감한 데이터가 포함된 기능은 검토 없이는 위험이 클 수 있으니, 이에 대한 대응이 필요하다고 생각합니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 21,
+       "speaker": "lead",
+       "text": "- 지우님: 검토팀에 요청 (오늘 3시까지)\n- 지우님: 금요일 부분 출시 (금요일)\n- 지우님: 다음 주 나머지 출시 (다음 주)\n- 지우님: 통과 범위 확정 (목요일)\n- 지우님: 부분 출시 범위 정리 공유 (오늘 오후)\n- 지우님: 두 분 의견 비교 (수행 중)\n\n오늘 이야기한 내용으로 정리해서 진행할게요. 고마워요!",
+       "sources": [],
+       "kind": "closing"
+      }
+     ]
+    }
+   ],
+   "dialogue": {
+    "version": 1,
+    "summary": "금요일 마감은 유지되며, '개인정보·보안 검토'는 다음 주 화요일로 연기되었다. 한서윤은 검토팀에 구체적인 실행 계획이 필요하다고 주장하며, 민감한 데이터 검토 생략의 위험성을 우려했다. 이도현은 검토팀에 요청할 때 오늘 오후까지 정리한 부분 출시 범위를 참고하자고 제안하며, 민감한 데이터 검토 방안 마련을 강조했다. 지우는 요청을 오늘 3시까지 보내고, 통과 범위는 목요일에 확정하겠다고 약속하며, 검토 요청과 금요일 부분 출시, 다음 주 나머지 출시를 정리했다.",
+    "issues": [
+     {
+      "id": "i1",
+      "title": "개인정보·보안 검토 범위",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     },
+     {
+      "id": "i2",
+      "title": "현재 준비 상황 및 영향 범위 정리",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     }
+    ],
+    "commitments": [
+     {
+      "who": "user",
+      "what": "검토가 필요한 범위에 대해 한서윤에게 확인할 것",
+      "due": null,
+      "idx": 1
+     },
+     {
+      "who": "user",
+      "what": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지 알아볼 것",
+      "due": null,
+      "idx": 4
+     },
+     {
+      "who": "peer",
+      "what": "검토팀에 확인하여 부분 검토 가능성과 포함될 기능을 알아볼 것",
+      "due": null,
+      "idx": 5
+     },
+     {
+      "who": "user",
+      "what": "두 분 의견을 같이 놓고 일정과 위험을 비교해 볼 것",
+      "due": null,
+      "idx": 9
+     },
+     {
+      "who": "user",
+      "what": "검토팀에 요청할 것",
+      "due": "오늘",
+      "idx": 12
+     },
+     {
+      "who": "user",
+      "what": "부분 출시 범위를 오늘 오후까지 정리해서 공유할 것",
+      "due": "오늘 오후",
+      "idx": 14
+     },
+     {
+      "who": "user",
+      "what": "요청을 오늘 3시까지 보낼 것",
+      "due": "오늘 3시",
+      "idx": 17
+     },
+     {
+      "who": "user",
+      "what": "통과 범위를 목요일에 확정할 것",
+      "due": "목요일",
+      "idx": 17
+     },
+     {
+      "who": "user",
+      "what": "검토 요청을 오늘 보내고 금요일 부분 출시, 다음 주 나머지 출시로 정리할 것",
+      "due": "오늘",
+      "idx": 19
+     }
+    ],
+    "positions": {
+     "lead": {
+      "claim": "검토팀에 구체적인 실행 계획이 필요하다고 주장한다.",
+      "conceded": null
+     },
+     "peer": {
+      "claim": "필수 항목 검토 방안에 대한 구체적인 대응이 필요하다고 강조한다.",
+      "conceded": null
+     },
+     "user": {
+      "claim": "요청을 오늘 3시까지 보내고, 통과 범위는 목요일에 확정하겠다."
+     }
+    },
+    "turns": {
+     "lead": {
+      "last_idx": 21,
+      "count": 4
+     },
+     "peer": {
+      "last_idx": 20,
+      "count": 9
+     }
+    },
+    "markups_seen": [],
+    "cited": [],
+    "upto_idx": 19,
+    "last_moves": [
+     {
+      "persona": "peer",
+      "move": "challenge",
+      "issue": "i1",
+      "idx": 8
+     },
+     {
+      "persona": "peer",
+      "move": "challenge",
+      "issue": "i1",
+      "idx": 10
+     },
+     {
+      "persona": "peer",
+      "move": "propose",
+      "issue": "i1",
+      "idx": 13
+     },
+     {
+      "persona": "peer",
+      "move": "challenge",
+      "issue": "i1",
+      "idx": 15
+     },
+     {
+      "persona": "peer",
+      "move": "propose",
+      "issue": "개인정보·보안 검토 범위",
+      "idx": 18
+     },
+     {
+      "persona": "peer",
+      "move": "challenge",
+      "issue": "현재 준비 상황 및 영향 범위 정리",
+      "idx": 20
+     }
+    ]
+   }
+  },
+  {
+   "flag": "1",
+   "cond": "A",
+   "variant": "markup",
+   "rep": 1,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "검토가 필요한 범위에 대해 구체적으로 어떤 기능이나 데이터가 포함되는지 말씀해 주실 수 있을까요? 그렇게 되면 더 정확하게 확인해 볼 수 있을 것 같습니다.",
+     "sources": [],
+     "kind": "react"
+    },
+    {
+     "idx": 3,
+     "speaker": "peer",
+     "text": "서윤님, 검토가 필요한 범위에 대해 구체적으로 말씀드리면, 고객사와의 약속을 고려할 때 **필수 항목**만 먼저 검토해 달라고 요청할 수 있습니다. 이렇게 하면 검토 범위를 최소화할 수 있을 것 같습니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "2조 검토 기간"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지도 오늘 알아볼게요.",
+     "addressed": null,
+     "markups": [
+      {
+       "id": 102,
+       "artifact_id": "a3",
+       "anchor": {
+        "line_start": 3,
+        "line_end": 4,
+        "quote": null
+       },
+       "kind": "risk",
+       "text": "계좌번호 전체가 알림 본문과 로그에 그대로 들어가요. 뒤 4자리만 써야 하지 않나요?",
+       "msg_idx": 4,
+       "created_at": 1792550659.309699
+      }
+     ],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 11839,
+     "tokens_out": 545,
+     "notes": {
+      "artifact_opened": 1
+     },
+     "tools": [
+      "business.get_artifact"
+     ],
+     "plan": [
+      {
+       "persona": "peer",
+       "move": "address_markup",
+       "target": "user",
+       "issue": "검토 범위",
+       "intent": "고객사와의 약속을 고려하여 필수 항목만 먼저 검토해 달라고 요청하는 방안을 제안합니다.",
+       "form": "plain",
+       "markup_id": "102"
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "peer",
+       "text": "L3에서 계좌번호 전체가 본문에 들어가는 점은 보안상의 우려가 맞습니다. 따라서 이 부분은 뒤 4자리만 표시하도록 수정해야 합니다. L4의 로그에서도 동일하게 계좌번호를 처리할 필요가 있어 보안이 강화된 버전으로 조정하는 것이 좋겠습니다.",
+       "sources": [],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "peer",
+       "text": "서윤님, 지난 분기처럼 **먼저 기획안을 제출하고**, 검토는 나중에 보완하는 방법도 고려해볼 수 있습니다. 필수 항목만 먼저 검토받고, 나머지는 검토팀 일정에 맞춰 조정하면 좋을 것 같습니다. 이렇게 하면 고객사와의 약속도 지킬 수 있을 것 같습니다. 두 분의 의견을 모두 반영할 수 있는 방향을 찾아볼 수 있을까요?",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": {
+    "version": 1,
+    "summary": "금요일 마감은 유지되며, '개인정보·보안 검토'는 다음 주 화요일로 연기되었다. 한서윤은 검토가 필요한 범위에 대해 구체적인 기능이나 데이터를 요청했고, 이도현은 고객사와의 약속을 고려하여 필수 항목만 먼저 검토해 달라고 제안했다. 지우는 검토팀 일정이 밀린 이유와 부분 검토 가능성을 알아보겠다고 약속했다.",
+    "issues": [
+     {
+      "id": "i1",
+      "title": "개인정보·보안 검토 범위",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     },
+     {
+      "id": "i2",
+      "title": "현재 준비 상황 및 영향 범위 정리",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     }
+    ],
+    "commitments": [
+     {
+      "who": "user",
+      "what": "검토가 필요한 범위에 대해 한서윤에게 확인할 것",
+      "due": null,
+      "idx": 1
+     },
+     {
+      "who": "user",
+      "what": "검토팀 일정이 왜 밀렸는지, 부분 검토가 가능한지 알아볼 것",
+      "due": null,
+      "idx": 4
+     }
+    ],
+    "positions": {
+     "lead": {
+      "claim": "검토가 필요한 범위에 대해 구체적으로 어떤 기능이나 데이터가 포함되는지 말씀해 주실 수 있을까요?",
+      "conceded": null
+     },
+     "peer": {
+      "claim": "필수 항목만 먼저 검토해 달라고 요청할 수 있습니다.",
+      "conceded": null
+     },
+     "user": {
+      "claim": "검토팀 일정이 밀린 이유와 부분 검토 가능성을 알아보겠다."
+     }
+    },
+    "turns": {
+     "lead": {
+      "last_idx": 2,
+      "count": 1
+     },
+     "peer": {
+      "last_idx": 6,
+      "count": 3
+     }
+    },
+    "markups_seen": [
+     "102"
+    ],
+    "cited": [],
+    "upto_idx": 4,
+    "last_moves": [
+     {
+      "persona": "lead",
+      "move": "ask_clarify",
+      "issue": "개인정보·보안 검토의 범위",
+      "idx": 2
+     },
+     {
+      "persona": "peer",
+      "move": "build_on",
+      "issue": "개인정보·보안 검토의 범위",
+      "idx": 3
+     },
+     {
+      "persona": "peer",
+      "move": "address_markup",
+      "issue": "검토 범위",
+      "idx": 5
+     }
+    ]
+   }
+  },
+  {
+   "flag": "1",
+   "cond": "A",
+   "variant": "avoid",
+   "rep": 1,
+   "condition": {
+    "lead": "avoiding",
+    "peer": "collaborating"
+   },
+   "avoid": "lead",
+   "prefix": [
+    {
+     "idx": 2,
+     "speaker": "lead",
+     "text": "검토가 필요한 범위에 대해 구체적으로 어떤 기능이나 데이터가 포함되는지 말씀해 주실 수 있을까요? 그렇게 되면 더 정확하게 확인해 볼 수 있을 것 같습니다.",
+     "sources": [],
+     "kind": "react"
+    },
+    {
+     "idx": 3,
+     "speaker": "peer",
+     "text": "서윤님, 검토가 필요한 범위에 대해 구체적으로 말씀드리면, 고객사와의 약속을 고려할 때 **필수 항목**만 먼저 검토해 달라고 요청할 수 있습니다. 이렇게 하면 검토 범위를 최소화할 수 있을 것 같습니다.",
+     "sources": [
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "3조 부분 검토"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "1조 검토 대상"
+      },
+      {
+       "doc": "개인정보·보안 검토 규정",
+       "section": "2조 검토 기간"
+      }
+     ],
+     "kind": "react"
+    }
+   ],
+   "turns": [
+    {
+     "n": 2,
+     "user": "서윤님은 검토 일정이 밀린 게 우리 출시에 어떤 영향이 있다고 보세요?",
+     "addressed": "lead",
+     "markups": [],
+     "error": null,
+     "llm_calls": 5,
+     "tokens_in": 11409,
+     "tokens_out": 576,
+     "notes": {},
+     "tools": [
+      "rag.search_docs"
+     ],
+     "plan": [
+      {
+       "persona": "lead",
+       "move": "challenge",
+       "target": "user",
+       "issue": "i1",
+       "intent": "이도현이 제안한 필수 항목만 검토하는 방식은 검토의 범위를 줄일 수 있지만, 모든 기능이 출시 전에 검토를 받아야 한다는 원칙을 지키지 못할 수 있습니다. 이로 인해 발생할 수 있는 리스크를 고려해야 합니다.",
+       "form": "plain",
+       "markup_id": null
+      }
+     ],
+     "decision": "next",
+     "lines": [
+      {
+       "idx": 5,
+       "speaker": "lead",
+       "text": "이도현님이 제안한 필수 항목만 검토하는 방식은 검토 범위를 줄일 수 있지만, 모든 기능이 출시 전에 검토를 받아야 한다는 원칙을 지키지 못할 수 있습니다. 이로 인해 발생할 수 있는 리스크를 고려해야 합니다. 모든 기능에 대해 사전 검토가 필요하다는 점, 즉 통과한 범위만 출시할 수 있다는 규정이 있습니다.",
+       "sources": [
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "3조 부분 검토"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "1조 검토 대상"
+        },
+        {
+         "doc": "개인정보·보안 검토 규정",
+         "section": "2조 검토 기간"
+        }
+       ],
+       "kind": "react"
+      },
+      {
+       "idx": 6,
+       "speaker": "peer",
+       "text": "팀장님, 지난 분기처럼 우리가 **필수 항목**을 먼저 제출하고 검토는 나중에 보완하는 방식으로 진행할 수 있을 것 같습니다. 이렇게 하면 고객사와의 약속을 지키면서도 검토 일정의 지연이 출시에 미치는 영향을 최소화할 수 있을 것 같습니다. 팀장님은 절차를 지키는 게 중요하다고 보시겠지만, 두 가지 방법을 함께 고려해보면 좋겠습니다.",
+       "sources": [],
+       "kind": "beat"
+      }
+     ]
+    }
+   ],
+   "dialogue": {
+    "version": 1,
+    "summary": "금요일 마감은 유지되며, '개인정보·보안 검토'는 다음 주 화요일로 연기되었다. 한서윤은 검토가 필요한 범위에 대해 구체적인 기능이나 데이터 확인을 요청했고, 이도현은 필수 항목만 먼저 검토해 달라고 제안하여 검토 범위를 최소화할 수 있다고 주장했다. 지우는 검토 일정 지연이 출시에 미치는 영향에 대해 한서윤에게 질문했다.",
+    "issues": [
+     {
+      "id": "i1",
+      "title": "개인정보·보안 검토 범위",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     },
+     {
+      "id": "i2",
+      "title": "현재 준비 상황 및 영향 범위 정리",
+      "status": "open",
+      "raised_by": "lead",
+      "last_idx": 1
+     }
+    ],
+    "commitments": [
+     {
+      "who": "user",
+      "what": "검토가 필요한 범위에 대해 한서윤에게 확인할 것",
+      "due": null,
+      "idx": 1
+     }
+    ],
+    "positions": {
+     "lead": {
+      "claim": "검토가 필요한 범위에 대해 구체적으로 어떤 기능이나 데이터가 포함되는지 말씀해 주실 수 있을까요?",
+      "conceded": null
+     },
+     "peer": {
+      "claim": "필수 항목만 먼저 검토해 달라고 요청할 수 있습니다.",
+      "conceded": null
+     },
+     "user": {
+      "claim": "검토 일정이 밀린 게 우리 출시에 어떤 영향이 있다고 보세요?"
+     }
+    },
+    "turns": {
+     "lead": {
+      "last_idx": 5,
+      "count": 2
+     },
+     "peer": {
+      "last_idx": 6,
+      "count": 2
+     }
+    },
+    "markups_seen": [],
+    "cited": [],
+    "upto_idx": 4,
+    "last_moves": [
+     {
+      "persona": "lead",
+      "move": "ask_clarify",
+      "issue": "개인정보·보안 검토의 범위",
+      "idx": 2
+     },
+     {
+      "persona": "peer",
+      "move": "build_on",
+      "issue": "개인정보·보안 검토의 범위",
+      "idx": 3
+     },
+     {
+      "persona": "lead",
+      "move": "challenge",
+      "issue": "i1",
+      "idx": 5
+     }
+    ]
+   }
+  }
+ ],
+ "by_variant": {
+  "base": {
+   "0": {
+    "persona_lines": 59,
+    "turns": 24,
+    "errors": 0,
+    "self_repetition_mean": 0.201,
+    "self_repetition_rate": 0.125,
+    "echo_mean": 0.173,
+    "echo_rate": 0.179,
+    "repeated_citation_rate": 0.61,
+    "re_quote_rate": 0.644,
+    "citing_line_rate": 0.746,
+    "sycophancy_rate": 0.339,
+    "addressed_first": 1.0,
+    "addressed_first_n": 6,
+    "avoiding_quiet_when_unaddressed": 0.048,
+    "avoiding_quiet_n": 21,
+    "avoiding_answers_when_addressed": 1.0,
+    "avoiding_answer_n": 3,
+    "cross_talk_rate": 0.348,
+    "cross_talk_n": 23,
+    "markup_uptake": null,
+    "markup_artifact_opened": null,
+    "markup_n": 0,
+    "distinct_2": 0.646,
+    "mean_line_chars": 188.153,
+    "markdown_line_rate": 0.0,
+    "persona_lines_per_turn": 2.458,
+    "llm_calls_per_turn": 5.917,
+    "tokens_per_turn": 15648.417,
+    "repetition_guard_rewrites": 0
+   },
+   "1": {
+    "persona_lines": 39,
+    "turns": 24,
+    "errors": 0,
+    "self_repetition_mean": 0.101,
+    "self_repetition_rate": 0.0,
+    "echo_mean": 0.061,
+    "echo_rate": 0.0,
+    "repeated_citation_rate": 0.0,
+    "re_quote_rate": 0.026,
+    "citing_line_rate": 0.077,
+    "sycophancy_rate": 0.0,
+    "addressed_first": 1.0,
+    "addressed_first_n": 6,
+    "avoiding_quiet_when_unaddressed": 1.0,
+    "avoiding_quiet_n": 21,
+    "avoiding_answers_when_addressed": 1.0,
+    "avoiding_answer_n": 3,
+    "cross_talk_rate": 1.0,
+    "cross_talk_n": 3,
+    "markup_uptake": null,
+    "markup_artifact_opened": null,
+    "markup_n": 0,
+    "distinct_2": 0.832,
+    "mean_line_chars": 140.462,
+    "markdown_line_rate": 0.256,
+    "persona_lines_per_turn": 1.625,
+    "llm_calls_per_turn": 5.208,
+    "tokens_per_turn": 13496.792,
+    "repetition_guard_rewrites": 16
+   }
+  },
+  "markup": {
+   "0": {
+    "persona_lines": 9,
+    "turns": 3,
+    "errors": 0,
+    "self_repetition_mean": 0.176,
+    "self_repetition_rate": 0.111,
+    "echo_mean": 0.093,
+    "echo_rate": 0.0,
+    "repeated_citation_rate": 0.444,
+    "re_quote_rate": 0.778,
+    "citing_line_rate": 0.667,
+    "sycophancy_rate": 0.111,
+    "addressed_first": null,
+    "addressed_first_n": 0,
+    "avoiding_quiet_when_unaddressed": 0.0,
+    "avoiding_quiet_n": 3,
+    "avoiding_answers_when_addressed": null,
+    "avoiding_answer_n": 0,
+    "cross_talk_rate": 0.0,
+    "cross_talk_n": 3,
+    "markup_uptake": 0.0,
+    "markup_artifact_opened": 0.0,
+    "markup_n": 3,
+    "distinct_2": 0.887,
+    "mean_line_chars": 183.889,
+    "markdown_line_rate": 0.0,
+    "persona_lines_per_turn": 3,
+    "llm_calls_per_turn": 7,
+    "tokens_per_turn": 13239.333,
+    "repetition_guard_rewrites": 0
+   },
+   "1": {
+    "persona_lines": 6,
+    "turns": 3,
+    "errors": 0,
+    "self_repetition_mean": 0.065,
+    "self_repetition_rate": 0.0,
+    "echo_mean": 0.025,
+    "echo_rate": 0.0,
+    "repeated_citation_rate": 0.0,
+    "re_quote_rate": 0.0,
+    "citing_line_rate": 0.0,
+    "sycophancy_rate": 0.0,
+    "addressed_first": null,
+    "addressed_first_n": 0,
+    "avoiding_quiet_when_unaddressed": 1.0,
+    "avoiding_quiet_n": 3,
+    "avoiding_answers_when_addressed": null,
+    "avoiding_answer_n": 0,
+    "cross_talk_rate": null,
+    "cross_talk_n": 0,
+    "markup_uptake": 1.0,
+    "markup_artifact_opened": 0.667,
+    "markup_n": 3,
+    "distinct_2": 0.991,
+    "mean_line_chars": 139.667,
+    "markdown_line_rate": 0.167,
+    "persona_lines_per_turn": 2,
+    "llm_calls_per_turn": 4.667,
+    "tokens_per_turn": 11314,
+    "repetition_guard_rewrites": 0
+   }
+  },
+  "avoid": {
+   "0": {
+    "persona_lines": 7,
+    "turns": 3,
+    "errors": 0,
+    "self_repetition_mean": 0.189,
+    "self_repetition_rate": 0.143,
+    "echo_mean": 0.144,
+    "echo_rate": 0.0,
+    "repeated_citation_rate": 0.571,
+    "re_quote_rate": 0.714,
+    "citing_line_rate": 0.714,
+    "sycophancy_rate": 0.0,
+    "addressed_first": 1.0,
+    "addressed_first_n": 3,
+    "avoiding_quiet_when_unaddressed": null,
+    "avoiding_quiet_n": 0,
+    "avoiding_answers_when_addressed": 1.0,
+    "avoiding_answer_n": 3,
+    "cross_talk_rate": 0.0,
+    "cross_talk_n": 1,
+    "markup_uptake": null,
+    "markup_artifact_opened": null,
+    "markup_n": 0,
+    "distinct_2": 0.905,
+    "mean_line_chars": 215.429,
+    "markdown_line_rate": 0.0,
+    "persona_lines_per_turn": 2.333,
+    "llm_calls_per_turn": 5.667,
+    "tokens_per_turn": 10395,
+    "repetition_guard_rewrites": 0
+   },
+   "1": {
+    "persona_lines": 6,
+    "turns": 3,
+    "errors": 0,
+    "self_repetition_mean": 0.075,
+    "self_repetition_rate": 0.0,
+    "echo_mean": 0.088,
+    "echo_rate": 0.0,
+    "repeated_citation_rate": 0.0,
+    "re_quote_rate": 0.0,
+    "citing_line_rate": 0.0,
+    "sycophancy_rate": 0.0,
+    "addressed_first": 1.0,
+    "addressed_first_n": 3,
+    "avoiding_quiet_when_unaddressed": null,
+    "avoiding_quiet_n": 0,
+    "avoiding_answers_when_addressed": 1.0,
+    "avoiding_answer_n": 3,
+    "cross_talk_rate": null,
+    "cross_talk_n": 0,
+    "markup_uptake": null,
+    "markup_artifact_opened": null,
+    "markup_n": 0,
+    "distinct_2": 0.958,
+    "mean_line_chars": 150,
+    "markdown_line_rate": 0.333,
+    "persona_lines_per_turn": 2,
+    "llm_calls_per_turn": 5.333,
+    "tokens_per_turn": 12760,
+    "repetition_guard_rewrites": 1
+   }
+  }
+ }
+}

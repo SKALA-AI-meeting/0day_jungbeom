@@ -1,10 +1,12 @@
-"""Agent task execution end to end: START -> TURN x N -> REPORT (approval interrupt -> resume)."""
+"""Agent task execution end to end: START -> TURN x N -> REPORT (approval interrupt -> resume), plus the handler registry."""
 import asyncio
+import time
 import uuid
 
 import pytest
 
 from app import runner
+from app.handlers import Handler, Registry
 from app.harness import guardrails, tools
 
 
@@ -117,3 +119,64 @@ def test_rejected_report_is_not_saved_and_finished_session_fails_turn(wired):
 def test_change_tool_needs_approval_even_when_called_directly():
     with pytest.raises(guardrails.ApprovalRequired):
         asyncio.run(tools.call("business", "save_report", {"session_id": "abc", "report": {}}))
+
+
+def test_unknown_type_and_resume_of_a_run_only_type_fail_without_retry(wired):
+    sink = wired["sink"]
+    unknown, start_resume = msg("NOPE", "abc"), msg("START", "abc", mode="RESUME")
+    asyncio.run(runner.execute(unknown))
+    with pytest.raises(runner.NonRetryable):
+        asyncio.run(runner.execute(start_resume, final_attempt=False))
+    assert evs(sink, unknown["taskId"])[-1]["type"] == "FAILED" and "unknown task type" in evs(sink, unknown["taskId"])[-1]["data"]["error"]
+    assert evs(sink, start_resume["taskId"])[-1]["type"] == "FAILED"
+
+
+def test_handlers_registry():
+    assert list(runner.HANDLERS) == ["START", "TURN", "REPORT", "ACCOUNT_REVIEW"]
+    assert {h["type"]: h["resumable"] for h in runner.HANDLERS.describe()} == {"START": False, "TURN": False, "REPORT": True, "ACCOUNT_REVIEW": True}
+    assert all(h["description"] for h in runner.HANDLERS.describe())
+    with pytest.raises(ValueError):
+        Registry([Handler("START", runner.HANDLERS["START"].run), Handler("START", runner.HANDLERS["START"].run)])
+    with pytest.raises(ValueError):
+        Registry([Handler("start", runner.HANDLERS["START"].run)])
+
+
+class _StubTurnGraph:
+    """Stands in for the turn graph to check what runner._turn sends to append_turn (the real graph is tested elsewhere)."""
+
+    def __init__(self) -> None:
+        self.final_extra: dict = {}
+        self.seen: list[dict] = []
+
+    async def ainvoke(self, state, config):
+        self.seen.append(state["session"])
+        m = {"idx": state["user_idx"] + 1, "speaker": "lead", "text": "네, 그렇게 정리해 볼게요.", "milestone": "communicate", "ts": time.time()}
+        return {"new_messages": [m], "observations": [], "milestone_idx_after": state["milestone_idx"], "turns_after": 1, **self.final_extra}
+
+
+def test_turn_passes_the_dialogue_ledger_only_when_present(wired):
+    backend = wired["backend"]
+    stub = _StubTurnGraph()
+    ledger = {"version": 1, "summary": "", "issues": [{"id": "i1", "title": "검토 범위", "status": "open", "raised_by": "user", "last_idx": 1}],
+              "commitments": [], "positions": {}, "turns": {"lead": {"last_idx": 2, "count": 1}}, "markups_seen": [], "cited": []}
+
+    async def main():
+        gs = await runner.graphs()
+        original, gs["turn"] = gs["turn"], stub
+        try:
+            sid, _ = await start(backend)
+            stub.final_extra = {"dialogue": ledger}
+            first = await turn(backend, sid, "검토 범위가 어디까지인가요?")
+            after_first = backend.sessions[sid]["dialogue"]
+            stub.final_extra = {}
+            await turn(backend, sid, "오늘 안에 정리해서 공유할게요.")
+            await runner.drain_background()
+            return sid, after_first, first
+        finally:
+            gs["turn"] = original
+
+    sid, after_first, first = asyncio.run(main())
+    assert after_first == ledger and backend.sessions[sid]["dialogue"] == ledger, "no dialogue in the final state keeps the stored one"
+    streamed = [e["data"].get("args") or {} for e in evs(wired["sink"], first["taskId"])]
+    assert not any("dialogue" in a or "observations" in a for a in streamed), "the candidate's TURN stream never carries the ledger or evidence"
+    assert stub.seen[1]["dialogue"] == ledger and len(stub.seen[0]["artifacts"]) == 3, "the graph sees ledger + artifacts from Spring"

@@ -33,3 +33,8 @@ dayzero:
   dispatch: ${DISPATCH:http}
   invite-ttl-hours: 72
   seed-demo: ${SEED_DEMO:true}
+  # Watchdog: QUEUED / RUNNING tasks with no progress for this long become FAILED (WAITING_APPROVAL never times out)
+  task-stale-minutes: ${TASK_STALE_MINUTES:10}
+  task-watchdog-interval-ms: ${TASK_WATCHDOG_INTERVAL_MS:60000}
+  # startup check of the agent's task types (GET /agent/handlers), retried every 6 s while the agent starts
+  agent-check-attempts: ${AGENT_CHECK_ATTEMPTS:10}

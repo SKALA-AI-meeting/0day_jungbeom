@@ -21,7 +21,8 @@ public class ChatSession {
     @Column(columnDefinition = "text") public String milestoneLogJson = "[]";
     @Column(columnDefinition = "text") public String notes = "";
     @Column(columnDefinition = "text") public String reportJson;
-    public String reportStatus = "none";
+    @Column(columnDefinition = "text") public String dialogueJson; // the agent's dialogue ledger, stored opaque (admin only)
+    public String reportStatus = "none"; // none pending awaiting_approval ready rejected failed dismissed
     public OffsetDateTime createdAt = OffsetDateTime.now();
     public OffsetDateTime endedAt;
 }

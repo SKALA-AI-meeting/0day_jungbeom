@@ -9,7 +9,6 @@ import dev.dayzero.backend.repo.InviteRepository;
 import dev.dayzero.backend.security.AuthUser;
 import java.time.OffsetDateTime;
 import java.util.*;
-import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,7 +18,8 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * Candidate accounts. Signup stores the account as PENDING_REVIEW and asks the agent to screen it
  * (ACCOUNT_REVIEW). The agent approves clean accounts itself and sends ambiguous ones to an admin;
- * the decision comes back through the internal API (business-mcp decide_account).
+ * the decision comes back through the internal API (business-mcp decide_account). A review that ends without a
+ * decision becomes REVIEW_ERROR in task.AccountReviewHandler (loop closure through the admin inbox).
  */
 @Service
 public class AccountService {
@@ -164,23 +164,5 @@ public class AccountService {
         review.put("comment", comment == null ? "" : comment);
         applyDecision(a, approved ? "approved" : "rejected", approved ? "admin_approved" : "admin_rejected", review, "관리자 직접 결정");
         return adminView(a);
-    }
-
-    /** Loop closure: a review task that ends without a decision hands the account to an admin. */
-    @EventListener
-    @Transactional
-    public void onTaskFinished(TaskFinishedEvent e) {
-        AiTask t = e.task();
-        if (!"ACCOUNT_REVIEW".equals(t.type) || t.accountId == null) return;
-        accounts.findById(t.accountId).ifPresent(a -> {
-            if ("PENDING_REVIEW".equals(a.status) && !"DONE".equals(e.status())) {
-                a.status = "REVIEW_ERROR";
-                Map<String, Object> r = new LinkedHashMap<>();
-                r.put("error", t.error == null ? "에이전트 검토가 끝나지 않았어요." : t.error);
-                r.put("task_id", t.id);
-                a.reviewJson = json.write(r);
-                accounts.save(a);
-            }
-        });
     }
 }

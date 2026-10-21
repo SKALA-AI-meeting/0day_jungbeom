@@ -4,13 +4,17 @@ It never touches a database: every tool calls Spring Boot's internal API (/inter
 + X-Internal-Key), so business rules stay in one place (Spring). HTTP errors become ToolError with the
 Spring message, which the agent's harness treats as non-retryable for 4xx.
 
-  조회  get_session_state, list_conditions, get_account
+  조회  get_session_state, list_conditions, get_account, list_artifacts, get_artifact, list_annotations
   변경  init_session, append_turn, save_detection, save_report, decide_account
         (save_report, and decide_account except auto_clean / auto_schema, need human approval in the agent)
+
+Shared artifacts are seeded once at START (init_session, replace-all) in the contract shape only: anything else on an
+item (the agent's planted checkpoints) is dropped here before it can reach Spring or the browser.
 """
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -32,10 +36,10 @@ def use_transport(t: httpx.AsyncBaseTransport | None) -> None:
     _transport = t
 
 
-async def _req(method: str, path: str, json: Any = None):
+async def _req(method: str, path: str, json: Any = None, params: dict | None = None):
     async with httpx.AsyncClient(base_url=BASE, headers={"X-Internal-Key": KEY}, timeout=20, transport=_transport) as c:
         try:
-            r = await c.request(method, path, json=json)
+            r = await c.request(method, path, json=json, params=params)
         except httpx.HTTPError as e:
             raise ToolError(f"503 backend unreachable: {e}") from e
     if r.status_code >= 400:
@@ -53,6 +57,36 @@ def _sid(session_id: str) -> str:
     return session_id
 
 
+_AID = re.compile(r"^[A-Za-z0-9_-]{1,16}$")
+ARTIFACT_FIELDS = ("id", "kind", "title", "owner", "status", "summary", "lang", "body")
+_ARTIFACT_MAX = {"title": 80, "status": 20, "summary": 160, "body": 6000}
+
+
+def _aid(artifact_id: str) -> str:
+    if not isinstance(artifact_id, str) or not _AID.match(artifact_id):
+        raise ToolError("400 artifact_id 형식이 올바르지 않아요.")
+    return artifact_id
+
+
+def _artifacts(items: list[dict]) -> list[dict]:
+    """Contract shape only (docs/architecture/api-contract.md §1); Spring validates again."""
+    out, seen = [], set()
+    for a in items:
+        if not isinstance(a, dict):
+            raise ToolError("400 과제 형식이 올바르지 않아요.")
+        x = {k: a.get(k) for k in ARTIFACT_FIELDS}
+        if _aid(x["id"]) in seen:
+            raise ToolError(f"400 과제 id가 겹쳐요: {x['id']}")
+        seen.add(x["id"])
+        if x["kind"] not in ("design", "result", "code") or x["owner"] not in ("lead", "peer", "team"):
+            raise ToolError(f"400 과제 {x['id']}의 kind 또는 owner가 올바르지 않아요.")
+        for k, n in _ARTIFACT_MAX.items():
+            if not isinstance(x[k], str) or len(x[k]) > n or (k in ("title", "body") and not x[k].strip()):
+                raise ToolError(f"400 과제 {x['id']}의 {k}는 {n}자 이하 문자열이어야 해요.")
+        out.append(x)
+    return out
+
+
 @mcp.tool
 async def get_session_state(session_id: str) -> dict:
     """[조회] 세션 상태(별칭, 시나리오, 단계, 상대 조건, 선택, 메시지, 관찰 근거, 판정, 노트)를 돌려준다."""
@@ -66,21 +100,48 @@ async def list_conditions() -> list[dict]:
 
 
 @mcp.tool
-async def init_session(session_id: str, condition: dict, message: dict) -> dict:
-    """[변경] 세션 시작: 배정된 상대 조건과 첫 메시지(소통 단계 안건)를 저장한다."""
+async def init_session(session_id: str, condition: dict, message: dict, artifacts: list[dict] | None = None) -> dict:
+    """[변경] 세션 시작: 배정된 상대 조건과 첫 메시지(소통 단계 안건), 같이 볼 과제(있으면 전부 교체)를 저장한다."""
     if condition.get("lead") == condition.get("peer"):
         raise ToolError("400 팀장과 동료의 유형은 달라야 해요.")
-    return await _req("POST", f"/internal/sessions/{_sid(session_id)}/init", {"condition": condition, "message": message})
+    body: dict[str, Any] = {"condition": condition, "message": message}
+    if artifacts is not None:
+        body["artifacts"] = _artifacts(artifacts)
+    return await _req("POST", f"/internal/sessions/{_sid(session_id)}/init", body)
 
 
 @mcp.tool
 async def append_turn(session_id: str, new_messages: list[dict], observations: list[dict], milestone_idx_after: int,
-                      turns_after: int, milestone_log_entry: dict | None = None, completed: bool = False) -> dict:
-    """[변경] 한 턴의 결과(팀원 메시지, 관찰 근거, 단계 전환, 종료 여부)를 저장한다. 단계 규칙은 Spring이 다시 검증한다."""
-    return await _req("POST", f"/internal/sessions/{_sid(session_id)}/turn", {
+                      turns_after: int, milestone_log_entry: dict | None = None, completed: bool = False,
+                      dialogue: dict | None = None) -> dict:
+    """[변경] 한 턴의 결과(팀원 메시지, 관찰 근거, 단계 전환, 종료 여부, 대화 장부)를 저장한다. 단계 규칙은 Spring이 다시 검증한다."""
+    body: dict[str, Any] = {
         "new_messages": new_messages, "observations": observations, "milestone_idx_after": milestone_idx_after,
         "turns_after": turns_after, "milestone_log_entry": milestone_log_entry, "completed": completed,
-    })
+    }
+    if dialogue is not None:  # absent = keep the stored ledger
+        body["dialogue"] = dialogue
+    return await _req("POST", f"/internal/sessions/{_sid(session_id)}/turn", body)
+
+
+@mcp.tool
+async def list_artifacts(session_id: str) -> list[dict]:
+    """[조회] 같이 보는 과제 목록(id, 종류, 제목, 담당, 상태, 요약, 언어, 줄 수, 마크업 수)."""
+    return await _req("GET", f"/internal/sessions/{_sid(session_id)}/artifacts")
+
+
+@mcp.tool
+async def get_artifact(session_id: str, artifact_id: str) -> dict:
+    """[조회] 과제 하나의 본문과 지원자가 남긴 마크업."""
+    return await _req("GET", f"/internal/sessions/{_sid(session_id)}/artifacts/{_aid(artifact_id)}")
+
+
+@mcp.tool
+async def list_annotations(session_id: str, since_idx: int = 0) -> list[dict]:
+    """[조회] 지원자 마크업 중 msg_idx가 since_idx 이상인 것(id 순). 마지막으로 본 뒤 새로 남긴 마크업을 찾을 때 쓴다."""
+    if int(since_idx) < 0:
+        raise ToolError("400 since_idx는 0 이상이어야 해요.")
+    return await _req("GET", f"/internal/sessions/{_sid(session_id)}/annotations", params={"since_idx": int(since_idx)})
 
 
 @mcp.tool

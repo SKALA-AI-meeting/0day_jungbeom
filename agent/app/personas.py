@@ -75,6 +75,17 @@ IDENTITY = {
     "peer": "지원자와 같은 팀의 동료(직급 비슷). 자기 업무 사정이 걸려 있다.",
 }
 SPEECH = "한국어 존댓말 메신저 말투, 1~3문장, 이모지 없음. 이름 머리글이나 따옴표 없이 대사만 쓴다."
+# Dialogue harness: lists/tables are allowed when they help, so the length rule is per item rather than per sentence.
+SPEECH_DIALOGUE = "한국어 존댓말 메신저 말투. 보통 1~3문장(목록·표를 쓸 때는 짧은 항목 3~4개까지), 이모지 없음. 이름 머리글이나 따옴표 없이 대사만 쓴다."
+
+# Moves (app/harness/dialogue.MOVES) each conflict mode reaches for first; the director sees them next to the mode.
+PREFERRED_MOVES = {
+    "competing": ["challenge", "propose", "answer"],
+    "collaborating": ["ask_clarify", "propose", "build_on"],
+    "compromising": ["propose", "concede", "answer"],
+    "avoiding": ["answer", "ask_clarify"],
+    "accommodating": ["concede", "build_on", "answer"],
+}
 
 
 def mode_block(mode: str) -> str:
