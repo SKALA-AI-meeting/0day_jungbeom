@@ -1,5 +1,6 @@
 """카드 전달·기준안·관찰과 계약 테스트 C5(testing.md "수용·경청 카드")."""
 
+import pytest
 from conftest import intent_of, say
 
 FLEX, PRESSURE = "flexibility_majority", "listening_pressure"
@@ -209,3 +210,71 @@ async def test_honesty_credit_observed_on_proposal_start(harness):
     run = await h.run("phase_started")
     assert run.decision["speakers"] == [] and not h.posted()
     assert h.server.observations["honesty_credit"]["trigger_message_id"] == notice
+
+
+async def test_moved_critic_must_record_support_for_candidate_option(harness):
+    """세션 3e987267: 이동한 비판형이 옛 안 oppose만 내고 지원자 안 지지를 밝히지 않아
+    합의가 나지 않았다."""
+    h = harness(
+        "solution",
+        persona=[
+            say("센서가 맞아요."),
+            say("캠페인이 낫죠.", {"option_id": "water_s2", "stance": "support"}),
+        ],
+    )
+    h.server.confirm_keyword("water")
+    await h.run("phase_started")
+    s2 = option_id(h, "water_s2")
+    h.candidate("생활 인프라가 좋다고 생각해요.", intent_of("propose", key="water_s3"))
+    s3 = option_id(h, "water_s3")
+    h.server.set_support("p2", s3)
+    oppose_old = say("인프라는 초기 비용이 커요.", {"option_id": s2, "stance": "oppose"})
+    h.persona.script += [oppose_old, oppose_old]
+    mid = h.candidate("지안님, 캠페인은 아니에요.", intent_of("oppose", option_id=s2, to=("p3",)))
+    await h.run("message", message_id=mid)
+
+    # 계획 밖 안 oppose만 냄 → 재생성 → 그래도 지지 없음 → 이동 직후 고정 문구 + 지지 저장 → 합의
+    post = h.posted("p3")[-1]
+    assert post["meta"]["stance_check"] == "fallback"
+    assert post["meta"]["stance_violation"] == "지원자 안으로 옮겼는데 그 안 지지를 밝히지 않음"
+    assert (
+        post["content"]
+        == "듣고 보니 빗물 저금통·투수 포장 같은 생활 인프라가 더 낫겠네요. 저도 그쪽으로 옮길게요."
+    )
+    assert len(h.persona.calls) == 4  # 단계 시작 2 + 최초 1 + 재생성 1
+    assert h.server.support["p3"] == s3  # 이동이 기록돼 지원자+p2+p3 합의
+    assert h.server.slots["solution"]["option_id"] == s3
+
+
+@pytest.mark.parametrize("via", ["sentence", "proposes"])
+async def test_moved_critic_support_overrides_structured_oppose(harness, via):
+    """문장 판정이나 proposes는 지원자 안 지지인데 구조화 stance가 옛 안 oppose면 저장 입장을
+    계획 안 지지로 정정한다."""
+    s3 = "opt-water_s3"
+    judged = intent_of("agree", option_id=s3) if via == "sentence" else "not json"
+    h = harness(
+        "solution",
+        persona=[
+            say("센서가 맞아요."),
+            say("캠페인이 낫죠.", {"option_id": "water_s2", "stance": "support"}),
+        ],
+        intent=["not json", "not json", judged],
+    )
+    h.server.confirm_keyword("water")
+    await h.run("phase_started")
+    s2 = option_id(h, "water_s2")
+    h.candidate("생활 인프라가 좋다고 생각해요.", intent_of("propose", key="water_s3"))
+    h.server.set_support("p2", s3)
+    proposes = {"scenario_option_key": "water_s3"} if via == "proposes" else None
+    h.persona.script += [
+        say("듣고 보니 인프라가 낫네요.", {"option_id": s2, "stance": "oppose"}, proposes)
+    ]
+    mid = h.candidate("지안님, 캠페인은 아니에요.", intent_of("oppose", option_id=s2, to=("p3",)))
+    await h.run("message", message_id=mid)
+
+    post = h.posted("p3")[-1]
+    assert (
+        post["content"] == "듣고 보니 인프라가 낫네요." and post["meta"]["stance_check"] == "pass"
+    )
+    assert h.server.support["p3"] == s3
+    assert h.server.slots["solution"]["option_id"] == s3

@@ -600,7 +600,24 @@ async def _violation(
     if found:
         return found, None
     judged = await _judge_sentence(state, deps, draft.content)
-    return persona.sentence_violation(judged, plan), judged
+    found = persona.sentence_violation(judged, plan) or persona.move_unstated(
+        draft, plan, state["ds"], judged
+    )
+    return found, judged
+
+
+def _settle_stance(
+    draft: persona.Draft, judged: dict[str, Any] | None, plan: StancePlan, ds: dict[str, Any]
+) -> None:
+    """문장이 계획 안 지지면 그 지지를 저장 입장으로 둔다. 이동이 아직 기록되지 않았으면 구조화
+    stance가 다른 값(옛 안 oppose 등)이어도 계획 안 지지로 정정한다(입장은 코드가 정한다).
+    """
+    pending = persona.move_pending(plan, ds)
+    proposed = persona.resolve_target(ds, (draft.proposes or {}).get("scenario_option_key"))
+    if not (persona.sentence_supports_plan(judged, plan) or (pending and proposed & plan.targets)):
+        return
+    if draft.stance is None or pending:
+        draft.stance = {"option_id": plan.option_id or plan.key, "stance": "support"}
 
 
 async def stance_check(state: DebateState, runtime: Runtime[DebateDeps]) -> dict[str, Any]:
@@ -613,8 +630,7 @@ async def stance_check(state: DebateState, runtime: Runtime[DebateDeps]) -> dict
         return {}
     found, judged = await _violation(state, deps, draft, plan)
     if not found:
-        if draft.stance is None and persona.sentence_supports_plan(judged, plan):
-            draft.stance = {"option_id": plan.option_id or plan.key, "stance": "support"}
+        _settle_stance(draft, judged, plan, state["ds"])
         return {"draft": asdict(draft)}
     spk = _current(state)
     meta = {**draft.meta, "stance_check": "regenerated", "stance_violation": found}
@@ -626,12 +642,12 @@ async def stance_check(state: DebateState, runtime: Runtime[DebateDeps]) -> dict
     if again is not None and checker.check(again.content, state["phase"]).ok and again.content:
         second, judged = await _violation(state, deps, again, plan)
         if not second:
-            if again.stance is None and persona.sentence_supports_plan(judged, plan):
-                again.stance = {"option_id": plan.option_id or plan.key, "stance": "support"}
+            _settle_stance(again, judged, plan, state["ds"])
             again.content = checker.check(again.content, state["phase"]).text
             again.meta = {**meta, "tools_used": _spent(again)}
             return {"draft": asdict(again)}
-    fixed = persona.stance_fallback(deps.catalog, spk["seat"], plan)
+    pending = persona.move_pending(plan, state["ds"])
+    fixed = persona.stance_fallback(deps.catalog, spk["seat"], plan, pending)
     fixed.meta = {**meta, "stance_check": "fallback"}
     return {"draft": asdict(fixed)}
 

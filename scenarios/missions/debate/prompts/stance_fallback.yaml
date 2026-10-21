@@ -2,6 +2,7 @@
 # 키: 페르소나 유형 id → 단계 → 상황. {option}은 그 자리 계획 안의 라벨(코드가 조사 처리). [초안: 문구]
 # stance: 이 문구를 게시할 때 함께 저장할 입장(support = 계획 안 지지, none = 입장 없음).
 # problem.before_card는 flexibility_majority 카드 전(입장 밝히지 않음). proposal은 입장 없음.
+# moved(설득 가능 자리만): 지원자 안으로 옮긴 계획이 아직 기록되지 않았을 때(이동 직후 발언) 단계와 상관없이 쓴다.
 version: 1
 stubborn:
   keyword: { text: "저는 {option}이 맞다고 봐요. 아까 말한 이유 그대로예요.", stance: support }
@@ -21,3 +22,4 @@ critic:
   problem: { text: "저는 {option} 쪽이에요. 다른 안은 근거가 더 있어야 할 것 같아요.", stance: support }
   solution: { text: "저는 {option}이 더 낫다고 봐요. 다른 안은 실현 가능성이 걸려요.", stance: support }
   proposal: { text: "궁금한 부분 있으면 물어보세요.", stance: none }
+  moved: { text: "듣고 보니 {option}이 더 낫겠네요. 저도 그쪽으로 옮길게요.", stance: support }
