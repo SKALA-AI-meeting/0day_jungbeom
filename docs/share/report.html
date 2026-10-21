@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Day Zero 최종 보고서</title>
+<style>
+  :root {
+    --paper: #FAF9F5;
+    --ink: #141413;
+    --body: #2B2A27;
+    --muted: #6B6A64;
+    --rule: #DEDCD3;
+    --card: #F0EEE6;
+    --clay: #D97757;
+    --clay-soft: #F5E3DA;
+    --olive: #788C5D;
+    --serif: "Nanum Myeongjo", "AppleMyungjo", serif;
+    --sans: "Apple SD Gothic Neo", "AppleGothic", "Nanum Gothic", sans-serif;
+    --mono: "SF Mono", Menlo, Monaco, monospace;
+  }
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; background: var(--paper); }
+  body { font-family: var(--sans); color: var(--body); font-size: 9.6pt; line-height: 1.62; word-break: keep-all; }
+  /* 짧은 꼬리 줄을 막는다: 본문은 마지막 줄 균형, 제목은 줄 길이 균형 */
+  p, figcaption, .msg div, .stat .sub { text-wrap: pretty; }
+  h1, h2, .lede, td, li, .bal { text-wrap: balance; }
+  .nw { white-space: nowrap; }
+
+  /* 한 페이지 = 한 블록. 제목과 본문이 페이지 사이에서 갈라지지 않게 한다 */
+  .page { position: relative; width: 210mm; height: 297mm; padding: 19mm 18mm 20mm; overflow: hidden; break-after: page; background: var(--paper); }
+  .page:last-child { break-after: auto; }
+  .compact-tables h3 { margin-top: 4mm; }
+  .compact-tables td { padding-top: 1.2mm; padding-bottom: 1.2mm; }
+  .foot { position: absolute; left: 18mm; right: 18mm; bottom: 10mm; display: flex; justify-content: space-between; border-top: 0.5pt solid var(--rule); padding-top: 2.2mm; font: 7pt var(--mono); color: var(--muted); letter-spacing: 0.04em; }
+
+  .kicker { font: 7.5pt var(--sans); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 0 0 3mm; }
+  .kicker b { color: var(--clay); font-weight: 600; }
+  h2 { font-family: var(--serif); font-weight: 800; font-size: 20pt; line-height: 1.25; color: var(--ink); margin: 0 0 2.5mm; letter-spacing: -0.01em; }
+  .lede { font-size: 10.4pt; color: var(--body); margin: 0 0 6mm; max-width: 158mm; }
+  h3 { font-family: var(--sans); font-size: 10.2pt; font-weight: 700; color: var(--ink); margin: 6mm 0 2mm; }
+  h3 .n { font-family: var(--mono); font-weight: 400; font-size: 8pt; color: var(--clay); margin-right: 2mm; }
+  p { margin: 0 0 2.2mm; }
+  b, strong { color: var(--ink); }
+  ul { margin: 0 0 2mm; padding-left: 4.2mm; }
+  li { margin: 0 0 1.2mm; }
+  li::marker { color: var(--clay); }
+
+  table { width: 100%; border-collapse: collapse; margin: 1mm 0 3mm; font-size: 8.8pt; }
+  th { text-align: left; font-weight: 600; font-size: 7.6pt; letter-spacing: 0.06em; color: var(--muted); border-bottom: 0.8pt solid var(--ink); padding: 1.6mm 2mm; }
+  td { border-bottom: 0.5pt solid var(--rule); padding: 1.7mm 2mm; vertical-align: top; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  td.num { font-family: var(--mono); font-size: 8.4pt; }
+  tr.hl td { background: var(--clay-soft); }
+  tr.hl td:first-child { box-shadow: inset 1.2mm 0 0 var(--clay); }
+  .k { font-family: var(--mono); font-size: 8pt; color: var(--ink); white-space: nowrap; }
+
+  figure { margin: 1mm 0 4mm; }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption { font-size: 7.8pt; color: var(--muted); margin-top: 1.5mm; }
+  figcaption b { font-family: var(--mono); font-weight: 400; color: var(--clay); margin-right: 1.5mm; }
+
+  .note { background: var(--card); border-radius: 2mm; padding: 3.2mm 4mm; margin: 2mm 0 3mm; }
+  .note .t { font-size: 7.4pt; letter-spacing: 0.14em; text-transform: uppercase; color: var(--clay); font-weight: 600; margin-bottom: 1mm; }
+  .note p:last-child, .note ul:last-child { margin-bottom: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+
+  .stat { border-top: 0.8pt solid var(--ink); padding-top: 2.5mm; }
+  .stat .lab { font-size: 7.4pt; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .stat .val { font-family: var(--serif); font-weight: 800; font-size: 30pt; line-height: 1.1; color: var(--ink); margin: 1.5mm 0 1mm; }
+  .stat .sub { font-size: 8pt; color: var(--muted); }
+  .stat .sub b { color: var(--clay); font-family: var(--mono); font-weight: 400; }
+
+  .msg { counter-reset: m; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin-top: 2mm; }
+  .msg div { border-top: 0.5pt solid var(--rule); padding-top: 2.5mm; font-size: 8.8pt; }
+  .msg div::before { counter-increment: m; content: "(" counter(m) ")"; display: block; font: 7.5pt var(--mono); color: var(--clay); margin-bottom: 1mm; }
+  .msg b { display: block; font-size: 9.6pt; margin-bottom: 1mm; }
+
+  code { font-family: var(--mono); font-size: 8pt; color: var(--ink); background: var(--card); padding: 0.2mm 1.2mm; border-radius: 1mm; }
+  pre { font-family: var(--mono); font-size: 8pt; line-height: 1.6; background: var(--ink); color: #F0EEE6; padding: 4mm 5mm; border-radius: 2mm; margin: 1mm 0 4mm; white-space: pre-wrap; }
+  pre .c { color: #9C9A92; }
+
+  /* 표지 */
+  .cover { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 52mm; }
+  .cover .date { font: 8pt var(--sans); letter-spacing: 0.22em; color: var(--ink); margin-bottom: 10mm; }
+  .cover h1 { white-space: nowrap; font-family: var(--serif); font-weight: 800; font-size: 34pt; line-height: 1.22; color: var(--ink); margin: 0; letter-spacing: -0.015em; }
+  .cover .arc { width: 186mm; margin: 4mm 0 9mm; }
+  .cover .sub { font-size: 10.5pt; color: var(--muted); margin: -2mm 0 12mm; }
+  .toc { width: 96mm; text-align: left; font-family: var(--serif); font-size: 10pt; }
+  .toc div { display: flex; align-items: center; gap: 2.5mm; margin: 0 0 2.2mm; }
+  .toc .no { font: 7.5pt var(--mono); color: var(--muted); }
+  .toc .line { flex: 1; border-top: 0.5pt solid #BDBBB2; }
+  .toc .pg { font: 7.5pt var(--mono); color: var(--muted); width: 5mm; text-align: right; }
+  .meta { width: 96mm; margin-top: 5mm; border-top: 0.5pt solid var(--rule); padding-top: 3mm; font-size: 7.6pt; }
+  .meta div { display: flex; justify-content: space-between; margin-bottom: 1.6mm; }
+  .meta .l { letter-spacing: 0.14em; color: var(--muted); }
+  .meta .r { font-family: var(--mono); color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- 표지 -->
+<section class="page cover">
+  <div class="date">2026. 10. 21 · 최종 과제 보고서</div>
+  <h1>Day Zero<br>토론으로 인성을 본다</h1>
+  <svg class="arc" viewBox="0 0 1000 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0,86 Q500,-36 1000,86" fill="none" stroke="#141413" stroke-width="1.1"/></svg>
+  <div class="sub">AI 동료 3명과의 채팅 토론에서 인성을 관찰하는 채용 서비스</div>
+  <div class="meta">
+    <div><span class="l">서비스 구성</span><span class="r">web · api · MCP 3 · worker</span></div>
+    <div><span class="l">아키텍처 원본</span><span class="r">docs/share/architecture.html</span></div>
+  </div>
+</section>
+
+<!-- 목차 -->
+<section class="page">
+  <div class="kicker"><b>목차</b></div>
+  <h2>목차</h2>
+  <div class="toc" style="width:100%;margin-top:8mm">
+    <div><span class="no">1</span><span class="line"></span><span><b>서비스 개요</b></span><span class="pg">3</span></div>
+    <div><span class="no">1.1</span><span class="line"></span><span>핵심 요약</span><span class="pg">3</span></div>
+    <div><span class="no">1.2</span><span class="line"></span><span>문제 정의와 서비스 구성</span><span class="pg">4</span></div>
+    <div><span class="no">2</span><span class="line"></span><span><b>시스템 아키텍처</b></span><span class="pg">5</span></div>
+    <div><span class="no">2.1</span><span class="line"></span><span>전체 구성</span><span class="pg">5</span></div>
+    <div><span class="no">2.2</span><span class="line"></span><span>구성 요소와 배포</span><span class="pg">6</span></div>
+    <div><span class="no">3</span><span class="line"></span><span><b>에이전트 설계</b></span><span class="pg">7</span></div>
+    <div><span class="no">3.1</span><span class="line"></span><span>에이전트 구성</span><span class="pg">7</span></div>
+    <div><span class="no">3.2</span><span class="line"></span><span>토론 턴 흐름</span><span class="pg">8</span></div>
+    <div><span class="no">3.3</span><span class="line"></span><span>단계 전환과 칸 확정</span><span class="pg">9</span></div>
+    <div><span class="no">4</span><span class="line"></span><span><b>MCP 설계와 접근 경계</b></span><span class="pg">10</span></div>
+    <div><span class="no">5</span><span class="line"></span><span><b>평가 설계(BARS)</b></span><span class="pg">11</span></div>
+    <div><span class="no">6</span><span class="line"></span><span><b>품질 관리와 하네스</b></span><span class="pg">12</span></div>
+    <div><span class="no">7</span><span class="line"></span><span><b>주요 기능과 구현 결과</b></span><span class="pg">13</span></div>
+    <div><span class="no">7.1</span><span class="line"></span><span>지원자 화면</span><span class="pg">13</span></div>
+    <div><span class="no">7.2</span><span class="line"></span><span>디브리핑과 관리자 리포트</span><span class="pg">14</span></div>
+    <div><span class="no">8</span><span class="line"></span><span><b>한계와 개선 방향</b></span><span class="pg">15</span></div>
+  </div>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>02</span></div>
+</section>
+
+<!-- 01 한눈에 보기 -->
+<section class="page">
+  <div class="kicker"><b>1</b> &nbsp;서비스 개요</div>
+  <h2>1.1 핵심 요약</h2>
+  <p class="lede">60분 토론 한 번으로 인성 5요소의 행동 근거를 남긴다.</p>
+  <p class="bal">지원자가 AI 동료 3명과 키워드 · 문제 상황 · 해결책을 정하고 기획안을 내면, 평가 에이전트가 근거를 들어 수준을 제안하고 담당자가 최종 평가합니다.</p>
+
+  <div class="grid3">
+    <div class="stat"><div class="lab">세션</div><div class="val">60분</div><div class="sub">단계별 <b>10 · 18 · 18 · 14</b>분, 데모 15분</div></div>
+    <div class="stat"><div class="lab">진행 단계</div><div class="val">4단계</div><div class="sub">키워드 → 문제 상황 → 해결책 → 기획안</div></div>
+    <div class="stat"><div class="lab">AI 동료</div><div class="val">3명</div><div class="sub">강한결 · 윤하람 · 서지안, 모든 세션 고정</div></div>
+  </div>
+  <div class="grid3" style="margin-top:5mm">
+    <div class="stat"><div class="lab">인성 요소</div><div class="val">5요소</div><div class="sub">설득 · 경청 · 배려 · 수용 · 정직</div></div>
+    <div class="stat"><div class="lab">BARS 척도</div><div class="val">19차원</div><div class="sub">차원마다 수준 <b>1~5</b> + 근거</div></div>
+    <div class="stat"><div class="lab">MCP 서버</div><div class="val">3개</div><div class="sub">debate · rag · assessment, 도구 <b>16</b>개</div></div>
+  </div>
+
+  <h3><span class="n">표 1-1</span>핵심 설계 결정</h3>
+  <table>
+    <tr><th style="width:27%">결정</th><th>내용</th></tr>
+    <tr><td><b>결정은 코드, 말투는 LLM</b></td><td>입장 · 합의 · 카드 시각 · 시간 초과는 규칙이 정하고, LLM은 화자 보조와 발언 문장만 만든다</td></tr>
+    <tr><td><b>세션별 메일박스</b></td><td>자극 4종을 Task 하나가 차례로 처리한다. 새 지원자 메시지가 오면 남은 화자는 버린다</td></tr>
+    <tr><td><b>시간과 쓰기의 주인은 api</b></td><td>시간 초과 채우기와 업무 데이터 쓰기는 api만 한다<span class="nw">(체크포인트 · 색인은 예외)</span>. MCP와 워커는 <span class="k">/internal</span>을 부른다</td></tr>
+    <tr><td><b>평가 정보 차단</b></td><td>페르소나는 assessment-mcp에 닿지 않는다(허용 목록 + 토큰)</td></tr>
+  </table>
+
+  <h3>핵심 메시지</h3>
+  <div class="msg">
+    <div><b>장면은 같고 말투만 다르다</b>같은 채용 건의 지원자는 같은 페르소나 · <span class="nw">카드 6장</span> · 시간 규칙을 겪습니다.</div>
+    <div><b>AI 동료는 평가 기준을 모른다</b>토론에 참여하는 페르소나는 척도와 관찰 기록에 접근할 수 없습니다.</div>
+    <div><b>판단은 근거로, 확정은 사람이</b>근거 없는 수준은 내지 않고, 담당자가 <span class="nw">차원 단위로</span> 조정합니다. 총점은 없습니다.</div>
+  </div>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>03</span></div>
+</section>
+
+<!-- 02 문제와 서비스 -->
+<section class="page">
+  <div class="kicker"><b>1</b> &nbsp;서비스 개요</div>
+  <h2>1.2 문제 정의와 서비스 구성</h2>
+  <p class="lede">말로 묻는 검사 대신 토론 속 행동을 근거로 쓴다.</p>
+  <p class="bal">기업은 인성과 협업 태도를 중요하게 보지만 측정은 자기 보고와 짧은 면접에 기댑니다. Day Zero는 그 태도가 드러나는 상황을 토론으로 만들고 발언을 근거로 남깁니다.</p>
+
+  <h3><span class="n">표 1-2</span>문제와 근거</h3>
+  <table>
+    <tr><th style="width:30%">문제</th><th>근거</th></tr>
+    <tr><td><b>원하는 것과 재는 것이 다르다</b></td><td>면접 유형은 질의응답이 94.1%, 실무 수행은 10.7%</td></tr>
+    <tr><td><b>자기 보고는 꾸밀 수 있다</b></td><td>거짓말이 가장 잘 드러나는 전형으로 실무면접 65.5%, 인적성 검사 2.4%</td></tr>
+    <tr><td><b>잘못된 채용은 비싸다</b></td><td>인사담당자 60.9%가 최근 1년 안에 신입 조기 퇴사를 경험</td></tr>
+    <tr><td><b>지원자는 이유를 모른다</b></td><td>취업준비생 51.5%가 최종 면접 불합격 통보조차 받지 못함</td></tr>
+  </table>
+
+  <h3><span class="n">표 1-3</span>60분 세션 흐름</h3>
+  <table>
+    <tr><th style="width:17%">단계</th><th class="num" style="width:10%">시간</th><th>장면</th><th style="width:20%">관찰 요소</th></tr>
+    <tr><td><b>키워드</b></td><td class="num">10분</td><td>후보 4개(물 · 불 · 나무 · 바람) 중 하나로 합의. 다른 키워드를 민 동료가 반론</td><td>설득</td></tr>
+    <tr><td><b>문제 상황</b></td><td class="num">18분</td><td>두 동료가 지원자 안과 다른 안을 지지하고 고집형 동료가 강하게 밈</td><td>수용 · 경청</td></tr>
+    <tr><td><b>해결책</b></td><td class="num">18분</td><td>소극형 동료가 말을 거두고, 비판형 동료가 지원자 안의 약점을 자료로 짚음</td><td>배려 · 설득</td></tr>
+    <tr><td><b>기획안</b></td><td class="num">14분</td><td>지원자가 6칸 템플릿을 혼자 써서 제출. 아이디어 기여 칸을 실제 최초 제안자와 대조</td><td>정직</td></tr>
+  </table>
+
+  <div class="grid2">
+    <div class="note" style="margin:0"><div class="t">기업이 받는 것</div><p>토론 기록 · 제출 기획안과 함께, 차원별 수준과 근거, 확신도가 담긴 리포트. 합격 · 불합격 · 순위는 만들지 않습니다.</p></div>
+    <div class="note" style="margin:0"><div class="t">지원자가 받는 것</div><p>말이 아닌 행동으로 보여 줄 기회와 디브리핑. 어떤 장면이 설계되어 있었는지 설명하고 이의 제기 경로를 줍니다.</p></div>
+  </div>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>04</span></div>
+</section>
+
+<!-- 03 전체 아키텍처 -->
+<section class="page">
+  <div class="kicker"><b>2</b> &nbsp;시스템 아키텍처</div>
+  <h2>2.1 전체 구성</h2>
+  <p class="lede">브라우저는 api만 만나고, 에이전트는 MCP 세 개를 도구로 쓴다.</p>
+  <p class="bal">번호는 지원자 메시지 한 번과 세션 종료 뒤 리포트까지의 처리 순서입니다. 빨간 화살표는 아래 계층이 api의 <span class="k">/internal</span>을 부르는 예외 호출입니다.</p>
+  <figure>
+    <img src="report-assets/system-overview.svg" alt="Day Zero 전체 구성도" style="width:90%;margin:auto">
+    <figcaption><b>그림 2-1</b>전체 구성도. 공개 포트는 web과 api뿐이고, MCP · 워커 · DB · 큐는 Compose 내부 네트워크에 있습니다.</figcaption>
+  </figure>
+  <h3 style="margin-top:3mm"><span class="n">표 2-1</span>번호별 처리 흐름</h3>
+  <table>
+    <tr><th class="num" style="width:6%">번호</th><th style="width:25%">구간</th><th>처리 내용</th><th style="width:21%">프로토콜</th></tr>
+    <tr><td class="num">1</td><td>web → api</td><td>지원자 메시지와 화면 REST(확정 · 저장 · 제출)</td><td>WebSocket, REST</td></tr>
+    <tr><td class="num">2·3</td><td>api → 의도 분류 · 그래프</td><td>큐 밖에서는 저장 · generation +1 · <span class="nw">message.ack(분류 전)</span>만. 메일박스가 자극을 꺼내면 분류해 <span class="nw">지지(참여자당 하나)</span>를 반영한 뒤 그래프 실행</td><td>프로세스 내부</td></tr>
+    <tr><td class="num">4·5</td><td>에이전트 → OpenAI · MCP</td><td>역할별 모델 호출, 허용된 MCP 도구 호출</td><td>HTTPS, MCP HTTP</td></tr>
+    <tr><td class="num">6·7</td><td>MCP → api · pgvector</td><td>변경 · 자료 원문은 <span class="k">/internal</span> 경유, 청크 검색만 pgvector 직접</td><td>HTTP :8001, SQL</td></tr>
+    <tr><td class="num">8</td><td>api → web</td><td>발언 · 입력 중 · 칸 확정 · 단계 전환을 seq 봉투로 푸시</td><td>WebSocket</td></tr>
+    <tr><td class="num">9~11</td><td>api → 큐 → 워커</td><td>종료 뒤 리포트 작업 발행, 평가 저장, 리포트 저장. thread는 <span class="k">report:{session_id}:{eval_round}</span></td><td>AMQP, MCP, HTTP</td></tr>
+  </table>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>05</span></div>
+</section>
+
+<!-- 04 구성 요소와 배포 -->
+<section class="page">
+  <div class="kicker"><b>2</b> &nbsp;시스템 아키텍처</div>
+  <h2>2.2 구성 요소와 배포</h2>
+  <p class="lede">서비스는 8개이고, 업무 데이터는 api만 쓴다.</p>
+  <p class="bal">구성 요소마다 맡은 일과 하지 않는 일을 정해 경계를 지킵니다. 에이전트는 api 프로세스 안의 모듈이지만 계층은 라우터 → SessionService → AgentRunner → 그래프 → MCP 어댑터로 나눕니다.</p>
+
+  <h3><span class="n">표 2-2</span>구성 요소별 역할과 금지 사항</h3>
+  <table>
+    <tr><th style="width:19%">구성 요소</th><th>역할</th><th style="width:31%">하지 않는 일</th></tr>
+    <tr><td><b>web</b></td><td>지원자 토론 화면과 관리자 리포트 화면</td><td>권한 판단, MCP 직접 호출</td></tr>
+    <tr><td><b>api</b></td><td>인증 · REST · WebSocket, 단계 전환과 칸 확정, 시간 초과 채우기, 스케줄러, 업무 데이터 쓰기</td><td>—</td></tr>
+    <tr><td><b>에이전트 모듈</b></td><td>의도 분류 · 토론 그래프 · 어시스턴트(api 안)</td><td>DB 직접 쓰기</td></tr>
+    <tr><td><b>debate-mcp</b></td><td>토론 상태 조회 · 발언 게시 · 안 제안 · 입장 · 칸 채우기</td><td>토론 규칙 판단(api가 최종)</td></tr>
+    <tr><td><b>rag-mcp</b></td><td>확정 키워드 청크 검색 · 재색인(직접), 원문 조회(<span class="k">/internal</span> 경유)</td><td>에이전트에 변경 도구 노출</td></tr>
+    <tr><td><b>assessment-mcp</b></td><td>카드 관찰 기록 · 평가 입력 조회 · 평가 저장</td><td>페르소나의 접근 허용</td></tr>
+    <tr><td><b>report-worker</b></td><td>리포트 그래프와 평가 에이전트, 재시도와 DLQ. 직접 쓰기는 체크포인트만</td><td>수준 · 근거 고쳐 쓰기</td></tr>
+  </table>
+
+  <h3><span class="n">표 2-3</span>Compose 서비스와 포트</h3>
+  <table>
+    <tr><th style="width:19%">서비스</th><th class="num" style="width:20%">포트</th><th>기다리는 의존 · 비고</th></tr>
+    <tr><td><b>web</b></td><td class="num">3000 공개</td><td>api</td></tr>
+    <tr><td><b>api</b></td><td class="num">8000 공개 · 8001</td><td>postgres · rabbitmq · MCP 3개. 8001은 내부 전용</td></tr>
+    <tr><td><b>debate-mcp</b></td><td class="num">9101</td><td>FastMCP</td></tr>
+    <tr><td><b>rag-mcp</b></td><td class="num">9102</td><td>postgres. BGE-M3, 메모리 3GB</td></tr>
+    <tr><td><b>assessment-mcp</b></td><td class="num">9103</td><td>FastMCP, 토큰 검사</td></tr>
+    <tr><td><b>report-worker</b></td><td class="num">없음</td><td>postgres · rabbitmq · api · assessment-mcp. heartbeat 30초</td></tr>
+    <tr><td><b>postgres</b></td><td class="num">5432</td><td>PostgreSQL 16 + pgvector</td></tr>
+    <tr><td><b>rabbitmq</b></td><td class="num">5672</td><td>관리 UI는 127.0.0.1에만</td></tr>
+  </table>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>06</span></div>
+</section>
+
+<!-- 05 에이전트 구성 -->
+<section class="page">
+  <div class="kicker"><b>3</b> &nbsp;에이전트 설계</div>
+  <h2>3.1 에이전트 구성</h2>
+  <p class="lede">참여자로 보이는 AI는 셋, 뒤에서 일하는 에이전트는 넷이다.</p>
+  <p class="bal">세션 중에는 api 안에서 의도 분류 · 토론 그래프 · 어시스턴트가 돌고, 세션이 끝나면 report-worker의 평가 에이전트가 돕니다.</p>
+  <figure>
+    <img src="report-assets/agent-composition.svg" alt="에이전트 구성도">
+    <figcaption><b>그림 3-1</b>에이전트 구성도. 자극은 메일박스로 모여 토론 그래프가 하나씩 처리하고, 평가는 세션 뒤 큐 작업으로 분리됩니다.</figcaption>
+  </figure>
+  <h3 style="margin-top:3mm"><span class="n">표 3-1</span>에이전트별 역할</h3>
+  <table>
+    <tr><th style="width:19%">에이전트</th><th>하는 일</th><th style="width:30%">도구</th></tr>
+    <tr><td><b>턴 매니저</b></td><td>자극마다 화자 0~2명을 규칙으로 정하고, 결과가 0명인 메시지에만 LLM을 씀</td><td>결정적 노드가 <span class="nw">debate-mcp 전부</span> · record_observation</td></tr>
+    <tr><td><b>페르소나 × 3</b></td><td>성향 · 고정 입장 · 자리 기억으로 1~3문장 발언</td><td>get_transcript · get_draft · rag 2, 응답당 3회. DebateState는 컨텍스트로</td></tr>
+    <tr><td><b>의도 분류</b></td><td>지원자 메시지를 저장된 단계(messages.phase) 기준으로 제안 · 동의 · 반대 · 질문 · 기타와 대상 안으로 분류</td><td>없음, 10초 넘으면 기타</td></tr>
+    <tr><td><b>어시스턴트</b></td><td>지원자 요청에 자료를 스스로 골라 인용과 함께 답함</td><td>rag 2, 최대 3회</td></tr>
+    <tr><td><b>평가 에이전트</b></td><td>요소마다 1회 호출로 차원별 수준 · 근거 · 확신도 판단</td><td>없음(워커가 입력 주입)</td></tr>
+  </table>
+  <h3 style="margin-top:3mm"><span class="n">표 3-2</span>세션 페르소나</h3>
+  <table>
+    <tr><th class="num" style="width:6%">자리</th><th style="width:19%">이름 · 유형</th><th>토론에서 하는 일</th></tr>
+    <tr><td class="num">p1</td><td><b>강한결 · 고집형</b></td><td>자기 안을 반복해 밀고 반대에 바로 재반박. 확정 전에는 입장을 바꾸지 않음. 서지안이 못 맡는 설득 카드를 대신 맡음</td></tr>
+    <tr><td class="num">p2</td><td><b>윤하람 · 소극형</b></td><td>스스로 주장하지 않음. 이름이 불리면 자료 근거로 자기 안을 말함</td></tr>
+    <tr><td class="num">p3</td><td><b>서지안 · 비판형</b></td><td>모이는 안의 약점을 짚음. 지원자의 반대 · 대안 2회면 설득됨. 설득 카드 우선 담당(지원자가 서지안 안을 지지하면 강한결)</td></tr>
+  </table>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>07</span></div>
+</section>
+
+<!-- 06 토론 한 턴 -->
+<section class="page">
+  <div class="kicker"><b>3</b> &nbsp;에이전트 설계</div>
+  <h2>3.2 토론 턴 흐름</h2>
+  <p class="lede">메시지 한 번은 분류, 화자 선택, 발언, 검사를 거쳐 게시된다.</p>
+  <p class="bal">토큰 스트리밍 없이 guard를 통과한 완성 문장만 게시합니다. 결과는 WebSocket으로, 저장은 MCP를 거쳐 api가 합니다.</p>
+  <figure>
+    <img src="report-assets/debate-turn-sequence.svg" alt="토론 한 턴 시퀀스">
+    <figcaption><b>그림 3-2</b>토론 한 턴 시퀀스. 화자마다 respond → guard → stance_check → apply를 반복하고, 게시 직전에 새 메시지가 왔는지 확인합니다.</figcaption>
+  </figure>
+  <h3 style="margin-top:3mm"><span class="n">표 3-3</span>토론 턴 규칙</h3>
+  <table>
+    <tr><th style="width:19%">규칙</th><th>처리</th></tr>
+    <tr><td><b>끼어들기</b></td><td>지원자 메시지를 저장하면 generation이 +1 됩니다. 그래프는 게시 직전에 값이 바뀐 것을 보고 남은 화자를 버립니다</td></tr>
+    <tr><td><b>입력 중 표시</b></td><td>클라이언트는 5초마다 typing을 갱신하고 서버는 6초 동안 갱신이 없으면 만료합니다</td></tr>
+    <tr><td><b>검사</b></td><td>guard는 점수 · 판정 · 결론 대리 · 미래 카드 암시를 막고, stance_check는 계획 밖 입장을 막습니다. 각각 재생성 1회 뒤 고정 문구</td></tr>
+    <tr><td><b>실패</b></td><td>발언 실패는 그 발언만 생략(연속 3회면 세션 실패), turn LLM 실패는 규칙 결과만, MCP 장애는 1회 재시도</td></tr>
+  </table>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>08</span></div>
+</section>
+
+<!-- 07 단계 전환 -->
+<section class="page">
+  <div class="kicker"><b>3</b> &nbsp;에이전트 설계</div>
+  <h2>3.3 단계 전환과 칸 확정</h2>
+  <p class="lede">단계 시간과 칸 확정은 규칙이 정하고 LLM은 문장만 만든다.</p>
+  <p class="bal">칸 상태는 <span class="k">empty</span>와 <span class="k">confirmed</span> 두 개이고, 확정 경로에는 LLM이 없습니다. 칸마다 합의 · 시간 초과와 채운 사람을 남깁니다.</p>
+  <figure>
+    <img src="report-assets/phase-transition.svg" alt="단계 전환과 카드 시각">
+    <figcaption><b>그림 3-3</b>단계 전환과 카드 시각. 카드 5장은 단계 시작 기준 정해진 시각에 담당 동료의 발언으로 전달되고, 정직 카드는 기획안 단계 시작 때 기록됩니다.</figcaption>
+  </figure>
+  <h3 style="margin-top:3mm"><span class="n">표 3-4</span>단계 중 사건과 처리</h3>
+  <table>
+    <tr><th style="width:19%">사건</th><th style="width:25%">감지</th><th>처리</th></tr>
+    <tr><td><b>지원자 확정</b></td><td>[이걸로 정하기]</td><td>확인 창 하나 뒤 칸 확정, 다음 단계로. 키워드는 후보 버튼</td></tr>
+    <tr><td><b>AI 합의 채우기</b></td><td>턴 매니저 fill</td><td>지원자 포함 3/4 지지면 fill_slot 한 번으로 api가 한 트랜잭션에서 재검사 · 칸 확정 · <span class="nw">"그럼 X로 정리할게요."</span> 저장 · generation +1. 409면 저장 없음</td></tr>
+    <tr><td><b>단계 마감</b></td><td>스케줄러 · 칸이 비어 있음</td><td>api가 한 트랜잭션으로 안을 고르고 우선순위 자리 이름으로 고정 문장 게시</td></tr>
+    <tr><td><b>침묵 초대</b></td><td>스케줄러 · 지원자 침묵</td><td>서지안이 "OO님은 어떻게 생각하세요?" 단계당 1회</td></tr>
+    <tr><td><b>카드 시각</b></td><td>단계 시작 + offset</td><td>담당 화자가 고정 내용을 말하고 메시지의 card_ids로 카드마다 전달 자리를 기록. 담당 전원이 말할 때까지 card_due를 다시 넣음. 발언 없는 honesty_credit만 기획안 단계 시작 때 cards 노드가 기록</td></tr>
+    <tr><td><b>세션 만료</b></td><td>스케줄러 · 종료 시각</td><td>현재 기획안 초안을 자동 제출하고 세션 종료</td></tr>
+  </table>
+  <div class="note"><div class="t">시간 규칙</div><p class="bal">단계 마감 시각은 고정이라 일찍 확정하면 남은 시간이 다음 단계로 넘어갑니다. 15분 데모는 같은 비율이고 카드 시각은 최소 20초이며, 시간 로직은 가짜 시계 단위 테스트로 검증합니다.</p></div>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>09</span></div>
+</section>
+
+<!-- 08 MCP -->
+<section class="page">
+  <div class="kicker"><b>4</b> &nbsp;MCP</div>
+  <h2>4. MCP 설계와 접근 경계</h2>
+  <p class="lede">MCP 세 개가 손 · 눈 · 기록자를 나누고, 페르소나는 평가 기록에 닿지 않는다.</p>
+  <p class="bal">세 서버 모두 FastMCP · Streamable HTTP이고 도구는 <span class="k">async def</span>입니다. 상태 판단은 api가 합니다. 오류는 <span class="k">{ok: false, error: {code, message, retryable}}</span> 한 형식입니다.</p>
+  <h3 style="margin-top:3mm"><span class="n">표 4-1</span>MCP 서버별 도구</h3>
+  <table>
+    <tr><th style="width:21%">서버</th><th>조회</th><th>변경</th><th style="width:25%">경계</th></tr>
+    <tr><td><b>debate-mcp</b><br>손</td><td>get_debate_state&nbsp;· get_transcript&nbsp;· get_draft</td><td>post_message&nbsp;· propose_option&nbsp;· set_stance&nbsp;· fill_slot <span class="nw">(공지 포함, 한 트랜잭션)</span></td><td><span class="nw">합의 전 fill_slot은</span> no_consensus</td></tr>
+    <tr><td><b>rag-mcp</b><br>눈</td><td>search_materials(청크 직접)&nbsp;· get_material(원문, <span class="k">/internal</span>)</td><td>reindex_materials <span class="nw">(관리 전용, 색인 직접 쓰기)</span></td><td>키워드 확정 전 not_released</td></tr>
+    <tr><td><b>assessment-mcp</b><br>기록자</td><td>get_rubric&nbsp;· get_session_record&nbsp;· get_transcript_span&nbsp;· get_contributions</td><td>record_observation&nbsp;· save_evaluation</td><td>토큰이 없으면 forbidden</td></tr>
+  </table>
+  <figure>
+    <img src="report-assets/mcp-access-boundary.svg" alt="MCP 접근 경계">
+    <figcaption><b>그림 4-1</b>MCP 접근 경계. 허용 목록과 토큰 분리, 두 겹으로 막습니다. 토큰은 cards · apply 노드에만 주입합니다.</figcaption>
+  </figure>
+  <h3 style="margin-top:3mm"><span class="n">표 4-2</span>도구 허용 목록</h3>
+  <table>
+    <tr><th style="width:23%">주체</th><th>debate-mcp</th><th>rag-mcp</th><th>assessment-mcp</th></tr>
+    <tr><td><b>턴 매니저 결정적 노드</b></td><td>전부</td><td>—</td><td>record_observation (cards · apply)</td></tr>
+    <tr><td><b>턴 매니저 turn (LLM)</b></td><td>—</td><td>—</td><td>—</td></tr>
+    <tr class="hl"><td><b>페르소나 respond</b></td><td>get_transcript&nbsp;· get_draft</td><td>조회 2</td><td><b>불가</b></td></tr>
+    <tr><td><b>어시스턴트</b></td><td>—</td><td>조회 2</td><td>—</td></tr>
+    <tr><td><b>report-worker</b></td><td>—</td><td>—</td><td>조회 4 · save_evaluation</td></tr>
+  </table>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>10</span></div>
+</section>
+
+<!-- 09 평가 파이프라인 -->
+<section class="page">
+  <div class="kicker"><b>5</b> &nbsp;평가</div>
+  <h2>5. 평가 설계(BARS)</h2>
+  <p class="lede">평가 에이전트는 근거가 있을 때만 수준을 내고, 최종 평가는 담당자가 한다.</p>
+  <p class="bal">세션이 끝나면 큐 작업으로 리포트 그래프가 돕니다. 요소마다 따로 호출해 다른 요소 결과를 보지 않게 하고, 초안 뒤에는 담당자 검토를 기다립니다.</p>
+  <figure>
+    <img src="report-assets/evaluation-pipeline.svg" alt="평가 파이프라인">
+    <figcaption><b>그림 5-1</b>평가 파이프라인. interrupt 체크포인트를 먼저 저장한 뒤 draft 저장 → report_ready → ack 순서라, 승인이 오면 같은 회차 thread를 재개합니다. 새 평가 회차는 새 thread에서 collect부터 돕니다.</figcaption>
+  </figure>
+  <h3 style="margin-top:3mm"><span class="n">표 5-1</span>요소별 하위 차원</h3>
+  <table>
+    <tr><th style="width:19%">요소</th><th class="num" style="width:9%">차원</th><th>하위 차원</th></tr>
+    <tr><td><b>설득/논리력</b></td><td class="num">4</td><td>근거 제시 · 반론 대응 · 경쟁 안 비교 · 논의 수렴</td></tr>
+    <tr><td><b>경청/존중</b></td><td class="num">4</td><td>응답성 · 이해 확인 · 타당성 인정 · 존중하는 반대</td></tr>
+    <tr><td><b>배려/포용</b></td><td class="num">4</td><td>초대하기 · 들은 의견 이어받기 · 말하기 편한 분위기 · 결정 전 목소리 확인</td></tr>
+    <tr><td><b>수용/유연성</b></td><td class="num">4</td><td>다른 안 재검토 · 결정 절차 존중 · 결과 승복 · 다음 단계 기여</td></tr>
+    <tr><td><b>정직/공정</b></td><td class="num">3</td><td>기여 기록의 정확성 · 토론 중 출처 존중 · 결정 과정의 사실 표현</td></tr>
+  </table>
+  <div class="grid2">
+    <div class="note" style="margin:0"><div class="t">차원마다 내는 것</div><p>수준 1~5 또는 기록 없음과 사유, <span class="nw">근거 참조(메시지 · 칸 · 기획안 필드)</span>, 판단 이유 1~3문장. 확신도는 기록이 있을 때 <span class="nw">high · medium · low</span>, 기록 없음이면 null입니다.</p></div>
+    <div class="note" style="margin:0"><div class="t">총점 없음 · 사람 확인</div><p>요소 수준은 차원 평균의 반올림입니다. 담당자는 차원 단위로 조정하고 메모를 남기며, 합격 · 순위는 만들지 않습니다.</p></div>
+  </div>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>11</span></div>
+</section>
+
+<!-- 10 품질과 하네스 -->
+<section class="page compact-tables">
+  <div class="kicker"><b>6</b> &nbsp;품질</div>
+  <h2>6. 품질 관리와 하네스</h2>
+  <p class="lede">안전장치는 코드에 걸고, 검증은 층마다 계획으로 정했다.</p>
+  <p class="bal">프롬프트에 맡기면 흔들리는 규칙은 결정적 코드로 강제합니다. 스파이크 외 검증은 계획이며 통합 뒤 기록합니다.</p>
+
+  <h3><span class="n">표 6-1</span>하네스 8요소</h3>
+  <table>
+    <tr><th style="width:18%">요소</th><th>적용</th></tr>
+    <tr><td><b>Instructions</b></td><td>공통 규칙 · 페르소나별 프롬프트 · 평가 프롬프트를 채용 건에 복사해 고정</td></tr>
+    <tr><td><b>Tools</b></td><td>노드별 허용 목록, 응답당 도구 3회, 검색 상위 3, 페르소나의 assessment 차단</td></tr>
+    <tr><td><b>Context</b></td><td>페르소나에게 척도 · 관찰 · 다른 자리 성향 · 열리지 않은 자료를 넣지 않음</td></tr>
+    <tr><td><b>State · Memory</b></td><td>PostgresSaver 체크포인트(<span class="k">debate:</span> · <span class="k">assistant:</span> · <span class="k">report:{session_id}:{eval_round}</span>), 자리별 기억</td></tr>
+    <tr><td><b>Agent Loop</b></td><td>실행당 화자 2명, 같은 자리 연속 3회 금지 <span class="nw">(카드 · 지명 응답 제외)</span>, 침묵 초대 단계당 1회</td></tr>
+    <tr><td><b>Guardrails</b></td><td>guard · stance_check, 합의 전 칸 채우기 409, 근거 없는 수준 거부</td></tr>
+    <tr><td><b>Recovery</b></td><td>발언 실패 생략, 리포트 최초 포함 3회<span class="nw">(추가 재시도 2회)</span> 뒤 DLQ, 멱등 키로 재실행</td></tr>
+    <tr><td><b>Observability</b></td><td>LangSmith trace, 실행별 결정 · 사용량 기록, 비용 cost_usd 관측(목표 $0.5) · debate_cost_usd 상한 $2</td></tr>
+  </table>
+
+  <h3><span class="n">표 6-2</span>검증 계획</h3>
+  <table>
+    <tr><th style="width:18%">층</th><th>확인하는 것</th><th style="width:14%">상태</th></tr>
+    <tr><td><b>단위</b></td><td>턴 규칙 · 카드 트리거 · guard · 평가 출력 검증 · 시간 로직(가짜 시계)</td><td>계획</td></tr>
+    <tr><td><b>연결</b></td><td>메시지 → 분류 → 그래프 → MCP → WS 최소 경로, 자료 차단, assessment 거부</td><td>계획</td></tr>
+    <tr><td><b>e2e</b></td><td>15분 세션 대본(전 요소 · 전부 시간 초과 · 정직 대조), 큐 DLQ · 타임아웃 장애 주입</td><td>계획</td></tr>
+    <tr><td><b>의도 분류</b></td><td>20문장 intent 정확도</td><td>스파이크 측정</td></tr>
+    <tr><td><b>BARS 픽스처</b></td><td>사람 평가와의 수준 차이</td><td>계획</td></tr>
+  </table>
+  <h3><span class="n">표 6-3</span>사전 검증(스파이크) 결과 · gpt-4o-mini</h3>
+  <table>
+    <tr><th style="width:30%">항목</th><th class="num" style="width:22%">값</th><th>비고</th></tr>
+    <tr><td><b>의도 분류 지연</b></td><td class="num">1.0 / 1.2초</td><td>p50 / p95, 63회</td></tr>
+    <tr><td><b>페르소나 발언 지연</b></td><td class="num">1.2 / 1.4초</td><td>p50 / p95, 21회</td></tr>
+    <tr><td><b>턴 LLM 지연</b></td><td class="num">1.2 / 1.5초</td><td>p50 / p95, 11회</td></tr>
+    <tr><td><b>60분 세션 비용 추정</b></td><td class="num">$0.08~0.11</td><td>지원자 40~80메시지 가정, 목표 $0.5 안</td></tr>
+    <tr><td><b>의도 분류 정확도</b></td><td class="num">0.85</td><td>키워드 단계 20문장 × 3회, 기준선 프롬프트</td></tr>
+  </table>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>12</span></div>
+</section>
+
+<!-- 11 서비스 구현 결과 -->
+<section class="page">
+  <div class="kicker"><b>7</b> &nbsp;주요 기능과 구현 결과</div>
+  <h2>7.1 지원자 화면</h2>
+  <p class="lede">토론, 결정, 기획안 작성이 한 화면에서 이어진다.</p>
+  <p class="bal">가운데 토론방과 우측 탭(결정 사항 · 자료 · AI 어시스턴트 · 기획안), 상단 단계 진행바와 남은 시간으로 구성합니다.</p>
+  <figure>
+    <img src="report-assets/ui-debate.png" alt="지원자 토론방 화면" style="width:90%;margin:auto">
+    <figcaption><b>그림 7-1</b>지원자 토론방. 사람별 말풍선 색과 이름, 가운데 회색 시스템 안내, 입력 중 표시 <span class="nw">(목업, 예시 데이터)</span></figcaption>
+  </figure>
+  <div class="grid2">
+    <figure style="margin:0">
+      <img src="report-assets/ui-decisions.png" alt="결정 사항 패널">
+      <figcaption><b>그림 7-2</b>결정 사항 패널. 정한 결과와 정한 사람, 현재 항목의 <span class="nw">[이걸로 정하기]</span> <span class="nw">(목업, 예시 데이터)</span></figcaption>
+    </figure>
+    <figure style="margin:0">
+      <img src="report-assets/ui-proposal.png" alt="기획안 탭">
+      <figcaption><b>그림 7-3</b>기획안. 6칸 폼 중 해결책 · 근거 · 기대효과 · 아이디어 기여와 자동 저장, 제출 <span class="nw">(목업, 예시 데이터)</span></figcaption>
+    </figure>
+  </div>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>13</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker"><b>7</b> &nbsp;주요 기능과 구현 결과</div>
+  <h2>7.2 디브리핑과 관리자 리포트</h2>
+  <p class="lede">지원자는 설계된 장면을 설명받고, 담당자는 근거를 보며 차원 단위로 조정한다.</p>
+  <div class="grid2">
+    <figure style="margin:0">
+      <img src="report-assets/ui-debrief.png" alt="디브리핑 화면">
+      <figcaption><b>그림 7-4</b>디브리핑. 같은 장면 안내와 이번 세션의 장면 <span class="nw">(목업, 예시 데이터)</span></figcaption>
+    </figure>
+    <figure style="margin:0">
+      <img src="report-assets/ui-admin-report.png" alt="관리자 리포트 화면">
+      <figcaption><b>그림 7-5</b>관리자 리포트. 설계된 장면 표시와 요소별 수준 요약, 총점 없음 <span class="nw">(목업, 예시 데이터)</span></figcaption>
+    </figure>
+  </div>
+
+  <h3><span class="n">표 7-1</span>화면별 주요 기능</h3>
+  <table>
+    <tr><th style="width:22%">화면</th><th>주요 기능</th></tr>
+    <tr><td><b>지원자 토론방</b></td><td>사람별 말풍선 색과 이름 · 아바타, 가운데 회색 시스템 안내, "OO님이 입력 중" 표시, 단계 진행바와 남은 시간</td></tr>
+    <tr><td><b>결정 사항 패널</b></td><td>정한 결과 줄과 합의 · 시간 초과 표시, 정한 사람. 현재 항목에만 입력, 키워드는 후보 버튼, 정하기는 확인 창 하나</td></tr>
+    <tr><td><b>기획안</b></td><td>키워드 · 문제 상황 · 해결책 · 근거 · 기대효과 · 아이디어 기여 6칸, 자동 저장 시각 표시, 제출</td></tr>
+    <tr><td><b>디브리핑</b></td><td>"같은 채용 건의 모든 지원자가 같은 장면을 겪었다"로 시작, 이번 세션의 장면, 보는 요소, 내 발언 돌아보기, 이의 제기 경로, 종료 설문. 척도 세부와 수준은 공개하지 않음</td></tr>
+    <tr><td><b>관리자 리포트</b></td><td>요소 수준 요약(총점 없음), 차원별 확신도, 근거 앞뒤 맥락과 "기록에서 보기", 차원 단위 조정(메모 필수), 인쇄</td></tr>
+  </table>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>14</span></div>
+</section>
+
+<!-- 12 한계와 개선 방향 -->
+<section class="page">
+  <div class="kicker"><b>8</b> &nbsp;한계와 대응</div>
+  <h2>8. 한계와 개선 방향</h2>
+  <p class="lede">MVP 실행을 확인했고, 평가 신뢰도와 편향 검증은 별도로 필요하다.</p>
+  <p class="bal">현재의 한계와 대응을 정리하고, MVP 이후 고려할 개선 방향을 남깁니다.</p>
+
+  <h3><span class="n">표 8-1</span>한계와 대응</h3>
+  <table>
+    <tr><th style="width:24%">한계</th><th>영향</th><th style="width:32%">대응</th></tr>
+    <tr><td><b>목업 기준 캡처</b></td><td>7장 화면은 목업 데이터로 동작하는 UI 캡처</td><td>실 스택 캡처는 통합 후 교체</td></tr>
+    <tr><td><b>척도 · 시나리오 초안</b></td><td>차원 앵커 · 카드 시각 수치가 검토 전</td><td>검토 뒤 카탈로그 버전으로 고정</td></tr>
+    <tr><td><b>평가 일치도 미측정</b></td><td>LLM 판단이 같은 대화에도 흔들릴 수 있음</td><td>사람 2인과 차이 분포, 3회 재평가 변동 폭 측정</td></tr>
+    <tr><td><b>api 단일 프로세스</b></td><td>메일박스 · 송신 큐 · 스케줄러가 메모리에 있음</td><td>AgentRunner 경계에서 분리 가능</td></tr>
+    <tr><td><b>채팅 숙련도 편향</b></td><td>타자 속도 · 내향성이 불리할 수 있음</td><td>발언 수로 수준을 올리지 않음, 상관 점검</td></tr>
+    <tr><td><b>규제 해석</b></td><td>채용은 고영향 AI 영역 해당 여부가 미확정</td><td>사람이 최종 결정하는 구조, 법률 검토</td></tr>
+  </table>
+
+  <h3><span class="n">표 8-2</span>MVP 이후</h3>
+  <table>
+    <tr><th class="num" style="width:7%">#</th><th>항목</th></tr>
+    <tr><td class="num">1</td><td>지원자가 입력 중이면 페르소나 생성 전에 확인해 버려지는 생성을 줄인다</td></tr>
+    <tr><td class="num">2</td><td>한 메시지에 담긴 여러 의도를 분류한다</td></tr>
+    <tr><td class="num">3</td><td>대상 라벨이 없는 분류 결과는 confidence를 low로 강제하는 후처리를 둔다</td></tr>
+    <tr><td class="num">4</td><td>턴 LLM의 화자 쏠림을 보정한다</td></tr>
+    <tr><td class="num">5</td><td>서비스 간 websockets 버전을 통일한다</td></tr>
+  </table>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>15</span></div>
+</section>
+
+</body>
+</html>
