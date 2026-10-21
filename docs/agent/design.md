@@ -77,8 +77,8 @@ load → cards → turn ─┬─ (화자마다) typing_on → respond → guard
 - 도구(허용 목록, 응답당 3회): `get_transcript`(30개보다 앞 대화가 필요할 때), `search_materials`, `get_material`, `get_draft`(proposal 단계에서만 바인딩). `get_debate_state`는 컨텍스트에 이미 있으므로 바인딩하지 않는다. 자료는 확정 키워드 것만 열려 있고 키워드 단계에서는 상식 수준으로만 말한다.
 - 출력(구조화): `{content, proposes?: {scenario_option_key∣label}, stance?: {option_id, stance: support∣oppose}}`. `content`는 1~3문장, 200자 이내 권장(guard 상한 400자).
 - `stance_plan`은 결정적으로 계산한다: 단계별 고정 입장 표, 수용 카드 담당(고집형 1명 확정 전 불변 + 다른 1명 설득 가능, R1), 설득 가능 규칙(지원자가 그 자리 안에 반대·대안 제안을 두 번 하면 지원자 안으로 단계당 1회 이동, `stubborn`은 확정 전 불변).
-- 정해진 안내(`fixed_phrases.yaml` `notices.decide`·`notice_triggers`): 지원자 메시지가 정하는 방법을 묻는 패턴에 걸리면 그 run 첫 화자 발언 앞에 코드가 고정 안내문을 붙이고(합쳐 400자 자르기), 페르소나에는 `[정해진 안내]` 블록으로 이어질 말만 쓰게 한다. 안내문은 화면 위치("결정 사항")와 방법만 말하고 어떤 안을 고를지는 말하지 않는다.
-- 반복 재생성: 초안이 자기 최근 발언 3개 중 하나와 유사도 0.8 이상(공백·문장부호 제거 뒤 `SequenceMatcher`)이면 1회 다시 쓴다(`meta.repeat`). 다시 써도 비슷하거나 실패하면 첫 초안을 쓴다. guard·stance_check는 그 뒤에 그대로 돈다.
+- 정해진 안내(`fixed_phrases.yaml` `notices.decide`·`notice_triggers`): 지원자 메시지가 정하는 방법을 묻는 패턴에 걸리면 그 run 첫 화자 발언 앞에 코드가 고정 안내문을 붙이고, 페르소나에는 `[정해진 안내]` 블록으로 이어질 말만 쓰게 한다. 순서는 생성 직후 본문을 (400 − 안내문 길이 − 1)자로 자르기 → 잘린 본문으로 guard·stance_check(입장 판정도 잘린 본문 기준) → apply에서 안내문 부착이다. guard·입장 폴백과 비용 상한 안전 문구에도 붙이고, 카드 고정 한 줄(머뭇거림)에는 붙이지 않는다. 안내문은 화면 위치("결정 사항")와 방법만 말하고 어떤 안을 고를지는 말하지 않는다.
+- 반복 재생성: 초안이 자기 최근 발언 3개 중 하나와 유사도 0.8 이상(공백·문장부호 제거 뒤 `SequenceMatcher`)이면 1회 다시 쓴다(`meta.repeat`, 최초 생성과 도구 3회 예산을 공유). 다시 써도 비슷하거나 실패하면 첫 초안을 쓴다. guard·stance_check는 그 뒤에 그대로 돈다.
 - 비용 하드 상한($2, R5-11)을 넘은 세션(load가 읽은 DebateState `cost_left ≤ 0`, 원천은 `sessions.debate_cost_usd`)이면 respond는 LLM을 부르지 않고 자리별 고정 안전 문구를 낸다.
 - 금지(모든 자리): 점수·평가·합격·연출될 상황 언급, 지원자 대신 결론 선언(칸 채우기 고정 문장 제외), 지원자 평가·판정, 카드 선점 금지 위반, 기획안 대필, `idea_credit` 내용 언급, 다른 자리의 성향 이름 언급. 페르소나는 assessment-mcp에 접근할 수 없다.
 
