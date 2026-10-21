@@ -30,6 +30,8 @@
   /* 한 페이지 = 한 블록. 제목과 본문이 페이지 사이에서 갈라지지 않게 한다 */
   .page { position: relative; width: 210mm; height: 297mm; padding: 19mm 18mm 20mm; overflow: hidden; break-after: page; background: var(--paper); }
   .page:last-child { break-after: auto; }
+  .compact-tables h3 { margin-top: 4mm; }
+  .compact-tables td { padding-top: 1.2mm; padding-bottom: 1.2mm; }
   .foot { position: absolute; left: 18mm; right: 18mm; bottom: 10mm; display: flex; justify-content: space-between; border-top: 0.5pt solid var(--rule); padding-top: 2.2mm; font: 7pt var(--mono); color: var(--muted); letter-spacing: 0.04em; }
 
   .kicker { font: 7.5pt var(--sans); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 0 0 3mm; }
@@ -131,7 +133,7 @@
     <div><span class="no">7</span><span class="line"></span><span><b>주요 기능과 구현 결과</b></span><span class="pg">13</span></div>
     <div><span class="no">7.1</span><span class="line"></span><span>지원자 화면</span><span class="pg">13</span></div>
     <div><span class="no">7.2</span><span class="line"></span><span>디브리핑과 관리자 리포트</span><span class="pg">14</span></div>
-    <div><span class="no">8</span><span class="line"></span><span><b>한계와 향후 과제</b></span><span class="pg">15</span></div>
+    <div><span class="no">8</span><span class="line"></span><span><b>한계와 개선 방향</b></span><span class="pg">15</span></div>
   </div>
   <div class="foot"><span>Day Zero 최종 보고서</span><span>02</span></div>
 </section>
@@ -391,7 +393,7 @@
 </section>
 
 <!-- 10 품질과 하네스 -->
-<section class="page">
+<section class="page compact-tables">
   <div class="kicker"><b>6</b> &nbsp;품질</div>
   <h2>6. 품질 관리와 하네스</h2>
   <p class="lede">안전장치는 코드에 걸고, 검증은 층마다 계획으로 정했다.</p>
@@ -481,12 +483,12 @@
   <div class="foot"><span>Day Zero 최종 보고서</span><span>14</span></div>
 </section>
 
-<!-- 12 한계와 다음 단계 -->
+<!-- 12 한계와 개선 방향 -->
 <section class="page">
-  <div class="kicker"><b>8</b> &nbsp;향후 과제</div>
-  <h2>8. 한계와 향후 과제</h2>
-  <p class="lede">아키텍처는 정해졌고, 실제 연결과 평가 신뢰도 측정이 남았다.</p>
-  <p class="bal">한계는 숨기지 않고 대응과 함께 적습니다. 다음 단계는 실제 스택 연결, 실제 캡처 반영, 파일럿 측정 순서입니다.</p>
+  <div class="kicker"><b>8</b> &nbsp;한계와 대응</div>
+  <h2>8. 한계와 개선 방향</h2>
+  <p class="lede">MVP 실행을 확인했고, 평가 신뢰도와 편향 검증은 별도로 필요하다.</p>
+  <p class="bal">현재의 한계와 대응을 정리하고, MVP 이후 고려할 개선 방향을 남깁니다.</p>
 
   <h3><span class="n">표 8-1</span>한계와 대응</h3>
   <table>
@@ -499,15 +501,7 @@
     <tr><td><b>규제 해석</b></td><td>채용은 고영향 AI 영역 해당 여부가 미확정</td><td>사람이 최종 결정하는 구조, 법률 검토</td></tr>
   </table>
 
-  <h3><span class="n">표 8-2</span>향후 과제</h3>
-  <table>
-    <tr><th class="num" style="width:7%">순서</th><th style="width:24%">작업</th><th>완료 기준</th></tr>
-    <tr><td class="num">1</td><td><b>백엔드 연결</b></td><td>8개 서비스 정상 기동, 단위 · 연결 테스트 통과</td></tr>
-    <tr><td class="num">2</td><td><b>e2e 검증</b></td><td>P0 대본 3개와 장애 주입 2종 통과, 실 스택 15분 세션 기록</td></tr>
-    <tr><td class="num">3</td><td><b>보고서 갱신</b></td><td>구현 결과 장을 실제 캡처와 실행 기록으로 교체</td></tr>
-    <tr><td class="num">4</td><td><b>파일럿</b></td><td>잠정 기준: 근거 정확도 · 평가 일치도(차이 1 이하) 각 80% 이상</td></tr>
-  </table>
-  <h3><span class="n">표 8-3</span>MVP 이후</h3>
+  <h3><span class="n">표 8-2</span>MVP 이후</h3>
   <table>
     <tr><th class="num" style="width:7%">#</th><th>항목</th></tr>
     <tr><td class="num">1</td><td>지원자가 입력 중이면 페르소나 생성 전에 확인해 버려지는 생성을 줄인다</td></tr>
