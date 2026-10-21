@@ -1,7 +1,7 @@
 [project]
 name = "dayzero-report-worker"
 version = "0.1.0"
-description = "Day Zero report-worker: 리포트 그래프, report.generate·report.approve 소비, 재시도·DLQ"
+description = "Day Zero report-worker: 평가 에이전트(BARS)와 리포트 그래프, report.generate·report.approve 소비, 재시도·DLQ"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "aio-pika>=9.4",
@@ -11,13 +11,14 @@ dependencies = [
   "langchain-openai>=0.2",
   "python-dotenv>=1.0",
   "psycopg[binary]>=3.2",
+  "mcp==2.3.0",
+  "pyyaml>=6",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8",
     "pytest-asyncio>=0.24",
-    "pyyaml>=6",
 ]
 
 [tool.uv]

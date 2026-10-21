@@ -105,6 +105,8 @@ services:
     environment:
       API_INTERNAL_URL: http://api:8001
       ASSESSMENT_MCP_URL: http://assessment-mcp:9103/mcp
+    volumes:
+      - ../scenarios:/scenarios:ro
     healthcheck:   # 워커가 30초마다 갱신하는 heartbeat 파일
       test: ["CMD-SHELL", "test -f /tmp/heartbeat && test $(( $(date +%s) - $(stat -c %Y /tmp/heartbeat) )) -lt 90"]
       interval: 15s

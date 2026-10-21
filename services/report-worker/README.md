@@ -1,19 +1,20 @@
 # report-worker
 
-리포트 그래프 `collect → draft → approval[interrupt] → finalize`(thread `report:{session_id}`, PostgresSaver)와 큐 소비자 3개(`report.generate`, `report.approve`, `report.dlq`). 설계는 `docs/worker-infra/design.md`, 평가표 규칙은 `docs/common/rubric.md`, 형식은 `docs/common/contracts.md`.
+세션이 끝나면 큐 작업으로 리포트 그래프 `collect → aggregate → evaluate → draft → approval[interrupt] → finalize`(thread `report:{session_id}:{eval_round}`, PostgresSaver)를 돌리고, 큐 소비자 3개(`report.generate`, `report.approve`, `report.dlq`)를 둔다. 설계는 `docs/worker-infra/design.md`, 척도·검증 규칙은 `docs/common/rubric.md`, 형식은 `docs/common/contracts.md`.
 
 | 모듈 | 내용 |
 |---|---|
-| `rubric.py` | `evaluate(card, observation, event_fired=, window_missed=, document_missing=)` 순수 함수. 카드 항목 1/0/None과 기록 없음 사유, met·unmet·no_record 세 수 |
-| `report.py` | draft 조립(summary·카드 단위 평가표·섹션 window·근거 record_ref·flag·정직 facts·ai_usage.events). 문장은 카탈로그 label_texts라 LLM을 부르지 않는다. 같은 세션 근거만 남기고 텍스트 필드 금지어 문장 제거 |
-| `graph.py` | LangGraph 그래프와 thread 상태 판정(멈춤·완료) |
-| `consumer.py` | 메시지 처리 규칙(final 뒤 completed면 재생성: thread 삭제 후 새 draft, 재시도 백오프 5·15·45초, attempt≥3 → DLQ, dlq는 api 복구까지 60초 간격 재시도)과 aio-pika 연결 |
-| `api.py` | 내부 REST 클라이언트(X-Internal-Token) |
-| `llm.py` | gpt-4o-mini temperature 0, 재시도 2회 뒤 고정 문장, 사용량 집계 |
+| `assessment.py` | assessment-mcp 클라이언트(`X-Assessment-Token`). `get_session_record`·`get_rubric`·`get_contributions`·`get_transcript_span`·`save_evaluation`만 |
+| `api.py` | 내부 REST(X-Internal-Token): 세션 정보, 어시스턴트 호출(요청·응답 원문 포함), `GET /evaluations`, draft·final·report_failed |
+| `evaluate.py` | 요소별 평가 호출(5회, 다른 요소 결과 없음), 워커 검증, 요소 단위 1회 재요청 → `evaluate_failed`, 확신도 clamp, 요소 수준(평균 .5 올림), 프롬프트 버전 맵 |
+| `report.py` | aggregate(사실 지표 그대로, 칸·카드·관찰 창, 기여 대조 `contribution_check`)와 draft 조립(근거 원문·앞 5·뒤 3 맥락·record_ref, 카드 장면은 `report_template` 그대로, 총점 없음, LLM 없음) |
+| `graph.py` | LangGraph 그래프, thread·run_id 규칙(`uuid5(session_id, "evaluate:"+eval_round)`) |
+| `consumer.py` | 메시지 처리 규칙(같은 eval_round만 체크포인트 재개, 재시도 백오프 5·15·45초, attempt≥3 → DLQ, dlq는 api 복구까지 60초 간격)과 aio-pika 연결 |
+| `llm.py` | `MODEL_EVALUATOR`(비면 `OPENAI_MODEL`), temperature 0.1, JSON 출력, 전송 실패 재시도 2회 뒤 예외(저장 없이 큐 재시도) |
+
+평가 프롬프트(`prompts/evaluator/{common,<element>}.md`)와 금지어(`guard_patterns.yaml`의 `evaluator_forbidden`)는 `SCENARIOS_DIR/missions/<mission_id>/prompts/`에서 읽는다. 컨테이너는 `scenarios`를 `/scenarios`로 읽기 전용 마운트해야 한다.
 
 ```
 uv run python -m report_worker   # heartbeat + 소비자. infra/.env.local → infra/.env를 읽는다
-uv run pytest                    # LLM은 FakeLLM. postgres·rabbitmq가 떠 있으면 실제 체크포인터·브로커 테스트도 돈다
+uv run pytest                    # FakeLLM·가짜 assessment·가짜 api·메모리 체크포인터. 외부 서비스 없이 돈다
 ```
-
-테스트는 공용 인프라를 쓰되 겹치지 않게 Postgres는 임시 스키마, RabbitMQ는 `test-worker-<랜덤>.` 접두사의 exchange·큐를 만들고 끝나면 지운다.

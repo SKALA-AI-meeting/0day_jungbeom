@@ -1,11 +1,13 @@
 """큐 소비자 3개: report.generate·report.approve·report.dlq (worker-infra/design.md 1·4~7단계).
 
 모두 prefetch 1, manual ack. 메시지 처리 규칙:
-- generate: thread 상태 조회 → (멈춤이면 건너뜀) 그래프 실행 → interrupt에서 멈춤
-  → POST /report/draft → ack. thread가 이미 끝났는데 세션이 completed면 리포트 재생성이라
-  thread를 지우고 처음부터 만든다(이전 승인 체크포인트를 이어받지 않음).
+- generate: 본문 eval_round의 thread `report:{session_id}:{eval_round}` 상태 조회 → interrupt에
+  멈춰 있으면 draft 저장부터, final까지 끝났으면 ack만, 중간 체크포인트면 거기서 이어서, 없으면
+  collect부터 → interrupt에서 멈춤 → POST /report/draft → ack. 새 eval_round는 새 thread라
+  이전 회차가 멈춰 있어도 그 draft를 다시 저장하지 않는다.
   체크포인트 → draft 저장 → ack 순서라 ack 뒤 승인에도 재개 대상이 있다.
-- approve: 멈춘 thread를 Command(resume=True)로 재개 → finalize(POST /report/final) → ack.
+- approve: 본문 eval_round의 멈춘 thread를 Command(resume=True)로 재개 → finalize
+  (draft content 그대로 POST /report/final) → ack.
   이미 끝났으면 ack만(중복 approve 멱등). 체크포인트가 없으면 nack 없이 15초 뒤 재발행.
 - 실패: attempt+1로 재발행(백오프 5·15·45초 대기 후, 브로커 확인) → 원본 ack.
   attempt ≥ 3이면 report.dlq로 보낸다(최초 포함 총 3회).
@@ -83,33 +85,33 @@ class ReportWorker:
 
     async def generate(self, body: dict[str, Any]) -> None:
         session_id = body["session_id"]
-        config = thread_config(session_id)
+        config = thread_config(session_id, int(body.get("eval_round", 1)))
         snapshot = await self.graph.aget_state(config)
         if is_done(snapshot) or snapshot.next == ("finalize",):
-            if await self.api.session_status(session_id) != "completed":
-                log.info("report %s already final, ack only", session_id)
-                return
-            # 리포트 재생성(regenerate): api가 draft를 지우고 completed로 되돌렸다. 이전 승인
-            # 체크포인트를 이어받지 않도록 thread를 지우고 처음부터 다시 만든다
-            await self.graph.checkpointer.adelete_thread(config["configurable"]["thread_id"])
-            snapshot = await self.graph.aget_state(config)
+            # 이미 승인됐다(final 저장 전후). draft는 그 전에 저장됐으므로 ack만
+            log.info("report %s already approved, ack only", config["configurable"])
+            return
         if not is_paused(snapshot):
-            # 체크포인트가 중간에 멈춰 있으면(None 입력) 거기서 이어서, 없으면 처음부터
-            start = None if has_checkpoint(snapshot) else {"session_id": session_id}
+            # 체크포인트가 중간에 멈춰 있으면(None 입력) 거기서 이어서, 없으면 collect부터
+            start = (
+                None
+                if has_checkpoint(snapshot)
+                else {"session_id": session_id, "eval_round": int(body.get("eval_round", 1))}
+            )
             await self.graph.ainvoke(start, config)
             snapshot = await self.graph.aget_state(config)
             if not is_paused(snapshot):
                 raise RuntimeError(f"report graph did not stop at approval: {snapshot.next}")
         values = snapshot.values
         await self.api.save_draft(session_id, values["draft"], values.get("usage"))
-        log.info("report %s draft saved (thread %s)", session_id, config["configurable"])
+        log.info("report draft saved (%s)", config["configurable"])
 
     async def approve(self, body: dict[str, Any]) -> None:
         session_id = body["session_id"]
-        config = thread_config(session_id)
+        config = thread_config(session_id, int(body.get("eval_round", 1)))
         snapshot = await self.graph.aget_state(config)
         if is_done(snapshot):
-            log.info("report %s already reviewed, ack only", session_id)
+            log.info("report %s already reviewed, ack only", config["configurable"])
             return
         if is_paused(snapshot):
             await self.graph.ainvoke(Command(resume=True), config)
@@ -124,7 +126,7 @@ class ReportWorker:
         snapshot = await self.graph.aget_state(config)
         if not is_done(snapshot):
             raise RuntimeError(f"report graph did not finish: {snapshot.next}")
-        log.info("report %s final saved (thread %s)", session_id, config["configurable"])
+        log.info("report final saved (%s)", config["configurable"])
 
     async def handle(
         self, queue: str, body: dict[str, Any], handler: Callable[[dict], Awaitable[None]]
