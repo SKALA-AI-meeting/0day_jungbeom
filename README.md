@@ -92,11 +92,11 @@ PRD의 지원자 흐름(입장·동의·토론 4단계·참고 자료·어시스
 
 최근 검증 결과(2026-10-22):
 
-| 항목 | 결과 |
-|---|---|
-| 단계별 화면 테스트(`make e2e-stages`) | 9/9 통과 |
-| 15분 실제 LLM 세션 단언 | 8/8 통과 |
-| 의도 분류 정확도(`make eval-live`, 목표 0.85) | 0.90 |
-| 평가 BARS ±1 일치율 | 1.0 |
+| 항목 | 결과 | 기록 |
+|---|---|---|
+| 단계별 화면 테스트(`make e2e-stages`) | 9/9 통과 | [stages/summary.md](tests/e2e/records/stages/summary.md) |
+| 15분 실제 LLM 세션 단언 | 8/8 통과 | [all_five-live-summary.md](tests/e2e/records/final-20261022/all_five-live-summary.md) |
+| 의도 분류 정확도(`make eval-live`, 목표 0.85) | 0.90 | [eval-live.md](tests/e2e/records/final-20261022/eval-live.md) |
+| 평가 BARS ±1 일치율 | 1.0 | [eval-live.md](tests/e2e/records/final-20261022/eval-live.md) |
 
 시각 보고서는 [docs/share/visual-report/index.html](docs/share/visual-report/index.html), 기능별 상태와 알려진 제한은 [docs/features.md](docs/features.md).
