@@ -71,4 +71,10 @@ e2e-auth:        ## 단언 8(인증 경계). 스택이 떠 있어야 한다
 e2e-faults:      ## 단언 6(장애 주입 6종). 인프라만 떠 있으면 러너가 앱을 띄운다
 	uv run --project services/api python tests/e2e/run.py --faults all
 
-.PHONY: infra-up infra-down up down seed test test-live lint e2e test-e2e eval-live e2e-concurrent e2e-auth e2e-faults
+stage:           ## 단계 시드 세션 생성: make stage STAGE=keyword|problem|solution|proposal|ended [MIN=15] [LLM=fake|live]. api 내부 8001이 떠 있어야 한다
+	uv run --project services/api python scripts/make_session.py --start-at $(STAGE) --minutes $(or $(MIN),15) --llm $(or $(LLM),fake)
+
+stage-advance:   ## 시간 당기기: make stage-advance SID=<세션 id> TO=deadline|idle|card:<카드 id>|<초>
+	uv run --project services/api python scripts/stage_advance.py --sid $(SID) --to $(TO)
+
+.PHONY: infra-up infra-down up down seed test test-live lint e2e test-e2e eval-live e2e-concurrent e2e-auth e2e-faults stage stage-advance

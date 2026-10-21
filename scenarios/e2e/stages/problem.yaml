@@ -1,0 +1,13 @@
+# 단계 시드: 문법은 docs/common/testing.md "단계 시드". 시간(at)은 15분 세션 기준 분이고 60분이면 같은 값으로 재생한다.
+# at은 15분 세션 기준이다. 60분 세션에서는 카드 예정 시각보다 앞서 페르소나 before_card 입장과 어긋날 수 있어 60분 시드는 지원하지 않는다.
+# problem: 키워드 칸(물)이 확정되고 문제 상황 단계가 막 시작된 상태.
+steps:
+  - at: 0.3
+    say: "저는 물이 좋겠어요. 누구에게나 가까운 문제라서요."
+    intent: { intent: propose, scenario_option_key: water, confidence: high }
+  - at: +0.2
+    ai: { seat: p1, content: "불이 더 급하다고 봅니다. 화재는 한 번 나면 되돌릴 수 없어요.", propose: fire }
+  - at: +0.2
+    ai: { seat: p3, content: "불은 이미 피해가 난 뒤의 대응이라 근거가 약하다고 봐요.", oppose: fire }
+  - at: 1.5
+    confirm: { phase: keyword, option_key: water }
