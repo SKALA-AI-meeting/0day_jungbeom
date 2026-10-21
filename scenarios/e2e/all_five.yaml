@@ -1,86 +1,54 @@
-# 5요소 전부, 6분. 카드: planning_division 0.5, collab_help 1.5, planning_checkin 2.25,
-# responsibility_delay 3(공개 3.5), adaptability_change 3.75, review·collab_disagree 4.5, honesty_report 5.5
+# 5요소 전부, 15분 세션. 키워드는 지원자 확정, 문제 상황은 수용 카드(기준안 잠금 → 지원자가 반대했다가 승복),
+# 해결책은 소극형 지명 후 AI 합의 채우기, 기획안에 기여를 정확히 적고 제출한다.
+# 문장은 결정적 LLM 모드(LLM_FAKE=1) 의도 분류 규칙(안 라벨이 있으면 그 안, "좋아요" agree, "아니·반대" oppose, 물음표 question)에 맞춘다.
 name: all_five
-mission: planning
-elements: [responsibility, planning, adaptability, collaboration, honesty]
-minutes: 6
+priority: P0
+minutes: 15
 expect:
-  labels:
-    planning_division: assign_with_schedule
-    collab_help: negotiate_timing
-    planning_checkin: feedback
-    responsibility_delay: notify_with_alternative
-    adaptability_change: replan_and_apply
-    collab_disagree: explain_with_reason
-    honesty_report: fair_report
-  evidence_types:
-    planning_division: [task_event]
-    planning_checkin: [open]
-    adaptability_change: [document]
-  work_memory:                 # agent-session 보강: 동료 문서 핵심어·버전, 진행 답, 반대 의견 대상
-    draft_v1: { 4: [재참여] }
-    final_v2: { 3: [후속 모임], 4: [재참여], 5: [이번 분기] }
-    v3_after_reply: 4
-    progress_same_answer: 2
-    board: { doing_at: division, done_at: review }
-    disagree_target: sentence   # 주담당이 보낸 1번 v1의 원인 가정 문장
-  rubric:                      # 초기 추정. e2e-runner가 첫 실 실행으로 확정한다
-    responsibility: { met: 4, unmet: 0, no_record: 0 }
-    planning: { met: 4, unmet: 0, no_record: 0 }
-    adaptability: { met: 4, unmet: 0, no_record: 0 }
-    collaboration: { met: 4, unmet: 0, no_record: 0 }
-    honesty: { met: 4, unmet: 0, no_record: 0 }
+  slots:
+    keyword: { resolution: consensus, filled_by: candidate }
+    problem: { resolution: consensus, filled_by: p3 }
+    solution: { resolution: consensus, filled_by: p3 }
+  cards: [persuasion_keyword, flexibility_majority, listening_pressure, inclusion_silence, persuasion_solution, honesty_credit]
+  dimensions:                     # level은 결정적 LLM 모드에서만 확인한다(FakeLLM: 지원자 근거가 있으면 3)
+    hon_credit_record: { evidence: ["proposal:idea_credit"], level: 3 }
+    listen_engage: { level: 3 }
+review:                           # 단언 6: 차원 1개 조정 → 조회 시 adjusted_level·요소 수준 재계산
+  reviewer_name: 박담당
+  adjust: { dimension_id: listen_engage, level: 4, memo: 압박 뒤에도 근거를 들어 답한 흐름을 원문에서 확인해 한 단계 올림 }
 steps:
-  - at: kickoff
-    say: { channel: team, content: "안녕하세요, 오늘 합류한 기획자입니다. 주담당 맡아서 잘 정리해 보겠습니다." }
-  - at: 0.2                    # 카드 전 계획(창은 0부터)
-    board:
-      - { part_no: 1, assignee: candidate, order: 1, due_min: 2 }
-      - { part_no: 2, assignee: candidate, order: 2, due_min: 4 }
-      - { part_no: 3, assignee: both, order: 3 }
-      - { part_no: 4, assignee: colleague, order: 4 }
-      - { part_no: 5, assignee: colleague, order: 5 }
-  - at: planning_division
-    say: { channel: dm, content: "보드에 적어 뒀어요. 1번 먼저 끝내고 2번은 인터뷰 받는 대로, 3번은 같이, 4·5번은 도현님이 맡아 주세요. 4번 사례는 재참여 기능이 있는 서비스 위주로 봐 주세요." }
-  - at: collab_help
-    say: { channel: dm, content: "지금 1번 정리 중이라 1분 뒤에 DM 드릴게요." }
-    write: { part_no: 1, content: "문제: 첫 모임 참여자의 두 번째 참여율이 22%에 그친다(지표 현황). 대상: 첫 모임을 마친 참여자. 주원인 가정: 다음 모임 일정을 놓쳐서." }
-  - at: 1.8                    # 진행 질문 2회: 같은 progress로 답해야 한다(작업 기억)
-    say: { channel: dm, content: "도현님, 4번은 지금 어디까지 됐어요?" }
-  - at: +0.1
-    say: { channel: dm, content: "아 그리고 4번 진행 상황 한 번만 더 알려 주세요." }
-  - at: 2.5                    # 약속 시각 = collab_help + 1분(창 밖, related_card=collab_help) → finalize에서 promise_kept=true (C3)
-    say: { channel: dm, content: "도현님, 4번 기준 지금 같이 봐요. 재참여 기능이 있는 서비스 두세 개로 좁혀 볼까요?" }
-  - at: planning_checkin
-    open: { part_no: 4, version: 1 }
-    say: { channel: team, content: "사례 2는 후속 모임 기능이 약해 보여서 다른 걸로 바꾸면 좋겠어요.", reply_to_doc: { part_no: 4, version: 1 } }
-  - at: +0.2
-    say: { channel: dm, content: "2번 자료는 인터뷰 요약 오면 바로 정리해서 보내 드릴게요." }
-  - at: responsibility_delay
-    say: { channel: team, content: "인터뷰 자료 공개가 늦어진대요. 2번이 밀려서 도현님 3번도 영향이 있을 것 같아요. 그동안 1번 문제 정의를 먼저 끝내 둘게요." }
-  - at: 3.6
-    view: interview_summary
-    write: { part_no: 2, content: "인터뷰 8명 중 2·8번이 다음 모임 정보를 놓쳤고, 1·5·7번은 관계가 생기지 않았다고 답함(사용자 인터뷰 요약)." }
-    share: { part_no: 2, channel: dm }
-  - at: adaptability_change
-    say: { channel: dm, content: "도현님, 3번은 첫 모임 뒤 48시간 안 후속 모임 제안 하나로 좁히고, 5번 출시는 이번 분기로 바꿔 주세요." }
-  - at: +0.1
-    write: { part_no: 1, content: "문제: 첫 모임 참여자의 두 번째 참여율이 22%에 그친다(지표 현황). 대상: 첫 모임을 마친 참여자. 주원인 가정: 다음 모임 일정을 놓쳐서. 핵심 기능은 첫 모임 뒤 48시간 안 후속 모임 제안 한 가지, 출시는 이번 분기." }
-    share: { part_no: 1, channel: team }
-  - at: review
-    open: { part_no: 4, version: 2 }
-  - at: +0.1                   # 완성본 v2에 고쳐 달라는 답글 → 동료가 v3을 보낸다(작업 기억)
-    say: { channel: team, content: "4번 사례 하나는 후속 모임 제안 기능이 있는 서비스로 바꿔 주세요.", reply_to_doc: { part_no: 4, version: 2 } }
-  - at: collab_disagree
-    say: { channel: team, content: "말씀 일리 있어요. 다만 2·8번처럼 일정을 놓친 경우는 후속 모임 알림으로 바로 풀 수 있어서 일정을 주원인으로 두고, 관계는 보조 원인으로 적을게요." }
-  - at: +0.3
-    import:
-      - { part_no: 1, from: candidate, version: 1 }   # 1번은 한 번만 보냄(자동 저장 revision과 별개)
-      - { part_no: 2, from: candidate, version: 1 }
-      - { part_no: 3, from: colleague, version: 2 }
-      - { part_no: 4, from: colleague, version: 2 }
-      - { part_no: 5, from: colleague, version: 2 }
-  - at: honesty_report
-    say: { channel: team, content: "1·2번은 제가 썼고, 3번은 도현님 골격에 제가 보탰고, 4·5번은 도현님이 썼습니다. 5번 일정은 아직 초안 수준이에요." }
-  - at: +0.1
+  - at: 0.2
+    say: 저는 물을 추천해요. 물 부족 문제가 가장 직접적이라고 생각해요.
+  - at: card:persuasion_keyword
+  - at: "+0.1"
+    say: 물은 통계 자료가 많아서 근거를 대기 쉬워요.
+  - at: 1.4
+    confirm: { phase: keyword, value: 물, option_key: water }
+  - at: "+0.1"
+    assistant: 물 부족 통계 자료에서 핵심 수치를 알려 주세요.
+  - at: "+0.2"
+    say: 도심 폭우·침수 피해 증가가 가장 먼저라고 생각해요.
+  - at: card:flexibility_majority
+  - at: "+0.2"
+    say: 가뭄으로 생활용수 제한이 잦아짐은 아니에요. 침수 쪽이 더 커요.
+  - at: "+0.2"
+    say: 알겠어요. 기준안인 가뭄으로 생활용수 제한이 잦아짐 좋아요, 그걸로 가요.
+  - at: phase:solution
+  - at: "+0.2"
+    say: 저는 빗물 저금통·투수 포장 같은 생활 인프라가 좋다고 생각해요.
+  - at: card:inclusion_silence
+  - at: "+0.1"
+    say: 윤하람님은 어떻게 생각하세요?
+  - at: card:persuasion_solution
+  - at: "+0.2"
+    say: 주민 절수·보상 캠페인은 아니에요. 인프라가 더 낫다고 봐요.
+  - at: "+0.2"
+    say: 주민 절수·보상 캠페인은 반대예요. 효과가 오래 가지 않아요.
+  - at: phase:proposal
+  - at: "+0.1"
+    proposal:
+      rationale: 침수 사례와 강수 자료를 보면 피해가 반복되고, 생활 인프라는 바로 설치할 수 있어요.
+      expected_effect: 침수 신고가 줄고 주민이 직접 체감하는 변화가 생겨요.
+      idea_credit: "문제 상황: 강한결 제안(기준안). 해결책: 제가 제안하고 윤하람님 의견을 들었어요"
+  - at: "+0.2"
     submit: true

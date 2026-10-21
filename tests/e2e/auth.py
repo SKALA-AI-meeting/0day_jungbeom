@@ -1,11 +1,13 @@
-"""단언 8: 인증 경계를 한 번에 확인하고 records/<일시>-auth/auth.md에 남긴다.
+"""단언 8 인증 경계. 결과는 `records/<일시>-auth/auth.md`.
 
-준비(세션 2개, 회사 2개, 완료 세션 1개)는 공개 API와 내부 API(테스트 세션·complete)로
-만든다. 타 기업 접근은 존재를 숨기는 404다(testing.md). 만료 JWT는 .env의 JWT_SECRET으로
-서명만 하고 값은 남기지 않는다.
+타 기업 관리자의 채용 건·리포트·기록 조회 404, 타 세션 JWT로 /state 403, 동의 전 /state 401,
+만료 JWT 401, X-Internal-Token 없이 /internal 401, 공개 포트 8000에서 /internal 404,
+assessment-mcp 토큰 없이 `forbidden`, 진행 중 세션 previous_session_id 재초대 422,
+재발급 뒤 옛 링크 404.
 """
 
 import time
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
@@ -13,128 +15,137 @@ import jwt
 
 from e2e import records
 from e2e.client import Api, Target, Transcript
-from scripts import make_session
 
-ALL = ["responsibility", "planning", "adaptability", "collaboration", "honesty"]
-DIVISION = {1: "candidate", 2: "candidate", 3: "both", 4: "colleague", 5: "colleague"}
-
-
-async def _start(api: Api, made: make_session.Made) -> str:
-    r = await api.call("POST", f"/s/{made.invite_token}/consent")
-    token = r.json()["session_token"]
-    await api.call("POST", f"/s/{made.invite_token}/start", token=token)
-    return token
+McpProbe = Callable[[str], Awaitable[str]]
+PASSWORD = "e2e-password-1234"
 
 
-async def checks(api: Api) -> list[dict[str, Any]]:
-    """[{name, want, got}]. got은 실제 HTTP 상태."""
-    a = await make_session.make(api.public, api.internal, ALL, 6, alias="auth-a")
-    b = await make_session.make(api.public, api.internal, ALL, 6, alias="auth-b")
-    other = await make_session.signup(api.public, "e2e 다른 회사")
-    token_a, token_b = await _start(api, a), await _start(api, b)
-    sid = a.session_id
-    for part, assignee in DIVISION.items():
-        await api.call(
-            "PUT", f"/sessions/{sid}/tasks/{part}", token=token_a, json_body={"assignee": assignee}
-        )
-    mine = await api.call("GET", f"/sessions/{sid}/my-documents", token=token_a)
-    candidate_doc = next(d["doc_id"] for d in mine.json()["documents"] if d["part_no"] == 1)
-    # 완료 세션: b의 관리자 초대 세션(채용 건 b.position_id)을 시작 → 제출 → 내부 complete
-    invited = make_session.Made(
-        b.admin, b.position_id, "", "", b.invite_session_id, b.invite_link_token
-    )
-    token_done = await _start(api, invited)
-    await api.call("POST", f"/sessions/{b.invite_session_id}/submit", token=token_done)
-    await api.call("POST", f"/internal/sessions/{b.invite_session_id}/complete", internal=True)
-    expired = jwt.encode(
-        {
-            "role": "candidate",
-            "sub": sid,
-            "iat": int(time.time()) - 7200,
-            "exp": int(time.time()) - 60,
-        },
-        make_session.env().get("JWT_SECRET", ""),
-        algorithm="HS256",
-    )
-    fresh = await make_session.make(api.public, api.internal, ALL, 6, alias="auth-c")
-    other_auth = {"Authorization": f"Bearer {other.token}"}
-
-    async def status(method: str, path: str, **kwargs: Any) -> int:
-        return (await api.call(method, path, **kwargs)).status_code
-
-    results = [
-        (
-            "타 기업 관리자 채용 건(지원자 목록)",
-            404,
-            await status("GET", f"/admin/positions/{a.position_id}/candidates", headers=other_auth),
-        ),
-        (
-            "타 기업 관리자 리포트",
-            404,
-            await status("GET", f"/admin/sessions/{sid}/report", headers=other_auth),
-        ),
-        (
-            "타 기업 관리자 전체 기록",
-            404,
-            await status("GET", f"/admin/sessions/{sid}/record", headers=other_auth),
-        ),
-        ("타 세션 JWT로 /state", 403, await status("GET", f"/sessions/{sid}/state", token=token_b)),
-        ("동의 전 /state", 401, await status("GET", f"/sessions/{fresh.session_id}/state")),
-        ("만료 JWT로 /state", 401, await status("GET", f"/sessions/{sid}/state", token=expired)),
-    ]
-    bare = api.internal.build_request("GET", f"/internal/sessions/{sid}")
-    del bare.headers["X-Internal-Token"]
-    results.append(
-        ("X-Internal-Token 없이 /internal", 401, (await api.internal.send(bare)).status_code)
-    )
-    results += [
-        ("공개 포트에서 /internal", 404, await status("GET", f"/internal/sessions/{sid}")),
-        (
-            "지원자 문서 doc_id로 내부 docs/send",
-            403,
-            await status(
-                "POST",
-                f"/internal/sessions/{sid}/docs/send",
-                internal=True,
-                json_body={
-                    "doc_id": candidate_doc,
-                    "content": "e2e",
-                    "channel": "team",
-                    "run_id": "00000000-0000-4000-8000-000000000e2e",
-                    "seq": 10,
-                },
-            ),
-        ),
-        (
-            "완료 세션 재초대(previous_session_id)",
-            422,
-            await status(
-                "POST",
-                f"/admin/positions/{b.position_id}/invites",
-                headers={"Authorization": f"Bearer {b.admin.token}"},
-                json_body={
-                    "alias": "auth-retry",
-                    "email": "e2e@example.com",
-                    "previous_session_id": b.invite_session_id,
-                },
-            ),
-        ),
-    ]
-    return [{"name": n, "want": w, "got": g} for n, w, g in results]
-
-
-async def run(target: Target, out: Path) -> bool:
-    api = Api(target, Transcript())
+async def assessment_without_token(url: str, session_id: str) -> str:
+    """토큰 없이 assessment-mcp 도구를 불러 응답(또는 거절 사유) 문자열을 돌려준다."""
     try:
-        results = await checks(api)
+        from mcp import ClientSession
+        from mcp.client.streamable_http import streamablehttp_client
+
+        async with streamablehttp_client(url) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.call_tool("get_rubric", {"session_id": session_id})
+                return " ".join(getattr(c, "text", "") for c in result.content)
+    except Exception as error:  # noqa: BLE001 - 접속 거절도 거절 사유로 본다
+        return repr(error)
+
+
+async def run(
+    target: Target,
+    out: Path,
+    *,
+    transports: dict[str, Any] | None = None,
+    mcp_probe: McpProbe | None = None,
+) -> bool:
+    transcript = Transcript()
+    api = Api(target, transcript, transports=transports)
+    stamp = int(time.time() * 1000)
+    checks: list[tuple[str, bool, str]] = []
+
+    def record(name: str, ok: bool, detail: str) -> None:
+        checks.append((name, ok, detail))
+
+    async def admin(tag: str) -> str:
+        body = {
+            "email": f"auth-{tag}-{stamp}@example.com",
+            "password": PASSWORD,
+            "company_name": f"co-{tag}",
+        }
+        return (await api.json("POST", "/admin/auth/signup", json_body=body))["token"]
+
+    async def invite(token: str, position: str, tag: str, **extra: Any) -> dict[str, Any]:
+        body = {"alias": f"auth-{tag}-{stamp}", "email": "auth@example.com", **extra}
+        return await api.call(
+            "POST", f"/admin/positions/{position}/invites", token=token, json_body=body
+        )
+
+    try:
+        token_a, token_b = await admin("a"), await admin("b")
+        position = await api.json(
+            "POST",
+            "/admin/positions",
+            token=token_a,
+            json_body={"name": "auth", "session_minutes": 15},
+        )
+        first = (await invite(token_a, position["id"], "1")).json()
+        second = (await invite(token_a, position["id"], "2")).json()
+        third = (await invite(token_a, position["id"], "3")).json()
+        link = lambda invited: invited["invite_url"].rstrip("/").split("/")[-1]  # noqa: E731
+        sid1, sid3 = first["session_id"], third["session_id"]
+
+        for label, path in (
+            ("채용 건 지원자 목록", f"/admin/positions/{position['id']}/candidates"),
+            ("리포트", f"/admin/sessions/{sid1}/report"),
+            ("전체 기록", f"/admin/sessions/{sid1}/record"),
+        ):
+            status = (await api.call("GET", path, token=token_b)).status_code
+            record(f"타 기업 관리자의 {label} 조회", status == 404, f"HTTP {status} (기대 404)")
+
+        jwt1 = (await api.json("POST", f"/s/{link(first)}/consent", json_body={}))["session_token"]
+        jwt2 = (await api.json("POST", f"/s/{link(second)}/consent", json_body={}))["session_token"]
+        status = (await api.call("GET", f"/sessions/{sid1}/state", token=jwt2)).status_code
+        record("타 세션 JWT로 /state", status == 403, f"HTTP {status} (기대 403)")
+        status = (await api.call("GET", f"/sessions/{sid3}/state")).status_code
+        record("동의 전(토큰 없이) /state", status == 401, f"HTTP {status} (기대 401)")
+        if target.jwt_secret:
+            expired = jwt.encode(
+                {
+                    "sub": sid1,
+                    "session_id": sid1,
+                    "kind": "candidate",
+                    "exp": int(time.time()) - 60,
+                },
+                target.jwt_secret,
+                "HS256",
+            )
+            status = (await api.call("GET", f"/sessions/{sid1}/state", token=expired)).status_code
+            record("만료 JWT로 /state", status == 401, f"HTTP {status} (기대 401)")
+        else:
+            record("만료 JWT로 /state", False, "JWT_SECRET을 읽지 못해 만료 토큰을 만들 수 없음")
+        status = (
+            await api.call(
+                "GET", f"/internal/sessions/{sid1}", internal=True, use_internal_token=False
+            )
+        ).status_code
+        record("X-Internal-Token 없이 /internal", status == 401, f"HTTP {status} (기대 401)")
+        status = (
+            await api.call(
+                "GET",
+                f"/internal/sessions/{sid1}",
+                headers={"X-Internal-Token": target.internal_token},
+            )
+        ).status_code
+        record("공개 포트 8000의 /internal", status == 404, f"HTTP {status} (기대 404)")
+
+        probe = mcp_probe or (
+            lambda sid: assessment_without_token(target.assessment_mcp_url or "", sid)
+        )
+        answer = await probe(sid1)
+        record("assessment-mcp 토큰 없이 호출", "forbidden" in answer.lower(), answer[:120])
+
+        await api.json("POST", f"/s/{link(first)}/start", token=jwt1)
+        again = await invite(token_a, position["id"], "re", previous_session_id=sid1)
+        code = again.json().get("error", {}).get("code")
+        record(
+            "진행 중 세션의 previous_session_id 재초대",
+            again.status_code == 422 and code == "invalid_previous_session",
+            f"HTTP {again.status_code} {code}",
+        )
+
+        old = link(third)
+        await api.json("POST", f"/admin/sessions/{sid3}/reissue", token=token_a, json_body={})
+        status = (await api.call("GET", f"/s/{old}")).status_code
+        record("재발급 뒤 옛 링크", status == 404, f"HTTP {status} (기대 404)")
     finally:
         await api.aclose()
+
     path = records.folder(out, "auth")
-    lines = ["# 인증 경계(단언 8)", "", "| 경계 | 기대 | 실제 | 결과 |", "|---|---|---|---|"]
-    for r in results:
-        lines.append(
-            f"| {r['name']} | {r['want']} | {r['got']} | "
-            f"{'통과' if r['want'] == r['got'] else '실패'} |"
-        )
+    lines = ["# 인증 경계 (단언 8)", "", "| 항목 | 결과 | 응답 |", "|---|---|---|"]
+    lines += [f"| {name} | {'통과' if ok else '실패'} | {detail} |" for name, ok, detail in checks]
     (path / "auth.md").write_text("\n".join(lines) + "\n", "utf-8")
-    return all(r["want"] == r["got"] for r in results)
+    return all(ok for _, ok, _ in checks)

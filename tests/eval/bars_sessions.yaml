@@ -1,0 +1,156 @@
+# 평가 에이전트 BARS 픽스처 [초안]: 요소별 대표 세션 대화(SessionRecord 형태) + 사람이 미리 매긴 차원 수준.
+# expected[dimension_id] = {level, evidence}  또는  {level: null, no_record_reason}
+#   evidence: 그 수준을 정한 지원자 메시지 id (수준 4·5는 서로 다른 단위 2개 이상). 사람 라벨은 사용자 검토 전 초안이다.
+# 용도: 평가 에이전트 실행기(live)가 세션마다 그 요소 호출 1회로 차원 수준을 내면 완전 일치·±1 일치율을 센다.
+#       mock(기본)에서는 형태 검사만 한다(tests/eval/test_eval.py). 세션 대화 앞 두 메시지는 시스템 안내다.
+version: 1
+common:
+  seats:
+    - { seat: candidate, display_name: 민지 }
+    - { seat: p1, display_name: 강한결, persona_type: stubborn }
+    - { seat: p2, display_name: 윤하람, persona_type: quiet }
+    - { seat: p3, display_name: 서지안, persona_type: critic }
+sessions:
+  - id: bars_persuasion
+    element: persuasion
+    record:
+      session: { id: bars-1, elements: [persuasion, listening, inclusion, flexibility, honesty], session_minutes: 60, started_at: "2026-10-21T01:00:00Z", completed_at: "2026-10-21T01:57:00Z", connection_gaps: [] }
+      messages:
+        - { id: m1, sender: system, content: "키워드 단계예요. 물·불·나무·바람 중 하나를 함께 정해 주세요.", phase: keyword, t_min: 0.0, origin: null, is_invite: false, card_ids: [], intent: null }
+        - { id: m2, sender: p3, content: "바람은 어떨까요? 미세먼지는 누구나 겪잖아요.", phase: keyword, t_min: 0.8, origin: null, is_invite: false, card_ids: [], intent: null }
+        - { id: m3, sender: candidate, content: "저는 물을 추천해요. 물 부족 통계와 침수 사례처럼 확인할 자료가 두 종류나 있어요.", phase: keyword, t_min: 2.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: propose, target_option_id: null, addressed_to: [] } }
+        - { id: m4, sender: p3, content: "그 키워드를 고르면 구체적으로 어떤 문제를 풀 수 있나요? 바람도 자료는 많아요.", phase: keyword, t_min: 3.0, origin: null, is_invite: false, card_ids: [persuasion_keyword], intent: null }
+        - { id: m5, sender: candidate, content: "가뭄과 침수가 모두 물 문제라서 한 키워드로 두 갈래를 다룰 수 있어요. 바람은 미세먼지 하나로 좁혀지고요.", phase: keyword, t_min: 4.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: other, target_option_id: null, addressed_to: [p3] } }
+        - { id: m6, sender: candidate, content: "바람도 좋지만 물이 더 좋다고 생각해요. 그래서 물로 정하면 어떨까요?", phase: keyword, t_min: 6.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: propose, target_option_id: null, addressed_to: [] } }
+        - { id: m7, sender: p3, content: "센서 경보 쪽이 낫고, 빗물 저금통은 비용이 걱정돼요.", phase: solution, t_min: 36.0, origin: null, is_invite: false, card_ids: [persuasion_solution], intent: null }
+        - { id: m8, sender: candidate, content: "비용은 맞는 지적이에요. 투수 포장은 구별로 이미 시행 사례가 있어서 단가 자료를 같이 보면 부담을 가늠할 수 있어요.", phase: solution, t_min: 37.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: other, target_option_id: null, addressed_to: [p3] } }
+        - { id: m9, sender: candidate, content: "센서는 경보만 주고 피해를 줄이진 못해요. 저금통은 설치하면 바로 유출량이 줄어요.", phase: solution, t_min: 39.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: propose, target_option_id: null, addressed_to: [] } }
+        - { id: m10, sender: candidate, content: "그럼 센서 경보는 보조로 두고 저금통을 중심으로 가는 절충은 어때요? 비용이 걱정이면 시범 구역만 먼저 해 봐요.", phase: solution, t_min: 42.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: propose, target_option_id: null, addressed_to: [] } }
+      slots:
+        - { phase: keyword, value: 물, option_id: opt-kw-water, filled_by: candidate, resolution: consensus, support: [], t_min: 7.0 }
+        - { phase: problem, value: 도심 폭우·침수 피해 증가, option_id: opt-pb-p2, filled_by: p3, resolution: consensus, support: [], t_min: 25.0 }
+        - { phase: solution, value: 빗물 저금통·투수 포장 같은 생활 인프라, option_id: opt-sl-s3, filled_by: p3, resolution: consensus, support: [], t_min: 44.0 }
+      proposal: { sections: { keyword: 물, problem: 도심 폭우·침수 피해 증가, solution: 빗물 저금통 중심, rationale: 시행 사례가 있어요, expected_effect: 유출량 감소, idea_credit: "문제 상황: 서지안 제안" }, submitted_at: "2026-10-21T01:57:00Z", auto_submitted: false }
+      observations:
+        - { card_id: persuasion_keyword, element: persuasion, phase: keyword, t_min: 3.0, trigger_message_id: m4, delivered: true, window: { start_min: 0.0, end_min: 10.0 } }
+        - { card_id: persuasion_solution, element: persuasion, phase: solution, t_min: 36.0, trigger_message_id: m7, delivered: true, window: { start_min: 36.0, end_min: 46.0 } }
+      facts: { message_count: { total: 8 } }
+      contributions: { options: [], slots: [] }
+    expected:
+      pers_reasoning: { level: 4, evidence: [m3, m9] }
+      pers_counter_handling: { level: 4, evidence: [m5, m8] }
+      pers_comparison: { level: 3, evidence: [m6] }
+      pers_convergence: { level: 3, evidence: [m10] }
+
+  - id: bars_listening
+    element: listening
+    record:
+      session: { id: bars-2, elements: [persuasion, listening, inclusion, flexibility, honesty], session_minutes: 60, started_at: "2026-10-21T01:00:00Z", completed_at: "2026-10-21T01:57:00Z", connection_gaps: [] }
+      messages:
+        - { id: m1, sender: system, content: "문제 상황 단계예요. 정한 키워드와 관련된 문제 상황 하나를 함께 정해 주세요.", phase: problem, t_min: 10.0, origin: null, is_invite: false, card_ids: [], intent: null }
+        - { id: m2, sender: candidate, content: "저는 도심 폭우·침수 피해 증가가 먼저라고 생각해요. 피해 신고가 해마다 늘었어요.", phase: problem, t_min: 11.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: propose, target_option_id: null, addressed_to: [] } }
+        - { id: m3, sender: p1, content: "가뭄으로 생활용수 제한이 잦아짐이 기준이에요. 그건 핵심이 아니에요.", phase: problem, t_min: 13.0, origin: null, is_invite: false, card_ids: [flexibility_majority, listening_pressure], intent: null }
+        - { id: m4, sender: candidate, content: "한결님은 가뭄이 모든 주민에게 매일 영향을 준다는 점을 핵심으로 보시는 거죠? 그 점은 저도 공감해요. 침수는 비 오는 날에 몰리지만 피해가 커서 같이 봤으면 해요.", phase: problem, t_min: 14.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: oppose, target_option_id: opt-pb-p1, addressed_to: [p1] } }
+        - { id: m5, sender: p1, content: "가뭄이 맞아요. 침수는 일시적이잖아요.", phase: problem, t_min: 15.0, origin: null, is_invite: false, card_ids: [listening_pressure], intent: null }
+        - { id: m6, sender: candidate, content: "일시적이라는 말씀은 빈도 면에서 맞아요. 다만 한 번 침수 때 차량·상가 피해가 크다는 자료가 있어서, 빈도와 피해 규모 둘 다 기준으로 비교해 보면 어때요?", phase: problem, t_min: 16.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: oppose, target_option_id: opt-pb-p1, addressed_to: [p1] } }
+        - { id: m7, sender: p1, content: "그건 핵심이 아니라니까요. 가뭄이 기준이에요.", phase: problem, t_min: 17.0, origin: null, is_invite: false, card_ids: [listening_pressure], intent: null }
+        - { id: m8, sender: candidate, content: "서로 기준이 달라서 계속 같은 말이 되는 것 같아요. 한결님 주장은 충분히 알겠어요. 지안님 생각도 들어 보고 같이 정해요.", phase: problem, t_min: 18.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: question, target_option_id: null, addressed_to: [p3] } }
+        - { id: m9, sender: p3, content: "저는 기준안 쪽이 근거가 더 선명하다고 봐요.", phase: problem, t_min: 19.0, origin: null, is_invite: false, card_ids: [], intent: null }
+        - { id: m10, sender: candidate, content: "좋은 의견이에요. 그럼 가뭄 쪽의 자료 이야기를 더 들어 볼게요.", phase: problem, t_min: 20.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: other, target_option_id: null, addressed_to: [p3] } }
+      slots:
+        - { phase: keyword, value: 물, option_id: opt-kw-water, filled_by: candidate, resolution: consensus, support: [], t_min: 8.0 }
+        - { phase: problem, value: 가뭄으로 생활용수 제한이 잦아짐, option_id: opt-pb-p1, filled_by: p3, resolution: consensus, support: [], t_min: 25.0 }
+        - { phase: solution, value: 센서·데이터 기반 물 관리·경보, option_id: opt-sl-s1, filled_by: p3, resolution: timeout, support: [], t_min: 46.0 }
+      proposal: { sections: { keyword: 물, problem: 가뭄으로 생활용수 제한이 잦아짐, solution: 센서·데이터 기반 물 관리·경보, rationale: "", expected_effect: "", idea_credit: "문제 상황: 강한결 제안" }, submitted_at: "2026-10-21T01:57:00Z", auto_submitted: false }
+      observations:
+        - { card_id: listening_pressure, element: listening, phase: problem, t_min: 13.0, trigger_message_id: m3, delivered: true, window: { start_min: 13.0, end_min: 28.0 } }
+      facts: { message_count: { total: 5 } }
+      contributions: { options: [{ option_id: opt-pb-p1, phase: problem, label: 가뭄으로 생활용수 제한이 잦아짐, first_proposer: p1, source_message_id: m3, t_min: 13.0, adopted: true }], slots: [] }
+    expected:
+      listen_engage: { level: 5, evidence: [m4, m6, m8] }
+      listen_understand: { level: 4, evidence: [m4, m6] }
+      listen_acknowledge: { level: 3, evidence: [m10] }
+      listen_civility: { level: 5, evidence: [m6, m8] }
+
+  - id: bars_inclusion
+    element: inclusion
+    record:
+      session: { id: bars-3, elements: [persuasion, listening, inclusion, flexibility, honesty], session_minutes: 60, started_at: "2026-10-21T01:00:00Z", completed_at: "2026-10-21T01:57:00Z", connection_gaps: [] }
+      messages:
+        - { id: m1, sender: system, content: "해결책 단계예요. 정한 문제의 해결 방향 하나를 함께 정해 주세요.", phase: solution, t_min: 28.0, origin: null, is_invite: false, card_ids: [], intent: null }
+        - { id: m2, sender: candidate, content: "저는 센서·데이터 기반 경보가 좋다고 생각해요.", phase: solution, t_min: 29.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: propose, target_option_id: null, addressed_to: [] } }
+        - { id: m3, sender: p2, content: "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.", phase: solution, t_min: 30.0, origin: null, is_invite: false, card_ids: [inclusion_silence], intent: null }
+        - { id: m4, sender: candidate, content: "하람님, 방금 생각하신 게 있다고 하셨죠? 편하게 한 줄만이라도 들려주실래요?", phase: solution, t_min: 31.5, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: question, target_option_id: null, addressed_to: [p2] } }
+        - { id: m5, sender: p2, content: "빗물 저금통 같은 생활 인프라가 먼저 필요하지 않을까 했어요. 자료에 설치 사례가 있었어요.", phase: solution, t_min: 33.0, origin: null, is_invite: false, card_ids: [inclusion_silence], intent: null }
+        - { id: m6, sender: candidate, content: "말씀해 주셔서 고마워요. 설치 사례가 있다는 점이 좋네요. 저금통은 설치 후 효과가 바로 나는 건가요? 센서 경보와 같이 가는 방법도 생각해 볼 수 있을까요?", phase: solution, t_min: 34.5, origin: invited, is_invite: false, card_ids: [], intent: { intent: question, target_option_id: null, addressed_to: [p2] } }
+        - { id: m7, sender: p2, content: "네, 같이 쓰면 경보 받고 바로 대응할 수 있을 것 같아요.", phase: solution, t_min: 36.0, origin: null, is_invite: false, card_ids: [], intent: null }
+        - { id: m8, sender: candidate, content: "좋아요, 그 조합을 기준으로 정해 볼게요. 다들 괜찮으시죠?", phase: solution, t_min: 40.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: propose, target_option_id: null, addressed_to: [] } }
+      slots:
+        - { phase: keyword, value: 물, option_id: opt-kw-water, filled_by: candidate, resolution: consensus, support: [], t_min: 8.0 }
+        - { phase: problem, value: 도심 폭우·침수 피해 증가, option_id: opt-pb-p2, filled_by: candidate, resolution: consensus, support: [], t_min: 25.0 }
+        - { phase: solution, value: 센서·데이터 기반 물 관리·경보, option_id: opt-sl-s1, filled_by: candidate, resolution: consensus, support: [{ option_id: opt-sl-s1, supporters: [candidate, p2, p3] }], t_min: 41.0 }
+      proposal: { sections: { keyword: 물, problem: 도심 폭우·침수 피해 증가, solution: 센서와 저금통 조합, rationale: "", expected_effect: "", idea_credit: "해결책: 윤하람 의견을 반영" }, submitted_at: "2026-10-21T01:57:00Z", auto_submitted: false }
+      observations:
+        - { card_id: inclusion_silence, element: inclusion, phase: solution, t_min: 30.0, trigger_message_id: m3, delivered: true, window: { start_min: 30.0, end_min: 46.0 } }
+      facts: { message_count: { total: 4 }, invite_latency_sec: 90, quiet_spoke: true }
+      contributions: { options: [], slots: [] }
+    expected:
+      incl_notice_invite: { level: 4, evidence: [m4, m6] }
+      incl_follow_through: { level: 4, evidence: [m6, m8] }
+      incl_shared_decision: { level: 3, evidence: [m8] }
+      incl_safe_tone: { level: 4, evidence: [m4, m6] }
+
+  - id: bars_flexibility
+    element: flexibility
+    record:
+      session: { id: bars-4, elements: [persuasion, listening, inclusion, flexibility, honesty], session_minutes: 60, started_at: "2026-10-21T01:00:00Z", completed_at: "2026-10-21T01:57:00Z", connection_gaps: [] }
+      messages:
+        - { id: m1, sender: system, content: "문제 상황 단계예요. 정한 키워드와 관련된 문제 상황 하나를 함께 정해 주세요.", phase: problem, t_min: 10.0, origin: null, is_invite: false, card_ids: [], intent: null }
+        - { id: m2, sender: candidate, content: "저는 도심 폭우·침수 피해 증가가 먼저라고 생각해요.", phase: problem, t_min: 11.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: propose, target_option_id: null, addressed_to: [] } }
+        - { id: m3, sender: p1, content: "가뭄으로 생활용수 제한이 잦아짐이 기준이에요.", phase: problem, t_min: 13.0, origin: null, is_invite: false, card_ids: [flexibility_majority, listening_pressure], intent: null }
+        - { id: m4, sender: p3, content: "저도 가뭄 쪽이 근거가 더 선명하다고 봐요.", phase: problem, t_min: 13.5, origin: null, is_invite: false, card_ids: [flexibility_majority], intent: null }
+        - { id: m5, sender: candidate, content: "가뭄이 주민 전체에 매일 영향을 준다는 근거는 설득력 있어요. 다만 침수는 피해액이 커서 같이 봐야 한다고 생각해요. 둘을 함께 다루는 방법도 있을 것 같아요.", phase: problem, t_min: 15.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: oppose, target_option_id: opt-pb-p1, addressed_to: [] } }
+        - { id: m6, sender: candidate, content: "지금 지지가 가뭄 쪽이 많은데, 이 방향으로 정리해도 괜찮을까요? 반대 의견 있으면 먼저 들어 볼게요.", phase: problem, t_min: 19.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: question, target_option_id: null, addressed_to: [] } }
+        - { id: m7, sender: candidate, content: "알겠어요. 가뭄으로 생활용수 제한이 잦아짐으로 정해요. 좋아요.", phase: problem, t_min: 21.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: agree, target_option_id: opt-pb-p1, addressed_to: [] } }
+        - { id: m8, sender: p3, content: "그럼 가뭄으로 생활용수 제한이 잦아짐으로 정리할게요.", phase: problem, t_min: 21.5, origin: null, is_invite: false, card_ids: [], intent: null }
+        - { id: m9, sender: candidate, content: "가뭄이 정해졌으니 해결책은 센서로 지역별 제한 일수를 보여 주는 쪽이 좋아 보여요. 침수 자료에서 본 경보 방식도 가져다 쓸 수 있고요.", phase: solution, t_min: 29.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: propose, target_option_id: null, addressed_to: [] } }
+        - { id: m10, sender: candidate, content: "하람님 빗물 아이디어를 가뭄 때 저수에 쓰는 방향으로 이으면 두 안이 연결돼요.", phase: solution, t_min: 33.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: propose, target_option_id: null, addressed_to: [p2] } }
+      slots:
+        - { phase: keyword, value: 물, option_id: opt-kw-water, filled_by: candidate, resolution: consensus, support: [], t_min: 8.0 }
+        - { phase: problem, value: 가뭄으로 생활용수 제한이 잦아짐, option_id: opt-pb-p1, filled_by: p3, resolution: consensus, support: [{ option_id: opt-pb-p1, supporters: [candidate, p1, p3] }], t_min: 21.5 }
+        - { phase: solution, value: 센서·데이터 기반 물 관리·경보, option_id: opt-sl-s1, filled_by: candidate, resolution: consensus, support: [], t_min: 40.0 }
+      proposal: { sections: { keyword: 물, problem: 가뭄으로 생활용수 제한이 잦아짐, solution: 센서·데이터 기반 물 관리·경보, rationale: "", expected_effect: "", idea_credit: "문제 상황: 강한결 제안" }, submitted_at: "2026-10-21T01:57:00Z", auto_submitted: false }
+      observations:
+        - { card_id: flexibility_majority, element: flexibility, phase: problem, t_min: 13.0, trigger_message_id: m3, delivered: true, window: { start_min: 13.0, end_min: 46.0 } }
+      facts: { message_count: { total: 6 }, own_option_rejected: true, messages_after_rejection: 2 }
+      contributions: { options: [{ option_id: opt-pb-p1, phase: problem, label: 가뭄으로 생활용수 제한이 잦아짐, first_proposer: p1, source_message_id: m3, t_min: 13.0, adopted: true }], slots: [] }
+    expected:
+      flex_openness: { level: 4, evidence: [m5, m10] }
+      flex_decision_respect: { level: 5, evidence: [m6, m7] }
+      flex_acceptance: { level: 4, evidence: [m7, m9] }
+      flex_forward: { level: 5, evidence: [m9, m10] }
+
+  - id: bars_honesty
+    element: honesty
+    record:
+      session: { id: bars-5, elements: [persuasion, listening, inclusion, flexibility, honesty], session_minutes: 60, started_at: "2026-10-21T01:00:00Z", completed_at: "2026-10-21T01:57:00Z", connection_gaps: [] }
+      messages:
+        - { id: m1, sender: system, content: "해결책 단계예요. 정한 문제의 해결 방향 하나를 함께 정해 주세요.", phase: solution, t_min: 28.0, origin: null, is_invite: false, card_ids: [], intent: null }
+        - { id: m2, sender: p3, content: "주민 절수·보상 캠페인 쪽이 맞다고 생각해요.", phase: solution, t_min: 29.0, origin: null, is_invite: false, card_ids: [], intent: null }
+        - { id: m3, sender: candidate, content: "서지안님이 말한 캠페인 안에 저는 동의해요. 보상 방식은 제가 덧붙이고 싶어요.", phase: solution, t_min: 30.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: agree, target_option_id: opt-sl-s2, addressed_to: [p3] } }
+        - { id: m4, sender: candidate, content: "한결님 말씀한 센서 경보는 이번엔 참고만 하고 지안님 캠페인으로 가는 걸로, 반대 의견이 남아 있으면 말해 주세요.", phase: solution, t_min: 34.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: question, target_option_id: null, addressed_to: [p1] } }
+        - { id: m5, sender: p1, content: "센서가 맞지만 따를게요.", phase: solution, t_min: 35.0, origin: null, is_invite: false, card_ids: [], intent: null }
+        - { id: m6, sender: candidate, content: "한결님은 센서 쪽이 맞다고 보시지만 캠페인으로 가는 데 동의하신 거죠? 그렇게 정리할게요.", phase: solution, t_min: 36.0, origin: spontaneous, is_invite: false, card_ids: [], intent: { intent: question, target_option_id: null, addressed_to: [p1] } }
+      slots:
+        - { phase: keyword, value: 물, option_id: opt-kw-water, filled_by: candidate, resolution: consensus, support: [], t_min: 8.0 }
+        - { phase: problem, value: 도심 폭우·침수 피해 증가, option_id: opt-pb-p2, filled_by: p3, resolution: consensus, support: [], t_min: 25.0 }
+        - { phase: solution, value: 주민 절수·보상 캠페인, option_id: opt-sl-s2, filled_by: candidate, resolution: consensus, support: [{ option_id: opt-sl-s2, supporters: [candidate, p3] }, { option_id: opt-sl-s1, supporters: [p1] }], t_min: 37.0 }
+      proposal: { sections: { keyword: 물, problem: 도심 폭우·침수 피해 증가, solution: 주민 절수·보상 캠페인, rationale: 참여가 쉬워요, expected_effect: 절수 참여 증가, idea_credit: "문제 상황: 서지안 제안. 해결책: 서지안 제안, 보상 방식은 제가 보탬" }, submitted_at: "2026-10-21T01:57:00Z", auto_submitted: false }
+      observations:
+        - { card_id: honesty_credit, element: honesty, phase: proposal, t_min: 46.0, trigger_message_id: m1, delivered: true, window: { start_min: 46.0, end_min: 57.0 } }
+      facts: { message_count: { total: 4 }, credit_field_filled: true, ai_adopted_units: [{ phase: problem, option_id: opt-pb-p2, proposer: p3 }, { phase: solution, option_id: opt-sl-s2, proposer: p3 }] }
+      contributions: { options: [{ option_id: opt-pb-p2, phase: problem, label: 도심 폭우·침수 피해 증가, first_proposer: p3, source_message_id: null, t_min: 12.0, adopted: true }, { option_id: opt-sl-s2, phase: solution, label: 주민 절수·보상 캠페인, first_proposer: p3, source_message_id: m2, t_min: 29.0, adopted: true }], slots: [] }
+    expected:
+      hon_credit_record: { level: 4, evidence: [proposal:idea_credit, slot:solution] }
+      hon_source_in_talk: { level: 4, evidence: [m3, m4] }
+      hon_process_truth: { level: 4, evidence: [m6, slot:solution] }

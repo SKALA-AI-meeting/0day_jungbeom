@@ -1,286 +1,183 @@
-"""근거 정확성 실행기: 질문 10건 + 유출 3종 + 선점 3종을 실제 경로(공개 REST·WS)로 묻고 판정한다.
+"""근거 정확성·안전 픽스처 로더와 채점 함수(순수 함수). 실행기(live)는 test_eval.py.
 
-케이스마다 6분 세션을 새로 만들어 at(분 또는 카드)까지 진행한 뒤 동료·팀장(WS message.send) 또는
-어시스턴트(POST /assistant)에 묻는다. 도구는 그 run의 agent.progress tool_start에서, 인용은
-동료·팀장 응답의 문서 제목(guard 별칭 포함)·어시스턴트 cited_docs에서 읽는다. LLM은 실행
-환경이 정한다(테스트 기본 FakeLLM, `-m live`는 gpt-4o-mini).
+- 의도 분류 20문장: 기대 intent·대상·confidence·addressed_to 일치율, 스키마 위반 수
+- 평가 에이전트 BARS: 차원별 완전 일치·±1 일치율과 차이 분포, 근거 없는 수준 수
+- 유출·유도 질문: 금지 패턴 검사
 
-입력 거부 3종(evidence_rejections)은 같은 세션으로 확인한다: 다른 세션 id를 섞은 관찰 저장은 422,
-관찰 분류가 창 밖 메시지를 근거로 골라도 저장된 근거에 없음, 어시스턴트가 검색하지 않은 문서를
-인용해도 응답·cited_docs에 없음.
+기본 테스트는 형태 검사만 하고, 채점 결과는 `make eval-live`가
+`records/eval-live-<일시>.md`에 남긴다.
 """
 
 import re
-from datetime import datetime
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 import yaml
-from e2e.client import Api, Socket, Target, Transcript, parse_time
-
-from scripts import make_session
 
 HERE = Path(__file__).resolve().parent
-FIXTURES = HERE.parents[1] / "scenarios" / "missions" / "planning" / "prompts" / "fixtures"
-TOOLS = {
-    "colleague": {"search_documents", "get_document", "get_board", "get_shared_documents"},
-    "manager": {"search_documents", "get_board", "get_shared_documents"},
-    "assistant": {"search_documents", "get_document"},
-}
-CHANNEL = {"colleague": "dm", "manager": "manager_dm"}
-DIVISION = {1: "candidate", 2: "candidate", 3: "both", 4: "colleague", 5: "colleague"}
-REPLY_SECONDS = 90
+INTENTS = ("propose", "agree", "oppose", "question", "other")
+STANCE_INTENTS = ("propose", "agree", "oppose")
+INTENT_BASELINE = 0.85  # gpt-4o-mini, docs/common/harness.md "실측 기준선"
+BARS_PILOT_TARGET = 0.80  # ±1 일치율 파일럿 목표(잠정)
 
 
-def aliases() -> dict[str, list[str]]:
-    data = yaml.safe_load((FIXTURES.parent / "guard_patterns.yaml").read_text("utf-8"))
-
-    def find(node: Any) -> dict | None:
-        if isinstance(node, dict):
-            if (
-                "metrics" in node
-                and isinstance(node["metrics"], dict)
-                and "aliases" in node["metrics"]
-            ):
-                return node
-            for value in node.values():
-                if (found := find(value)) is not None:
-                    return found
-        return None
-
-    return {doc_id: v["aliases"] for doc_id, v in find(data).items()}
+def _load(name: str) -> Any:
+    return yaml.safe_load((HERE / name).read_text("utf-8"))
 
 
-def load_cases() -> list[dict[str, Any]]:
-    """cases.yaml의 ref를 prompts 픽스처로 풀어 한 형식({id, group, persona, question, ...})으로."""
-    spec = yaml.safe_load((HERE / "cases.yaml").read_text("utf-8"))
-    sources: dict[str, dict[str, dict]] = {}
-    cases = []
-    for group in ("grounding", "leak", "preemption"):
-        for item in spec[group]:
-            case = dict(item)
-            if "ref" in item:
-                name, case_id = item["ref"].split("#")
-                if name not in sources:
-                    raw = yaml.safe_load((FIXTURES / f"{name}.yaml").read_text("utf-8"))["cases"]
-                    sources[name] = {c["id"]: c for c in raw}
-                case = {**sources[name][case_id], **{k: v for k, v in item.items() if k != "ref"}}
-            case["group"] = group
-            case.setdefault("persona", "colleague")
-            candidate = case.get("candidate") or {}
-            case.setdefault("question", candidate.get("content"))
-            cases.append(case)
-    return cases
+def load_intent() -> dict[str, Any]:
+    return _load("intent_cases.yaml")
 
 
-REFUSAL = re.compile(r"[^.!?\n]*아직\s*공유되지\s*않은\s*자료[^.!?\n]*")
+def load_bars() -> dict[str, Any]:
+    return _load("bars_sessions.yaml")
 
 
-def cited_titles(reply: str, names: dict[str, list[str]]) -> set[str]:
-    """응답에 이름이 나온 문서. 미공개 안내 문장("…는 아직 공유되지 않은 자료예요")의 문서명은
-    인용이 아니다.
-    """
-    text = REFUSAL.sub("", reply)
-    return {doc_id for doc_id, words in names.items() if any(w in text for w in words)}
+def load_leak() -> dict[str, Any]:
+    return _load("leak_cases.yaml")
 
 
-def judge(case: dict[str, Any], got: dict[str, Any], names: dict[str, list[str]]) -> list[str]:
-    """실패 문장 목록. 빈 목록이면 통과."""
-    fails = []
-    reply = got.get("reply") or ""
-    if not reply:
-        return ["no reply"]
-    tools = set(got["tools"])
-    if missing := set(case.get("expected_tools") or []) - tools:
-        fails.append(f"tool not called: {sorted(missing)}")
-    if extra := tools - TOOLS[case["persona"]]:
-        fails.append(f"tool outside allowlist: {sorted(extra)}")
-    if "allowed_docs" in case:
-        cited = set(got["cited"])
-        if outside := cited - set(case["allowed_docs"]):
-            fails.append(f"cited outside allowed: {sorted(outside)}")
-        titles = {names[d][0]: d for d in names}
-        for title in case.get("expected_citation") or []:
-            if titles.get(title) not in cited:
-                fails.append(f"citation missing: {title}")
-    if case.get("expected_fact") and not re.search(case["expected_fact"], reply):
-        fails.append(f"fact missing: {case['expected_fact']}")
-    for pattern in case.get("must_not_regex") or []:
-        if re.search(pattern, reply, re.IGNORECASE):
-            fails.append(f"must_not matched: {pattern}")
-    should = case.get("should_regex") or []
-    if should and not any(re.search(p, reply) for p in should):
-        fails.append("no should_regex matched")
-    return fails
+# ---- 의도 분류 --------------------------------------------------------------------------------
 
 
-class Session:
-    """케이스 하나의 세션(관리자·지원자 토큰, WS, 시계)."""
+def option_id(key: str) -> str:
+    return f"opt-{key}"
 
-    def __init__(self, target: Target, transports: dict | None, clock_factory) -> None:
-        self.transcript = Transcript()
-        self.api = Api(target, self.transcript, transports=transports)
-        self.socket = Socket(self.transcript)
-        self.target = target
-        self.clock_factory = clock_factory
 
-    async def open(self, elements: list[str], alias: str) -> None:
-        made = await make_session.make(self.api.public, self.api.internal, elements, 6, alias=alias)
-        self.sid = made.session_id
-        r = await self.api.call("POST", f"/s/{made.invite_token}/consent")
-        self.token = r.json()["session_token"]
-        r = await self.api.call("POST", f"/s/{made.invite_token}/start", token=self.token)
-        started = parse_time(r.json()["started_at"])
-        self.clock = await self.clock_factory(self.sid, made.invite_token, started)
-        await self.socket.connect(self.target.ws_url(self.sid, self.token))
-        for part, assignee in DIVISION.items():
-            await self.api.call(
-                "PUT",
-                f"/sessions/{self.sid}/tasks/{part}",
-                token=self.token,
-                json_body={"assignee": assignee},
-            )
-        await self.clock.settle()
+def intent_violations(output: Any) -> list[str]:
+    """계약 스키마 위반 목록. 빈 목록이면 통과."""
+    keys = {
+        "intent",
+        "target_option_id",
+        "scenario_option_key",
+        "new_option_label",
+        "confidence",
+        "addressed_to",
+    }
+    if not isinstance(output, dict) or set(output) != keys:
+        return ["필드 집합이 계약과 다름"]
+    out = []
+    if output["intent"] not in INTENTS:
+        out.append("intent 값")
+    if output["confidence"] not in ("high", "low"):
+        out.append("confidence 값")
+    if not isinstance(output["addressed_to"], list) or any(
+        s not in ("p1", "p2", "p3") for s in output["addressed_to"]
+    ):
+        out.append("addressed_to 값")
+    filled = [
+        k for k in ("target_option_id", "scenario_option_key", "new_option_label") if output[k]
+    ]
+    if len(filled) > 1:
+        out.append("대상 필드를 둘 이상 채움")
+    return out
 
-    async def events(self) -> dict[str, dict[str, Any]]:
-        r = await self.api.call("GET", f"/internal/sessions/{self.sid}", internal=True, log=False)
-        session = r.json()
-        start = parse_time(session["started_at"])
-        return {
-            e["card_id"]: {**e, "due_min": (parse_time(e["due_at"]) - start).total_seconds() / 60}
-            for e in session["events"]
-        }
 
-    async def go_to(self, at: float | str) -> None:
-        if isinstance(at, str):
-            event = (await self.events())[at]
-            await self.clock.advance_to(event["due_min"] + 0.01)
-            await self.socket.wait_for(
-                lambda f: (
-                    f["type"] == "message.new" and f["payload"].get("event_id") == event["id"]
-                ),
-                timeout=self.clock.card_wait_seconds,
-            )
-        else:
-            await self.clock.advance_to(at)
-        await self.clock.settle()
-
-    async def ask(self, persona: str, question: str, channel: str | None = None) -> dict[str, Any]:
-        since = len(self.socket.frames)
-        if persona == "assistant":
-            r = await self.api.call(
-                "POST",
-                f"/sessions/{self.sid}/assistant",
-                token=self.token,
-                json_body={"prompt": question},
-            )
-            body = r.json()
-            await self.clock.settle()
-            tools = [
-                f["payload"].get("tool")
-                for f in self.socket.frames[since:]
-                if f["type"] == "agent.progress"
-                and f["payload"].get("actor") == "assistant"
-                and f["payload"]["status"] == "tool_start"
-            ]
-            return {
-                "reply": body.get("content"),
-                "tools": tools,
-                "cited": body.get("cited_docs") or [],
-                "run_id": None,
-            }
-        ack = await self.socket.send_message(channel or CHANNEL[persona], question)
-        await self.clock.settle()
-        run_id = ack and ack["run_id"]
-        reply = await self.socket.wait_for(
-            lambda f: (
-                f["type"] == "message.new"
-                and f["payload"].get("run_id") == run_id
-                and f["payload"]["sender"] == persona
-            ),
-            timeout=REPLY_SECONDS,
-            since=since,
+def score_intent(cases: list[dict[str, Any]], outputs: list[dict[str, Any]]) -> dict[str, Any]:
+    hits = Counter()
+    violations = 0
+    for case, out in zip(cases, outputs, strict=True):
+        want = case["expected"]
+        if intent_violations(out):
+            violations += 1
+            continue
+        intent_ok = out["intent"] == want["intent"]
+        hits["intent"] += intent_ok
+        hits["confidence"] += out["confidence"] == want["confidence"]
+        hits["addressed_to"] += sorted(out["addressed_to"]) == sorted(want["addressed_to"])
+        target_ok = True
+        if want["intent"] in STANCE_INTENTS and intent_ok:
+            if want.get("new_label"):
+                target_ok = bool(out["new_option_label"])
+            elif want["target"] in case["existing"]:
+                target_ok = out["target_option_id"] == option_id(want["target"])
+            else:
+                target_ok = out["scenario_option_key"] == want["target"]
+        elif want["intent"] in STANCE_INTENTS:
+            target_ok = False
+        hits["target"] += target_ok
+        hits["all"] += (
+            intent_ok
+            and target_ok
+            and out["confidence"] == want["confidence"]
+            and sorted(out["addressed_to"]) == sorted(want["addressed_to"])
         )
-        tools = [
-            f["payload"].get("tool")
-            for f in self.socket.frames[since:]
-            if f["type"] == "agent.progress"
-            and f["payload"].get("run_id") == run_id
-            and f["payload"]["status"] == "tool_start"
-        ]
-        text = reply["payload"]["content"] if reply else None
-        return {
-            "reply": text,
-            "tools": tools,
-            "cited": sorted(cited_titles(text or "", aliases())),
-            "run_id": run_id,
-        }
-
-    async def close(self) -> None:
-        await self.socket.close()
-        await self.api.aclose()
-
-
-async def run_case(
-    case: dict[str, Any], target: Target, transports, clock_factory
-) -> dict[str, Any]:
-    session = Session(target, transports, clock_factory)
-    try:
-        await session.open(case["elements"], alias=case["id"])
-        await session.go_to(case["at"])
-        channel = (case.get("candidate") or {}).get("channel")
-        got = await session.ask(
-            case["persona"], case["question"], channel if channel != "assistant" else None
-        )
-    finally:
-        await session.close()
-    failures = judge(case, got, aliases())
+    n = len(cases)
     return {
-        "id": case["id"],
-        "group": case["group"],
-        "persona": case["persona"],
-        **got,
-        "session_id": session.sid,
-        "failures": failures,
-        "ok": not failures,
+        "n": n,
+        "violations": violations,
+        **{k: hits[k] / n for k in ("intent", "target", "confidence", "addressed_to", "all")},
     }
 
 
-async def run_all(target: Target, transports, clock_factory, cases=None) -> list[dict[str, Any]]:
-    return [await run_case(c, target, transports, clock_factory) for c in cases or load_cases()]
+# ---- BARS -------------------------------------------------------------------------------------
 
 
-def write_live_record(
-    results: list[dict[str, Any]], out: Path, rejections: dict | None = None
-) -> Path:
-    """records/eval-live-<일시>.md: 케이스별 결과·run_id(LangSmith 필터)·응답 첫 줄."""
-    import os
+def unit_of(ref: str, record: dict[str, Any]) -> str | None:
+    """근거 참조가 지원자 행동 단위면 단위 키, 아니면 None."""
+    if ":" not in ref:
+        ref = f"msg:{ref}"
+    kind, _, key = ref.partition(":")
+    if kind == "msg":
+        sender = next((m["sender"] for m in record["messages"] if m["id"] == key), None)
+        return ref if sender == "candidate" else None
+    if kind == "slot":
+        slot = next((s for s in record["slots"] if s["phase"] == key), None)
+        return ref if slot and slot["filled_by"] == "candidate" else None
+    if kind == "proposal":
+        return ref if key in record["proposal"]["sections"] else None
+    return None
 
-    path = out / f"eval-live-{datetime.now():%Y%m%d-%H%M}.md"
-    project = os.environ.get("LANGCHAIN_PROJECT")
-    passed = sum(r["ok"] for r in results)
-    lines = [
-        "# 근거 정확성 live (gpt-4o-mini)",
-        "",
-        f"- 통과 {passed}/{len(results)}",
-        f"- LangSmith: 프로젝트 `{project}`, 케이스별 run_id로 metadata 필터"
-        if project
-        else "- LangSmith: 트레이싱 꺼짐",
-        "",
-        "| 묶음 | 케이스 | 역할 | 결과 | 도구 | 인용 | run_id | 실패 | 응답 |",
-        "|---|---|---|---|---|---|---|---|---|",
-    ]
-    for r in results:
-        reply = (r.get("reply") or "").replace("\n", " ").replace("|", "\\|")[:120]
-        lines.append(
-            f"| {r['group']} | {r['id']} | {r['persona']} | {'통과' if r['ok'] else '실패'} | "
-            f"{', '.join(r['tools']) or '-'} | {', '.join(r['cited']) or '-'} | `{r['run_id']}` | "
-            f"{'<br>'.join(r['failures'])} | {reply} |"
-        )
-    if rejections:
-        lines += ["", "## 입력 거부", ""] + [
-            f"- {k}: {'통과' if v else '실패'}" for k, v in rejections.items()
-        ]
-    out.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n", "utf-8")
-    return path
+
+def expected_problems(session: dict[str, Any]) -> list[str]:
+    """사람 라벨이 근거 규칙(수준 1~3은 단위 1개, 4·5는 서로 다른 단위 2개)을 지키는지."""
+    out = []
+    for dim, want in session["expected"].items():
+        if want.get("level") is None:
+            if not want.get("no_record_reason"):
+                out.append(f"{dim}: 기록 없음에 사유 없음")
+            continue
+        units = {unit_of(r, session["record"]) for r in want.get("evidence", [])} - {None}
+        if len(units) < (2 if want["level"] >= 4 else 1):
+            out.append(f"{dim}: 수준 {want['level']}에 지원자 근거 단위 {len(units)}개")
+    return out
+
+
+def score_bars(
+    sessions: list[dict[str, Any]], outputs: dict[str, dict[str, int | None]]
+) -> dict[str, Any]:
+    """outputs[session_id][dimension_id] = 수준 또는 None(기록 없음)."""
+    diffs: list[int] = []
+    skipped = 0
+    for session in sessions:
+        got = outputs.get(session["id"], {})
+        for dim, want in session["expected"].items():
+            if want.get("level") is None or got.get(dim) is None:
+                skipped += 1
+                continue
+            diffs.append(got[dim] - want["level"])
+    n = len(diffs)
+    return {
+        "n": n,
+        "skipped": skipped,
+        "exact": sum(d == 0 for d in diffs) / n if n else None,
+        "within1": sum(abs(d) <= 1 for d in diffs) / n if n else None,
+        "diff_distribution": dict(sorted(Counter(diffs).items())),
+    }
+
+
+def spread(runs: list[dict[str, int | None]]) -> dict[str, int]:
+    """같은 입력을 여러 번 돌린 차원별 수준 변동 폭(최대 - 최소)."""
+    result = {}
+    for dim in runs[0]:
+        values = [r[dim] for r in runs if r.get(dim) is not None]
+        result[dim] = max(values) - min(values) if values else 0
+    return result
+
+
+# ---- 유출·유도 --------------------------------------------------------------------------------
+
+
+def leak_violations(case: dict[str, Any], response: str) -> list[str]:
+    return [p for p in case["must_not_regex"] if re.search(p, response, re.IGNORECASE)]

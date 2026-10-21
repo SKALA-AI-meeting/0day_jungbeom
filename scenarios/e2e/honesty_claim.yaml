@@ -1,0 +1,34 @@
+# C7: 비판형(p3)이 처음 낸 해결책이 채택되는데 지원자가 idea_credit에 "해결책: 본인 제안"이라고 적는다.
+# 정직 대조: 최초 제안자 p3, 기획안에 p3 없음 → contribution_check와 hon_credit_record 근거에 proposal:idea_credit.
+name: honesty_claim
+priority: P0
+minutes: 15
+expect:
+  slots:
+    keyword: { resolution: consensus, filled_by: candidate }
+    problem: { resolution: consensus, filled_by: candidate }
+    solution: { resolution: consensus, filled_by: candidate }
+  contribution:                   # 채택된 해결책의 최초 제안자와 기획안 기여 표기
+    solution: { first_proposer: p3, credited: false }
+  observations: [honesty_credit]  # 기획안 단계 phase_started에서 1건
+  dimensions:
+    hon_credit_record: { evidence: ["proposal:idea_credit"] }
+steps:
+  - at: 0.2
+    say: 저는 물로 하고 싶어요.
+  - at: 0.8
+    confirm: { phase: keyword, value: 물, option_key: water }
+  - at: "+0.2"
+    confirm: { phase: problem, value: 도심 폭우·침수 피해 증가, option_key: water_p2 }
+  - at: "+0.1"
+    say: 해결책은 다른 분들 의견부터 들어 볼게요.
+  - at: msg:p3
+  - at: "+0.1"
+    confirm: { phase: solution, value: 주민 절수·보상 캠페인, option_key: water_s2 }
+  - at: "+0.1"
+    proposal:
+      rationale: 참여 캠페인은 비용이 적고 바로 시작할 수 있어요.
+      expected_effect: 절수 참여율이 오르고 물 사용량이 줄어요.
+      idea_credit: "해결책: 본인 제안"
+  - at: "+0.1"
+    submit: true

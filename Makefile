@@ -49,26 +49,23 @@ lint:
 	uv run ruff check . && uv run ruff format --check .
 	@if [ -f apps/web/package.json ]; then (cd apps/web && pnpm lint) || exit 1; fi
 
-e2e:             ## 전체 compose가 떠 있어야 한다
-	uv run --project services/api python tests/e2e/run.py --script scenarios/e2e/all_five.yaml
+e2e:             ## 실 스택 all_five 15분 1회(벽시계). 스택이 떠 있어야 한다. 다른 대본은 SCRIPT=timeout_all 등
+	uv run --project services/api python tests/e2e/run.py --script $(or $(SCRIPT),all_five)
 
 E2E_PYTEST = PYTHONPATH=services/api:. uv run --project services/api pytest -q -p no:cacheprovider \
 	-o asyncio_mode=auto -o asyncio_default_fixture_loop_scope=session \
 	-o asyncio_default_test_loop_scope=session -o markers="live: 실제 LLM 호출"
 
-test-e2e:        ## e2e 러너·단언·근거 정확성 픽스처 단위 테스트(mock: 격리 DB·FakeLLM, infra-up 필요)
+test-e2e:        ## e2e 러너·단언·장애 주입·인증 경계(가짜 api)와 eval 픽스처 형태 검사. 스택·DB·LLM 불필요
 	$(E2E_PYTEST) -m "not live" tests/e2e tests/eval
 
-eval-live:       ## 근거 정확성 픽스처를 실제 모델로 1회(결과는 tests/e2e/records/eval-live-<일시>.md)
+eval-live:       ## eval 픽스처(의도 분류·BARS·유출 질문)를 실제 모델로 1회(결과는 tests/e2e/records/eval-live-<일시>.md)
 	$(E2E_PYTEST) -m live tests/eval
-
-e2e-concurrent:  ## 단언 7(대본 5개 동시). 스택이 떠 있어야 한다
-	uv run --project services/api python tests/e2e/run.py --concurrent
 
 e2e-auth:        ## 단언 8(인증 경계). 스택이 떠 있어야 한다
 	uv run --project services/api python tests/e2e/run.py --auth
 
-e2e-faults:      ## 단언 6(장애 주입 6종). 인프라만 떠 있으면 러너가 앱을 띄운다
+e2e-faults:      ## 단언 10(장애 주입 2종: 큐 DLQ·LLM timeout). 인프라만 떠 있으면 러너가 앱을 띄운다
 	uv run --project services/api python tests/e2e/run.py --faults all
 
 stage:           ## 단계 시드 세션 생성: make stage STAGE=keyword|problem|solution|proposal|ended [MIN=15] [LLM=fake|live]. api 내부 8001이 떠 있어야 한다
@@ -77,4 +74,4 @@ stage:           ## 단계 시드 세션 생성: make stage STAGE=keyword|proble
 stage-advance:   ## 시간 당기기: make stage-advance SID=<세션 id> TO=deadline|idle|card:<카드 id>|<초>
 	uv run --project services/api python scripts/stage_advance.py --sid $(SID) --to $(TO)
 
-.PHONY: infra-up infra-down up down seed test test-live lint e2e test-e2e eval-live e2e-concurrent e2e-auth e2e-faults stage stage-advance
+.PHONY: infra-up infra-down up down seed test test-live lint e2e test-e2e eval-live e2e-auth e2e-faults stage stage-advance
