@@ -25,3 +25,5 @@ apps/web/test-results/
 tests/playtest/records/**/*.webm
 tests/playtest/records/**/shots/
 tests/playtest/records/**/video/
+tests/playtest/records/**/server.log
+tests/playtest/records/**/server.pid
