@@ -31,7 +31,13 @@ def _fmt(value: Any, digits: int = 2) -> str:
 
 
 def summary(b: dict[str, Any]) -> str:
-    lines = [f"# {b['name']} ({b['clock']} 시계, 세션 {b['session_id']})", ""]
+    mode = "결정적(LLM_FAKE=1)" if b.get("llm_fake") else "실제 LLM(수준 값 기대 건너뜀)"
+    lines = [
+        f"# {b['name']} ({b['clock']} 시계, 세션 {b['session_id']})",
+        "",
+        f"- LLM 모드: {mode}, 판별: {b.get('llm_mode_source', '러너 인자')}",
+        "",
+    ]
     starts = asserts.phase_starts(b)
     slots = asserts.slots_by_phase(b)
     lines += [

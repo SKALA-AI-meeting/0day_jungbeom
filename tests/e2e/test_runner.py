@@ -10,6 +10,7 @@ import json
 import pytest
 
 from e2e import asserts, records
+from e2e import run as run_mod
 from e2e import script as scripts
 from e2e.run import Runner
 
@@ -165,3 +166,19 @@ async def test_each_assertion_catches_its_violation(fake, target, number, mutate
     broken = copy.deepcopy(bundle)
     mutate(broken)
     assert not {r["id"]: r for r in asserts.check(broken)}[number]["ok"]
+
+
+async def test_live_llm_mode_skips_level_expectations(fake, target, monkeypatch):
+    """실 LLM(LLM_FAKE=0)이면 expect.dimensions의 level 비교는 건너뛰고 근거 참조는 그대로 본다."""
+    bundle = await run_script(fake, target, "all_five", llm_fake=False)
+    draft = bundle["draft"]
+    next(d for d in draft["dimensions"] if d["dimension_id"] == "listen_engage")["level"] = 4
+    bundle["llm_fake"] = True
+    assert any("listen_engage 수준 4 != 3" in f for f in asserts.assert_5_report(bundle))
+    bundle["llm_fake"] = False
+    assert not any("!= 3" in f for f in asserts.assert_5_report(bundle))
+    monkeypatch.setenv("LLM_FAKE", "0")
+    assert run_mod.detect_llm_fake(False)[0] is False
+    assert run_mod.detect_llm_fake(False)[1] == "env LLM_FAKE=0"
+    monkeypatch.setenv("LLM_FAKE", "1")
+    assert run_mod.detect_llm_fake(False)[0] is True

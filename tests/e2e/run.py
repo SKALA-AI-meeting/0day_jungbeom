@@ -575,9 +575,21 @@ class Runner:
         return await self.finish()
 
 
+def detect_llm_fake(live: bool) -> tuple[bool, str]:
+    """스택이 결정적 LLM 모드(LLM_FAKE=1)인지와 판별 근거. --live가 우선, 아니면 env의 LLM_FAKE."""
+    if live:
+        return False, "--live 옵션"
+    value = env().get("LLM_FAKE")
+    if value is None:
+        return True, "LLM_FAKE 없음(기본: 결정적 모드로 가정)"
+    return value.strip().lower() in ("1", "true", "yes"), f"env LLM_FAKE={value}"
+
+
 async def run_script(name: str, target: Target, out: Path, clock: str, live: bool) -> bool:
     script = scripts.load(name)
-    bundle = await Runner(script, target, clock=clock, llm_fake=not live).run()
+    fake, source = detect_llm_fake(live)
+    bundle = await Runner(script, target, clock=clock, llm_fake=fake).run()
+    bundle["llm_mode_source"] = source
     bundle["results"] = asserts.check(bundle)
     records.write(bundle, out)
     return asserts.passed(bundle["results"])
@@ -591,7 +603,11 @@ def main() -> None:
         "--script", help="대본 이름 또는 경로 (all_five·timeout_all·honesty_claim·restart)"
     )
     parser.add_argument("--clock", choices=["real", "fake"], default="real")
-    parser.add_argument("--live", action="store_true", help="실제 LLM 스택(수준 값 기대를 건너뜀)")
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="실제 LLM 스택으로 강제(env LLM_FAKE보다 우선, 수준 값 기대를 건너뜀)",
+    )
     parser.add_argument("--auth", action="store_true", help="단언 8 인증 경계")
     parser.add_argument("--faults", help="장애 주입: dlq, llm_timeout, all (러너가 앱을 띄움)")
     parser.add_argument("--out", type=Path, default=records.RECORDS)
