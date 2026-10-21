@@ -39,7 +39,7 @@ env 이름은 `report_worker/config.py`·`llm.py`·`heartbeat.py`와 `infra/.env
 | `consumer.py` | 메시지 처리 규칙(같은 eval_round만 체크포인트 재개, 재시도 백오프 5·15·45초, attempt≥3 → DLQ, dlq는 api 복구까지 60초 간격)과 aio-pika 연결 |
 | `llm.py` | `MODEL_EVALUATOR`(비면 `OPENAI_MODEL`), temperature 0.1, JSON 출력, 전송 실패 재시도 2회 뒤 예외(저장 없이 큐 재시도) |
 
-평가 프롬프트(`prompts/evaluator/{common,<element>}.md`)와 금지어(`guard_patterns.yaml`의 `evaluator_forbidden`)는 `SCENARIOS_DIR/missions/<mission_id>/prompts/`에서 읽는다. 컨테이너는 `scenarios`를 `/scenarios`로 읽기 전용 마운트해야 한다.
+평가 프롬프트(`prompts/evaluator/{common,<element>}.md`)와 금지어(`guard_patterns.yaml`의 `evaluator_forbidden`)는 채용 건에 복사된 것을 읽는다. 복사본이 없는 옛 채용 건만 `SCENARIOS_DIR/missions/<mission_id>/prompts/`의 현재 파일을 쓴다. 컨테이너는 `scenarios`를 `/scenarios`로 읽기 전용 마운트해야 한다.
 
 ## 실행
 
@@ -66,7 +66,7 @@ make test                                               # 전체
 <!-- gen:tests -->
 > 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
 
-총 45개(live 2개 포함, `make test`는 live를 뺀다).
+총 50개(live 2개 포함, `make test`는 live를 뺀다).
 
 <details><summary><code>tests/test_evaluate.py</code> (29)</summary>
 
@@ -94,7 +94,7 @@ make test                                               # 전체
 
 </details>
 
-<details><summary><code>tests/test_graph.py</code> (15)</summary>
+<details><summary><code>tests/test_graph.py</code> (20)</summary>
 
 - `test_generate_evaluates_each_element_once_and_saves_draft`
 - `test_draft_shape_matches_report_contract`
@@ -111,6 +111,11 @@ make test                                               # 전체
 - `test_llm_fake_not_confused_by_rewrite_header_in_candidate_message`
 - `test_llm_fake_same_input_same_result`
 - `test_llm_fault_evaluator_timeout_requeues_then_succeeds`
+- `test_position_keeps_evaluator_prompts_after_catalog_change`
+- `test_pinned_prompts_cover_retry_rewrite_and_rerun`
+- `test_new_position_gets_changed_evaluator_prompts`
+- `test_old_position_without_prompts_falls_back_to_files`
+- `test_partial_snapshot_falls_back_to_files_entirely`
 
 </details>
 

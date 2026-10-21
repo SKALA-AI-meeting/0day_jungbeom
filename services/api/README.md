@@ -145,15 +145,18 @@ make test-live                                         # live 테스트(OPENAI_A
 <!-- gen:tests -->
 > 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
 
-총 173개(live 3개 포함, `make test`는 live를 뺀다).
+총 191개(live 3개 포함, `make test`는 live를 뺀다).
 
-<details><summary><code>tests/agent/test_assistant.py</code> (5)</summary>
+<details><summary><code>tests/agent/test_assistant.py</code> (22)</summary>
 
 - `test_model_picks_tools_and_cites`
 - `test_tool_calls_capped_at_three`
 - `test_locked_materials_answer_fixed_sentence`
 - `test_guard_replaces_with_notice`
 - `test_llm_fake_mode_assistant`
+- `test_internal_material_ids_are_not_shown` ×4
+- `test_hide_ids_touches_only_known_id_notation` ×12
+- `test_ids_hidden_with_open_and_locked_lookups`
 
 </details>
 
@@ -400,9 +403,10 @@ make test-live                                         # live 테스트(OPENAI_A
 
 </details>
 
-<details><summary><code>tests/test_scenario.py</code> (4)</summary>
+<details><summary><code>tests/test_scenario.py</code> (5)</summary>
 
 - `test_fixed_seats_cards_dimensions_and_neutral_avatars`
+- `test_scenario_copies_evaluator_prompts_and_forbidden_patterns`
 - `test_fifteen_minute_offsets_scale_with_20_second_floor`
 - `test_cumulative_phase_deadlines` ×2
 
