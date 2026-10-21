@@ -228,7 +228,9 @@ def resolve_target(ds: dict[str, Any], value: Any) -> set[str]:
     if option is None:
         option = next((o for o in ds.get("options") or [] if o.get("label") == value), None)
     if option is None:
-        return {value}
+        # 아직 행이 없는 카탈로그 안을 라벨로 가리킨 경우(실 모델이 proposes.label만 채움)
+        found = next((c for c in ds.get("catalog_options") or [] if c.get("label") == value), None)
+        return {found["scenario_option_key"]} if found else {value}
     return {v for v in (option["option_id"], option.get("scenario_option_key")) if v}
 
 

@@ -167,3 +167,10 @@ async def test_material_question_before_keyword_gets_not_released(harness):
     tool_result = h.persona.calls[1].messages[-1]
     assert "not_released" in str(tool_result.content)
     assert h.posted("p3")[0]["content"] == "키워드가 정해지면 자료를 같이 봐요."
+
+
+def test_resolve_target_maps_catalog_label_to_key():
+    from app.agent.debate.persona import resolve_target
+
+    ds = {"options": [], "catalog_options": [{"scenario_option_key": "fire", "label": "불"}]}
+    assert resolve_target(ds, "불") == {"fire"}

@@ -11,6 +11,8 @@ from report_worker.evaluate import (
     evaluate_element,
     load_forbidden,
     load_prompts,
+    parse_json,
+    user_prompt,
     validate_output,
 )
 from report_worker.llm import empty_usage
@@ -202,3 +204,25 @@ def test_element_level_rounds_half_up_and_null_when_no_record():
     assert element_level(rows(2, 3, None)) == 3  # 2.5 → 3, 기록 없음 제외
     assert element_level(rows(2, 2, 3)) == 2
     assert element_level(rows(None, None)) is None
+
+
+@pytest.mark.live
+async def test_live_evaluator_one_element():
+    """실 모델(MODEL_EVALUATOR) 평가 1요소 1회: 요청이 받아들여지고 출력이 요소 스키마로 읽힌다."""
+    import os
+
+    from report_worker.config import load_settings
+    from report_worker.llm import OpenAILLM
+
+    settings = load_settings()
+    llm = OpenAILLM(settings.model_evaluator, os.environ)
+    rubric = element_rubric("listening")
+    c = ctx()
+    user = user_prompt(
+        rubric, c.rubric.get("no_record_reasons", []), c.prompts.elements["listening"], c.record
+    )
+    out = parse_json((await llm.complete(c.prompts.common, user)).text)
+    assert out["element"] == "listening"
+    assert {d["dimension_id"] for d in out["dimensions"]} == {
+        d["dimension_id"] for d in rubric["dimensions"]
+    }

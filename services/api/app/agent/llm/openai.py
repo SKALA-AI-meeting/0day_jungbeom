@@ -47,7 +47,13 @@ class OpenAILLM(BaseLLM):
                 "type": "json_schema",
                 "json_schema": {"name": "output", "schema": schema, "strict": True},
             }
+        elif json_mode and tools:
+            # 도구와 response_format을 함께 넘기면 langchain-openai가 parse 경로(strict 도구만
+            # 허용)를 타므로 JSON 모드는 요청 본문에 직접 싣는다
+            kwargs["extra_body"] = {"response_format": {"type": "json_object"}}
         elif json_mode:
             kwargs["response_format"] = {"type": "json_object"}
-        runnable = self._chat.bind_tools(tools, **kwargs) if tools else self._chat.bind(**kwargs)
+        # bind_tools의 response_format 인자는 구조화 출력 스키마로 해석되므로 도구와 따로 묶는다
+        chat = self._chat.bind_tools(tools) if tools else self._chat
+        runnable = chat.bind(**kwargs)
         return await runnable.ainvoke(messages, config=config)
