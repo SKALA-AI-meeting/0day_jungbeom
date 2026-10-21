@@ -21,6 +21,7 @@
 | 개선 · S4.5 | G-E 뒤 | web-ux ∥ api 빈칸 이벤트 ∥ persona 튜닝 | `track/debate` → main | G-E 재확인 | 대기 |
 | 후속 · S5 | S4.5 뒤 | report-refresh ∥ arch-refresh | main | — | 대기 |
 | 산출물 · S6 | S5 뒤 | visual-report(HTML + 압축 미디어) | main | — | 대기 |
+| 협업 정리 · S7 | S6 뒤 | docs-audit → docs-restructure ∥ service-readme → agents-readme | main | `make docs-check` 통과 | 대기 |
 
 **남은 순서** (기준 `track/debate` e4b91f8, 동시 개발 최대 4, 작성 모델 ≠ 리뷰 모델):
 
@@ -42,6 +43,15 @@ S4.5 playtest 반영 (계약·문서 먼저, 오케스트레이터)
     → stage-e2e·all_five --live·eval-live 재확인 → playtest 일부 재실행 → main 병합
 S5  report-refresh ∥ arch-refresh   (Sonnet→Opus)
 S6  visual-report: docs/share/visual-report/index.html + 압축 미디어(4배속 webm 960px, 스크린샷 축소) 커밋, Artifact로도 띄움
+S7  협업 정리 (다른 사람과 고도화하기 위한 구조)
+    docs-audit(Codex): 문서 전체를 코드와 대조해 잘못된 내용·중복·불필요 문서 목록 → 수정
+    → docs-restructure: docs/{product,architecture,contracts,services,guides}로 내용 그대로 이동(contracts.md는 api·ws·mcp·internal로 분할),
+      decisions.md는 한 파일 유지, handoff·briefs·reports·reviews·review·assignment·plan의 지난 단계는 삭제(기록은 git 이력에만),
+      services/business-mcp 삭제, 링크 검사
+    ∥ service-readme: 서비스·앱마다 README(역할·포트·env·의존·사용 기술, 구현 기능, API·MCP 도구·테스트 목록),
+      docs/features.md(PRD 기능 ID → 서비스·상태·검증 테스트), 목록은 OpenAPI·FastMCP 등록·pytest 수집·make help에서 생성
+      → make docs-check(생성 결과와 커밋 문서가 다르거나 기능표의 테스트가 없으면 실패)
+    → agents-readme: README.md(사람 입구: 개요·로컬 실행·폴더 지도·기여 방법), AGENTS.md(에이전트 입구: 고정 제약·읽는 순서·검증 명령·금지 사항, 다인 협업 기준)
 ```
 
 - **동시 개발 트랙은 웨이브를 넘어 합쳐서 최대 4개**다. 리뷰 서브에이전트는 개발이 끝난 자리에서 돌리므로 따로 세지 않는다.
