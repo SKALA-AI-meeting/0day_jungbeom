@@ -19,8 +19,8 @@ PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시�
 | document_opens | id, doc_id, version, by(candidate), created_at | 받은 문서를 연 기록. observe의 `open` 근거, 계획성 `draft_opened` |
 | final_document | session_id(pk), sections jsonb([{part_no, title, content, source_doc_id, source_version, edited}]), updated_at | 최종본 섹션별 내용과 출처. "가져오기"가 source를 기록하고 edited=false(덮어쓰기만), 이후 편집 저장이 edited=true. 저장마다 최종본 documents 행의 document_revisions에도 append. 제출 시 최종본 documents 행에 version을 만든다 |
 | doc_views | id, session_id, doc_id, viewed_at | 회사 문서 열람 기록 |
-| tasks | session_id, part_no, assignee(candidate·colleague·both·null), status(todo·doing·done), "order" int, due_min int null, depends_on int[] | [CX-02, 2026-10-21] 빈 보드로 시작(행 없음). 사용자가 만드는 할 일은 실행 담당(assignee)과 섹션 연결(section_part_no)을 가지며, 섹션당·총 개수 제한이 없다. 할 일 담당은 실행 담당이고 섹션 담당과 자동으로 연동되지 않는다. 섹션 담당(candidate·colleague·both)은 sessions.division.parts에 섹션 번호별로 둔다(문서 작성·전송 책임, 동료 초안 생성 기준). 분업안 공유(division/share) 때 섹션 담당 5개와 division_min만 검사해 확정(decided_by=candidate). 행 필드 세부(depends_on 위치, task_id 키)는 TBD. 동료 set_division도 같은 규칙을 따른다 |
-| task_events | id, session_id, part_no, by(candidate·colleague), field(assignee·status·order·due_min), old_value, new_value, run_id, created_at | 보드 변경 이벤트. 계획성·적응성 관찰 입력. 동료 변경은 (session_id, part_no, field, run_id) unique |
+| tasks | id uuid pk, session_id, title, section_part_no int null, assignee(candidate·colleague·both·null), status(todo·doing·done), "order" int, due_min int null, created_by(candidate·colleague) | [CX-02, 2026-10-21] 빈 보드로 시작(행 없음). 사용자가 만드는 할 일은 실행 담당(assignee)과 섹션 연결(section_part_no)을 가지며, 섹션당·총 개수 제한이 없다. 할 일 담당은 실행 담당이고 섹션 담당과 자동으로 연동되지 않는다. 섹션 담당(candidate·colleague·both)은 sessions.division.parts에 섹션 번호별로 둔다(문서 작성·전송 책임, 동료 초안 생성 기준). 분업안 공유(division/share) 때 섹션 담당 5개와 division_min만 검사해 확정(decided_by=candidate). depends_on은 미션 섹션 설정(`mission.yaml`의 parts)으로 옮겼고 행에는 두지 않는다(2026-10-21 설계 선택, 아래 스키마 절). 동료 set_division도 같은 규칙을 따른다 |
+| task_events | id, session_id, target(task·section_owner), task_id null, part_no null, by(candidate·colleague·system), field(title·section_part_no·assignee·status·order·due_min·owner·deleted), old_value, new_value, run_id, created_at | 보드 변경 이벤트. 계획성·적응성 관찰 입력. 동료 변경 멱등 키는 task면 (session_id, task_id, field, run_id), section_owner면 (session_id, part_no, field, run_id) unique |
 | document_releases | session_id, doc_id, release_at, released_at | 스케줄러가 released_at 기록 후 WS. release_at은 state의 `release_at_min` 원천 |
 | observations | id, session_id, card_id, element, window_start, window_end, metrics jsonb, label, aux jsonb, evidence jsonb, facts jsonb, run_id, updated_run_id, created_at, updated_at | evidence는 `[{type: message∣document∣share∣open∣task_event∣doc_view∣assistant_call, id}]`(`rubric.md` 표), 같은 세션 행만(api가 검증). 창 경계는 요소 카드 due_at(planning_division은 세션 시작). facts는 정직 카드의 사실 입력(내부 `GET /honesty_facts` 응답). (session_id, card_id, window_start) unique. 종료 finalize의 PATCH(metrics_patch)는 지정 지표만 바꾸고 updated_run_id로 멱등 |
 | connection_gaps | id, session_id, disconnected_at, reconnected_at | in_progress·reporting 동안 WS 연결이 없던 구간. 재접속 또는 종료 시 reconnected_at을 채운다. 점수 무관 사실 |
@@ -55,3 +55,22 @@ invited ──동의·시작──▶ in_progress ──완료/만료──▶ r
 ## 기업 간 격리
 
 관리자 API의 모든 조회는 JWT의 company_id로 positions를 거쳐 필터한다. 내부 API는 별도 포트(8001)에서만 열리고 session_id로만 접근한다.
+
+## 여러 할 일·섹션 담당 스키마 (제안, 2026-10-21)
+
+사용자 결정(할 일 자유 생성, 섹션 담당 분리, 공유 검사는 섹션 담당 5개와 division_min)을 구현하는 형태다. 선택 근거와 대안은 `docs/decisions.md` 2026-10-21 절.
+
+| 테이블 | 키·컬럼 | 규칙 |
+|---|---|---|
+| tasks | id uuid pk, session_id, title, section_part_no int null(1~5), assignee(candidate·colleague·both·null), status(todo·doing·done), order int, due_min int null, created_by, created_at, updated_at | 0행으로 시작. 행 수 제한 없음. 삭제는 행을 지우고 task_events(field=deleted)에 남긴다 |
+| section_owners | (session_id, part_no) pk, owner(candidate·colleague·both·null), status(draft), updated_at | start에서 5행 생성(owner null). 삭제·재생성 없음 → draft가 사라지지 않음. 확정 뒤에도 같은 행을 바꾸며 draft_differs로 표시 |
+| division_snapshots | id uuid pk, session_id, parts jsonb(5개 owner 전부), decided_by(candidate·colleague_default), run_id null, message_id, shared_at | 불변. 만든 뒤 수정·삭제 금지. 같은 parts로 다시 요청하면 기존 행 반환(멱등) |
+| sessions.division | jsonb {snapshot_id, parts, decided_by, decided_at} | 현재 확정 스냅샷을 가리킨다. 현재 section_owners와 다르면 draft_differs=true |
+| task_events | id, session_id, target(task·section_owner), task_id null, part_no null, by(candidate·colleague·system), field, old_value, new_value, run_id null, created_at | 동료 쓰기 멱등 키: task는 (session_id, task_id, field, run_id), section_owner는 (session_id, part_no, field, run_id) unique |
+
+규칙
+- 할 일을 만드는 경로는 `POST /sessions/{id}/tasks`뿐이다(빈 보드에서 시작하므로 이 API가 없으면 할 일을 만들 수 없음).
+- 섹션 담당 draft 소실 방지: section_owners 행은 start 트랜잭션에서 만들고, `PUT owner`는 행을 만들거나 지우지 않는다. 행이 없으면 start 누락으로 보고 테스트에서 잡는다.
+- depends_on은 미션 설정(`mission.yaml` parts)에서 읽어 섹션 열에 표시한다.
+- 할 일 담당과 섹션 담당의 불일치 방지 규칙은 아직 TBD(PRD 16). 이 스키마는 불일치를 허용하는 상태로 저장한다.
+- `infra/db/schema.sql` 반영은 G1 이후 flow-api가 맡는다. 이 절은 제안이며 schema.sql보다 우선하지 않는다.

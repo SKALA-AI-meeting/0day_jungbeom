@@ -15,12 +15,12 @@
 
 | # | 이름 | 대본·조건 | 기대 |
 |---|---|---|---|
-| C1 | 보드만으로 분업 확정 | 채팅 없이 `PUT /tasks/{part_no}` 5번으로 담당을 채움(2번 candidate, 3번 both, 4·5번 colleague) | 마지막 PUT 응답 뒤 `division.confirmed{decided_by: candidate}`, task_events 5건(by=candidate), 동료 보드 doing, planning_division 관찰의 `division_by_candidate=true`. division_min 위반 조합(2번 colleague)의 마지막 PUT은 422 `invalid_division` |
+| C1 | 보드만으로 분업 확정 | 할 일 0개로 시작 → 섹션 담당 draft 5개 PUT(2번 candidate, 3번 both, 4·5번 colleague) → `POST /division/share` | share 응답 뒤 `division.confirmed{snapshot_id, decided_by: candidate}`, task_events 5건(target=section_owner, by=candidate), 할 일이 0개여도 확정, planning_division 관찰의 `division_by_candidate=true`. division_min 위반 조합(2번 colleague)의 share는 422 `invalid_division`, draft는 그대로 유지 |
 | C2 | 카드 전 계획 | planning_division 카드(L/12) 전에 보드·DM으로 분업과 순서·시점을 정함 | planning_division 관찰의 window_start=0이고 `plan_assigned_all_parts`·`plan_stated_schedule`이 카드 뒤에 정한 대본과 같은 값 |
 | C3 | 창 밖 약속 이행 | collab_help에 "20분 뒤에 볼게요"(negotiate_timing, promised_t_min=50) → 50분에 동료 DM | 창 닫힘 시 `promise_kept=null`, 종료 finalize 뒤 같은 관찰 행의 `promise_kept=true`(evidence_ids에 50분 메시지), 리포트 `collab_help_kept_promise=1`과 그 메시지가 근거(flag 없음) |
 | C4 | 무관한 편집 | adaptability_change 뒤 기존 대상 문서의 오탈자만 고쳐 저장 | `document_changed_after=true`, `target_applied=false` → `adapt_applied_to_doc=0`. 말없이 대상을 반영한 대본은 `apply_silently`와 document 근거로 1 |
 | C5 | 문서 제공 실패 | planning_checkin의 `send_document`를 2회 실패시킴 | 카드 status=failed(재실행 대상), 이벤트 행 `document_missing=true`, `plan_opened_draft`·`plan_responded_draft`가 사유 `document_missing`(표시 "시스템: 문서 미제공")으로 기록 없음. 3회째 성공하면 정상 |
-| C6 | reporting 재접속 | 제출 → reporting 중 WS 끊고 `/s/{token}/resume` → `/state` | 200·새 JWT, state.session.status=reporting과 deadline_at, 팀 채널·팀장 DM 어느 쪽 보고 메시지든 kind=report로 completed, `connection_gaps`에 끊긴 구간 |
+| C6 | reporting 재접속 | 제출 → reporting 중 WS 끊고 `/s/{token}/resume` → `/state` | 200·새 JWT, state.session.status=reporting과 deadline_at, 한서윤 DM의 kind=report 보고는 `reported_at`만 기록하고(completed 아님), 한서윤 답장 뒤 `end_available=true`, `finish`로 completed. 팀 채널 메시지는 보고로 세지 않음. 종료 버튼 없이 fake clock으로 5분 경과 → completed(연장 없음), `connection_gaps`에 끊긴 구간 |
 
 ## e2e
 
@@ -33,7 +33,7 @@ python scripts/make_session.py --elements responsibility,planning,adaptability,c
 `at`은 카드 id, 절대 분, 또는 `+분`(직전 step 기준). 기본 대본: `all_five`, `one_element`(planning), `division_refuse`(division_min 위반 1회 되돌림 뒤 확정), `restart`(responsibility_delay 뒤에 api 컨테이너 재시작), `no_assistant`, `assistant_reuse`(어시스턴트 응답을 내 파트 문서에 그대로 붙여넣고 보낸 뒤 제출), `early_submit`(보고 요청 전 제출). 대본은 `expect.labels`(카드별 기대 레이블)와 `expect.evidence_types`를 가질 수 있다.
 
 ### 러너 (`tests/e2e/run.py`)
-세션 생성 → 동의·시작 → WS·REST로 대본 진행. 카드 발생은 `message.new.event_id`로 감지. 제출 → `reporting` → 보고 메시지(팀 채널) → completed. 종료 후 report_ready 대기(최대 120초) → 관리자 로그인 → draft 조회 → review → reviewed 대기 → final 조회 → 전체 기록 조회. 기록 저장.
+세션 생성 → 동의·시작 → WS·REST로 대본 진행. 카드 발생은 `message.new.event_id`로 감지. 완료 → `reporting` → 한서윤 DM 보고 → 한서윤 답장 → `finish` → completed(종료 버튼 없이 5분이면 자동 completed). 종료 후 report_ready 대기(최대 120초) → 관리자 로그인 → draft 조회 → review → reviewed 대기 → final 조회 → 전체 기록 조회. 기록 저장.
 
 ### 기록 (`tests/e2e/records/<YYYYMMDD-HHMM>-<name>/`)
 `transcript.jsonl`(WS 이벤트·REST 호출 전부), `observations.json`, `report_draft.json`, `report_final.json`, `record.json`, `summary.md`(카드별 예정·실제 시각과 오차, 단언 결과, run_id별 도구 호출, LangSmith trace URL).
@@ -47,7 +47,7 @@ python scripts/make_session.py --elements responsibility,planning,adaptability,c
 3a. `all_five`의 관찰 레이블이 `expect.labels`(planning_division=assign_with_schedule, collab_help=negotiate_timing, planning_checkin=feedback, responsibility_delay=notify_with_alternative, adaptability_change=replan_and_apply, collab_disagree=explain_with_reason, honesty_report=fair_report)와 일치하고 evidence가 각 1개 이상. 적응성 evidence에 document 또는 share 타입 포함, 계획성 evidence에 open·task_event 타입 포함. 책임감 알림을 팀장 DM으로만 알린 대본에서도 `resp_told_manager=1`
 3c. 작업 기억: `all_five`에서 동료 초안 v1(planning_checkin, 45분, 동료 담당 파트 전부·both 골격 포함)에 그 전 지시 핵심어("재참여"), 완성본 v2(review, 90분)에 "48시간"까지 있고, 진행 질문 2회 답이 같은 progress이며, 보드 동료 카드가 doing→done
 3b. 도구 선택: 회사 자료 질문에 `agent.progress{tool_start, tool: search_documents}`가 있고(팀장 DM의 회사 문서 뜻 질문 포함), 인사말에는 tool_start가 없음
-3d. 조기 제출: `early_submit`에서 제출 응답이 `reporting`과 deadline_at, 그 직후 honesty_report(또는 report_request)의 `message.new`와 "제출하면 종료" 시스템 줄이 발생하고, 보고 메시지 뒤 `session.ended{submitted}`. 보고하지 않으면 deadline_at에 종료. 마지막 창(honesty_report)의 window_end가 `completed_at`
+3d. 조기 제출: `early_submit`에서 제출 응답이 `reporting`과 deadline_at, 그 직후 honesty_report(또는 report_request)의 `message.new`와 완료 안내 시스템 줄(최종본 전달·한서윤 DM 안내)이 나오고, 01:50 전 완료이므로 보고 요청은 한서윤 DM에서 나온다. 한서윤 DM 보고 → 답장 → `finish` 뒤 `session.ended{submitted}`. 종료 버튼 없이 deadline_at이 지나면 자동 종료하고 보고가 없었으면 기록 없음으로 남는다. 마지막 창(honesty_report)의 window_end가 `completed_at`
 3e. 카드 단위 창: fired된 요소 카드마다 observations 행이 1개(키 card_id), window_start=카드 due_at(planning_division은 0), window_end=다음 요소 카드 due_at(review+collab_disagree는 collab_disagree 기준). 약속 시각에 보낸 동료 DM이 collab_help 창 밖이어도 finalize 뒤 `collab_help_kept_promise` 근거로 쓰이고, 그 메시지는 리포트 근거 목록에 있음
 3f. 문서 주고받기: 지원자 문서 자동 저장 → document_revisions +1, 공유 → version+1(revision을 가리킴)과 `document.shared`·`message.new(shared_doc)`, 동료 v1 열기 → document_opens 1건, 최종본 섹션 가져오기 → source_doc_id·source_version 기록과 revision, 편집 뒤 edited=true. 리포트 `deliverable.final.sections` 출처가 이와 일치하고(편집 섹션은 source_content 포함) `deliverable.documents`에 주고받은 문서·버전이 전부 있음
 3g. 킥오프 예고 시각이 지연 카드 시각("01:00")이고, 60분 notice 알림(보낸 사람 "리서치 담당", 수신자 "나에게만")과 70분 `document.released`·notice "공개됨" 줄, state.documents의 `release_at_min=70`

@@ -38,11 +38,12 @@ PRD와 계약은 문서 턴에서 먼저 바뀌었다. 구현은 아래 게이�
 |---|---|---|---|---|
 | flow-docs (오케스트레이터 1명) | PRD·docs/common·decisions·proposals·fixes 정합. PRD.html은 PRD.md와 같은 커밋에서 `sh build/build.sh`로 재생성 | 위 문서 전부 | 없음 | G1 커밋, grep 정합 검사 통과 |
 | **G1 계약 기준 커밋** | contracts 예시 JSON(tasks 생성, 섹션 담당, division/share, finish, reporting, session.end_available)을 `tests/fixtures/contracts/`에 반영. TBD 필드는 픽스처에 넣지 않음 | 공용 담당 | flow-docs | 생산자·소비자 양쪽이 같은 픽스처를 읽음 |
+| flow-docs-followup (문서 1명, 개발과 병렬) | G1 이후 역할별 상세 설계·테스트 문서를 계약에 맞춘다. 공용 계약은 수정하지 않고 변경요청만 올린다. 아래 "문서 후속 트랙" 참조 | `docs/api/design.md`, `docs/agent/design.md`, `docs/mcp/design.md`, `docs/worker-infra/design.md`, `docs/frontend/{design-direction,design,design-system}.md`, `docs/common/testing.md`, `docs/common/harness.md`, `docs/handoff/change-requests/` | G1 | G2(백엔드 설계 동기화) → G3(프론트·테스트 설계 동기화) 기준 커밋 |
 | flow-api | 빈 보드, 할 일 생성·수정, 섹션 담당 PUT, division/share 검사(섹션 담당 5개 + division_min), finish, 완료 시각 기준 5분 자동 종료, 한서윤 DM 보고 kind 분류 | `services/api/app/` 중 routers/candidate·internal, services/session, scheduler | G1, scenario-redesign 병합 뒤(api 쓰기 충돌 회피) | api 단위 테스트, 5분 fallback 재시작 복구 테스트 |
 | flow-agent | 한서윤 확인 답장 노드, 01:50 요청의 채널 분기(완료 전 팀 채널·조기 완료 DM), 분업 자극 갱신 | `services/api/app/agent/` 전부 | G1, flow-api의 내부 division·complete 계약 동결 | FakeLLM 단위 테스트, 판정 발언 금지(F-24) 검사 |
 | flow-web | 완료 확인 창, 한서윤 DM 이동 안내, 종료 버튼(`end_available`), 빈 보드, 섹션 담당 UI | `apps/web/app/s/`, `components/office/` | G1, web-redesign 사용자 mock 확인 뒤(web 소유권 충돌 회피) | mock 전 흐름, break-ui |
 | flow-verify (e2e-runner) | 대본 갱신: DM 보고, 5분 자동 종료, 조기 완료, 빈 보드 분업. 최소 테스트 6건의 reporting 항목 재배정 | `tests/e2e/`, `scenarios/e2e/` | flow-api·flow-agent·flow-web 병합 | e2e mock 통과 |
-| **progress-channel (독립)** | active_runs(`/state`)와 WS `agent.progress`의 이름·상태 고정. 흐름 전환과 파일을 공유하지 않음 | 계약(공용 담당), hub·state(api-candidate), `lib/ws.ts`(web-office) | G2 계약 커밋 별도. CX 트랙을 막지 않음 | 계약 픽스처 일치, 재연결 후 active_runs 복원 |
+| **progress-channel (독립)** | active_runs(`/state`)와 WS `agent.progress`의 이름·상태 고정. 흐름 전환과 파일을 공유하지 않음 | 계약(공용 담당), hub·state(api-candidate), `lib/ws.ts`(web-office) | G4 계약 커밋 별도. CX 트랙을 막지 않음 | 계약 픽스처 일치, 재연결 후 active_runs 복원 |
 | 개선 후보 required-card-failure (변경 없음) | 필수 카드 3회 실패 → 세션 실패(현행 규칙 유지). 이번 전환에서 바꾸지 않음 | — | 없음 | 별도 제안으로 M3 이후 검토 |
 
 **게이트와 충돌 회피 규칙**
@@ -51,13 +52,25 @@ PRD와 계약은 문서 턴에서 먼저 바뀌었다. 구현은 아래 게이�
 - flow-web과 web-redesign이 겹치면 web-redesign이 끝난 뒤에만 flow-web을 시작한다.
 - 검증 순서: 문서 grep(옛 표현 "5행", "보고 메시지 저장 시각", "팀장 보고 요청", "제출 시 보고 요청") → G1 픽스처 → api 단위 → agent FakeLLM → web mock → e2e mock.
 
+**문서 후속 트랙 (flow-docs-followup) 상세**
+
+- **단일 소유 원칙.** 공용 계약 파일(`PRD.md`, `docs/common/contracts.md`, `docs/common/data-model.md`, `docs/common/scenario-model.md`, `docs/common/architecture.md`, `docs/common/rubric.md`, `docs/decisions.md`, `docs/plan.md`, `docs/prd-change-proposals.md`, `docs/candidate-experience-fixes.md`)은 flow-docs 한 담당만 수정한다. flow-docs-followup은 이 파일들을 읽기만 하고 고치지 않는다.
+- **변경 범위.** flow-docs-followup은 위 표의 역할별 설계·테스트 문서만 쓴다. `services/`, `apps/`, `scenarios/`, `tests/`(fixtures 포함)는 건드리지 않는다.
+- **시작 기준.** G1 커밋(계약 예시 JSON과 `tests/fixtures/contracts/` 반영) 이후. 개발 트랙과 같은 시점에 시작하며 개발 트랙의 시작을 기다리지 않는다.
+- **G2 (백엔드 설계 동기화).** `docs/api`, `docs/agent`, `docs/mcp`, `docs/worker-infra`가 G1 계약과 같은 엔드포인트·필드·상태 전이·오류 코드를 쓰도록 맞춘다. 완료 판정: 각 문서 끝의 정합 체크리스트(계약 항목 대응표, 상태 전이 대응, TBD 목록)가 모두 채워지고 다른 담당이 한 번 검토. 완료 시 G2 커밋을 남기고 flow-api·flow-agent 브리프에 적는다.
+- **G3 (프론트·테스트 설계 동기화).** `docs/frontend/*`와 `docs/common/testing.md`, `docs/common/harness.md`를 G2와 G1 계약에 맞춘다. 완료 판정: 같은 체크리스트 통과, testing.md의 C1·C6·3d 등 시나리오 단언이 새 흐름(완료 → DM 보고 → 답장 → 종료, 5분 fallback)과 일치. 완료 시 G3 커밋을 남기고 flow-web·flow-verify 브리프에 적는다.
+- **변경 요청(CR) 절차.** 구현 중 계약과 다른 사실이 나오면 개발 트랙은 `docs/handoff/change-requests/CR-<날짜>-<트랙>-<번호>.md`에 다음을 적고 멈춘다: 어긋난 항목, 구현된 값, 제안 값, 영향 트랙. 이 파일은 개발 트랙이 쓰는 유일한 문서 산출물이다. flow-docs가 채택·기각을 결정한다. 채택되면 flow-docs가 G1(계약 변경)을 새로 만들고, flow-docs-followup이 G2/G3를 같은 커밋 번호 체계로 다시 맞춘다. 개발 트랙은 새 기준 커밋을 rebase해서 받는다.
+- **동기화 규칙.** 개발 트랙은 자기 브랜치에서 설계 문서를 직접 고치지 않는다. 구현이 계약과 맞지 않으면 CR을 올리고, 문서는 기준 커밋(G2/G3)으로만 바뀐다. 구현과 문서가 어긋난 채로 병합하지 않는다.
+- **충돌 회피.** flow-docs-followup과 개발 트랙은 파일 소유권이 겹치지 않는다. 같은 문서를 두 담당이 고쳐야 하면 오케스트레이터가 나눈다.
+- **검증 순서.** G1 픽스처 확인 → G2 문서 체크리스트 → 개발 트랙 단위 테스트(계약 픽스처 기준) → G3 문서 체크리스트 → web mock → e2e mock.
+
 **구현 전 결정 항목 (PRD 16과 일치)**
 1. 분업 최소 조건 유지 여부(CX-04): 현행 유지, 변경은 별도 승인.
 2. 할 일 담당과 섹션 담당 불일치 방지 규칙.
 3. 섹션 담당 확정 뒤 재지정 규칙.
 4. 한서윤 확인 답장 실패 처리.
 5. 5분 자동 종료와 답장 지연의 관계(답장이 늦으면 버튼 없이 종료됨).
-6. 01:50 보고 요청 카드의 채널 분기(완료 전 팀 채널, 조기 완료 DM)와 문구.
+6. 01:50 보고 요청 카드 문구. 채널 분기(완료 전 팀 채널, 조기 완료 DM)는 설계 선택으로 decisions 2026-10-21에 기록됐고 사용자 확인 대기.
 7. 보고 인정 채널(반영값은 완료 뒤 한서윤 DM만).
 8. 기본 작업 흐름 예시(자료 탭)의 MVP 포함 여부.
 
@@ -80,7 +93,7 @@ PRD와 계약은 문서 턴에서 먼저 바뀌었다. 구현은 아래 게이�
 
 | 사례 | scenario-redesign(고정 입력으로 증명) | agent-session(실제 그래프가 입력을 만듦) | 화면·최종 인수 |
 |---|---|---|---|
-| 보드만으로 분업 확정 | 담당 없는 5행 → PUT → division·task_events·WS·동료 자극 저장 | 보드 자극으로 work_notes·동료 담당 갱신 | web-integrate 실제 보드 조작, e2e |
+| 빈 보드 분업 공유 (2026-10-21 기준) | 할 일 0개 → 섹션 담당 draft 5개 PUT → POST division/share → snapshot·division.confirmed·task_events(target=section_owner)·동료 자극 저장. 할 일이 없어도 확정됨 | 보드 자극으로 work_notes·동료 담당 갱신 | web-integrate 실제 보드 조작, e2e |
 | 카드 전 계획 | 시작 전후 결정 시각·보드 이력 보존 | 0분부터의 계획 창에 먼저 정한 계획 포함 | e2e 기대 점수 |
 | 창 밖 약속 이행 | observations PATCH·멱등, 워커가 갱신값 소비 | finalize에서 실제 메시지로 재계산 | e2e 다음 창 이행 대본 |
 | 무관한 편집 | revisions 보존, target_applied=false면 미충족 | FakeLLM으로 편집 사실과 반영 사실 구분 aux | e2e 리포트 항목 |
