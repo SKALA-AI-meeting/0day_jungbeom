@@ -102,7 +102,7 @@ async function start() {
       <p class="bg">{{ scenario.background }}</p>
       <p class="muted small">{{ scenario.brief }}</p>
       <div class="people">
-        <div class="person"><span class="av me">나</span><div><b>{{ alias || '지원자' }}</b><small>같은 팀 기획자 (오늘 합류)</small></div></div>
+        <div class="person"><span class="av me">나</span><div><b>{{ alias || '지원자' }}</b><small>같은 팀원 (오늘 합류)</small></div></div>
         <div v-for="p in scenario.personas" :key="p.id" class="person">
           <span class="av">{{ p.emoji }}</span><div><b>{{ p.name }}</b><small>{{ p.role }} · AI</small></div>
         </div>

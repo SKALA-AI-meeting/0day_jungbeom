@@ -47,7 +47,10 @@ async function send() {
   error.value = ''
   try {
     await sendMessage(props.id, text, (ev) => {
-      if (ev.type === 'user_message') messages.value.push(ev.message)
+      if (ev.type === 'user_message') {
+        messages.value.push(ev.message)
+        if (ev.message.choice) sess.value.choice = { option: ev.message.choice } // close the choice panel right away
+      }
       else if (ev.type === 'typing') typing.value = ev.speaker
       else if (ev.type === 'message') {
         typing.value = null
