@@ -139,6 +139,6 @@ P1 대본 단언: `restart`(재시작 후 90초 안에 WS 재연결·`/state` �
 
 - 페르소나 4종: 지원자 정석형·서두르는 형·헤매는 형, 관리자(채용 담당자). **블라인드**: 화면과 목표 한 줄만 주고 설계 문서·평가 기준·시나리오 데이터는 주지 않는다.
 - 시작: `make stage STAGE=<단계> LLM=live`로 만든 링크(관리자는 `ended` 시드의 리포트 링크).
-- 조작: Claude in Chrome. 브라우저 대화상자(alert·confirm)를 띄우는 조작은 하지 않는다(앱 안 확인 창은 정상). 동시에 최대 2탭, 탭마다 새 탭을 연다.
-- 기록: `tests/playtest/records/<단계>/<페르소나>/`에 조작 GIF(`gif_creator`, `<단계>-<페르소나>.gif`)와 불편 로그(`log.md`: 시각 · 화면 · 기대 · 실제 · 심각도 상/중/하), 개선 제안. 끝나면 단계 × 페르소나 요약 표 `tests/playtest/records/summary.md`.
+- 조작: Playwright 드라이버 `tests/playtest/driver.py`(같은 브라우저를 여러 명령에 걸쳐 유지, 화면은 `shot`으로 PNG를 보고 판단). 브라우저 대화상자는 드라이버가 자동으로 닫고 기록한다(앱 안 확인 창은 정상). Claude in Chrome은 이 환경에서 테스트 스택(3100)을 열지 못해 쓰지 않는다.
+- 기록: `tests/playtest/records/<단계>/<페르소나>/`에 조작 영상(`<단계>-<페르소나>.webm`)·핵심 시점 스크린샷와 불편 로그(`log.md`: 시각 · 화면 · 기대 · 실제 · 심각도 상/중/하), 개선 제안. 끝나면 단계 × 페르소나 요약 표 `tests/playtest/records/summary.md`.
 - 순서: keyword 단계 정석형 1회로 조작·녹화가 되는지 먼저 확인한 뒤 나머지로 넓힌다. 반영 여부는 사람이 정한다.
