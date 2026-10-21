@@ -140,7 +140,7 @@ def test_elements_match_rubric(mission, rubric):
 
 def test_debrief_intro(mission):
     assert mission["debrief"]["intro_notice"] == (
-        "같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 각자의 반응을 봅니다."
+        "같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 반응을 봅니다."
     )
 
 

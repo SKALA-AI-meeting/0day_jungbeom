@@ -177,7 +177,7 @@ admin_catalog:
 
 # 디브리핑 문구(GET /sessions/{id}/debrief). 카드별 문장은 cards.yaml debrief, 자리별 성향 설명은 personas.yaml persona_description.
 debrief:
-  intro_notice: 같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 각자의 반응을 봅니다.   # 첫 문장 고정(R1, scenario-model.md 7)
+  intro_notice: 같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 반응을 봅니다.   # 첫 문장 고정(R1, scenario-model.md 7)
   draft: true                       # 아래 문구는 [초안]
   persona_note: 함께 토론한 세 동료는 각자 정해진 성향을 가진 AI였습니다. 성향은 아래 소개에서 처음 공개합니다.
   scoring_notice: 평가 결과는 보여 드리지 않습니다. 담당자가 근거를 확인해 조정하기 전의 판단이라 그대로 보면 오해를 낳을 수 있고, 합격 여부를 정하는 값도 아니기 때문입니다. 기업은 토론 대화와 어시스턴트 요청 원문, 제출한 기획안을 봅니다.
