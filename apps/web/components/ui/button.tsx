@@ -4,18 +4,18 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "./cn";
 
 const button = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-[background-color,transform,scale] duration-100 ease-[var(--ease-out)] active:not-disabled:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:active:not-disabled:scale-100",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-[background-color,border-color,color,scale] duration-150 ease-[var(--ease-out)] active:not-disabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:active:not-disabled:scale-100",
   {
     variants: {
       variant: {
-        primary: "bg-accent text-white hover:bg-accent-strong",
+        primary: "bg-accent-fill text-on-accent hover:bg-accent-fill-hover",
         secondary: "border border-line bg-surface text-ink hover:bg-surface-sunken",
         ghost: "text-ink hover:bg-surface-sunken",
-        danger: "bg-danger text-white hover:opacity-90",
+        danger: "bg-danger-fill text-on-accent hover:opacity-90",
       },
       size: {
         xs: "h-7 px-2 text-xs",
-        sm: "h-8 px-3 text-sm",
+        sm: "h-8 px-3.5 text-sm",
         md: "h-10 px-4 text-base",
       },
     },

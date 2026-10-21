@@ -87,7 +87,7 @@ export function MainTabBar({
               {!!count && (
                 <span
                   aria-hidden
-                  className="ml-1.5 rounded-sm bg-accent px-1.5 text-xs font-semibold text-white tabular-nums"
+                  className="ml-1.5 rounded-sm bg-accent-fill px-1.5 text-xs font-semibold text-on-accent tabular-nums"
                 >
                   {count}
                 </span>

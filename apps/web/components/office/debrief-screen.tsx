@@ -47,7 +47,7 @@ function Survey({
                 className={cn(
                   "press size-9 rounded-md border text-sm tabular-nums",
                   values[question.q] === n
-                    ? "border-accent bg-accent text-white"
+                    ? "border-accent-fill bg-accent-fill text-on-accent"
                     : "border-line bg-surface hover:bg-surface-sunken",
                 )}
               >

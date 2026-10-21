@@ -109,7 +109,7 @@ function RailItem({
         </span>
       )}
       {!!count && (
-        <span className="shrink-0 rounded-sm bg-accent px-1.5 text-xs font-semibold text-white tabular-nums">
+        <span className="shrink-0 rounded-sm bg-accent-fill px-1.5 text-xs font-semibold text-on-accent tabular-nums">
           <span aria-hidden>{count}</span>
           <span className="sr-only">새 메시지 {count}개</span>
         </span>

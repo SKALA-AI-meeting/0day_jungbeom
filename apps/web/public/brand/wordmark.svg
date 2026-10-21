@@ -1,8 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 30" width="150" height="30" role="img" aria-label="Day Zero">
   <!-- Day Zero 워드마크: 둥근 사각 마크(0) + 단선 글자. 글꼴 없이 선으로 그려 어디서나 같은 모양 -->
-  <rect x="0" y="2" width="26" height="26" rx="6.5" fill="#2F6FDE"/>
+  <!-- 다크 모드(시스템 설정)에서는 글자 선을 밝게. img로 불러도 SVG 안 미디어 쿼리는 동작한다 -->
+  <style>.t{stroke:#1D1D1F}@media (prefers-color-scheme:dark){.t{stroke:#F5F5F7}}</style>
+  <rect x="0" y="2" width="26" height="26" rx="6.5" fill="#0071E3"/>
   <circle cx="13" cy="15" r="6.25" fill="none" stroke="#FFFFFF" stroke-width="2.6"/>
-  <g fill="none" stroke="#1B1F24" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+  <g class="t" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M37 6V22H41.5A8 8 0 0 0 41.5 6Z"/>
     <circle cx="60" cy="16" r="5.8"/>
     <path d="M65.8 10.2V22"/>
