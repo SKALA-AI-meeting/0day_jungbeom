@@ -15,13 +15,13 @@ XFAIL_ARGS = awk -F'|' -v p="$$p" -v fn="$$fn" -v fp="$$fp" '!/^[[:space:]]*(\#|
 infra-up:        ## 개발용 인프라만, 로컬 포트 바인딩: postgres 5432, rabbitmq 5672, rag-mcp 9102
 	$(COMPOSE_DEV) up -d postgres rabbitmq rag-mcp
 
-infra-down:
+infra-down:      ## 개발용 인프라 내림
 	$(COMPOSE_DEV) down
 
 up:              ## 전체 compose 8개 서비스(G-F 확인, 통합)
 	$(COMPOSE) up -d --build --wait
 
-down:
+down:            ## 전체 compose 내림
 	$(COMPOSE) down
 
 seed:            ## 자료 원문 시드 → 관리자·채용 건 → rag 재색인 (postgres 5432, api 8000, rag-mcp 9102)
@@ -45,7 +45,7 @@ test:            ## 단위 테스트 전부(LLM mock, live 제외). 기대 실�
 test-live:       ## 실제 LLM 호출 테스트만
 	cd services/api && uv run pytest -q -m live
 
-lint:
+lint:            ## ruff(저장소 전체, scripts/docs_gen.py 포함)와 web eslint·prettier
 	uv run ruff check . && uv run ruff format --check .
 	@if [ -f apps/web/package.json ]; then (cd apps/web && pnpm lint) || exit 1; fi
 
@@ -90,4 +90,13 @@ e2e-stages:      ## 단계별 화면 테스트(Playwright): make e2e-stages [STA
 	@[ "$(LLM)" != "live" ] || echo "LLM=live: 결정적 LLM 문장에 맞춘 단언은 실제 모델에서 달라질 수 있다"
 	cd apps/web && WEB_URL=$${WEB_URL:-http://localhost:3100} E2E_INTERNAL_URL=$${E2E_INTERNAL_URL:-http://localhost:8101} pnpm exec playwright test $(STAGE)
 
-.PHONY: infra-up infra-down up down seed test test-live lint e2e test-e2e eval-live e2e-auth e2e-faults stage stage-advance e2e-stack-up e2e-stack-seed e2e-stack-down e2e-stages
+docs-gen:        ## 서비스 README의 생성 블록(API·MCP 도구·테스트 목록) 갱신
+	uv run --project services/api python scripts/docs_gen.py
+
+docs-check:      ## 생성 블록이 코드와 같은지, docs/features.md의 테스트 참조가 실제로 있는지 검사(스택·DB 불필요)
+	uv run --project services/api python scripts/docs_gen.py --check --features
+
+help:            ## 타깃 목록
+	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "%-16s %s\n", $$1, $$2 }'
+
+.PHONY: help docs-gen docs-check infra-up infra-down up down seed test test-live lint e2e test-e2e eval-live e2e-auth e2e-faults stage stage-advance e2e-stack-up e2e-stack-seed e2e-stack-down e2e-stages

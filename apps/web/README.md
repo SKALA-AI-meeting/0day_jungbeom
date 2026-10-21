@@ -1,14 +1,294 @@
 # web
 
-Next.js App Router + Tailwind v4. 설계: `docs/product/user-flows.md`. 계약: `docs/contracts/README.md`.
+지원자 토론방·기획안·디브리핑 화면과 담당자 관리자 화면(채용 건·지원자 목록·리포트·전체 기록)을 내는 Next.js 앱.
+
+## 한눈에
+
+| 항목 | 내용 |
+|---|---|
+| 역할 | 지원자: 초대 링크 입장 → 동의 → 토론방(채팅·결정 사항·참고 자료·어시스턴트·기획안) → 디브리핑. 담당자: 가입·로그인, 채용 건 생성, 초대, 리포트 검토, 전체 기록 |
+| 사용 기술 | Next.js App Router(standalone 빌드), React, Tailwind v4, base-ui + cva + clsx, vitest, Playwright, pnpm, Node 22 |
+| 포트 | 3000 (헬스 `/api/health`) |
+| 필요한 env | `NEXT_PUBLIC_API_URL`(기본 `http://localhost:8000`) `NEXT_PUBLIC_WS_URL`(기본 `ws://localhost:8000`) `NEXT_PUBLIC_MOCK`(`1`이면 api 없이 mock). 테스트용: `WEB_URL` `E2E_INTERNAL_URL` `INTERNAL_TOKEN` |
+| 의존 서비스 | api 공개 앱(8000, REST + WebSocket). mock 모드에서는 없음 |
+
+`NEXT_PUBLIC_*`는 **빌드 시점**에 번들에 들어간다. `pnpm dev`는 셸 환경변수나 `apps/web/.env.local`을 읽고(Python 서비스와 달리 `infra/.env`를 읽지 않는다), compose 빌드는 `apps/web/Dockerfile`의 `ARG`로 받으므로 컨테이너 실행 중에 바꿔도 반영되지 않는다. 단계별 화면 테스트의 `INTERNAL_TOKEN`은 환경변수 또는 `infra/.env.e2e`에서 읽는다.
+
+## 구현된 기능
+
+| 기능 | 코드 | PRD |
+|---|---|---|
+| 가입·로그인 | `app/admin/signup`, `app/admin/login`, `components/admin/auth-form.tsx` | [F-01](../../PRD.md) |
+| 채용 건 생성, 샘플 리포트, 초대, 지원자 목록 | `components/admin/position-form.tsx`, `candidates.tsx`, `app/admin/sample-report` | [F-02, F-03, F-04b, F-08](../../PRD.md) |
+| 리포트 보기·차원 조정·검토 완료·인쇄 | `components/admin/report-view.tsx`, `review.ts` | [F-04, F-04a, F-04c, F-09](../../PRD.md) |
+| 전체 기록과 근거 이동 | `components/admin/record-view.tsx` | [F-05](../../PRD.md) |
+| 초대 링크 입장·동의·이어하기 | `components/debate/link-screens.tsx`, `candidate-flow.tsx` | [F-10, F-11, F-19](../../PRD.md) |
+| 토론방(말풍선·입력 중·새 메시지 표시) | `components/debate/chat.tsx`, `reducer.ts`, `lib/ws.ts` | [F-12](../../PRD.md) |
+| 결정 사항 패널과 확인 창 | `components/debate/decision-panel.tsx` | [F-13](../../PRD.md) |
+| 단계 진행바·남은 시간 | `components/debate/debate-view.tsx` | [F-14](../../PRD.md) |
+| 참고 자료 뷰어(Markdown), 어시스턴트 | `components/debate/side-panels.tsx`, `markdown.tsx` | [F-15, F-16](../../PRD.md) |
+| 기획안 작성(디바운스 자동 저장)·제출 | `components/debate/proposal-editor.tsx`, `saver.ts` | [F-17](../../PRD.md) |
+| 디브리핑·설문 | `components/debate/debrief-screen.tsx` | [F-18](../../PRD.md) |
+
+기능별 검증 테스트와 상태는 [`docs/features.md`](../../docs/features.md)에 있다.
+
+## 화면 경로
+
+| 경로 | 화면 |
+|---|---|
+| `/` | 안내(mock에서는 데모 링크) |
+| `/s/[token]` | 지원자: 입장 → 동의 → 토론방 → 디브리핑 |
+| `/admin/signup`, `/admin/login` | 담당자 가입·로그인 |
+| `/admin/positions`, `/admin/positions/new`, `/admin/positions/[id]` | 채용 건 목록·생성·지원자 목록 |
+| `/admin/sessions/[id]/report`, `/admin/sessions/[id]/record` | 리포트, 전체 기록 |
+| `/admin/sample-report`, `/admin/sample-report/record` | 샘플 리포트와 기록 |
+| `/api/health` | compose 헬스 체크 |
+
+## 실행
+
+저장소 루트에서 실행한다.
 
 ```
-pnpm install
-pnpm dev                      # http://localhost:3000, api는 NEXT_PUBLIC_API_URL
-NEXT_PUBLIC_MOCK=1 pnpm dev   # mocks/의 계약 예시로 동작
-pnpm test && pnpm lint
+pnpm --dir apps/web install --frozen-lockfile        # 처음 한 번
+pnpm --dir apps/web dev                              # http://localhost:3000 (api는 NEXT_PUBLIC_API_URL)
+NEXT_PUBLIC_MOCK=1 pnpm --dir apps/web dev           # api 없이 mocks/의 계약 예시로 동작
+make up                                              # 전체 스택(컨테이너 web 포함)
 ```
+
+mock 모드의 데이터 구성은 `mocks/README.md`에 있다. `?data=worst`를 주소에 붙이면 최악 데이터로 화면을 본다.
+
+## 구조
 
 - 토큰: `app/globals.css`의 `@theme`(색·타이포·간격·모서리)
-- 공용 컴포넌트: `components/ui/`(base-ui 프리미티브 + cva). props는 고정, 내부 모양은 web-polish가 다듬는다
+- 공용 컴포넌트: `components/ui/`(base-ui 프리미티브 + cva). props는 고정, 내부 모양은 디자인 다듬기에서 바꾼다
+- API·WebSocket 클라이언트: `lib/api.ts`, `lib/ws.ts`(mock 분기 포함)
 - 라이브러리 선택은 `emilkowalski/skills`의 pick-ui-library 기준: 프리미티브 base-ui, 클래스 clsx, 변형 cva
+
+## 테스트
+
+| 종류 | 도구 | 실행 | 필요한 것 |
+|---|---|---|---|
+| 단위·컴포넌트 | vitest | `pnpm --dir apps/web test` 또는 `make test` | 없음 |
+| 단계별 화면 | Playwright | `make e2e-stack-up` → `make e2e-stack-seed` → `make e2e-stages [STAGE=…]` → `make e2e-stack-down` | 도커 스택(별도 compose 프로젝트, web 3100), `infra/.env.e2e` |
+| 린트 | eslint + prettier | `make lint` | 없음 |
+
+단계별 화면 테스트는 내부 테스트 API로 단계 시드 세션을 만들어 실제 화면을 조작하고 스크린샷을 `tests/e2e/records/stages/`에 남긴다. 스택 준비는 [`docs/guides/testing.md`](../../docs/guides/testing.md)를 따른다.
+
+<!-- gen:tests -->
+> 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
+
+**단위·컴포넌트 테스트(vitest, `pnpm test`)**: 테스트 제목 54개(정적 파싱)
+
+<details><summary><code>app/api/health/route.test.ts</code> (1)</summary>
+
+- GET /api/health returns ok
+
+</details>
+
+<details><summary><code>components/admin/auth-form.test.tsx</code> (1)</summary>
+
+- 가입 화면은 회사 이름·이메일·비밀번호를 받고 로그인 화면은 회사 이름이 없다
+
+</details>
+
+<details><summary><code>components/admin/candidates.test.tsx</code> (2)</summary>
+
+- 지원자 목록: 묶음 5종, 수준 칩, 근거 약함, 출처, 실패 안내, 삭제 예정일
+- 링크 재발급은 시작 전·만료 행, 재응시 초대는 실패·취소 행에서만
+
+</details>
+
+<details><summary><code>components/admin/format.test.ts</code> (2)</summary>
+
+- evaluate_failed는 판단 보류 문구, 나머지 사유는 기존 문구
+- 기록 요약 끝의 outcome 토큰을 표시 글자로 바꾼다
+
+</details>
+
+<details><summary><code>components/admin/position-form.test.tsx</code> (2)</summary>
+
+- 생성 화면은 이름·세션 길이만 받고 요소는 안내로만 보인다
+- mock 생성은 elements를 거부하고 세션 길이 60·15만 받는다
+
+</details>
+
+<details><summary><code>components/admin/report-view.test.tsx</code> (6)</summary>
+
+- 샘플 리포트 픽스처: 5요소·19차원, 사유 5종, 미발생 카드 1장, 조정 1개, 확신도 3종, 근거 4종
+- 샘플 리포트 화면: 사유 문장 5종, 미발생 카드, 담당자 조정 나란히, 조정·검토 UI 없음
+- 리포트 draft 렌더: 안내·요약·타임라인·차원·근거·사실·기획안·AI 활용
+- 차원 조정은 메모 필수, 요소 수준 재계산, 검토 완료 → 확정 중 → final → 메모 추가
+- 전체 기록: 근거 앵커 줄 하이라이트, 오피스 시각, 단계·결과 한국어
+- 사실 지표에 제출 때 빈 칸과 빈칸 경고 확인이 나오고, 칸 결과는 outcome으로 보인다
+
+</details>
+
+<details><summary><code>components/admin/review.pending.test.ts</code> (1)</summary>
+
+- 리포트 404 not_found는 만드는 중으로 보고 5초마다 다시 읽는다
+
+</details>
+
+<details><summary><code>components/debate/composer.test.tsx</code> (1)</summary>
+
+- 글자가 있는 동안 5초마다 start를 갱신하고, 비우면 stop을 보낸다
+
+</details>
+
+<details><summary><code>components/debate/flow.test.ts</code> (4)</summary>
+
+- 15분 데모: 표시 이름이 토론방에 쓰이고, 정하기·자료·기획안·제출·디브리핑이 계약대로 이어진다
+- 링크 상태: 만료·취소 410, 모르는 토큰 404, 진행 중 스냅샷은 이어하기
+- WS error 프레임: ack 못 받은 내 메시지는 실패로 표시하고, session_ending이면 입력을 잠근다
+- WS error 프레임이 seq를 쓰면 마지막 seq를 올려 다음 프레임이 재조회 없이 적용된다
+
+</details>
+
+<details><summary><code>components/debate/markdown.test.tsx</code> (1)</summary>
+
+- 자료 Markdown을 제목·목록·표·강조로 그리고 원문 HTML은 버린다
+
+</details>
+
+<details><summary><code>components/debate/proposal-editor.dom.test.tsx</code> (2)</summary>
+
+- 제출 요청 중에는 입력이 잠기고, 실패해 끝나면 풀린다
+- 확인 전·요청 중 제출 버튼이 비활성이고 onSubmit은 한 번만 불리며, 취소하면 잠금이 풀린다
+
+</details>
+
+<details><summary><code>components/debate/proposal-editor.test.ts</code> (6)</summary>
+
+- 저장 표시는 실제 시계 없이 상대 표기만 쓴다
+- 공백뿐인 칸만 빈 칸으로 세고, 제출 본문은 경고를 거쳤을 때만 blank_warning_shown을 담는다
+- 빈 칸이 없으면 경고 없이 확인 창 뒤 제출한다
+- 빈 칸이 있으면 경고 → 확인 창 → blank_warning_shown 제출
+- [돌아가서 쓰기]나 확인 창 취소면 submit을 부르지 않는다
+- 저장(409 포함) 뒤 돌려받은 최신 초안으로 빈 칸을 다시 검사한다
+
+</details>
+
+<details><summary><code>components/debate/saver.test.ts</code> (1)</summary>
+
+- flush는 진행 중인 저장이 끝날 때까지 기다리고, 실패하면 false라 제출이 멈춘다
+
+</details>
+
+<details><summary><code>components/debate/wording.test.ts</code> (3)</summary>
+
+- 디브리핑 전 지원자 화면·mock에 페르소나 유형 이름이 없다
+- 옛 흐름 흔적(보드·분업·파트 문서·팀장·개인 알림·slot.filled)이 지원자 화면·mock에 없다
+- 지원자 화면 문구에 내부 용어(칸·합의 패널·확정)가 없고 지원자 말을 쓴다
+
+</details>
+
+<details><summary><code>components/ui/contrast.test.ts</code> (3)</summary>
+
+- 계산식 확인: 흰색·검정 21:1, 다크 accent(#2997FF) 위 흰 글자는 AA 미달
+- 인쇄 블록은 다크 테마에서도 라이트 글자색(ink)을 흰 종이 위에 둔다
+- 시스템 다크(:root:not(.light))와 강제 다크(:root.dark) 값이 같다
+
+</details>
+
+<details><summary><code>components/ui/ui-dom.test.tsx</code> (2)</summary>
+
+- Avatar: 이미지 onError가 나면 이미지를 걷어내고 이니셜만 남긴다
+- Tabs: 방향키로 포커스를 옮기고 선택하면 연결된 패널이 보인다
+
+</details>
+
+<details><summary><code>components/ui/ui.test.tsx</code> (7)</summary>
+
+- Avatar: 이미지가 없으면 이름 첫 글자 이니셜을 자리 색으로 그린다
+- Avatar: 이미지는 원형 크롭·cover로 겹치고, 실패 대비 이니셜이 아래에 깔린다
+- Avatar: 기존 label·tone props와 AvatarGroup이 그대로 동작한다
+- LevelChip: 수준·목록용·기록 없음 사유·담당자 조정을 글자로 표기한다
+- LevelChip: 타입이 수준 1~5만 받고, 기록 없음이면 사유를 요구한다
+- ConfidenceTag: 확신도를 아이콘+글자로, 낮음은 원문 확인 권장 문구를 붙인다
+- Tabs: segmented 모양에서도 같은 items props로 탭과 배지를 그린다
+
+</details>
+
+<details><summary><code>lib/api.test.ts</code> (5)</summary>
+
+- 단위 테스트는 실 api 경로를 탄다(NEXT_PUBLIC_MOCK 꺼짐)
+- GET /s/{token}·/state: 계약 응답을 파싱하고 세션 토큰을 Authorization으로 보낸다
+- POST 칸 확정: 계약 요청 본문을 JSON으로 보낸다
+- 오류 응답 {error:{code,message}}는 ApiError(status, code)로 바뀐다
+- avatar_url의 /assets 경로는 api 주소를 붙이고 다른 주소는 그대로 둔다
+
+</details>
+
+<details><summary><code>lib/resolution.test.ts</code> (2)</summary>
+
+- outcome이 표시를 정한다
+- outcome이 없으면 timeout만 시간 초과이고 나머지는 라벨이 없다
+
+</details>
+
+<details><summary><code>lib/ws.test.ts</code> (2)</summary>
+
+- 재연결: 3초 뒤 다시 붙어 onOpen(reconnected)을 알리고, 4401은 재발급, 4000은 멈춘다
+- seq 공백이면 적용을 멈추고 /state 스냅샷으로 칸·메시지·입력 중을 복원한 뒤 이어서 적용한다
+
+</details>
+
+**단계별 화면 테스트(Playwright, `make e2e-stages`)**: 테스트 제목 9개(정적 파싱)
+
+<details><summary><code>e2e/admin-capture.spec.ts</code> (0)</summary>
+
+
+</details>
+
+<details><summary><code>e2e/stages/admin-report.spec.ts</code> (1)</summary>
+
+- 리포트 → 차원 조정 → 검토 완료 → 재계산
+
+</details>
+
+<details><summary><code>e2e/stages/debrief.spec.ts</code> (1)</summary>
+
+- 디브리핑: 첫 문장·내 발언·설문
+
+</details>
+
+<details><summary><code>e2e/stages/entry.spec.ts</code> (1)</summary>
+
+- 입장 → 동의 → 대기(참여자) → 시작
+
+</details>
+
+<details><summary><code>e2e/stages/keyword.spec.ts</code> (1)</summary>
+
+- 후보 확정 → 결정 사항 → 문제 상황 단계 → 자료 열림
+
+</details>
+
+<details><summary><code>e2e/stages/problem.spec.ts</code> (1)</summary>
+
+- 수용 카드 발언 → 시간 초과 채우기 → 입력 닫힘
+
+</details>
+
+<details><summary><code>e2e/stages/proposal.spec.ts</code> (1)</summary>
+
+- 디바운스 저장 → 제출 확인 → 잠김 → 디브리핑
+
+</details>
+
+<details><summary><code>e2e/stages/solution.spec.ts</code> (3)</summary>
+
+- AI 합의 채우기: 공지 메시지 → 결정 사항 칸 확정 → 기획안 단계
+- silent: 침묵하면 idle 뒤 비판형 초대 메시지가 1건
+- solo_confirm: 반대가 남아도 지원자가 혼자 확정하면 칸이 확정된다
+
+</details>
+<!-- /gen:tests -->
+
+## 관련 문서
+
+- [`docs/services/web.md`](../../docs/services/web.md): 화면 구성과 상태 관리
+- [`docs/architecture/design-system.md`](../../docs/architecture/design-system.md): 토큰·컴포넌트
+- [`docs/product/user-flows.md`](../../docs/product/user-flows.md): 화면 흐름
+- [`docs/contracts/ws.md`](../../docs/contracts/ws.md): WebSocket 계약
+- [`docs/guides/testing.md`](../../docs/guides/testing.md): 테스트 종류와 실행법

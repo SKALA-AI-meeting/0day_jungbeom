@@ -1,24 +1,106 @@
 # rag-mcp
 
-키워드별 참고 자료(`scenarios/missions/<id>/keywords.yaml`의 `materials`, 본문 `materials/<keyword>/*.md`) 검색·조회·색인 MCP 서버. Streamable HTTP `:9102/mcp`, 헬스 `/health`. 도구는 모두 `async def`.
-계약: `docs/contracts/mcp.md` "rag-mcp", 설계: `docs/services/mcp.md`.
+키워드별 참고 자료를 검색·조회·색인하는 MCP 서버. 키워드가 확정되기 전에는 자료가 열리지 않는다.
 
-## 도구
+## 한눈에
 
-| 도구 | 하는 일 |
+| 항목 | 내용 |
 |---|---|
-| search_materials | 내부 `GET /internal/sessions/{id}/materials`의 잠금·확정 키워드·catalog_version으로 거른 `material_chunks`를 코사인 유사도 상위 top_k로. 키워드 확정 전이면 `not_released`, 해당 버전 색인이 없으면 `upstream_unavailable` |
-| get_material | 열린 자료 전문. 내부 `GET /internal/sessions/{id}/materials/{material_id}`(채용 건 catalog_version의 `materials` 원문)를 그대로 전달. 열리지 않은 자료는 `not_released` |
-| reindex_materials | `{mission_id?}`(기본 debate). 미션 폴더 해시(catalog_version)로 400자 청크를 키워드 키와 함께 색인. 같은 버전은 덮어쓰고 다른 버전 청크는 유지. `{indexed, model, dim, catalog_version}`. 에이전트에 노출하지 않음 |
+| 역할 | 확정 키워드의 자료 청크 검색(search_materials), 열린 자료 전문 조회(get_material), 미션 자료 색인(reindex_materials) |
+| 사용 기술 | Python 3.12, fastmcp(Streamable HTTP), asyncpg + pgvector, sentence-transformers(BGE-M3), uvicorn |
+| 포트 | 9102 (`/mcp`, 헬스 `/health`) |
+| 필요한 env | `DATABASE_URL` `API_INTERNAL_URL` `INTERNAL_TOKEN` `SCENARIOS_DIR` `EMBEDDING_MODEL` `HF_HOME`(컨테이너 모델 캐시) |
+| 의존 서비스 | postgres(`material_chunks`, pgvector), api 내부 앱(잠금·확정 키워드·catalog_version 판단, 자료 원문) |
 
-원문 `materials` 행은 `scripts/seed.py`가 같은 catalog_version으로 시드한다. api 오류 매핑·재시도는 `rag_mcp/client.py` 표.
+호출자: 페르소나·어시스턴트(`search_materials`·`get_material`). `reindex_materials`는 에이전트에 노출하지 않고 `scripts/seed.py`가 부른다.
+
+## 구현된 기능
+
+| 기능 | 코드 | PRD |
+|---|---|---|
+| 확정 키워드 자료만 검색(코사인 유사도 상위 top_k), 확정 전 `not_released` | `rag_mcp/tools.py`, `store.py` | [F-15, F-16](../../PRD.md) |
+| 열린 자료 전문 조회(api의 catalog_version 원문) | `rag_mcp/tools.py` | [F-15](../../PRD.md) |
+| 미션 폴더 해시(catalog_version)별 400자 청크 색인, 같은 버전은 덮어쓰고 다른 버전은 유지 | `rag_mcp/materials.py`, `store.py` | [F-06](../../PRD.md) 일부 |
+| BGE-M3 임베딩(시작 때 1회 로드) | `rag_mcp/embedder.py` | - |
+
+자료 원문(`materials` 행)은 `scripts/seed.py`가 같은 catalog_version으로 넣고, rag-mcp는 `material_chunks`만 쓴다. api 오류 매핑·재시도는 `rag_mcp/client.py`. 기능별 검증 테스트는 [`docs/features.md`](../../docs/features.md)에 있다.
 
 ## 실행
 
+저장소 루트에서 실행한다. 먼저 `make infra-up`으로 postgres를 띄운다(컨테이너로 쓰려면 같은 명령이 rag-mcp도 올린다).
+
 ```
-uv run python -m rag_mcp          # 시작 시 BGE-M3를 1회 로드(첫 실행은 약 2.3GB 다운로드, HF_HOME 캐시)
-uv run pytest                     # Fake 임베딩 + 임시 DB(rag_test_*). make infra-up의 postgres 필요(없으면 DB 테스트 건너뜀)
-uv run pytest -m live             # 실제 BGE-M3(CPU)
+make infra-up                                                   # postgres 5432, rabbitmq 5672, rag-mcp 9102
+uv run --directory services/rag-mcp python -m rag_mcp           # 시작 시 BGE-M3 1회 로드(첫 실행은 약 2.3GB 다운로드, HF_HOME 캐시)
+make seed                                                       # 자료 원문 시드 후 reindex_materials로 색인
 ```
 
-환경: `DATABASE_URL`, `API_INTERNAL_URL`, `INTERNAL_TOKEN`, `SCENARIOS_DIR`(기본 /scenarios, 없으면 저장소 scenarios/), `EMBEDDING_MODEL`(기본 BAAI/bge-m3), `HF_HOME`(컨테이너 기본 /models), 테스트용 `TEST_DATABASE_URL`.
+## MCP 도구
+
+<!-- gen:mcp-tools -->
+> 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
+
+| 도구 | 하는 일 | 인자 |
+|---|---|---|
+| `search_materials` | 확정된 키워드의 참고 자료에서 질문과 가까운 문단을 찾는다. | `query`, `session_id`, `top_k` |
+| `get_material` | 열린 참고 자료 하나의 전문을 읽는다. | `material_id`, `session_id` |
+| `reindex_materials` | 미션의 현재 카탈로그 버전으로 자료를 400자 청크로 나눠 다시 색인한다(관리용). | `mission_id` |
+<!-- /gen:mcp-tools -->
+
+| 도구 | 오류 동작 |
+|---|---|
+| search_materials | api 내부 `GET /internal/sessions/{id}/materials`의 잠금·확정 키워드·catalog_version으로 거른 `material_chunks`만 검색. 키워드 확정 전이면 `not_released`, 해당 버전 색인이 없으면 `upstream_unavailable` |
+| get_material | 열리지 않은 자료는 `not_released` |
+| reindex_materials | `{mission_id?}`(기본 debate). `{indexed, model, dim, catalog_version}` 반환. 에이전트에 노출하지 않음 |
+
+도구 계약은 [`docs/contracts/mcp.md`](../../docs/contracts/mcp.md)에 있다.
+
+## 테스트
+
+pytest 단위 테스트다. 기본은 가짜 임베딩과 임시 DB(`rag_test_*`)를 쓰며 `make infra-up`의 postgres가 필요하다(없으면 DB 테스트를 건너뜀). `live` 표시는 실제 BGE-M3(CPU)를 로드하는 테스트로 `make test`에서 빠진다. 테스트용 DB 주소는 `TEST_DATABASE_URL`.
+
+```
+uv run --directory services/rag-mcp pytest -q               # 이 서비스만
+uv run --directory services/rag-mcp pytest -q -m live       # 실제 BGE-M3
+make test                                                   # 전체
+```
+
+<!-- gen:tests -->
+> 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
+
+총 11개(live 1개 포함, `make test`는 live를 뺀다).
+
+<details><summary><code>tests/test_health.py</code> (1)</summary>
+
+- `test_health`
+
+</details>
+
+<details><summary><code>tests/test_live.py</code> (1)</summary>
+
+- `test_bge_m3_embeds_1024_normalized_and_ranks_related_text_higher` (live)
+
+</details>
+
+<details><summary><code>tests/test_tools.py</code> (9)</summary>
+
+- `test_tools_listed_async_with_descriptions`
+- `test_search_returns_confirmed_keyword_chunks_only`
+- `test_blocked_before_keyword_confirmed`
+- `test_get_material_returns_api_versioned_source`
+- `test_search_without_index_for_version_is_upstream_unavailable`
+- `test_reindex_idempotent_and_keeps_previous_version`
+- `test_error_codes_mapped_and_4xx_not_retried`
+- `test_invalid_input_returned_as_error_result`
+- `test_connection_failure_retried_once_then_upstream_unavailable`
+
+</details>
+<!-- /gen:tests -->
+
+## 관련 문서
+
+- [`docs/services/mcp.md`](../../docs/services/mcp.md): MCP 서버 3개의 구성
+- [`docs/contracts/mcp.md`](../../docs/contracts/mcp.md): 도구 계약
+- [`docs/architecture/data-model.md`](../../docs/architecture/data-model.md): materials·material_chunks
+- [`docs/guides/scenario-changes.md`](../../docs/guides/scenario-changes.md): 자료를 바꾼 뒤 시드·재색인
+- [`docs/guides/configuration.md`](../../docs/guides/configuration.md): env
