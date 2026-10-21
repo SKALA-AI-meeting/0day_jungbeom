@@ -216,6 +216,17 @@ async def test_numeric_msg_refs_are_fixed_when_session_has_m_prefixed_id():
     assert rows[row["dimension_id"]]["evidence_refs"] == [f"msg:{candidate}"]
 
 
+async def test_fixed_numeric_ref_to_ai_message_does_not_count_as_evidence():
+    ai = next(m["id"] for m in RECORD["messages"] if m["sender"] == "p1")
+    output = copy.deepcopy(element_outputs()["listening"])
+    row = output["dimensions"][0]
+    row.update(level=3, no_record_reason=None, confidence="medium")
+    row["evidence_refs"] = [f"msg:{ai[2:]}"]  # 고쳐져도 AI 메시지라 근거 단위가 아님
+    rows, _, llm, _ = await run("listening", output, output)
+    assert len(llm.calls) == 2  # 검증 실패 → 요소 재요청 1회
+    assert rows[row["dimension_id"]]["no_record_reason"] == "evaluate_failed"
+
+
 @pytest.mark.live
 async def test_live_one_element_has_no_evaluate_failed():
     import os
