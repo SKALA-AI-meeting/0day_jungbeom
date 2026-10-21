@@ -61,6 +61,11 @@ test("샘플 리포트 화면: 사유 문장 5종, 미발생 카드, 담당자 �
   const html = renderToStaticMarkup(<ReportView report={sample} recordHref={href} sample />);
   for (const text of Object.values(NO_RECORD_TEXT)) expect(html).toContain(text);
   expect(html).toContain("이벤트 미발생");
+  // 요약표 표시 설명, 판단 보류 개수, 판단 보류 차원 행의 원문 기록 링크
+  expect(html).toContain("확신도 low로 판단한 차원 수");
+  // 픽스처의 판단 보류 차원은 flexibility 하나뿐이다
+  expect(html.match(/판단 보류 \d/g)).toEqual(["판단 보류 1"]);
+  expect(html).toMatch(/href="\/r"[^>]*>원문 기록/);
   expect(html).toContain("담당자 조정됨");
   expect(html).toContain("메모 · 09:06 발언 앞뒤에서");
   expect(html).not.toContain("검토 완료");

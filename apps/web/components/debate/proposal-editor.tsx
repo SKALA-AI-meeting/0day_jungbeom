@@ -94,6 +94,8 @@ export function ProposalEditor({
   const blankAsk = useAsk();
   const confirmAsk = useAsk();
   const [busy, setBusy] = useState(false);
+  // "제출 중…" 표시는 확인 창에서 제출을 누른 뒤 submit 요청이 진행되는 동안만(busy는 입력 잠금용)
+  const [submitting, setSubmitting] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     // 새로 저장되면 savedAt이 now보다 늦어 "방금"으로 보인다(Math.max), 이후 20초마다 경과를 다시 센다
@@ -123,7 +125,7 @@ export function ProposalEditor({
         <span className="text-footnote text-muted tabular-nums" aria-live="polite">
           {locked
             ? "제출했어요"
-            : busy
+            : submitting
               ? "제출 중…"
               : saving
                 ? "저장 중…"
@@ -137,8 +139,8 @@ export function ProposalEditor({
         <Button
           className="ml-auto"
           size="sm"
-          disabled={!canSubmit || locked}
-          loading={busy}
+          disabled={!canSubmit || locked || busy}
+          loading={submitting}
           onClick={async () => {
             setBusy(true);
             try {
@@ -146,7 +148,14 @@ export function ProposalEditor({
                 prepare: prepareSubmit,
                 askBlank: blankAsk.ask,
                 askConfirm: confirmAsk.ask,
-                submit: onSubmit,
+                submit: async (blankWarningShown) => {
+                  setSubmitting(true);
+                  try {
+                    await onSubmit(blankWarningShown);
+                  } finally {
+                    setSubmitting(false);
+                  }
+                },
               });
             } finally {
               setBusy(false);

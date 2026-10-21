@@ -154,7 +154,7 @@ def build_messages(
     if notice:
         blocks.append(
             f'[정해진 안내]\n이번 발언 맨 앞에 코드가 "{notice}"를 붙인다. '
-            "이 문장을 다시 쓰지 말고 이어질 한두 문장만 쓴다."
+            "이 문장을 다시 쓰지 말고 이어질 한두 문장만 쓴다. 이전에 안내했다고 말하지 않는다."
         )
     if card_text:
         blocks.append(f"[카드 지시]\n{card_text}")

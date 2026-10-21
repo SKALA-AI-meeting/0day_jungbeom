@@ -142,6 +142,13 @@ class Server:
             loc.click(timeout=5000) if cmd == "click" else loc.fill(a[1], timeout=5000)
             self.settle()
             return "ok" + (f" (대화상자 {len(self.dialogs)}건)" if self.dialogs else "")
+        if cmd == "select":
+            loc = self.locate(a[0], ["fill"])
+            if loc is None:
+                return f"못 찾음: {a[0]}\n{self.candidates()}"
+            loc.select_option(label=a[1], timeout=5000)
+            self.settle()
+            return "ok"
         if cmd == "type":
             p.keyboard.type(a[0])
         elif cmd == "press":
@@ -204,6 +211,7 @@ def main() -> None:
             "text",
             "click",
             "fill",
+            "select",
             "type",
             "press",
             "goto",

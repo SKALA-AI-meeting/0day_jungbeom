@@ -444,6 +444,15 @@ function DimensionRow({
         <span className="font-medium">{d.name}</span>
         {levelChip(final.level, final.reason, isAdjusted(d))}
         {d.confidence && <ConfidenceTag confidence={d.confidence} />}
+        {final.reason === "evaluate_failed" && (
+          <Link
+            href={ctx.recordHref({ type: "", id: "", t_min: 0 }).split("#")[0]}
+            className="no-print inline-flex items-center gap-1 text-xs text-accent underline-offset-4 hover:underline"
+          >
+            원문 기록
+            <ExternalLink aria-hidden className="size-3" />
+          </Link>
+        )}
       </summary>
       <div className="mt-3 flex flex-col gap-4 pl-5">
         <p className="text-sm text-muted">{DIMENSION_DEFINITION[d.dimension_id] ?? ""}</p>
@@ -661,6 +670,8 @@ export function ReportView({
   const elementAdjusted = (el: string) => dims.some((d) => d.element === el && isAdjusted(d));
   const lowCount = (el: string) =>
     dims.filter((d) => d.element === el && d.confidence === "low").length;
+  const heldCount = (el: string) =>
+    dims.filter((d) => d.element === el && finalOf(d).reason === "evaluate_failed").length;
   const setEdit = (id: string, edit: Edit | null) =>
     setEdits((prev) => {
       const next = { ...prev };
@@ -776,7 +787,16 @@ export function ReportView({
                   <td className="py-3 text-muted tabular-nums whitespace-nowrap">
                     {noRecord}/{el.dimension_count}
                     {lowCount(el.element) > 0 && (
-                      <span className="text-warning"> · 근거 약함 {lowCount(el.element)}</span>
+                      <span className="text-warning" title="확신도 low로 판단한 차원 수">
+                        {" "}
+                        · 근거 약함 {lowCount(el.element)}
+                      </span>
+                    )}
+                    {heldCount(el.element) > 0 && (
+                      <span title="AI 평가가 실패해 판단을 보류한 차원 수">
+                        {" "}
+                        · 판단 보류 {heldCount(el.element)}
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -784,6 +804,10 @@ export function ReportView({
             })}
           </tbody>
         </table>
+        <p className="mt-2 text-xs text-muted">
+          근거 약함은 확신도 low로 판단한 차원 수, 판단 보류는 AI 평가가 실패해 수준을 정하지 못한
+          차원 수예요. 둘 다 원문 기록을 확인해 주세요.
+        </p>
       </Section>
 
       {/* ① 토론 흐름 */}
