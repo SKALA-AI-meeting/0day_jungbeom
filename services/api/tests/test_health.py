@@ -2,14 +2,11 @@
 
 import httpx
 from app.main import create_internal_app, create_public_app
-from app.services.context import build_context
 
 
 async def test_public_and_internal_health():
-    ctx = build_context()
-    for app in (create_public_app(ctx), create_internal_app(ctx)):
+    for app in (create_public_app(None), create_internal_app(None)):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/health")
         assert response.json() == {"status": "ok"}
-    await ctx.engine.dispose()

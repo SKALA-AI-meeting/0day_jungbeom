@@ -15,7 +15,7 @@ from typing import Any
 
 import yaml
 
-DEFAULT_MISSION = "planning"
+DEFAULT_MISSION = "debate"
 
 # 같은 at_min에서의 실행 순서: 흐름 카드 → 요소 카드 → 붙는 카드(collab_disagree) → 결 메시지
 _RANK_FLOW, _RANK_ELEMENT, _RANK_ATTACHED, _RANK_TEXTURE = range(4)

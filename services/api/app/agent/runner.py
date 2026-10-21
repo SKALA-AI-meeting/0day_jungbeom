@@ -1,8 +1,9 @@
-"""AgentRunner 경계(docs/agent/design.md). 자극 하나에 그래프를 한 번 실행한다.
+"""AgentRunner 경계(docs/agent/design.md "AgentRunner 인터페이스와 SessionPorts"). G-F 동결.
 
-api는 이 Protocol만 알고, 실제 LangGraph 구현(agent-session 트랙)이 같은 시그니처로 갈아 끼운다.
-같은 run_id의 재실행은 메시지(run_id, seq) 등 멱등 키로 중복이 생기지 않아야 한다. FakeAgentRunner는
-LLM 없이 고정 문장을 post_message 하는 테스트·개발용 구현이다.
+api 메일박스는 이 Protocol만 알고, agent 트랙의 LangGraph 토론 그래프가 같은 시그니처로 갈아 끼운다.
+자극은 4종(contracts.md "그래프 자극")이고 `timeout`·`room_quiet`는 없다. 같은 run_id 재실행은
+메시지 (session_id, run_id, seq) 등 멱등 키로 중복이 생기지 않아야 한다.
+FakeAgentRunner는 LLM 없이 자리별 고정 문장을 post_message 하는 개발·테스트용 구현이다.
 """
 
 import uuid
@@ -10,41 +11,51 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
-StimulusType = Literal["message", "event", "division", "end"]
+from app.ports import SessionPorts
+
+StimulusType = Literal["message", "phase_started", "idle", "card_due"]
+Phase = Literal["keyword", "problem", "solution", "proposal"]
+Seat = Literal["p1", "p2", "p3"]
+# 메일박스 run 상태: queued → started → finished | deferred | skipped | failed (agent_runs.status)
+RunStatus = Literal["finished", "deferred", "skipped", "failed"]
 
 
 @dataclass(frozen=True)
 class Stimulus:
-    """message: message_id. event: 같은 due_at 행 묶음(card order)의 event_ids. division: 주담당이
-    보드로 분업을 확정했거나 재배정한 task_events. end: 없음."""
+    """contracts.md `Stimulus = {type, phase, generation, message_id?, card_id?}`.
+
+    generation: message 자극은 그 메시지 저장 트랜잭션이 올린 값(enqueue 때 다시 읽지 않음),
+    그 밖의 자극은 enqueue 시점의 sessions.generation. message 자극의 phase는 messages.phase.
+    run_id는 자극에 넣지 않고 api 메일박스가 발급해 run()에 따로 준다.
+    """
 
     type: StimulusType
+    phase: Phase
+    generation: int
     message_id: uuid.UUID | None = None
-    event_ids: tuple[uuid.UUID, ...] = ()
-    task_event_ids: tuple[uuid.UUID, ...] = ()
+    card_id: str | None = None
 
     @property
-    def ref_ids(self) -> list[uuid.UUID]:
-        """agent_runs.ref_ids에 남기는 값."""
-        if self.message_id:
-            return [self.message_id]
-        return list(self.event_ids or self.task_event_ids)
-
-
-# 문서를 보내는 카드에서 send_document가 재시도 뒤에도 실패했을 때 RunResult.error의 접두어.
-# 스케줄러가 이 값을 보고 그 이벤트 행에 document_missing=true를 남긴다(docs/common/data-model.md).
-DOCUMENT_MISSING = "document_missing"
+    def ref_id(self) -> str | None:
+        """agent_runs.ref_id에 남기는 값(message면 message_id, card_due면 card_id)."""
+        if self.message_id is not None:
+            return str(self.message_id)
+        return self.card_id
 
 
 @dataclass
 class RunResult:
+    """docs/agent/design.md RunResult + 메일박스 상태(agent-spike 7절).
+
+    decision은 턴 매니저 결정 스키마(contracts.md), usage는 agent_runs.usage
+    {llm_calls, retries, tokens_in, tokens_out, cost_usd, latency_ms, tool_calls}.
+    """
+
     ok: bool = True
+    status: RunStatus = "finished"
     fallback_used: bool = False
     error: str | None = None
-    # 지원자 메시지에 대한 페르소나 응답 자체가 LLM 실패로 고정 문장이 됨(분류 폴백은 제외).
-    # api가 세션의 llm_failures를 센다(연속 3회 → 세션 failed, 정상 응답이면 0)
-    reply_fallback: bool = False
-    # agent_runs.usage로 저장(llm_calls, retries, tokens_in, tokens_out, latency_ms, tool_calls)
+    decision: dict[str, Any] | None = None
     usage: dict[str, Any] = field(default_factory=dict)
 
 
@@ -54,84 +65,86 @@ class AgentRunner(Protocol):
     ) -> RunResult: ...
 
 
-# business-mcp post_message와 같은 인자. 운영에서는 MCP 경유, 테스트·개발에서는 내부 저장을 직접
-# 부른다.
+# debate-mcp post_message와 같은 키워드 인자(session_id, sender, content, run_id, seq,
+# expected_generation?, is_invite?, card_ids?, cited_material_ids?, meta?). 운영은 MCP 경유,
+# 테스트·개발은 내부 저장을 직접 부른다.
 PostMessage = Callable[..., Awaitable[Any]]
-Broadcast = Callable[[uuid.UUID, str, dict[str, Any]], Awaitable[None]]
+PortsFor = Callable[[uuid.UUID], SessionPorts]
 
-FAKE_REPLY = "네, 확인했어요. 이어서 진행할게요."
-FAKE_CARD = "[fake] 카드 실행"
-# 노드별 고정 seq 슬롯(docs/agent/design.md): respond 응답=1, inject 카드=1
-RESPOND_SEQ = 1
-INJECT_SEQ = 1
+# 노드별 고정 seq 슬롯(docs/agent/design.md): 화자1 발언=1, 화자2=2, 합의 채우기 공지=5
+SPEAKER_SEQ = 1
+FAKE_LINES: dict[StimulusType, tuple[Seat, str]] = {
+    "message": ("p1", "[fake] 네, 그 의견 잘 들었어요."),
+    "phase_started": ("p1", "[fake] 이번 단계도 같이 정해 봐요."),
+    "idle": ("p3", "[fake] 지원자님 생각은 어떠세요?"),
+}
 
 
 class FakeAgentRunner:
-    """message → 동료 고정 응답 1건, event → 이벤트마다 시스템 고정 문장 1건, division·end → 응답
-    없음.
+    """message·phase_started → 자리 고정 문장 1건, idle → 비판형 자리 초대 1건.
+
+    card_due는 게시하지 않는다.
     """
 
-    def __init__(
-        self,
-        post_message: PostMessage,
-        broadcast: Broadcast | None = None,
-        reply: str = FAKE_REPLY,
-        reply_channel: str = "team",
-    ) -> None:
+    def __init__(self, post_message: PostMessage, ports_for: PortsFor | None = None) -> None:
         self._post = post_message
-        self._broadcast = broadcast
-        self._reply = reply
-        self._channel = reply_channel
+        self._ports_for = ports_for
         self.calls: list[tuple[uuid.UUID, Stimulus, uuid.UUID]] = []
-
-    async def _progress(self, session_id: uuid.UUID, run_id: uuid.UUID, status: str) -> None:
-        if self._broadcast is not None:
-            payload = {"run_id": str(run_id), "actor": "colleague", "node": "respond"}
-            await self._broadcast(session_id, "agent.progress", {**payload, "status": status})
 
     async def run(self, session_id: uuid.UUID, stimulus: Stimulus, run_id: uuid.UUID) -> RunResult:
         self.calls.append((session_id, stimulus, run_id))
-        if stimulus.type == "message":
-            await self._progress(session_id, run_id, "started")
+        line = FAKE_LINES.get(stimulus.type)
+        decision: dict[str, Any] = {
+            "stimulus": stimulus.type,
+            "generation": stimulus.generation,
+            "speakers": [],
+            "fill": None,
+            "invite": stimulus.type == "idle",
+            "llm_used": False,
+            "dropped_seats": [],
+            "reason": "fake",
+        }
+        if line is None:
+            return RunResult(decision=decision, usage={"llm_calls": 0})
+        seat, content = line
+        purpose = "invite" if stimulus.type == "idle" else "respond"
+        decision["speakers"] = [
+            {"seat": seat, "purpose": purpose, "option_id": None, "card_ids": []}
+        ]
+        ports = self._ports_for(session_id) if self._ports_for else None
+        if ports is not None:
+            ports.send_typing(seat, "start")
+        try:
             await self._post(
                 session_id=session_id,
-                channel=self._channel,
-                sender="colleague",
-                content=self._reply,
+                sender=seat,
+                content=content,
                 run_id=run_id,
-                seq=RESPOND_SEQ,
+                seq=SPEAKER_SEQ,
+                expected_generation=stimulus.generation,
+                is_invite=stimulus.type == "idle",
                 meta={"model": "fake"},
             )
-            await self._progress(session_id, run_id, "finished")
-        elif stimulus.type == "event":
-            # 묶음 안 카드마다 슬롯이 겹치지 않게 카드 순번을 더한다
-            for index, event_id in enumerate(stimulus.event_ids):
-                await self._post(
-                    session_id=session_id,
-                    channel="team",
-                    sender="system",
-                    content=FAKE_CARD,
-                    event_id=event_id,
-                    run_id=run_id,
-                    seq=INJECT_SEQ + index,
-                    meta={"model": "fake"},
-                )
-        return RunResult(ok=True, usage={"llm_calls": 0})
+        finally:
+            if ports is not None:
+                ports.send_typing(seat, "stop")
+        return RunResult(decision=decision, usage={"llm_calls": 0})
 
 
 @dataclass
 class AssistantResult:
-    """어시스턴트 응답. cited_docs는 인용한 회사 문서 id(공개된 것만)."""
+    """어시스턴트 응답(contracts.md assistant_response의 content·cited_material_ids·tool_calls)."""
 
     content: str
-    cited_docs: list[str] = field(default_factory=list)
+    cited_material_ids: list[str] = field(default_factory=list)
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)
     usage: dict[str, Any] = field(default_factory=dict)
 
 
 class AssistantRunner(Protocol):
-    """POST /sessions/{id}/assistant의 훅. agent-assistant 트랙이 같은 시그니처로 갈아 끼운다.
+    """POST /sessions/{id}/assistant의 훅. 메일박스 밖에서 실행한다.
 
-    api가 요청·응답 메시지와 assistant_calls를 기록하고 60회 한도를 막으므로, 구현은 답만 만든다.
+    api가 요청·응답 메시지와 assistant_calls를 기록하고 60회 한도를 막으므로 구현은 답만 만든다.
     """
 
     async def answer(
@@ -139,13 +152,11 @@ class AssistantRunner(Protocol):
     ) -> AssistantResult: ...
 
 
-FAKE_ASSISTANT = "[fake] 어시스턴트 응답입니다. 공개된 회사 문서를 참고해 답합니다."
+FAKE_ASSISTANT = "[fake] 어시스턴트 응답입니다. 열린 자료를 참고해 답합니다."
 
 
 class FakeAssistantRunner:
-    """LLM 없이 고정 문장을 돌려주는 개발·테스트용 구현."""
-
     async def answer(
         self, session_id: uuid.UUID, prompt: str, call_id: uuid.UUID
     ) -> AssistantResult:
-        return AssistantResult(content=FAKE_ASSISTANT, cited_docs=[])
+        return AssistantResult(content=FAKE_ASSISTANT)

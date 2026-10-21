@@ -1,6 +1,6 @@
 """LLM 호출 공통부: 재시도(2회, 1·3초) → LLMUnavailable, usage 집계, LangSmith 태그.
 
-docs/common/harness.md Recovery·Observability 행. 모델은 gpt-4o-mini만 쓰고 대체 모델은 없다.
+docs/common/harness.md Recovery·Observability 행. 모델은 역할별(roles.py)이고 대체 모델은 없다.
 재시도까지 실패하면 LLMUnavailable을 올리고, 호출한 노드가 규칙 폴백(고정 문장)으로 간다.
 """
 
@@ -9,7 +9,7 @@ import logging
 import time
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Protocol
 
 from langchain_core.messages import AIMessage, BaseMessage
 
@@ -61,6 +61,24 @@ class Trace:
     def config(self) -> dict[str, Any]:
         meta = {"run_id": self.run_id, "session_id": self.session_id, "node": self.node}
         return {"run_name": self.node, "tags": [f"run_id:{self.run_id}"], "metadata": meta}
+
+
+class JsonLLM(Protocol):
+    """JSON 스키마 구조화 출력 호출(agent-spike 7절). 의도 분류 등 결정적 판정 역할이 쓴다.
+
+    구현은 호출마다 {role, model, latency_ms, tokens_in, tokens_out, cost_usd}를 기록한다.
+    """
+
+    async def complete_json(
+        self,
+        role: str,
+        system: str,
+        user: str,
+        schema: dict[str, Any],
+        *,
+        timeout: float,
+        temperature: float,
+    ) -> dict[str, Any]: ...
 
 
 class BaseLLM:

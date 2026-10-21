@@ -1,79 +1,44 @@
-"""완료 기준: infra/db/schema.sql이 docs/common/data-model.md의 테이블·핵심 컬럼을 갖고 임시 DB에
-적용된다."""
+"""완료 기준(G-F): 토론형 schema.sql이 data-model.md 테이블을 갖고 임시 DB에 적용되며,
+app/models가 같은 테이블·컬럼을 매핑한다."""
 
+from app.models import Base
 from sqlalchemy import text
 
 TABLES = {
-    "companies",
-    "admins",
-    "positions",
-    "invites",
-    "sessions",
-    "session_events",
-    "messages",
-    "agent_runs",
-    "documents",
-    "document_revisions",
-    "document_versions",
-    "document_shares",
-    "document_opens",
-    "final_document",
-    "doc_views",
-    "tasks",
-    "task_events",
-    "document_releases",
-    "observations",
-    "connection_gaps",
-    "assistant_calls",
-    "assistant_reuse",
-    "debrief_surveys",
-    "reports",
-    "rubric_adjustments",
-    "report_notes",
-    "doc_chunks",
-}
-
-COLUMNS = {
-    "positions": {"mission_id"},
-    "sessions": {"deadline_at", "reported_at", "completed_at"},
-    "session_events": {"or_on_submit", "document_missing"},
-    "tasks": {"assignee", "order", "due_min", "depends_on"},
-    "observations": {"card_id", "aux", "facts", "updated_run_id"},
-}
+    "companies", "admins", "positions", "invites",
+    "sessions", "messages", "message_intents", "options", "stances", "slots", "proposals",
+    "agent_runs", "connection_gaps", "material_views", "assistant_calls", "debrief_surveys",
+    "session_cards", "observations", "evaluation_runs", "evaluations", "reports",
+    "rubric_adjustments", "report_notes", "materials", "material_chunks",
+}  # fmt: skip
+UNMAPPED = {"material_chunks"}  # rag-mcp 전용
 
 
-async def test_schema_has_data_model_tables(db):
+async def _columns(db, table: str) -> set[str]:
+    rows = await db.execute(
+        text("SELECT column_name FROM information_schema.columns WHERE table_name = :t"),
+        {"t": table},
+    )
+    return set(rows.scalars())
+
+
+async def test_schema_matches_data_model_and_models(db):
     rows = await db.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
-    # LangGraph checkpointer 테이블(checkpoint*)은 라이브러리가 같은 DB에 만들 수 있어 뺀다
     assert {t for t in rows.scalars() if not t.startswith("checkpoint")} == TABLES
+    assert set(Base.metadata.tables) == TABLES - UNMAPPED
+    for name, table in Base.metadata.tables.items():
+        assert {c.name for c in table.columns} == await _columns(db, name), name
 
-    for table, columns in COLUMNS.items():
-        rows = await db.execute(
-            text("SELECT column_name FROM information_schema.columns WHERE table_name = :t"),
-            {"t": table},
-        )
-        assert columns <= set(rows.scalars()), table
 
-    # 관찰 키는 카드 단위, 보드 assignee는 시작 시 null
-    unique = await db.execute(
+async def test_debate_constraints(db):
+    # 칸은 empty|confirmed만, 평가 차원은 level과 기록 없음 사유가 배타
+    checks = await db.execute(
         text(
-            "SELECT indexdef FROM pg_indexes "
-            "WHERE tablename = 'observations' AND indexdef LIKE '%UNIQUE%'"
+            "SELECT conrelid::regclass::text, pg_get_constraintdef(oid) FROM pg_constraint "
+            "WHERE contype = 'c'"
         )
     )
-    assert any("(session_id, card_id, window_start)" in d for d in unique.scalars())
-    nullable = await db.execute(
-        text(
-            "SELECT is_nullable FROM information_schema.columns "
-            "WHERE table_name = 'tasks' AND column_name = 'assignee'"
-        )
-    )
-    assert nullable.scalar() == "YES"
-    # data-model: due_min은 세션 분 정수
-    due_type = await db.execute(
-        text(
-            "SELECT data_type FROM information_schema.columns "
-            "WHERE table_name = 'tasks' AND column_name = 'due_min'"
-        )
-    )
-    assert due_type.scalar() == "integer"
+    defs = [f"{t}: {d}" for t, d in checks]
+    assert any(d.startswith("slots:") and "'confirmed'" in d and "'filled'" not in d for d in defs)
+    assert any(d.startswith("evaluations:") and "no_record_reason IS NULL" in d for d in defs)
+    assert not any("reporting" in d for d in defs)

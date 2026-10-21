@@ -52,8 +52,12 @@ class Settings:
     enable_test_api: bool
     openai_api_key: str
     openai_model: str
-    business_mcp_url: str
+    debate_mcp_url: str
     rag_mcp_url: str
+    assessment_mcp_url: str
+    # assessment-mcp 토큰은 결정적 노드 모듈만 쓴다. 페르소나 클라이언트에는 넘기지 않는다
+    assessment_mcp_token: str
+    agent_runner: str
     web_origins: tuple[str, ...]
     public_port: int = 8000
     internal_port: int = 8001
@@ -74,7 +78,10 @@ def get_settings() -> Settings:
         enable_test_api=env.get("ENABLE_TEST_API") == "1",
         openai_api_key=env.get("OPENAI_API_KEY", ""),
         openai_model=env.get("OPENAI_MODEL", "gpt-4o-mini"),
-        business_mcp_url=env.get("BUSINESS_MCP_URL", "http://localhost:9101/mcp"),
+        debate_mcp_url=env.get("DEBATE_MCP_URL", "http://localhost:9101/mcp"),
         rag_mcp_url=env.get("RAG_MCP_URL", "http://localhost:9102/mcp"),
+        assessment_mcp_url=env.get("ASSESSMENT_MCP_URL", "http://localhost:9103/mcp"),
+        assessment_mcp_token=env.get("ASSESSMENT_MCP_TOKEN", ""),
+        agent_runner=env.get("AGENT_RUNNER", "fake"),
         web_origins=_origins(env.get("WEB_ORIGIN", DEFAULT_WEB_ORIGIN)),
     )
