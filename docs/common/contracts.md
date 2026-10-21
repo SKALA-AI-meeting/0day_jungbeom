@@ -18,9 +18,9 @@
 | 초대 생성 | 관리자 POST /invites | sessions 행이 `invited`로 함께 생성됨 | 초대 토큰(링크에만, DB에는 해시) |
 | 링크 입장 | GET /s/{token} | 시작 전 만료(72h) → 410, 취소 → 410 `cancelled`. completed 이후·failed → 200에 `status`와 `debrief_token`(디브리핑·종료 안내·최종본 열람·설문만 읽고 쓰는 JWT, 종료 후 7일). 입장 화면 고정 안내: 2시간 연속 진행·중간 휴식 없음·PC 권장·업무는 가상 회사 루프랩에서·지원자는 이번 건의 주담당(파트를 나누고 최종본을 모아 보고)·끊겨도 시간은 흐름·외부 도구 사용은 막지 않되 안의 어시스턴트만 기록됨·문의 창구(담당자 이메일) | 없음 |
 | 동의 | POST /s/{token}/consent | `consented_at` 기록 | 세션 JWT 발급. 만료 = now + session_minutes + 120분 |
-| 시작 | POST /s/{token}/start (Bearer) | `in_progress`, started_at·ends_at 확정, 이벤트·공개 예약·지원자 파트 문서와 최종본 행·보드 5행(assignee=null) 생성. 동의 후라도 시작 시점에 초대가 만료(72h)됐으면 410 `expired` | 같은 JWT |
+| 시작 | POST /s/{token}/start (Bearer) | `in_progress`, started_at·ends_at 확정, 이벤트·공개 예약·지원자 파트 문서와 최종본 행 생성. 보드는 빈 상태로 시작하고 할 일은 사용자가 만든다(CX-02, 2026-10-21 합의). 동의 후라도 시작 시점에 초대가 만료(72h)됐으면 410 `expired` | 같은 JWT |
 | 재입장 | GET /s/{token} → status가 invited면 POST /s/{token}/consent 재호출, in_progress·reporting이면 POST /s/{token}/resume | 변화 없음 | 세션 JWT 재발급(저장된 JWT가 없어도 링크만으로 이어감). reporting이면 state에 `deadline_at`이 있어 보고 대기 화면을 복원한다. 초대 72h 만료는 시작 후에는 적용하지 않음 |
-| 종료 | submit 또는 timeout → `reporting`(보고 요청, 보고 메시지 또는 submitted_at+5분까지) → `completed`(completed_at 저장) | `completed` | JWT는 디브리핑 조회까지 유효 |
+| 종료 | 완료(submit, 또는 2시간 자동 완료) → `reporting`(최종본 전달, 한서윤 DM 보고 → 한서윤 확인 답장 → 주담당 종료 버튼 `finish`) → `completed`(completed_at 저장). 종료 버튼 없이 `submitted_at`+5분이 지나면 자동 `completed`(fallback, 2026-10-21 결정). 보고 메시지는 종료 조건이 아님 | `completed` | JWT는 디브리핑 조회까지 유효 |
 
 검증: 다른 세션 id 접근 403, 동의 중복 호출은 멱등(새 JWT 재발급), 같은 초대의 동의는 시작 전까지 몇 번이든 허용하고 시작 후에는 409, 시작 전 JWT 만료는 `/consent` 재호출로, 시작 후 만료는 `/resume`으로 복구(in_progress·reporting 모두).
 
@@ -122,11 +122,15 @@
 | POST | /sessions/{id}/my-documents/{part_no}/share | Bearer {channel: "team"∣"dm", note?} | {version, message_id}. 현재 content로 새 version을 만들고(현재 revision을 가리킴) 채널에 문서 카드 메시지(meta.shared_doc)를 올린다. 메시지 본문은 지원자가 쓴 `note`뿐이며 없으면 빈 문자열(시스템이 지원자 발화를 만들지 않는다) |
 | POST | /sessions/{id}/documents/{doc_id}/open | Bearer {version} | {doc_id, owner, part_no, title, version, content, t_min}. 동료가 보낸 버전만(아니면 404 `not_found`), `document_opens`에 기록. doc_id는 받은 문서의 UUID(회사 문서 id가 아님). 화면은 최신 버전을 기본으로 열고 이전 버전은 목록에서 열람만 한다(버전 비교 없음) |
 | PUT | /sessions/{id}/final/sections/{part_no}/import | Bearer {source_doc_id, version} | section. 그 버전 내용을 최종본 섹션에 덮어쓰고 source_doc_id·source_version 기록, edited=false("가져오기", 동료 문서는 보낸 버전만, 내 문서는 아무 버전이며 `version: null`이면 보내지 않은 현재 저장본). 이미 내용이 있으면 화면이 덮어쓰기 확인을 받는다. `document_revisions`에도 남는다 |
-| PUT | /sessions/{id}/tasks/{part_no} | Bearer {assignee?: "candidate"∣"colleague"∣"both"∣null, status?, order?, due_min?} | task. 모든 카드 변경 가능(주담당). 바뀐 필드마다 `task_events`(by=candidate) 기록. 5행의 assignee가 다 차고 `division_min`을 만족하는 순간 api가 division을 확정한다(decided_by=candidate, WS `division.confirmed`, 동료 그래프 stimulus). 다 채우는 PUT이 `division_min`을 어기면 422 `invalid_division`(조건 문장 포함)이고 저장하지 않는다. 확정 뒤 재배정도 같은 규칙으로 기록·검증한다. due_min은 세션 분이며 화면은 남은 시간 프리셋("30분 뒤", "마감 10분 전")으로 입력받는다 |
+| PUT | /sessions/{id}/tasks/{part_no} (제안: 여러 할 일을 위해 `task_id` 키로 전환, 형태 TBD) | Bearer {assignee?: "candidate"∣"colleague"∣"both"∣null, status?, order?, due_min?} | task. 모든 카드 변경 가능(주담당). 바뀐 필드마다 `task_events`(by=candidate) 기록. 분업 확정은 보드 변경이 아니라 `POST /sessions/{id}/division/share`(분업안 공유)에서만 일어난다(CX-02). 할 일 담당은 실행 담당이고 섹션 담당과 별개다. 공유 시 `division_min` 위반이면 422 `invalid_division`(조건 문장 포함)이고 확정하지 않는다. 확정 뒤 재배정도 같은 규칙으로 기록·검증한다. due_min은 세션 분이며 화면은 남은 시간 프리셋("30분 뒤", "마감 10분 전")으로 입력받는다 |
+| POST | /sessions/{id}/tasks (제안, CX-02) | Bearer {title?, section_part_no?, assignee?: "candidate"∣"colleague"∣"both"∣null, status?, order?, due_min?} | task. 빈 보드에 사용자가 만드는 할 일. 한 섹션에 여러 개 가능하며 섹션별·총 개수 제한과 공유 검사 대상이 아님(2026-10-21 결정). 할 일 담당은 실행 담당이고 섹션 담당을 바꾸지 않음. 필드 세부는 TBD |
+| PUT | /sessions/{id}/sections/{part_no}/owner (제안, CX-02) | Bearer {owner: "candidate"∣"colleague"∣"both"} | {part_no, owner}. 섹션 담당. 그 섹션 문서의 작성·전송 책임과 동료 초안 생성 기준. 할 일 생성·담당 변경만으로는 바뀌지 않음. 분업 확정 뒤 변경 규칙은 TBD |
+| POST | /sessions/{id}/division/share (제안, CX-02) | Bearer {} | {division, message_id}. 분업안 공유 = 분업 확정(decided_by=candidate). 검사는 5개 섹션 담당 전부와 `division_min`(현행 조건 유지, 변경은 CX-04 별도 승인) 두 가지뿐이며 할 일 개수는 검사하지 않음. 위반이면 422 `invalid_division`. 성공 시 팀 채널에 분업안 메시지, WS `division.confirmed`. 채팅 경로의 공유 절차는 TBD |
 | GET | /sessions/{id}/documents | Bearer | [{doc_id, title, released: bool, release_at_min: number∣null}] (회사 문서. release_at_min은 지연 공개 예정 시각, 공개됐거나 시작 공개면 null) |
 | GET | /sessions/{id}/documents/{doc_id} | Bearer | {doc_id, title, content} 또는 423 `not_released`. 열람을 `doc_views`에 기록 |
 | POST | /sessions/{id}/assistant | Bearer {prompt} | {call_id, message_id, content, cited_docs} 또는 429 `assistant_limit`(60회 초과) |
-| POST | /sessions/{id}/submit | Bearer | {status: "reporting"∣"completed", deadline_at?} (멱등. 이미 completed 이후면 현재 status). web은 "제출 후에는 수정할 수 없고 남은 시간과 상관없이 세션이 끝납니다. 팀장에게 보고한 뒤 종료됩니다" 확인 창 뒤 대기 중인 저장을 끝내고 호출한다. 만료 2분 전에는 "지금 상태 그대로 제출됩니다" 경고. submitted_at 이후의 문서·최종본·보드 PUT·share·import·open·assistant는 409 `session_ending`. 메시지는 모든 채널에서 계속 보낼 수 있다. 보고 요청 뒤 팀 채널 또는 팀장 DM의 지원자 메시지가 `meta.classification.kind = report`로 저장되거나 submitted_at+5분(deadline_at)이 지나면 `completed`. 요청 뒤 제출 전에 이미 보고했으면 제출 즉시 completed |
+| POST | /sessions/{id}/submit (완료 버튼) | Bearer | {status: "reporting"∣"completed", deadline_at?} (멱등. 이미 completed 이후면 현재 status). web은 "제출 후에는 수정할 수 없고 남은 시간과 상관없이 세션이 끝납니다. 팀장에게 보고한 뒤 종료됩니다" 확인 창 뒤 대기 중인 저장을 끝내고 호출한다. 만료 2분 전에는 "지금 상태 그대로 제출됩니다" 경고. submitted_at 이후의 문서·최종본·보드 PUT·share·import·open·assistant는 409 `session_ending`. 메시지는 모든 채널에서 계속 보낼 수 있다. 완료 시 최종본 version을 만들고 한서윤에게 전달 알림과 한서윤 DM 안내를 보냄(팀 채널 재촉 없음). 보고는 한서윤 DM에서 `kind=report`로 저장되며 종료 조건이 아님. 종료는 `finish`(종료 버튼)로만 하고, 없으면 deadline_at(submitted_at+5분)에 자동 completed(2026-10-21 fallback). 01:50 보고 요청 카드는 완료 전이면 팀 채널, 조기 완료로 앞당겨 실행되면 한서윤 DM에서 나온다(세부 설계 제안, 구현 전 결정). 완료 전 메시지는 보고로 세지 않으며, 제출 즉시 completed는 두지 않는다 |
+| POST | /sessions/{id}/finish (제안, CX-12) | Bearer | {status: "completed", completed_at}. 종료 버튼. `reporting` 중이고 한서윤 확인 답장이 저장된 뒤(`reporting.end_available=true`)에만 허용, 아니면 409 `conflict`. 멱등. 응답 뒤 `SessionService.complete()`가 마지막 창을 닫고 리포트를 발행 |
 | GET | /sessions/{id}/debrief | Bearer(세션 JWT 또는 debrief_token) | {events: [{card_id, element, name, description, rubric_items: [text]}] (실제 fired된 카드만, 평가표 항목 문장 포함), persona_note(동료가 회사 인재상 페르소나였다는 설명과 values), scoring_notice(점수를 보여 주지 않는 이유·기업이 보는 것·리모트 맥락), connection_gaps: [{from_t_min, to_t_min}], retention_notice, contact_email, final: {sections: [{part_no, title, content}]}∣null, final_view_until(종료 후 7일), survey: {submitted: bool, questions: [{q, text}]}, failed_stage?: "session"∣"report"}. 세션 실패(failed_stage=session)면 events·final 없이 중단 안내와 재응시 안내만 돌려준다(연출 노출 방지, 재응시 가능) |
 | POST | /sessions/{id}/debrief/survey | Bearer(세션 JWT 또는 debrief_token) {answers: [{q: "natural"∣"fair", value: 1~5}]} | {submitted: true}. 종료 설문 2문항(자연스러웠는지·공정했는지). 한 번만 저장하고 재요청은 기존 값(멱등) |
 
@@ -145,6 +149,7 @@
  "active_runs":[{"run_id":"...","actor":"colleague","node":"respond"}],
  "connection_gaps":[{"from_t_min":31.2,"to_t_min":46.0}],
  "channels":{"team":{"members":["manager","colleague","candidate"]},"dm":{"members":["colleague","candidate"]},"manager_dm":{"members":["manager","candidate"]},"notice":{"members":["candidate"]}},
+ "reporting":{"delivered_at":null,"report_message_id":null,"ack_message_id":null,"end_available":false,"auto_end_at":null},
  "persona":{"manager":"한서윤 팀장","colleague":"이도현","candidate_role":"주담당"}}
 ```
 
@@ -152,6 +157,8 @@
 
 ### 지원자 경로 보충
 
+- 완료 흐름(CX-12, 2026-10-21): 완료 확인 창 뒤 제출하면 최종본 전달 알림과 한서윤 DM 안내가 나온다. 주담당은 한서윤 DM에 보고하고(`kind=report`), 한서윤이 확인 답장을 보내면 `reporting.end_available=true`가 되어 종료 버튼이 뜬다. 종료 버튼이 없으면 `submitted_at`+5분에 자동 completed. 완료 뒤 재접속은 `resume`으로 허용되며 타이머는 서버 시계로 계속 흐른다. 확인 답장 실패 처리는 TBD.
+- 사용자 생성 할 일의 담당과 섹션 담당은 별개다. 분업안 공유는 섹션 담당(5개)과 `division_min`만 검사하고 할 일 개수는 검사하지 않는다(2026-10-21).
 - 알 수 없는 초대 토큰: `/s/{token}` 계열 전부 404 `not_found`.
 - 디브리핑 기한 = 세션 종료 시각 + 7일. 종료 시각은 completed_at(보고 종료), 진행 중 실패면 실패 시각(`fail(session)`이 ends_at을 그 시각으로 당긴다). `debrief_token`의 exp는 이 기한으로 고정되고(발급할 때마다 늘어나지 않음), 기한이 지나면 `GET /s/{token}`과 `GET /sessions/{id}/debrief`는 410 `expired`. 최종본 열람·설문도 같은 기한이다.
 - 세션 실패(failed_stage=session) 디브리핑: `{"events": [], "persona_note": null, "scoring_notice": "<중단 안내·재응시 안내>", "final": null, "final_view_until": null, "survey": {"submitted": false, "questions": []}, "failed_stage": "session"}`. 연출·페르소나 설명은 비운다.
@@ -173,8 +180,9 @@
 | document.released | {doc_id, title} |
 | document.shared | {doc_id, version, part_no, by: "candidate"∣"colleague", channel, message_id} (문서를 보냄. 활동 줄 "도현님이 4번 v1을 보냈어요". 열람은 WS 없이 REST open만) |
 | task.updated | {part_no, assignee, status, order, due_min, by: "candidate"∣"colleague"} |
-| division.confirmed | {parts, decided_by: "candidate"∣"colleague_default", t_min} (5행이 다 차고 조건을 만족해 확정됨, 또는 동료 기본안 확정) |
-| session.reporting | {deadline_at} (보고 대기 시작, submitted_at+5분 상한) |
+| division.confirmed | {parts, decided_by: "candidate"∣"colleague_default", t_min} (분업안 공유로 확정됨, 또는 동료 기본안 확정) |
+| session.reporting | {deadline_at, delivered_at} (완료 뒤 보고 대기 시작. deadline_at = submitted_at+5분, 종료 버튼이 없으면 이 시각에 자동 completed. 연장하지 않음) |
+| session.end_available | {message_id} (제안, CX-12) 한서윤 확인 답장 저장 뒤 종료 버튼 활성화 |
 | session.ended | {reason: "submitted"∣"timeout"∣"failed"∣"cancelled"} |
 
 클라이언트 → 서버:
@@ -224,7 +232,7 @@
 | PUT | /internal/sessions/{id}/messages/{message_id}/classification | {recipient, kind, instruction?, related_card?, reply_to_doc?: {document_id, version}} | Message. 그래프가 respond 앞 분류 결과를 저장(meta.classification). 멱등 |
 | GET | /internal/sessions/{id}/assistant_reuse | | [{call_id, doc_id, part_no∣"final", applied: bool}] (제출 후에만 값이 있음. 응답이 그 호출 이후 지원자 문서 revision에 반영됐는지 추정. 비율은 내부 계산값이며 응답에 싣지 않는다) |
 | GET | /internal/sessions/{id}/doc_views | | [{id, doc_id, viewed_at}] |
-| POST | /internal/sessions/{id}/complete | | {status: "completed", completed_at} (reporting 세션을 보고 종료로 넘김. 보고 메시지(`meta.classification.kind = report`) 저장 뒤 그래프가, deadline_at 경과 시 스케줄러가 호출. 멱등) |
+| POST | /internal/sessions/{id}/complete | | {status: "completed", completed_at} (reporting 세션을 보고 종료로 넘김. 종료 버튼(`finish`) 뒤 api가, deadline_at(submitted_at+5분) 경과 시 스케줄러가 호출. 멱등) |
 | POST | /internal/sessions/{id}/report/draft | {content, usage?} | {status: "report_ready"} (멱등). usage(워커 LLM 사용량 `{model, llm_calls, retries, tokens_in, tokens_out, latency_ms, fallback_used}`)는 `reports.usage`에 저장, 재전달은 최초 값 유지. 해시는 content에만 |
 | POST | /internal/sessions/{id}/report/final | {content} | {status: "reviewed", reviewed_at}. content의 정규화 JSON 해시(`reports.content_hash`, 키 정렬·공백 제거)가 승인된 draft 해시와 다르면 409 `draft_mismatch`. 이미 reviewed이고 해시가 같으면 200 기존 값(재전달 멱등). draft가 없거나 status가 approving·reviewed가 아니면 409 |
 | POST | /internal/sessions/{id}/report_failed | {error} | {status: "failed"} |

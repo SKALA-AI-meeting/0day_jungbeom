@@ -30,6 +30,37 @@
 | M4 | docs-service | **서비스 설명서·기획서**(`docs/share/service/`, HTML 묶음, docs-final과 병렬). 보고서가 아니라 **서비스 소개 자료**다: 팀원이 "이 서비스가 무엇이고, 어떤 시나리오로 돌아가고, 어떻게 평가하는가"를 이해하고 남에게 설명할 수 있게 쓴다. 성과·일정·작업 이력은 쓰지 않는다. **글보다 그림 중심**: 실제 화면 스크린샷(mock 또는 실 세션)과 흐름도(사용자 흐름·세션 타임라인·요소별 장면)를 먼저 두고 글은 캡션 수준으로. 요소 5개는 각각 "장면 스크린샷 → 동료가 필요로 하는 것 → 지원자 행동 예 → 기록 → 평가표"를 한 화면 그림으로. ① 한 장 요약(문제·초점 "같이 일하기 좋은 사람"·원칙) ② 사용자 흐름(담당자: 가입→채용 건→초대→리포트 검토→면접 / 지원자: 초대→동의→대기→세션→디브리핑) ③ 기능 흐름(화면별, 문서 주고받기·보드·보고) ④ 2시간 세션 타임라인(카드 7장, 120분 시각, 동료·팀장이 하는 말의 골격) ⑤ 인성 요소 5개 각각: 뜻·어떤 장면에서·동료가 무엇을 필요로 하고·지원자의 어떤 행동을·어떤 기록으로·평가표 4항목·미선택 시 ⑥ 리포트 샘플 읽는 법(점수 규칙, 기록 없음, 담당자 조정) ⑦ 원칙과 하지 않는 것(실력 비점수화, 합격·순위 없음, 상황 비공개, 공정성). 최종본 기준으로만 쓰고 이력 표현 없음. 디자인은 design-system.md 토큰 | 전부(최종 카탈로그·PRD) | 팀원이 이 문서만 읽고 세션 시나리오와 평가 방식을 설명할 수 있음. 모든 수치·문구가 카탈로그·PRD 최종본과 일치 |
 | M4 | pilot (오케스트레이터+사람) | 지원자 역할 3명·담당자 역할 2명 파일럿: 설문, 근거 대조표, 면접 질문 채택 수, 가격 질문 | docs-final 전 | PRD 11 잠정 기준 대비 결과를 `docs/pilot.md`에 기록 |
 
+## 전환 계획 (CX-02·CX-12, 2026-10-21)
+
+PRD와 계약은 문서 턴에서 먼저 바뀌었다. 구현은 아래 게이트를 통과한 뒤에만 시작한다. 세부 근거는 `docs/decisions.md`의 2026-10-21 절과 `docs/prd-change-proposals.md`.
+
+| 트랙 | 범위 | 소유 파일 | 선행 조건 | 완료 기준 |
+|---|---|---|---|---|
+| flow-docs (오케스트레이터 1명) | PRD·docs/common·decisions·proposals·fixes 정합. PRD.html은 PRD.md와 같은 커밋에서 `sh build/build.sh`로 재생성 | 위 문서 전부 | 없음 | G1 커밋, grep 정합 검사 통과 |
+| **G1 계약 기준 커밋** | contracts 예시 JSON(tasks 생성, 섹션 담당, division/share, finish, reporting, session.end_available)을 `tests/fixtures/contracts/`에 반영. TBD 필드는 픽스처에 넣지 않음 | 공용 담당 | flow-docs | 생산자·소비자 양쪽이 같은 픽스처를 읽음 |
+| flow-api | 빈 보드, 할 일 생성·수정, 섹션 담당 PUT, division/share 검사(섹션 담당 5개 + division_min), finish, 완료 시각 기준 5분 자동 종료, 한서윤 DM 보고 kind 분류 | `services/api/app/` 중 routers/candidate·internal, services/session, scheduler | G1, scenario-redesign 병합 뒤(api 쓰기 충돌 회피) | api 단위 테스트, 5분 fallback 재시작 복구 테스트 |
+| flow-agent | 한서윤 확인 답장 노드, 01:50 요청의 채널 분기(완료 전 팀 채널·조기 완료 DM), 분업 자극 갱신 | `services/api/app/agent/` 전부 | G1, flow-api의 내부 division·complete 계약 동결 | FakeLLM 단위 테스트, 판정 발언 금지(F-24) 검사 |
+| flow-web | 완료 확인 창, 한서윤 DM 이동 안내, 종료 버튼(`end_available`), 빈 보드, 섹션 담당 UI | `apps/web/app/s/`, `components/office/` | G1, web-redesign 사용자 mock 확인 뒤(web 소유권 충돌 회피) | mock 전 흐름, break-ui |
+| flow-verify (e2e-runner) | 대본 갱신: DM 보고, 5분 자동 종료, 조기 완료, 빈 보드 분업. 최소 테스트 6건의 reporting 항목 재배정 | `tests/e2e/`, `scenarios/e2e/` | flow-api·flow-agent·flow-web 병합 | e2e mock 통과 |
+| **progress-channel (독립)** | active_runs(`/state`)와 WS `agent.progress`의 이름·상태 고정. 흐름 전환과 파일을 공유하지 않음 | 계약(공용 담당), hub·state(api-candidate), `lib/ws.ts`(web-office) | G2 계약 커밋 별도. CX 트랙을 막지 않음 | 계약 픽스처 일치, 재연결 후 active_runs 복원 |
+| 개선 후보 required-card-failure (변경 없음) | 필수 카드 3회 실패 → 세션 실패(현행 규칙 유지). 이번 전환에서 바꾸지 않음 | — | 없음 | 별도 제안으로 M3 이후 검토 |
+
+**게이트와 충돌 회피 규칙**
+- 계약 변경은 G1 커밋으로만 들어간다. 트랙은 계약 파일을 쓰지 않고 요청만 올린다.
+- services/api 쓰기는 flow-api 하나, app/agent 쓰기는 flow-agent 하나. 두 트랙이 같은 파일을 고치면 중단하고 오케스트레이터가 나눈다.
+- flow-web과 web-redesign이 겹치면 web-redesign이 끝난 뒤에만 flow-web을 시작한다.
+- 검증 순서: 문서 grep(옛 표현 "5행", "보고 메시지 저장 시각", "팀장 보고 요청", "제출 시 보고 요청") → G1 픽스처 → api 단위 → agent FakeLLM → web mock → e2e mock.
+
+**구현 전 결정 항목 (PRD 16과 일치)**
+1. 분업 최소 조건 유지 여부(CX-04): 현행 유지, 변경은 별도 승인.
+2. 할 일 담당과 섹션 담당 불일치 방지 규칙.
+3. 섹션 담당 확정 뒤 재지정 규칙.
+4. 한서윤 확인 답장 실패 처리.
+5. 5분 자동 종료와 답장 지연의 관계(답장이 늦으면 버튼 없이 종료됨).
+6. 01:50 보고 요청 카드의 채널 분기(완료 전 팀 채널, 조기 완료 DM)와 문구.
+7. 보고 인정 채널(반영값은 완료 뒤 한서윤 DM만).
+8. 기본 작업 흐름 예시(자료 탭)의 MVP 포함 여부.
+
 ## 병렬 작업 방식
 
 동시에 띄우는 개발 pane은 **최대 4개**다. 각 파도(wave)는 pane 4개 이하로 띄우고, 끝난 트랙부터 리뷰·병합한 뒤 다음 트랙을 채운다.

@@ -46,7 +46,7 @@
 | adaptability_change | 팀장이 팀 채널에서: "대표님과 이야기해 보니 핵심 기능을 **'첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고**, 출시 일정은 다음 분기에서 **이번 분기**로 당겨 주세요. 대상 사용자(첫 참여자)·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요." 3번(핵심 기능)과 5번(일정)의 내용·분담 재조정이 필요해지며 자료는 그대로 쓸 수 있다 |
 | review | 동료 담당 파트 완성본 v2(지시·피드백 반영)를 팀 채널에 보내며 "주담당 파트도 보내 주시면 볼게요"라고 청한다 |
 | collab_disagree | 리뷰와 같은 시점. `fixed_opinions`는 **1번 문제 정의의 원인 가정**(예: "다음 모임 일정을 놓쳐서"가 주원인이라는 가정 vs "아는 사람이 없어 어색해서"가 주원인이라는 가정)에 대한 고정 의견 1개와, 지원자가 같은 방향이면 쓰는 두 번째 의견이다. 적응성 변경(핵심 기능·일정)과 겹치지 않는다. 지원자가 보낸 1번 문서가 있으면 그 문장을 인용하고, 없으면 분업 때 정한 방향 또는 킥오프 기본 가정에 대해 말한다 |
-| honesty_report | 팀장이 팀 채널에서 보고를 요청하며 "다 됐다고 전해도 되죠?"를 붙인다. 같은 시점에 시스템 줄 "최종본은 오른쪽 탭에서 제출합니다. 제출하면 세션이 끝납니다"가 붙는다. 만료 자동 제출 뒤의 요청에는 "한 줄이면 됩니다. 안 써도 제출은 유효합니다" |
+| honesty_report | [TBD, CX-12: 01:50 요청 카드는 유지(세부 설계 제안): 완료 전이면 팀 채널 재촉, 조기 완료로 앞당겨 실행되면 한서윤 DM 요청. 완료 전 메시지는 마감 보고로 인정하지 않음. 구현 전 사용자 확인 필요. 조기 완료 시 발화는 한서윤 DM으로 옮겨 실행하므로 "완료 뒤 팀 채널 재촉 없음"과 충돌하지 않음. 완료 시 안내는 "최종본이 한서윤에게 전달되었고 한서윤 DM에서 보고하면 된다"로 바뀜] 이전 초안: 팀장이 팀 채널에서 보고를 요청하며 "다 됐다고 전해도 되죠?"를 붙인다. 같은 시점에 시스템 줄 "최종본은 오른쪽 탭에서 제출합니다. 제출하면 세션이 끝납니다"가 붙는다. 만료 자동 제출 뒤의 요청에는 "한 줄이면 됩니다. 안 써도 제출은 유효합니다" |
 
 ## 조립 (`positions.scenario`)
 
@@ -94,13 +94,13 @@ L=6, 5개 전부: 0.5, 1.5, 2.25, 3(공개 3.5), 3.75, 4.5, 5.5분.
 
 `division_min`(분업 최소 조건): 2번은 지원자(candidate), 3번(2번에 의존)은 동료(colleague) 또는 같이(both), 4·5번 중 하나 이상은 동료 단독(colleague). 책임감 카드(2번 자료 지연이 동료 파트에 영향)와 정직 카드(동료 문서와 최종본 출처 대조)의 전제가 모든 분업에서 성립하게 한다. 동료가 되돌리는 횟수는 1회이고 이유는 의존 관계("3번이 2번 자료를 받아 이어 쓰는 흐름")다.
 
-세션 시작 시 api가 `cards`를 `session_events`로(collab_disagree도 별도 행, review와 같은 due_at), `releases_at_start`와 지연 공개를 `document_releases`로, 파트별 지원자 문서와 최종본을 `documents`로, 보드 5행을 `tasks`(assignee=null, order=파트 번호, depends_on 복사)로 펼친다. 같은 due_at의 이벤트는 카드 순서대로 한 실행에서 처리한다. `or_on_submit` 카드는 제출 시 아직 pending이면 그 자리에서 실행된다(`data-model.md`의 `reporting` 상태).
+세션 시작 시 api가 `cards`를 `session_events`로(collab_disagree도 별도 행, review와 같은 due_at), `releases_at_start`와 지연 공개를 `document_releases`로, 파트별 지원자 문서와 최종본을 `documents`로, 보드는 빈 상태로 둔다(CX-02, 2026-10-21. 할 일은 사용자가 만들고, 섹션 담당은 `division.parts`에 별도로 둔다). 같은 due_at의 이벤트는 카드 순서대로 한 실행에서 처리한다. `or_on_submit` 카드는 제출 시 아직 pending이면 그 자리에서 실행된다(`data-model.md`의 `reporting` 상태).
 
-**분업 확정 경로**: 지원자가 보드 PUT으로 5행의 담당을 다 채우고 `division_min`을 만족하는 순간 api가 division을 확정한다(decided_by=candidate, task_event 기록, WS `division.confirmed`, 동료 그래프에 stimulus). 채팅으로 정한 분업은 동료의 `set_division` 도구가 같은 tasks를 채운다. 확정 뒤 재배정도 task_event와 동료 stimulus(work_notes 갱신)다. 다음 요소 카드까지 미확정이면 동료가 기본안(`default_division`)을 tasks에 채우고 decided_by=colleague_default로 확정한다.
+**분업 확정 경로**: 지원자가 섹션 담당 5개를 정하고 **분업안 공유**를 누르면 `division_min`을 검사해 api가 division을 확정한다(decided_by=candidate, WS `division.confirmed`, 동료 그래프에 stimulus). 할 일(task)은 주담당이 자유롭게 만들고, 섹션당·총 개수는 공유 검사 대상이 아니다. 할 일 담당은 실행 담당이며 섹션 담당을 자동으로 바꾸지 않는다(2026-10-21 결정). 섹션 담당 방지 규칙과 확정 뒤 재분업 규칙은 TBD. 채팅으로 정한 분업은 동료의 `set_division` 도구가 같은 tasks를 채운다. 확정 뒤 재배정도 task_event와 동료 stimulus(work_notes 갱신)다. 다음 요소 카드까지 미확정이면 동료가 기본안(`default_division`)을 tasks에 채우고 decided_by=colleague_default로 확정한다.
 
 ## 관찰 창
 
-창은 **카드 단위**다. 요소 카드의 창은 그 카드가 실행된 시각부터 **다음 요소 카드(어느 요소든)의 실행**까지다. 예외는 `planning_division`으로, 창은 **세션 시작(0)**부터 첫 중간 카드까지다(카드 전에 정한 계획도 같은 창 안. `window_start_min: 0`). 흐름 카드와 texture는 창을 닫지 않으며, 같은 시각에 흐름 카드와 요소 카드가 함께 있으면(리뷰 + collab_disagree) 요소 카드 기준으로 창을 연다. 마지막 창은 **보고 종료**(`completed_at`: 보고 메시지 저장 시각 또는 제출 후 5분)까지라 마감 보고 메시지도 들어간다. 그래프 State의 `current_card`가 열린 창을 가리키고, 요소 카드 경계와 종료에서 열린 창을 닫아 관찰을 기록한다(키 `(session_id, card_id, window_start)`). 창 안의 지원자 메시지, 지원자 문서의 자동 저장(document_revisions)·보낸 버전(document_shares), 받은 문서 열기(document_opens), 보드 변경(task_events), 회사 문서 열람(doc_views), 어시스턴트 호출이 observe의 입력이다. 창 밖 근거는 메시지 타입만 `related_card`로 허용한다. 흐름 카드 자체는 관찰 요소가 없다. AI 활용은 창과 무관하게 세션 전체를 본다. 약속 이행(`promise_kept`)만 세션 종료 때 다시 계산해 갱신한다(`rubric.md`).
+창은 **카드 단위**다. 요소 카드의 창은 그 카드가 실행된 시각부터 **다음 요소 카드(어느 요소든)의 실행**까지다. 예외는 `planning_division`으로, 창은 **세션 시작(0)**부터 첫 중간 카드까지다(카드 전에 정한 계획도 같은 창 안. `window_start_min: 0`). 흐름 카드와 texture는 창을 닫지 않으며, 같은 시각에 흐름 카드와 요소 카드가 함께 있으면(리뷰 + collab_disagree) 요소 카드 기준으로 창을 연다. 마지막 창은 **종료**(`completed_at`: 종료 버튼 시각, 종료 버튼이 없으면 제출 후 5분 자동 종료 시각. 2026-10-21 fallback)까지라 마감 보고 메시지도 들어간다. 그래프 State의 `current_card`가 열린 창을 가리키고, 요소 카드 경계와 종료에서 열린 창을 닫아 관찰을 기록한다(키 `(session_id, card_id, window_start)`). 창 안의 지원자 메시지, 지원자 문서의 자동 저장(document_revisions)·보낸 버전(document_shares), 받은 문서 열기(document_opens), 보드 변경(task_events), 회사 문서 열람(doc_views), 어시스턴트 호출이 observe의 입력이다. 창 밖 근거는 메시지 타입만 `related_card`로 허용한다. 흐름 카드 자체는 관찰 요소가 없다. AI 활용은 창과 무관하게 세션 전체를 본다. 약속 이행(`promise_kept`)만 세션 종료 때 다시 계산해 갱신한다(`rubric.md`).
 
 ## 회사 문서 (`scenarios/missions/planning/documents/`)
 
