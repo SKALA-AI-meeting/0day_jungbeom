@@ -219,7 +219,7 @@ svg .dot-rel{fill:#fff;stroke:var(--accent);stroke-width:1.5}
 <dt>도는 때</dt><dd>세션 뒤 비동기. prefetch 1, manual ack, 실패 시 총 3회 후 DLQ</dd>
 <dt>상대</dt><dd>관리자(사람 검토)</dd>
 <dt>흐름</dt><dd><code>collect</code>(관찰·메시지·문서 기록 수집) → <code>draft</code>(평가표 규칙 <code>rubric.evaluate</code>로 항목 계산, 레이블 문장 템플릿으로 서술) → <code>approval[interrupt]</code>(사람 검토 대기) → 검토 완료로 같은 thread 재개 → <code>finalize</code>(final 저장)</dd>
-<dt>도구</dt><dd>MCP를 쓰지 않는다. api <code>/internal</code>만 부른다(<code>report/draft</code>, <code>report/final</code>, <code>report_failed</code>)</dd>
+<dt>도구</dt><dd>MCP를 쓰지 않는다. api <code>/internal</code>만 부른다(<code>report/draft</code>, <code>report/final</code>). <code>report_failed</code>는 같은 워커의 별도 DLQ 소비자가 부른다)</dd>
 <dt>기억</dt><dd>thread <code>report:{id}</code></dd>
 </dl>
 </div>
@@ -232,7 +232,7 @@ svg .dot-rel{fill:#fff;stroke:var(--accent);stroke-width:1.5}
 <tr><td>어시스턴트</td><td>어시스턴트 그래프 answer</td><td>질문 답·요약·초안, 공개 문서 인용</td><td>지원자 문서에 직접 쓰기, 미공개 문서, 업무 외 요청, 점수·합격·연출될 상황 언급</td><td class="env"><code>MODEL_ASSISTANT</code></td></tr>
 <tr><td>리포트</td><td>리포트 그래프 (예약 역할)</td><td>현재 LLM 호출 0회. 초안은 평가표 규칙과 레이블 문장 템플릿으로 만든다</td><td>합격·순위 표현, 평가표 밖 점수</td><td class="env"><code>MODEL_REPORT</code> (예약)</td></tr>
 </tbody></table></div>
-<p class="cap">모든 역할은 env가 비어 있으면 <code>OPENAI_MODEL</code>(기본 gpt-4o-mini)을 씁니다. 실패하면 재시도 2회 뒤 고정 문장 폴백이고 자동 대체 모델은 없습니다. 생성 텍스트는 guard가 판정 패턴을 고정 안내문으로 바꿉니다.</p>
+<p class="cap">모든 역할은 env가 비어 있으면 <code>OPENAI_MODEL</code>(기본 gpt-4o-mini)을 씁니다. 실패하면 재시도 2회 뒤 역할별 폴백이고(동료·팀장 응답은 고정 문장, 관찰 분류는 label null 기록, 어시스턴트는 "잠시 후 다시 시도해 주세요") 자동 대체 모델은 없습니다. 생성 텍스트는 guard가 판정 패턴을 고정 안내문으로 바꿉니다.</p>
 </section>
 <section class="view" id="v-overview">
 <h2><span class="no">①</span>전체 구성도</h2>
