@@ -39,7 +39,7 @@
 | 프론트 린트 | Next 기본 eslint + prettier | `pnpm lint` |
 | 테스트 | pytest(+ pytest-asyncio), vitest. 연결·e2e는 `tests/` | 서비스 폴더에서 `make test` |
 | 인프라 | Docker Compose. 개발 중에는 **인프라만** docker, 앱은 로컬 | `make infra-up`, `make infra-down` |
-| Makefile | 루트 `Makefile`에 공통 타깃: `infra-up`, `infra-down`, `seed`, `test`, `lint`, `e2e`, `stage`, `stage-advance`, `e2e-stages`. 검사는 실패 코드를 그대로 돌려주고, 아직 없는 서비스 폴더만 건너뛴다 | |
+| Makefile | 루트 `Makefile`에 공통 타깃: `infra-up`, `infra-down`, `up`, `seed`, `test`, `lint`, `e2e`, `stage`, `stage-advance`, `e2e-stages`. 검사는 실패 코드를 그대로 돌려주고, 아직 없는 서비스 폴더만 건너뛴다 | |
 | seed | 루트 `scripts/seed.py`(httpx만 사용, 관리자 가입·채용 건 생성·rag 재색인 호출). be-foundation 소유 | `make seed` |
 
 ## 로컬 실행 (개발 중)
