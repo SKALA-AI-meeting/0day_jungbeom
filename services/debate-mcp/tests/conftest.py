@@ -1,9 +1,32 @@
+import importlib.util
+import json
+from pathlib import Path
+
 import httpx
 import pytest
 from debate_mcp import client, tools  # noqa: F401  (도구 등록)
 from debate_mcp.config import Settings
 from debate_mcp.server import mcp
 from fastmcp import Client
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+CONTRACTS = REPO_ROOT / "tests" / "fixtures" / "contracts"
+
+
+def _load_module(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# 공용 계약 형태(tests/contract_shape.py). 도구 출력은 MCP_TOOLS 형태로 검사한다
+shape = _load_module("contract_shape", REPO_ROOT / "tests" / "contract_shape.py")
+
+
+def fixture(name: str):
+    """tests/fixtures/contracts/<name>.json"""
+    return json.loads((CONTRACTS / f"{name}.json").read_text(encoding="utf-8"))
 
 
 @pytest.fixture
