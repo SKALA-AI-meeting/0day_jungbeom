@@ -1,16 +1,19 @@
 // 관리자 화면 mock 서버. 오류 코드와 우선순위는 docs/common/contracts.md "관리자 REST"를 따르고 상태는 모듈 안에만 둔다.
 //
-// 데이터: 채용 건 pos-1(admin_positions.json), 지원자 sess-1~8(admin_candidates.json, 묶음 5종). 리포트는 sess-1(draft, report.json)과 sess-6(final, report.json에 검토를 더함).
-// 검토자 이름에 "지연"을 넣으면 확정이 끝나지 않아 "확정만 다시 시도" 화면을 볼 수 있다(다시 제출하면 끝난다).
+// 데이터: 채용 건 pos-1(admin_positions.json), 지원자 sess-1~6(admin_candidates.json) + 만료된 초대 1행(sess-x1).
+// 리포트는 sess-1(draft, report.json)과 sess-6(final, sample-report.json에 검토를 더함).
+// 검토자 이름에 "지연"을 넣으면 확정이 끝나지 않아 "확정 다시 시도" 화면을 볼 수 있다(같은 본문으로 다시 보내면 끝난다).
 import type {
   Adjustment,
   Candidate,
   Catalog,
-  ElementId,
   Position,
   RecordEntry,
   Report,
+  ReviewBody,
+  SessionMinutes,
 } from "@/components/admin/types";
+import sampleFixture from "@/fixtures/sample-report.json";
 
 import candidatesFixture from "./fixtures/admin_candidates.json";
 import catalogFixture from "./fixtures/admin_catalog.json";
@@ -19,9 +22,9 @@ import inviteFixture from "./fixtures/admin_invite.json";
 import notesFixture from "./fixtures/admin_report_notes.json";
 import positionsFixture from "./fixtures/admin_positions.json";
 import recordFixture from "./fixtures/admin_record.json";
+import reissueFixture from "./fixtures/admin_reissue.json";
 import reportFixture from "./fixtures/report.json";
 import type { MockRoute } from "./types";
-import { LONG_ALIAS, LONG_DOC, LONG_EMAIL, LONG_MESSAGE, LONG_POSITION, WORST } from "./worst";
 
 class MockApiError extends Error {
   constructor(
@@ -34,18 +37,18 @@ class MockApiError extends Error {
 }
 
 const catalog = catalogFixture as unknown as Catalog;
-const INVITE_HOURS = 72;
+const INVITE_MS = 72 * 3_600_000;
 // 확정 중(approving) 리포트가 final로 바뀌기까지 GET 횟수
 const POLLS_UNTIL_FINAL = 2;
+const REASONS = [
+  "no_activity",
+  "evaluate_failed",
+  "not_applicable",
+  "event_not_fired",
+  "auto_submitted_blank",
+];
 
-type ReviewBody = { adjustments: Adjustment[]; memo?: string; reviewer_name: string };
-
-type ReportState = {
-  report: Report;
-  polls: number;
-  submitted: string | null;
-  stuck: boolean;
-};
+type ReportState = { report: Report; polls: number; submitted: string | null; stuck: boolean };
 
 type Store = {
   positions: Position[];
@@ -54,36 +57,41 @@ type Store = {
   counter: number;
 };
 
-let store: Store = WORST ? worst(fresh()) : fresh();
-
-/** 검토가 끝난 상태의 리포트(sess-6): 조정 1건·검토 메모·추가 메모 1건 */
+/** 검토가 끝난 상태의 리포트(sess-6): 샘플 리포트(조정 1건 포함)에 검토자·메모를 더한다 */
 function reviewedReport(): Report {
-  const report = structuredClone(reportFixture) as unknown as Report;
+  const report = structuredClone(sampleFixture) as unknown as Report;
   report.session_id = "sess-6";
   report.alias = "지원자E";
+  report.position.name = positionsFixture[0].name;
   report.stage = "final";
-  const item = report.rubric.elements[0].cards[0].items[2];
-  Object.assign(item, {
-    reviewer: 1,
-    memo: "62분 메시지의 '3번 골격을 지표 기준으로 먼저' 제안을 대안으로 봄",
-    adjusted: true,
-  });
-  report.rubric.reviewer_total = { met: 17, unmet: 1, no_record: 2 };
-  report.rubric.review = {
-    memo: "전반적으로 자동 서술과 일치",
-    reviewer_name: "김담당",
-    reviewed_at: "2026-10-16T02:00:00Z",
-  };
-  report.reviewed_at = "2026-10-16T02:00:00Z";
+  report.review = { reviewer_name: "김담당", reviewed_at: "2026-10-21T03:00:00Z" };
+  report.reviewed_at = "2026-10-21T03:00:00Z";
   report.notes = structuredClone(notesFixture.notes);
   return report;
 }
+
+/** 시작 전 만료된 초대(링크 재발급 대상) */
+const EXPIRED: Candidate = {
+  session_id: "sess-x1",
+  alias: "지원자F",
+  email: "f@example.com",
+  status: "invited",
+  display_status: "expired",
+  display_group: "waiting",
+  phase: null,
+  invited_at: "2026-10-17T00:10:00Z",
+  message_count: 0,
+  next_action: "링크 재발급",
+  elements: null,
+  low_confidence_count: null,
+  level_source: null,
+};
 
 function fresh(): Store {
   return {
     positions: structuredClone(positionsFixture) as Position[],
     candidates: {
-      "pos-1": structuredClone(candidatesFixture) as Candidate[],
+      "pos-1": [...(structuredClone(candidatesFixture) as Candidate[]), structuredClone(EXPIRED)],
     },
     reports: {
       "sess-1": {
@@ -98,26 +106,7 @@ function fresh(): Store {
   };
 }
 
-/** ?data=worst: 긴 이름·이메일, 한 글자 별칭, 긴 최종본, 지원자 없는 채용 건 */
-function worst(store: Store): Store {
-  store.positions[0].name = LONG_POSITION;
-  store.positions.push({
-    ...store.positions[0],
-    id: "pos-empty",
-    name: "지원자 없는 채용 건",
-    candidate_count: 0,
-  });
-  store.candidates["pos-empty"] = [];
-  const [a, b] = store.candidates["pos-1"];
-  Object.assign(a, { alias: LONG_ALIAS, email: LONG_EMAIL });
-  Object.assign(b, { alias: "Jo" });
-  const report = store.reports["sess-1"].report;
-  report.alias = LONG_ALIAS;
-  report.position.name = LONG_POSITION;
-  report.deliverable.final.sections[0].content = LONG_DOC;
-  report.deliverable.final_report_message!.content = LONG_MESSAGE;
-  return store;
-}
+let store: Store = fresh();
 
 export function resetAdminMock() {
   store = fresh();
@@ -133,45 +122,25 @@ function auth(body: unknown, signup: boolean) {
 }
 
 function createPosition(body: unknown) {
-  const {
-    name,
-    elements,
-    mission_id = "planning",
-  } = (body ?? {}) as {
-    name?: string;
-    elements?: string[];
-    mission_id?: string;
-  };
-  const ids = new Set(catalog.elements.map((e) => e.id as string));
-  if (
-    !Array.isArray(elements) ||
-    elements.length < 1 ||
-    elements.length > ids.size ||
-    new Set(elements).size !== elements.length ||
-    elements.some((e) => !ids.has(e))
-  ) {
-    throw new MockApiError(
-      422,
-      "invalid_elements",
-      "요소는 카탈로그의 1~5개를 중복 없이 고릅니다.",
-    );
-  }
-  if (!catalog.missions.some((m) => m.id === mission_id)) {
-    throw new MockApiError(422, "invalid_mission");
+  const request = (body ?? {}) as { name?: string; session_minutes?: number; elements?: unknown };
+  // 요소 선택 기능 없음: elements가 오면 422
+  if ("elements" in request) throw new MockApiError(422, "invalid_input");
+  const minutes = request.session_minutes ?? catalog.default_session_minutes;
+  if (!catalog.session_minutes_options.includes(minutes as SessionMinutes)) {
+    throw new MockApiError(422, "invalid_input");
   }
   store.counter += 1;
   const id = `pos-new-${store.counter}`;
   const position: Position = {
     id,
-    name: name?.trim() || "이름 없는 채용 건",
-    mission_id,
-    elements: elements as ElementId[],
+    name: request.name?.trim() || "이름 없는 채용 건",
+    session_minutes: minutes as SessionMinutes,
     candidate_count: 0,
     created_at: new Date().toISOString(),
   };
   store.positions.unshift(position);
   store.candidates[id] = [];
-  return { ...createdFixture, id, name: position.name, mission_id, elements };
+  return { ...createdFixture, id, name: position.name, session_minutes: position.session_minutes };
 }
 
 function candidates(id: string) {
@@ -188,76 +157,97 @@ function findSession(sessionId: string) {
   throw new MockApiError(404, "not_found");
 }
 
-const RETRYABLE = new Set(["failed", "cancelled"]);
+function inviteUrl(token: string) {
+  const origin = typeof window === "undefined" ? "http://localhost:3000" : window.location.origin;
+  return `${origin}/s/${token}`;
+}
+
+function notice(url: string) {
+  return inviteFixture.notice_text.replace(inviteFixture.invite_url, url);
+}
 
 function invite(positionId: string, body: unknown) {
   const list = candidates(positionId);
-  const { alias, email, previous_session_id } = (body ?? {}) as {
-    alias?: string;
-    email?: string;
-    previous_session_id?: string;
-  };
-  const previous = previous_session_id
-    ? list.find((c) => c.session_id === previous_session_id)
+  const request = (body ?? {}) as { alias?: string; email?: string; previous_session_id?: string };
+  const previous = request.previous_session_id
+    ? list.find((c) => c.session_id === request.previous_session_id)
     : undefined;
-  if (previous_session_id) {
+  if (request.previous_session_id) {
     const allowed =
       previous &&
       ((previous.status === "failed" && previous.failed_stage === "session") ||
-        previous.display_status === "expired" ||
-        RETRYABLE.has(previous.status));
+        previous.status === "cancelled" ||
+        previous.display_status === "expired");
     if (!allowed) throw new MockApiError(422, "invalid_previous_session");
   }
-  // 재초대는 같은 별칭을 이어 쓴다. 그 밖의 같은 별칭은 409
+  const alias = request.alias?.trim() || previous?.alias;
+  if (!alias || !request.email?.trim()) throw new MockApiError(422, "invalid_input");
   if (!previous && list.some((c) => c.alias === alias)) {
     throw new MockApiError(409, "conflict", "같은 채용 건에 같은 별칭이 있습니다.");
   }
   store.counter += 1;
   const sessionId = `sess-new-${store.counter}`;
-  const now = Date.now();
-  const url = `${typeof window === "undefined" ? "http://localhost:3000" : window.location.origin}/s/demo`;
   list.push({
     session_id: sessionId,
-    alias: alias ?? "",
-    email: email ?? "",
+    alias,
+    email: request.email.trim(),
     status: "invited",
     display_status: "invited",
     display_group: "waiting",
-    invited_at: new Date(now).toISOString(),
+    phase: null,
+    invited_at: new Date().toISOString(),
     message_count: 0,
+    next_action: "입장 대기",
     previous_session_id: previous?.session_id ?? null,
-    previous_relation: previous
-      ? previous.display_status === "expired"
-        ? "reissue"
-        : "retry"
-      : null,
-    met: null,
-    unmet: null,
-    no_record: null,
-    score_source: null,
-    by_element: null,
+    elements: null,
+    low_confidence_count: null,
+    level_source: null,
   });
   const position = store.positions.find((p) => p.id === positionId);
   if (position && !previous) position.candidate_count += 1;
+  const url = inviteUrl("demo");
   return {
     session_id: sessionId,
     invite_url: url,
-    expires_at: new Date(now + INVITE_HOURS * 3_600_000).toISOString(),
-    notice_text: inviteFixture.notice_text
-      .replace("지원자A", alias ?? "")
-      .replace(inviteFixture.invite_url, url),
+    expires_at: new Date(Date.now() + INVITE_MS).toISOString(),
+    notice_text: notice(url),
+  };
+}
+
+function reissue(sessionId: string) {
+  const { candidate } = findSession(sessionId);
+  if (candidate.status !== "invited") throw new MockApiError(409, "conflict");
+  const now = new Date();
+  Object.assign(candidate, {
+    display_status: "invited",
+    reissued_at: now.toISOString(),
+    next_action: "입장 대기",
+  });
+  store.counter += 1;
+  const url = inviteUrl(`demo`);
+  return {
+    ...reissueFixture,
+    session_id: sessionId,
+    invite_url: url,
+    expires_at: new Date(now.getTime() + INVITE_MS).toISOString(),
+    notice_text: notice(url),
   };
 }
 
 function cancel(sessionId: string) {
   const { candidate } = findSession(sessionId);
-  if (!["invited", "in_progress", "reporting"].includes(candidate.status)) {
+  if (
+    !["invited", "in_progress"].includes(candidate.status) ||
+    candidate.display_status === "expired"
+  ) {
     throw new MockApiError(409, "conflict");
   }
   Object.assign(candidate, {
     status: "cancelled",
     display_status: "cancelled",
     display_group: "problem",
+    ended_at: new Date().toISOString(),
+    next_action: "재응시 초대",
   });
   return { status: "cancelled" };
 }
@@ -293,75 +283,96 @@ function setStatus(sessionId: string, status: string, group: Candidate["display_
 function getReport(sessionId: string) {
   const state = reportState(sessionId);
   const { report } = state;
-  if (report.stage === "draft" && report.rubric.review && !state.stuck) {
+  if (report.stage === "draft" && report.review && !state.stuck) {
     state.polls += 1;
     if (state.polls >= POLLS_UNTIL_FINAL) {
       report.stage = "final";
       report.reviewed_at = new Date().toISOString();
-      report.rubric.review.reviewed_at = report.reviewed_at;
-      const candidate = setStatus(sessionId, "reviewed", "done");
-      candidate.score_source = "reviewer";
+      report.review.reviewed_at = report.reviewed_at;
+      setStatus(sessionId, "reviewed", "done");
     }
   }
   return report;
+}
+
+function validate(report: Report, request: ReviewBody) {
+  if (!request.reviewer_name?.trim() || request.reviewer_name.trim().length > 40) {
+    throw new MockApiError(422, "invalid_input", "검토자 이름을 적어 주세요.");
+  }
+  const ids = new Set(report.dimensions.map((d) => d.dimension_id));
+  const seen = new Set<string>();
+  for (const adj of request.adjustments ?? []) {
+    if (!ids.has(adj.dimension_id)) throw new MockApiError(422, "invalid_dimension");
+    if (seen.has(adj.dimension_id)) throw new MockApiError(422, "duplicate_dimension");
+    seen.add(adj.dimension_id);
+    if (!adj.memo?.trim()) throw new MockApiError(422, "memo_required");
+    const hasLevel = adj.level != null;
+    const hasReason = !!adj.no_record_reason;
+    if (hasLevel === hasReason) throw new MockApiError(422, "invalid_input");
+    if (hasLevel && (adj.level! < 1 || adj.level! > 5))
+      throw new MockApiError(422, "invalid_input");
+    if (hasReason && !REASONS.includes(adj.no_record_reason!)) {
+      throw new MockApiError(422, "invalid_input");
+    }
+  }
+}
+
+function mergeAdjustments(report: Report, adjustments: Adjustment[]) {
+  for (const adj of adjustments) {
+    const d = report.dimensions.find((x) => x.dimension_id === adj.dimension_id)!;
+    Object.assign(d, {
+      adjusted_level: adj.level,
+      adjusted_no_record_reason: adj.level == null ? adj.no_record_reason : null,
+      adjust_memo: adj.memo.trim(),
+    });
+  }
+  for (const el of report.elements) {
+    const dims = report.dimensions.filter((d) => d.element === el.element);
+    if (!dims.some((d) => d.adjusted_level != null || d.adjusted_no_record_reason != null))
+      continue;
+    const levels = dims
+      .map((d) =>
+        d.adjusted_level != null || d.adjusted_no_record_reason ? d.adjusted_level : d.level,
+      )
+      .filter((l): l is NonNullable<typeof l> => l != null);
+    el.adjusted_level = levels.length
+      ? (Math.floor(
+          levels.reduce((a, b) => a + b, 0) / levels.length + 0.5,
+        ) as typeof el.adjusted_level)
+      : null;
+  }
 }
 
 function review(sessionId: string, body: unknown) {
   const state = reportState(sessionId);
   const { report } = state;
   const request = (body ?? {}) as ReviewBody;
-  // 본문 비교(contracts 멱등)는 항목 순서와 무관하게 한다
   const text = JSON.stringify({
     adjustments: [...(request.adjustments ?? [])].sort((x, y) =>
-      x.item_id.localeCompare(y.item_id),
+      x.dimension_id.localeCompare(y.dimension_id),
     ),
-    memo: request.memo ?? null,
     reviewer_name: request.reviewer_name?.trim(),
   });
-  // 오류 우선순위: 이미 제출된 세션의 already_reviewed가 본문 검증보다 먼저다
+  // 판정 순서: 상태(409) → 검증(422)
   if (state.submitted) {
     if (state.submitted !== text) throw new MockApiError(409, "already_reviewed");
-    state.stuck = false; // 같은 본문 재요청 = "확정만 다시 시도"
-    return { status: report.stage === "final" ? "reviewed" : "approving" };
+    state.stuck = false; // 같은 본문 재요청 = "확정 다시 시도"
+    return { status: "approving" };
   }
-  if (!request.reviewer_name?.trim()) throw new MockApiError(422, "invalid_input");
-  const items = new Map(
-    report.rubric.elements.flatMap((e) => e.cards.flatMap((c) => c.items)).map((i) => [i.id, i]),
-  );
-  const seen = new Set<string>();
-  for (const adj of request.adjustments ?? []) {
-    const item = items.get(adj.item_id);
-    if (!item) throw new MockApiError(400, "invalid_item");
-    if (seen.has(adj.item_id)) throw new MockApiError(400, "duplicate_item");
-    seen.add(adj.item_id);
-    if (adj.value !== item.auto && !adj.memo?.trim()) throw new MockApiError(400, "memo_required");
-  }
-  for (const adj of request.adjustments ?? []) {
-    const item = items.get(adj.item_id)!;
-    Object.assign(item, { reviewer: adj.value, memo: adj.memo, adjusted: true });
-  }
-  const final = (i: { auto: 1 | 0 | null; reviewer: 1 | 0 | null; adjusted: boolean }) =>
-    i.adjusted ? i.reviewer : i.auto;
-  const all = [...items.values()];
-  report.rubric.reviewer_total = {
-    met: all.filter((i) => final(i) === 1).length,
-    unmet: all.filter((i) => final(i) === 0).length,
-    no_record: all.filter((i) => final(i) === null).length,
-  };
-  report.rubric.review = {
-    memo: request.memo ?? null,
-    reviewer_name: request.reviewer_name.trim(),
-    reviewed_at: null,
-  };
+  if (report.stage !== "draft") throw new MockApiError(409, "conflict");
+  validate(report, request);
+  mergeAdjustments(report, request.adjustments ?? []);
+  report.review = { reviewer_name: request.reviewer_name.trim(), reviewed_at: null };
   state.submitted = text;
   state.stuck = request.reviewer_name.includes("지연");
-  setStatus(sessionId, "approving", "done");
+  const candidate = setStatus(sessionId, "approving", "done");
+  if ((request.adjustments ?? []).length) candidate.level_source = "reviewer";
   return { status: "approving" };
 }
 
 function addNote(sessionId: string, body: unknown) {
   const { report } = reportState(sessionId);
-  if (!report.rubric.review) throw new MockApiError(409, "conflict");
+  if (!report.review) throw new MockApiError(409, "conflict");
   const { text, reviewer_name } = (body ?? {}) as { text?: string; reviewer_name?: string };
   if (!text?.trim() || !reviewer_name?.trim()) throw new MockApiError(422, "invalid_input");
   store.counter += 1;
@@ -387,6 +398,7 @@ export const ROUTES: MockRoute[] = [
   ["POST", "/admin/positions", (_, body) => createPosition(body)],
   ["GET", "/admin/positions/:id/candidates", ({ id }) => candidates(id)],
   ["POST", "/admin/positions/:id/invites", ({ id }, body) => invite(id, body)],
+  ["POST", "/admin/sessions/:id/reissue", ({ id }) => reissue(id)],
   ["POST", "/admin/sessions/:id/cancel", ({ id }) => cancel(id)],
   ["GET", "/admin/sessions/:id/report", ({ id }) => getReport(id)],
   ["POST", "/admin/sessions/:id/report/regenerate", ({ id }) => regenerate(id)],
@@ -394,3 +406,25 @@ export const ROUTES: MockRoute[] = [
   ["POST", "/admin/sessions/:id/report/notes", ({ id }, body) => addNote(id, body)],
   ["GET", "/admin/sessions/:id/record", ({ id }) => record(id)],
 ];
+
+/** 테스트용: 관리자 경로만 바로 부른다(mocks/index의 다른 경로 표를 거치지 않음) */
+export async function adminMockRequest<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const got = path.split("?")[0].split("/");
+  for (const [m, pattern, handler] of ROUTES) {
+    const want = pattern.split("/");
+    if (m !== method || want.length !== got.length) continue;
+    const params: Record<string, string> = {};
+    if (
+      want.every((w, i) =>
+        w.startsWith(":") ? ((params[w.slice(1)] = got[i]), true) : w === got[i],
+      )
+    ) {
+      return structuredClone(handler(params, body)) as T;
+    }
+  }
+  throw new MockApiError(404, "mock_missing");
+}
