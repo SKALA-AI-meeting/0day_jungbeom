@@ -3,6 +3,7 @@
 import uuid
 from contextlib import asynccontextmanager
 
+import pytest
 from app.agent.assistant import AssistantGraphRunner
 from app.agent.llm import FakeLLM, make_llm, tool_call
 from app.agent.mcp_client import ASSISTANT_TOOLS, ToolScope
@@ -87,3 +88,96 @@ async def test_llm_fake_mode_assistant(catalog):
     assert [c["name"] for c in result.tool_calls] == ["search_materials"]
     assert result.cited_material_ids == ["water_flood_cases"]
     assert result.content.startswith("도심 침수 사례")
+
+
+@pytest.mark.parametrize(
+    ("answer", "expected"),
+    [
+        (
+            "하수관 센서로 30분 전에 경보했어요.\nmaterial_id: water_flood_cases",
+            "하수관 센서로 30분 전에 경보했어요.\n출처: 도심 침수 사례",
+        ),
+        (
+            "도심 침수 사례(material_id: water_flood_cases)를 보면 30분 전에 경보했어요.",
+            "도심 침수 사례를 보면 30분 전에 경보했어요.",
+        ),
+        (
+            '도심 침수 사례를 보면 경보가 빨랐어요. cited_material_ids: ["water_flood_cases"]',
+            "도심 침수 사례를 보면 경보가 빨랐어요.",
+        ),
+        (
+            "water_flood_cases 자료를 보면 30분 전에 경보했어요.",
+            "도심 침수 사례 자료를 보면 30분 전에 경보했어요.",
+        ),
+    ],
+)
+async def test_internal_material_ids_are_not_shown(catalog, answer, expected):
+    runner, _, _ = make(catalog, [tool_call("search_materials", query="침수"), answer])
+    result = await runner.answer(uuid.uuid4(), "침수 사례 있어?", uuid.uuid4())
+    assert result.content == expected
+    assert result.cited_material_ids == ["water_flood_cases"]
+
+
+TITLES = {"water_flood_cases": "도심 침수 사례", "water_stats": "지역별 물 부족 통계"}
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # 표기 뒤 숫자·문장은 그대로
+        ("material_id: water_flood_cases, 30분 전에 경보했어요.", "30분 전에 경보했어요."),
+        (
+            "센서가 30분 전에 울렸어요 (material_id: `water_flood_cases`).",
+            "센서가 30분 전에 울렸어요.",
+        ),
+        ('근거는 {"material_id": "water_stats"} 이에요.', "근거는 이에요."),
+        (
+            '요약했어요.\n"cited_material_ids": ["water_flood_cases", "water_stats"]\n다음 줄',
+            "요약했어요.\n다음 줄",
+        ),
+        # URL·인라인 코드·코드 블록 안, 들여쓰기·빈 줄은 그대로
+        (
+            "링크 https://x.org/water_flood_cases 참고\n\n  들여쓴 줄  두 칸\n`water_stats`",
+            "링크 https://x.org/water_flood_cases 참고\n\n  들여쓴 줄  두 칸\n`water_stats`",
+        ),
+        (
+            "```\nmaterial_id: water_stats\n    x = 1\n```",
+            "```\nmaterial_id: water_stats\n    x = 1\n```",
+        ),
+        # 모르는 id(이번 응답에서 받지 않은 자료)와 정상 문장·제목은 그대로
+        (
+            "material_id: fire_cases 는 그대로, 도심 침수 사례 30%",
+            "material_id: fire_cases 는 그대로, 도심 침수 사례 30%",
+        ),
+        ("water_stats 기준 3.5배", "지역별 물 부족 통계 기준 3.5배"),
+        # URL 바로 뒤 표기는 지워도 링크 뒤 공백 하나는 남긴다
+        ("https://example.org (material_id: water_stats) 참고", "https://example.org 참고"),
+        # 인라인 코드 전체가 표기면 백틱 쌍째 지운다
+        ("자료는 `material_id: water_stats` 하나예요.", "자료는 하나예요."),
+        # ~~~ 펜스와 4칸 들여쓴 코드 블록 안은 그대로
+        ("~~~\nmaterial_id: water_stats\n~~~", "~~~\nmaterial_id: water_stats\n~~~"),
+        (
+            "예시:\n\n    material_id: water_stats\n    water_flood_cases",
+            "예시:\n\n    material_id: water_stats\n    water_flood_cases",
+        ),
+    ],
+)
+def test_hide_ids_touches_only_known_id_notation(text, expected):
+    from app.agent.assistant.runner import hide_ids
+
+    assert hide_ids(text, TITLES) == expected
+
+
+async def test_ids_hidden_with_open_and_locked_lookups(catalog):
+    """열린 자료 조회 성공 + 미공개 자료 조회 거부가 섞여도 받은 자료 id만 지운다."""
+    runner, _, _ = make(
+        catalog,
+        [
+            tool_call("get_material", material_id="water_flood_cases"),
+            tool_call("get_material", material_id="fire_cases"),
+            "침수 경보가 빨랐어요 (material_id: water_flood_cases). fire_cases는 못 봤어요.",
+        ],
+    )
+    result = await runner.answer(uuid.uuid4(), "사례 있어?", uuid.uuid4())
+    assert result.content == "침수 경보가 빨랐어요. fire_cases는 못 봤어요.\n출처: 도심 침수 사례"
+    assert result.cited_material_ids == ["water_flood_cases"]
