@@ -1,0 +1,20 @@
+{"id": 1, "text": "저는 물로 하면 좋겠어요. 가뭄이나 침수 같은 문제가 많잖아요.", "intent": "propose", "target": "water", "conf": "high", "addressed_to": []}
+{"id": 2, "text": "한결님 말대로 불이 괜찮은 것 같아요.", "intent": "agree", "target": "opt-fire", "conf": "high", "addressed_to": ["p1"]}
+{"id": 3, "text": "바람은 좀 막연한 것 같아요. 저는 반대예요.", "intent": "oppose", "target": "opt-wind", "conf": "high", "addressed_to": []}
+{"id": 4, "text": "나무는 어떨까요? 도시 열섬 문제도 있고요.", "intent": "propose", "target": "tree", "conf": "any", "addressed_to": []}
+{"id": 5, "text": "하람님은 어떻게 생각하세요?", "intent": "question", "target": null, "conf": "any", "addressed_to": ["p2"]}
+{"id": 6, "text": "다들 어떤 키워드가 좋으세요?", "intent": "question", "target": null, "conf": "any", "addressed_to": []}
+{"id": 7, "text": "음… 불도 좋고 물도 괜찮고 아직 잘 모르겠어요.", "intent": "other", "target": null, "conf": "low", "addressed_to": []}
+{"id": 8, "text": "지안님 의견에 동의해요, 바람으로 가죠.", "intent": "agree", "target": "opt-wind", "conf": "high", "addressed_to": ["p3"]}
+{"id": 9, "text": "불은 너무 위험한 주제 아닐까요?", "intent": "oppose", "target": "opt-fire", "conf": "any", "addressed_to": []}
+{"id": 10, "text": "네 좋아요.", "intent": "agree", "target": "opt-wind", "conf": "low", "addressed_to": []}
+{"id": 11, "text": "물이 제일 우리 생활과 가까운 주제라고 생각합니다.", "intent": "propose", "target": "water", "conf": "high", "addressed_to": []}
+{"id": 12, "text": "그건 아닌 것 같아요.", "intent": "oppose", "target": "opt-wind", "conf": "low", "addressed_to": []}
+{"id": 13, "text": "키워드 정하기 전에 자료를 볼 수 있나요?", "intent": "question", "target": null, "conf": "any", "addressed_to": []}
+{"id": 14, "text": "안녕하세요, 잘 부탁드립니다!", "intent": "other", "target": null, "conf": "any", "addressed_to": []}
+{"id": 15, "text": "불보다는 물이 낫지 않을까요?", "intent": "propose", "target": "water", "conf": "any", "addressed_to": []}
+{"id": 16, "text": "한결님, 불을 고른 이유가 뭐예요?", "intent": "question", "target": null, "conf": "any", "addressed_to": ["p1"]}
+{"id": 17, "text": "바람도 나쁘지 않네요, 미세먼지 문제는 중요하니까요.", "intent": "agree", "target": "opt-wind", "conf": "any", "addressed_to": []}
+{"id": 18, "text": "저는 바람에는 반대하고 대신 물을 제안합니다.", "intent": "propose", "target": "water", "conf": "high", "addressed_to": []}
+{"id": 19, "text": "차라리 우주로 하면 어때요?", "intent": "propose", "target": "new", "conf": "any", "addressed_to": []}
+{"id": 20, "text": "시간이 얼마 안 남았으니 물로 정하는 게 어떨까요?", "intent": "propose", "target": "water", "conf": "high", "addressed_to": []}

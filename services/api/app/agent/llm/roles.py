@@ -9,6 +9,7 @@
   OPENAI_API_KEY_PERSONAL, gemini-* → GEMINI_API_KEY(OpenAI 호환 엔드포인트). 대체 모델 없음.
 - 재시도는 역할 표의 횟수(기본 2회, 의도 분류는 0회) 뒤 LLMUnavailable → 호출한 노드의 규칙 폴백.
   report-worker는 같은 규칙의 사본을 쓴다(평가 역할 `evaluator`).
+- env `LLM_FAKE=1`이면 키·모델을 고르지 않고 역할별 DeterministicLLM을 준다(결정적 LLM 모드).
 """
 
 import os
@@ -16,6 +17,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from app.agent.llm.base import MODEL, RETRY_DELAYS, BaseLLM
+from app.agent.llm.fake import DeterministicLLM
 from app.agent.llm.openai import OpenAILLM
 from app.config import get_settings
 
@@ -70,15 +72,25 @@ def key_for(model: str, env: Mapping[str, str] | None = None) -> tuple[str, str 
 
 
 def make_llm(role: str, env: Mapping[str, str] | None = None) -> BaseLLM:
-    """그 역할의 LLM 래퍼(역할 표의 타임아웃·재시도).
+    """그 역할의 LLM 래퍼(역할 표의 타임아웃·재시도·temperature).
 
     env를 주지 않으면 infra/.env를 읽은 프로세스 환경을 쓴다.
     """
     config = role_config(role)
+    env = _env(env)
+    if env.get("LLM_FAKE") == "1":
+        return DeterministicLLM(role, temperature=config.temperature)
     model = model_for(role, env)
     key, base_url = key_for(model, env)
     delays = tuple(RETRY_DELAYS[: config.retries])
-    return OpenAILLM(key, model, timeout=config.timeout, retry_delays=delays, base_url=base_url)
+    return OpenAILLM(
+        key,
+        model,
+        timeout=config.timeout,
+        retry_delays=delays,
+        base_url=base_url,
+        temperature=config.temperature,
+    )
 
 
 def _env(env: Mapping[str, str] | None) -> Mapping[str, str]:

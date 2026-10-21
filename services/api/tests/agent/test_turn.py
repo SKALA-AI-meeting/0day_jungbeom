@@ -1,0 +1,313 @@
+"""턴 매니저 규칙, 합의 채우기(fill), typing·generation, 재실행 멱등."""
+
+import uuid
+
+from app.agent.runner import Stimulus
+from conftest import intent_of, say
+
+WIND = {"option_id": "wind", "stance": "support"}
+
+
+def _stim(kind: str, phase: str, generation: int) -> Stimulus:
+    return Stimulus(type=kind, phase=phase, generation=generation)
+
+
+def keyword_with(h, supporters: dict[str, str]) -> dict[str, str]:
+    """키워드 안 행을 만들고 지지를 놓는다. 반환 {키: option_id}."""
+    ids = {}
+    for key in dict.fromkeys(supporters.values()):
+        ids[key] = h.server.add_option(key, "p1")
+    for participant, key in supporters.items():
+        h.server.set_support(participant, ids[key])
+    return ids
+
+
+# ---- 턴 규칙 ---------------------------------------------------------------------------------
+async def test_phase_started_keyword_pushers_and_problem_react(harness):
+    h = harness(
+        "keyword",
+        persona=[
+            say("불이 맞아요.", {"option_id": "fire", "stance": "support"}),
+            say("바람이죠.", WIND),
+        ],
+    )
+    run = await h.run("phase_started")
+    assert [(s["seat"], s["purpose"]) for s in run.decision["speakers"]] == [
+        ("p1", "push_option"),
+        ("p3", "push_option"),
+    ]
+    assert [m["seq"] for m in h.posted()] == [1, 2]
+    assert len(h.slept) == 1  # 둘째 화자 간격
+
+    p = harness(
+        "problem", persona=[say("자료부터 봐요.", {"option_id": "water_p1", "stance": "support"})]
+    )
+    p.server.confirm_keyword("water")
+    run = await p.run("phase_started")
+    assert [(s["seat"], s["purpose"]) for s in run.decision["speakers"]] == [("p1", "react")]
+    # 카드 전에는 고집형도 입장을 밝히지 않는다(계획 밖 → 고정 문구, 입장 없음)
+    assert p.server.support["p1"] is None and not p.server.options
+
+
+async def test_proposal_phase_started_has_no_speakers(harness):
+    h = harness("proposal")
+    run = await h.run("phase_started")
+    assert run.decision["speakers"] == [] and not h.turn.calls
+
+
+async def test_named_reply_first_and_at_most_two(harness):
+    h = harness("keyword")
+    mid = h.candidate(
+        "한결님, 하람님, 지안님 모두 어떠세요?", intent_of("question", to=("p1", "p2", "p3"))
+    )
+    run = await h.run("message", message_id=mid)
+    assert [s["seat"] for s in run.decision["speakers"]] == ["p1", "p2"]
+    assert len(h.posted()) == 2 and not h.turn.calls
+
+
+async def test_quiet_only_when_called_or_asked_all(harness):
+    h = harness(
+        "keyword",
+        turn=[
+            {"speakers": [{"seat": "p2", "purpose": "respond"}, {"seat": "p1", "purpose": "react"}]}
+        ],
+    )
+    mid = h.candidate("음 그렇군요.", intent_of("other", confidence="low"))
+    run = await h.run("message", message_id=mid)
+    assert [s["seat"] for s in run.decision["speakers"]] == ["p1"]
+    assert run.decision["llm_used"] is True and len(h.turn.calls) == 1
+
+    mid = h.candidate("다들 어떤 키워드가 좋으세요?", intent_of("question"))
+    run = await h.run("message", message_id=mid)
+    assert "p2" in [s["seat"] for s in run.decision["speakers"]]
+    assert len(h.turn.calls) == 1  # 규칙이 화자를 정했으므로 턴 LLM 없음
+
+
+async def test_turn_llm_only_for_message(harness):
+    h = harness("keyword")
+    h.server.invites.add("keyword")  # 초대가 이미 전달돼 idle 규칙도 0명
+    h.server.cards["persuasion_keyword"] = {
+        "card_id": "persuasion_keyword",
+        "locked_option_id": None,
+        "delivered": ["p3"],
+    }
+    for kind, card_id in (("idle", None), ("card_due", "persuasion_keyword")):
+        run = await h.run(kind, card_id=card_id)
+        assert run.decision["speakers"] == []
+    assert not h.turn.calls
+
+
+async def test_turn_llm_failure_means_no_speakers(harness):
+    h = harness("keyword", turn=[RuntimeError("down")] * 3)
+    mid = h.candidate("음.", intent_of("other", confidence="low"))
+    run = await h.run("message", message_id=mid)
+    assert run.ok and run.decision["speakers"] == [] and not h.posted()
+
+
+async def test_silence_invite_once_by_critic(harness):
+    h = harness("solution", persona=[say("김지원님은 어떻게 생각하세요?")])
+    h.server.confirm_keyword("water")
+    run = await h.run("idle")
+    assert run.decision["invite"] is True
+    post = h.posted()[0]
+    assert post["sender"] == "p3" and post["is_invite"] is True
+    second = await h.run("idle")
+    assert second.decision["speakers"] == [] and len(h.posted()) == 1
+
+
+async def test_consecutive_three_blocks_turn_llm_choice(harness):
+    h = harness("keyword", turn=['{"speakers": [{"seat": "p3", "purpose": "react"}]}'])
+    mid = h.candidate("음.", intent_of("other", confidence="low"))
+    for _ in range(3):
+        h.server.messages.append(
+            {
+                "id": str(uuid.uuid4()),
+                "sender": "p3",
+                "content": "음",
+                "phase": "keyword",
+                "is_invite": False,
+                "t_min": 1,
+            }
+        )
+    run = await h.run("message", message_id=mid)
+    assert run.decision["speakers"] == []
+
+
+# ---- 합의 채우기 -----------------------------------------------------------------------------
+async def test_existing_consensus_fills_without_respond(harness):
+    h = harness("keyword")
+    ids = keyword_with(h, {"candidate": "water", "p1": "water", "p3": "water"})
+    mid = h.candidate("물로 가요.", intent_of("agree", option_id=ids["water"]))
+    run = await h.run("message", message_id=mid)
+    assert run.decision["speakers"] == [] and run.decision["fill"] == {
+        "option_id": ids["water"],
+        "seat": "p3",
+    }
+    names = h.tool_names()
+    assert "post_message" not in names and names.count("fill_slot") == 1
+    assert not h.persona.calls
+    slot = h.server.slots["keyword"]
+    assert slot["filled_by"] == "p3" and slot["message"]["seq"] == 5
+    assert slot["message"]["content"] == "그럼 물로 정리할게요."
+    assert h.server.phase == "problem"
+
+
+async def test_ai_reply_creates_consensus_in_same_run(harness):
+    h = harness(
+        "keyword",
+        persona=[say("그래요, 물로 가도 괜찮아요.", {"option_id": "water", "stance": "support"})],
+    )
+    ids = keyword_with(h, {"candidate": "water", "p1": "water", "p3": "wind"})
+    # 서지안이 바람을 민 뒤 지원자가 두 번 반대 → 설득 가능 규칙으로 지원자 안(물)으로 옮긴다
+    h.server.messages.append(
+        {
+            "id": "x",
+            "sender": "p3",
+            "content": "바람이죠",
+            "phase": "keyword",
+            "is_invite": False,
+            "t_min": 0,
+        }
+    )
+    for text in ("바람은 막연해요.", "바람 말고 물이요."):
+        h.candidate(text, intent_of("oppose", option_id=ids["wind"]))
+    run = await h.run(
+        "message", message_id=h.candidate("지안님?", intent_of("question", to=("p3",)))
+    )
+    assert run.decision["speakers"][0]["seat"] == "p3"
+    assert run.decision["fill"] == {"option_id": ids["water"], "seat": "p3"}
+    assert h.server.slots["keyword"]["resolution"] == "consensus"
+    assert [m for m in h.server.messages if m.get("seq") == 5][0]["sender"] == "p3"
+
+
+async def test_fill_slot_conflict_saves_nothing(harness):
+    h = harness("keyword")
+    keyword_with(h, {"candidate": "water", "p1": "water", "p3": "water"})
+    original = h.server.t_fill_slot
+    h.server.t_fill_slot = lambda **_: {
+        "ok": False,
+        "error": {"code": "conflict", "message": "no_consensus"},
+    }
+    run = await h.run("phase_started")
+    assert run.ok and run.decision["fill_result"] == "no_consensus"
+    assert not [m for m in h.server.messages if m.get("seq") == 5]
+    assert h.server.phase == "keyword"
+    h.server.t_fill_slot = original
+
+
+async def test_no_fill_without_consensus(harness):
+    h = harness("keyword", persona=[say("저는 바람이요.", WIND)])
+    keyword_with(h, {"candidate": "water", "p1": "water"})
+    mid = h.candidate("지안님 생각은요?", intent_of("question", to=("p3",)))
+    run = await h.run("message", message_id=mid)
+    assert run.decision["fill"] is None and "fill_slot" not in h.tool_names()
+    assert "keyword" not in h.server.slots
+
+
+async def test_same_run_id_rerun_converges(harness):
+    h = harness("keyword")
+    keyword_with(h, {"candidate": "water", "p1": "water", "p3": "water"})
+    run_id = uuid.uuid4()
+    await h.run("phase_started", run_id=run_id)
+    # 같은 run_id 재실행은 단계가 바뀌어 skipped, 공지는 1건 그대로
+    rerun = await h.runner.run(
+        h.session_id, _stim("phase_started", "keyword", h.ports.generation), run_id
+    )
+    assert rerun.status == "skipped"
+    assert len([m for m in h.server.messages if m.get("seq") == 5]) == 1
+
+    g = harness(
+        "keyword",
+        persona=[
+            say("불이 맞아요.", {"option_id": "fire", "stance": "support"}),
+            say("바람이죠.", WIND),
+        ]
+        * 2,
+    )
+    run_id = uuid.uuid4()
+    await g.run("phase_started", run_id=run_id)
+    await g.run("phase_started", run_id=run_id)
+    assert len(g.posted()) == 2 and len(g.server.options) == 2
+
+
+# ---- typing·generation -----------------------------------------------------------------------
+async def test_candidate_typing_defers_and_requeues(harness):
+    h = harness(
+        "keyword", persona=[say("불이 맞아요.", {"option_id": "fire", "stance": "support"})]
+    )
+    h.ports.typing = True
+    run = await h.run("phase_started")
+    assert run.status == "deferred" and not h.posted()
+    assert sum(h.slept) == 10.0
+    assert [s.type for s in h.ports.enqueued] == ["phase_started"]
+    assert h.ports.typing_sent[-1] == ("p1", "stop")
+
+
+async def test_generation_change_drops_remaining(harness):
+    h = harness(
+        "keyword", persona=[say("불이 맞아요.", {"option_id": "fire", "stance": "support"})]
+    )
+
+    def second(_messages):
+        h.ports.generation += 1
+        return say("바람이죠.", WIND)
+
+    h.persona.script.append(second)
+    run = await h.run("phase_started")
+    assert run.status == "finished" and run.decision["dropped_seats"] == ["p3"]
+    assert [m["sender"] for m in h.posted()] == ["p1"]
+    assert h.ports.typing_sent[-1] == ("p3", "stop")
+
+
+async def test_stale_message_generation_is_skipped(harness):
+    h = harness("keyword")
+    mid = h.candidate("물이요.", intent_of("propose", key="water"))
+    h.candidate("아니 바람이요.", intent_of("propose", key="wind"))
+    run = await h.run("message", message_id=mid, generation=h.ports.generation - 1)
+    assert run.status == "skipped" and not h.persona.calls
+
+
+# ---- 복구·관측 ----------------------------------------------------------------------------------
+async def test_persona_llm_failure_skips_speaker(harness):
+    h = harness("keyword", persona=[RuntimeError("down")] * 3)
+    mid = h.candidate("한결님?", intent_of("question", to=("p1",)))
+    run = await h.run("message", message_id=mid)
+    assert run.fallback_used and run.error.startswith("persona_llm_unavailable:p1")
+    assert not h.posted() and run.usage["retries"] == 2
+    assert h.ports.typing_sent[-1] == ("p1", "stop")
+
+
+async def test_trace_and_decision(harness):
+    h = harness(
+        "keyword", persona=[say("불이 맞아요.", {"option_id": "fire", "stance": "support"})]
+    )
+    mid = h.candidate("한결님?", intent_of("question", to=("p1",)))
+    run_id = uuid.uuid4()
+    run = await h.run("message", message_id=mid, run_id=run_id)
+    assert h.persona.calls[0].config["metadata"]["agent_run_id"] == str(run_id)
+    assert set(run.decision) >= {
+        "stimulus",
+        "generation",
+        "speakers",
+        "fill",
+        "invite",
+        "llm_used",
+        "dropped_seats",
+        "reason",
+    }
+
+
+async def test_unexpected_error_after_respond_stops_typing(harness):
+    fire = {"option_id": "fire", "stance": "support"}
+    h = harness("keyword", persona=[say("불이 맞아요.", fire)])
+    original = h.server._call
+
+    async def call(name, args):  # 게시 중 예상 밖 예외(LLMUnavailable가 아님)
+        if name == "post_message":
+            raise RuntimeError("boom")
+        return await original(name, args)
+
+    h.server._call = call
+    run = await h.run("phase_started")
+    assert run.status == "failed" and not run.ok
+    assert ("p1", "start") in h.ports.typing_sent and h.ports.typing_sent[-1] == ("p1", "stop")
