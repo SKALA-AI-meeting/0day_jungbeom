@@ -242,3 +242,11 @@
 | 단계 시드 생성 | `scenarios/e2e/stages/<단계>.yaml`(e2e 대본 문법)을 SessionService·debate·proposal 함수로 재생. SQL 직접 삽입 금지 | generation·seq·누적 마감·칸·안·입장이 실제 흐름과 같은 규칙으로 쌓임 | DB 스냅샷·SQL 픽스처 |
 | 결정적 LLM 모드 | `LLM_FAKE=1`이면 그래프·의도 분류·어시스턴트·평가 에이전트는 그대로 돌고 LLM 호출만 고정 응답. `AGENT_RUNNER` 기본값은 `session`으로 통일하고 `fake` runner는 api 단위 테스트 주입 전용 | 실 스택 단계 테스트가 결정적이어야 하고, 기본값이 config(`fake`)와 runner 선택(`session`)에서 달랐음 | `AGENT_RUNNER=fake`로 실 스택 테스트(그래프를 안 거쳐 확인 범위가 좁음) |
 | 계약 보완 | State `keyword_options`, 내부 messages `tail`, `/rubric` `cards[].window`(카탈로그 `{start, end, label}` 그대로), 409 세부 코드 목록, Report `review = {reviewer_name, reviewed_at}`, 내부 `assistant_calls`에 `request`·`response` 원문, 내부 `GET /sessions/{id}`의 `position.name` | api WIP·report-worker 리뷰에서 나온 결정을 계약에 반영 | — |
+
+## 2026-10-21 평가 검증 처리 완화 (사용자 결정)
+
+| 결정 | 내용 | 이유 | 대안 |
+|---|---|---|---|
+| 근거 1개 상한 | 수준 4·5에 지원자 근거 단위가 1개뿐이면 거부하지 않고 수준 3·확신도 최대 medium으로 깎는다. 지원자 근거 없는 수준 금지와 AI 발언 비계수 원칙은 그대로 | 실 LLM 15분 세션에서 19개 차원 중 5개가 `evaluate_failed`로 비어 담당자가 리포트로 판단하기 어려웠다(관리자 playtest 심각도 상). rubric 2.2의 "최대 3" 문구와 확신도 clamp 방식에 맞춘다 | 거부 유지: 리포트 빈칸이 많아짐 |
+| 재요청 사유 | 요소 재요청 때 차원별 거부 사유를 구체적으로 주고, 실패 차원 `rationale`에 사유 코드를 남긴다(rubric 7.3에 있던 명세의 구현 누락) | 같은 실수 반복을 줄이고 원인을 기록으로 확인 | 일반 재요청: 원인 추정만 가능 |
+| 표시 문구 | `evaluate_failed` 표시를 "시스템: 판단 실패"에서 "판단 보류 · 근거 부족 — 원문 기록 확인 권장"으로 | 시스템 오류처럼 읽히지 않고 담당자가 다음 행동을 알게 | 문구 유지 |
