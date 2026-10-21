@@ -24,7 +24,7 @@ test("후보 확정 → 결정 사항 → 문제 상황 단계 → 자료 열림
 
   const result = page.locator('[data-slot="keyword"]');
   await expect(result).toContainText("물");
-  await expect(result).toContainText("합의");
+  await expect(result).toContainText("지원자 결정");
   await expect(result).toContainText("정한 사람 · 나");
   await expect(page.locator('[data-slot-input="problem"]')).toBeVisible();
   await shot(page, "keyword", "03-확정");
