@@ -3,7 +3,7 @@ COMPOSE     = docker compose -f infra/docker-compose.yml --env-file infra/.env
 COMPOSE_DEV = $(COMPOSE) -f infra/docker-compose.dev.yml
 SERVICES    = services/api services/debate-mcp services/rag-mcp services/assessment-mcp services/report-worker
 # 저장소 루트에서 도는 검사: 계약 픽스처(G-C)와 미션 카탈로그 정합성
-ROOT_TESTS  = tests/test_contract_fixtures.py scenarios/missions/debate/tests
+ROOT_TESTS  = tests/test_contract_fixtures.py tests/test_docs_gen.py scenarios/missions/debate/tests
 XFAIL       = tests/expected-failures.txt
 
 # 기대 실패 목록에서 접두어(셸 변수 p) 아래 줄을 그 폴더 기준 경로로 꺼내 건너뛰기 인자로 만든다.

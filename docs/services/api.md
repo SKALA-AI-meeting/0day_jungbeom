@@ -84,7 +84,7 @@ services/api/app/
 - `submit(reason: submitted∣timeout)`: 한 트랜잭션에서 기획안 `sections`를 `submitted`에 복사(불변), `submitted_at`, timeout이면 `auto_submitted=true`, `status=completed`·`phase=completed`·`completed_at`·`ended_at` → 큐 `report.generate` 발행(confirm 뒤 `report_enqueued_at`) → WS `session.ended{reason}`. 그 뒤 들어오는 내부 쓰기는 409 `conflict`이므로 진행 중 run의 아직 말하지 않은 화자는 게시되지 않고, 메일박스는 남은 자극을 버리고 멈춘다. 중간 상태는 없다.
 - `cancel`·`fail(stage, reason)`: `ended_at`을 함께 기록한다(R5-21). `fail`은 `failed_stage`(session∣report)와 담당자 행동 안내. 세션 실패는 리포트를 만들지 않는다.
 - `reissue`: 아래 "초대 재발급".
-- `regenerate`: failed_stage=report인 세션을 completed로 되돌리고 재발행. 최신 `evaluation_runs.has_failed`가 false면 `sessions.eval_round`를 그대로 두어 워커가 저장 평가를 재사용하고, true면 `eval_round`를 +1 해 새 run_id(`uuid5(session_id, "evaluate:"+eval_round)`)로 다시 평가하게 한다(R5-14). 큐 본문은 `{session_id, attempt, eval_round}`. 리포트 그래프 thread_id는 `report:{session_id}:{eval_round}`라 새 회차는 이전 interrupt 체크포인트를 쓰지 않는다. 승인 때 발행하는 `report.approve` 본문에도 draft를 만든 `eval_round`를 넣는다.
+- `regenerate`: failed_stage=report인 세션만. 초안 전 실패(`failed_step` draft)는 남은 draft를 지우고 completed로 돌려 재발행, 확정 실패(`failed_step` finalize)는 approving으로 돌려 같은 `eval_round`의 `report.approve`를 재발행한다(정본 [contracts/api.md](../contracts/api.md)). 초안 전 실패 경로: 최신 `evaluation_runs.has_failed`가 false면 `sessions.eval_round`를 그대로 두어 워커가 저장 평가를 재사용하고, true면 `eval_round`를 +1 해 새 run_id(`uuid5(session_id, "evaluate:"+eval_round)`)로 다시 평가하게 한다(R5-14). 큐 본문은 `{session_id, attempt, eval_round}`. 리포트 그래프 thread_id는 `report:{session_id}:{eval_round}`라 새 회차는 이전 interrupt 체크포인트를 쓰지 않는다. 승인 때 발행하는 `report.approve` 본문에도 draft를 만든 `eval_round`를 넣는다.
 
 ## 지원자 메시지 처리 (`services/debate.py`)
 

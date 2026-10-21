@@ -30,7 +30,7 @@ draft와 approval(interrupt)을 나눈 이유: LangGraph는 재개 시 interrupt
 8. 실패·예외(LLM 전송 오류·타임아웃 포함): attempt+1로 재발행(백오프 5·15·45초) 후 원본 ack. attempt ≥ 3이면 `report.dlq`. "3회"는 최초 포함 총 3회. 평가 검증 실패는 이 큐 재시도가 아니라 4단계의 요소 단위 재요청·`evaluate_failed`로 처리한다.
 9. `report.dlq` 소비(같은 워커의 둘째 소비자): `POST /report_failed` 후 ack. api가 내려가 있으면 ack하지 않고 60초 뒤 재시도.
 
-담당자의 "리포트 다시 생성"은 api가 completed로 되돌리고 재발행한다. 저장된 평가에 `evaluate_failed`가 없으면 api가 `eval_round`를 그대로 두므로 같은 thread의 체크포인트에서 재개하고, evaluate에 닿으면 같은 run_id의 저장 평가를 재사용한다(LLM 재호출 없음). `evaluate_failed`가 섞여 있으면 api가 `eval_round`를 +1 해 발행하므로 **새 thread·새 run_id**로 collect부터 다시 돌고 evaluate를 새로 한다(R5-14). 이전 run의 행은 남고 리포트는 새 run 결과를 쓴다.
+담당자의 "리포트 다시 생성": 리포트 실패의 재생성은 실패 단계에 따라 둘로 나뉜다(정본 [contracts/api.md](../contracts/api.md) `POST /admin/sessions/{id}/report/regenerate`). 초안 전 실패(`failed_step` draft)는 남은 draft를 지우고 completed로 돌려 `report.generate`를 재발행한다(최신 평가에 실패 차원이 있으면 `eval_round` +1). 확정 실패(`failed_step` finalize)는 approving으로 돌려 같은 `eval_round`의 `report.approve`를 재발행하고, 워커는 그 회차의 finalize만 재개한다. 아래는 초안 전 실패 경로다. 저장된 평가에 `evaluate_failed`가 없으면 api가 `eval_round`를 그대로 두므로 같은 thread의 체크포인트에서 재개하고, evaluate에 닿으면 같은 run_id의 저장 평가를 재사용한다(LLM 재호출 없음). `evaluate_failed`가 섞여 있으면 api가 `eval_round`를 +1 해 발행하므로 **새 thread·새 run_id**로 collect부터 다시 돌고 evaluate를 새로 한다(R5-14). 이전 run의 행은 남고 리포트는 새 run 결과를 쓴다.
 
 ## 모듈
 

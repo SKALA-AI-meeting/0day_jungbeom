@@ -39,10 +39,11 @@ env의 의미·기본값은 `config.py`(`get_settings`)와 `agent/llm/roles.py`,
 
 ## 실행
 
-저장소 루트에서 실행한다. 먼저 인프라(`postgres`·`rabbitmq`·`rag-mcp`)를 띄우고 `infra/.env`를 준비한다.
+저장소 루트에서 실행한다. 먼저 인프라(`postgres`·`rabbitmq`·`rag-mcp`)를 띄우고 env 파일 두 개를 준비한다. 로컬 실행 env: `infra/.env.local`을 만들고 DB·큐·내부 API·MCP 주소를 `localhost`로 바꾼다(항목은 [configuration.md](../../docs/guides/configuration.md) "로컬 실행용 `infra/.env.local`"). 로컬 서비스는 `infra/.env.local` → `infra/.env` 순으로 읽는다.
 
 ```
 cp infra/.env.example infra/.env                              # 비밀값 채움(처음 한 번)
+cp infra/.env infra/.env.local                                # 서비스 주소를 localhost로(처음 한 번)
 make infra-up                                                 # postgres 5432, rabbitmq 5672, rag-mcp 9102
 uv run --directory services/api python -m app.run --reload    # 8000 + 8001 + 스케줄러(한 프로세스)
 ```
@@ -80,7 +81,7 @@ debate-mcp·assessment-mcp도 떠 있어야 토론 그래프와 리포트 평가
 | POST | `/admin/positions` | 채용 건 생성(시나리오 조립·고정) |
 | GET | `/admin/positions/{position_id}/candidates` | 채용 건의 지원자 목록(상태·요소 수준 칩) |
 | POST | `/admin/positions/{position_id}/invites` | 지원자 초대 링크 발급(72시간) |
-| POST | `/admin/sessions/{session_id}/reissue` | 만료·실패 세션 재초대(새 링크) |
+| POST | `/admin/sessions/{session_id}/reissue` | 시작 전 같은 세션의 초대 링크 재발급(실패 세션은 거부) |
 | POST | `/admin/sessions/{session_id}/cancel` | 초대·진행 세션 취소 |
 | GET | `/admin/sessions/{session_id}/report` | 리포트 조회(초안·검토 완료본) |
 | POST | `/admin/sessions/{session_id}/report/regenerate` | 실패한 리포트 다시 생성 |

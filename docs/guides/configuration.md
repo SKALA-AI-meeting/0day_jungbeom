@@ -25,6 +25,23 @@ env 이름과 기본값의 예시는 `infra/.env.example`, 코드의 기본값�
 - 로컬 개발 모드와 전체 compose는 호스트 포트 3000·8000을 함께 쓰므로 동시에 띄우지 않는다. 같은 기계에서 두 번째 스택이 필요하면 격리 e2e 스택을 쓰거나 `API_PORT`·`WEB_PORT`·`RABBITMQ_UI_PORT`와 프로젝트 이름(`-p`)을 바꾼다.
 - 전체 compose 모드는 postgres·rag-mcp를 호스트에 열지 않아 호스트에서 `scripts/seed.py`가 닿지 않는다. 이 모드의 시드는 `Makefile`의 compose용 시드 타깃을 쓴다.
 
+## 로컬 실행용 `infra/.env.local`
+
+`infra/.env.example`의 서비스 주소는 compose 호스트명(`postgres`·`rabbitmq`·`api`·`debate-mcp` 등)이라 호스트에서 띄운 Python 서비스는 닿지 않는다. 로컬 개발 모드(`make infra-up` + 호스트에서 앱 실행)에서는 `cp infra/.env infra/.env.local` 뒤 아래 항목만 바꾼다. 로컬 Python 서비스는 `.env.local`을 먼저 읽고, 컨테이너는 이 파일을 읽지 않는다.
+
+| 이름 | 로컬 값 |
+|---|---|
+| `DATABASE_URL` | 호스트를 `postgres` → `localhost`(포트 5432) |
+| `RABBITMQ_URL` | 호스트를 `rabbitmq` → `localhost`(포트 5672) |
+| `API_INTERNAL_URL` | `http://localhost:8001` |
+| `DEBATE_MCP_URL` | `http://localhost:9101/mcp` |
+| `RAG_MCP_URL` | `http://localhost:9102/mcp`(컨테이너 rag-mcp든 로컬 rag-mcp든 같은 포트) |
+| `ASSESSMENT_MCP_URL` | `http://localhost:9103/mcp` |
+| `HF_HOME` | rag-mcp를 로컬로 띄울 때만: 쓰기 가능한 로컬 폴더(예시 값 `/models`는 컨테이너 경로) |
+| `SCENARIOS_DIR` | 예시 값 `/scenarios` 그대로(로컬에 그 경로가 없으면 저장소 `scenarios/`를 쓴다). 빈 값으로 두지 않는다 |
+
+비밀값(키·토큰)은 `infra/.env`와 같게 둔다. compose 컨테이너 rag-mcp는 `docker-compose.dev.yml`이 내부 API 주소를 `http://host.docker.internal:8001`로 따로 준다.
+
 ## env를 읽는 순서
 
 | 대상 | 순서(앞이 이김) |

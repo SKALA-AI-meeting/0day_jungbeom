@@ -29,6 +29,16 @@ MCP_SERVICES = {
 }
 READMES = [f"services/{s}/README.md" for s in PY_SERVICES] + ["apps/web/README.md"]
 NOTE = "> 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다."
+# README마다 반드시 있어야 하는 생성 블록. 마커가 빠지거나 짝이 틀리면 그 블록이
+# 검사에서 조용히 빠지므로 생성·검사 전에 이 목록과 대조한다.
+REQUIRED_BLOCKS = {
+    "services/api/README.md": ("api", "tests"),
+    "services/debate-mcp/README.md": ("mcp-tools", "tests"),
+    "services/rag-mcp/README.md": ("mcp-tools", "tests"),
+    "services/assessment-mcp/README.md": ("mcp-tools", "tests"),
+    "services/report-worker/README.md": ("tests",),
+    "apps/web/README.md": ("tests",),
+}
 
 # 라우터 함수에 docstring이 없어 요약은 여기서 관리한다. 빠진 경로가 있으면 생성이 실패한다.
 SUMMARIES = {
@@ -39,7 +49,9 @@ SUMMARIES = {
     "POST /admin/positions": "채용 건 생성(시나리오 조립·고정)",
     "GET /admin/positions/{position_id}/candidates": "채용 건의 지원자 목록(상태·요소 수준 칩)",
     "POST /admin/positions/{position_id}/invites": "지원자 초대 링크 발급(72시간)",
-    "POST /admin/sessions/{session_id}/reissue": "만료·실패 세션 재초대(새 링크)",
+    "POST /admin/sessions/{session_id}/reissue": (
+        "시작 전 같은 세션의 초대 링크 재발급(실패 세션은 거부)"
+    ),
     "POST /admin/sessions/{session_id}/cancel": "초대·진행 세션 취소",
     "GET /admin/sessions/{session_id}/report": "리포트 조회(초안·검토 완료본)",
     "POST /admin/sessions/{session_id}/report/regenerate": "실패한 리포트 다시 생성",
@@ -305,6 +317,39 @@ def generate(readme: str, name: str) -> str:
     raise SystemExit(f"알 수 없는 생성 블록: {name} ({readme})")
 
 
+def marker_problems(text: str, required: tuple[str, ...]) -> list[str]:
+    """생성 블록 마커 검사.
+
+    필수 블록마다 시작·끝이 정확히 한 쌍이고 시작이 끝보다 앞이며, 블록이 겹치지 않고,
+    목록 밖 블록이나 짝 없는 마커가 없어야 한다.
+    """
+    starts = [(m.start(), m["name"]) for m in re.finditer(r"<!-- gen:(?P<name>[\w-]+) -->", text)]
+    ends = [(m.start(), m["name"]) for m in re.finditer(r"<!-- /gen:(?P<name>[\w-]+) -->", text)]
+    problems = []
+    names = {n for _, n in starts} | {n for _, n in ends} | set(required)
+    for name in sorted(names):
+        s_pos = [p for p, n in starts if n == name]
+        e_pos = [p for p, n in ends if n == name]
+        if name not in required:
+            problems.append(f"필수 목록에 없는 블록: {name}")
+        elif len(s_pos) != 1 or len(e_pos) != 1:
+            problems.append(
+                f"{name}: 시작 마커 {len(s_pos)}개, 끝 마커 {len(e_pos)}개(각 1개여야 함)"
+            )
+        elif s_pos[0] > e_pos[0]:
+            problems.append(f"{name}: 끝 마커가 시작 마커보다 앞에 있다")
+    spans = sorted(
+        (sp, ep, n)
+        for n in required
+        for sp in [p for p, m in starts if m == n][:1]
+        for ep in [p for p, m in ends if m == n][:1]
+    )
+    for (_, e1, n1), (s2, _, n2) in zip(spans, spans[1:], strict=False):
+        if s2 < e1:
+            problems.append(f"{n1}·{n2}: 블록이 겹친다")
+    return problems
+
+
 def render(readme: str) -> str:
     path = ROOT / readme
     text = path.read_text(encoding="utf-8")
@@ -353,7 +398,11 @@ def main() -> int:
             return int(failed)
     for readme in READMES:
         text = (ROOT / readme).read_text(encoding="utf-8")
-        if "<!-- gen:" not in text:
+        problems = marker_problems(text, REQUIRED_BLOCKS[readme])
+        if problems:
+            for p in problems:
+                print(f"{readme}: {p}")
+            failed = True
             continue
         new = render(readme)
         if new == text:

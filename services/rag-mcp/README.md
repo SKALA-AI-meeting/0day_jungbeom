@@ -27,12 +27,22 @@
 
 ## 실행
 
-저장소 루트에서 실행한다. 먼저 `make infra-up`으로 postgres를 띄운다(컨테이너로 쓰려면 같은 명령이 rag-mcp도 올린다).
+저장소 루트에서 실행한다. 포트는 9102 고정이라 컨테이너와 로컬 중 하나만 띄운다.
+
+**컨테이너로 쓸 때(기본)**: `make infra-up`이 postgres·rabbitmq와 함께 rag-mcp를 `127.0.0.1:9102`에 올린다. 컨테이너는 내부 API를 `http://host.docker.internal:8001`(로컬 api)로 부른다.
 
 ```
 make infra-up                                                   # postgres 5432, rabbitmq 5672, rag-mcp 9102
-uv run --directory services/rag-mcp python -m rag_mcp           # 시작 시 BGE-M3 1회 로드(첫 실행은 약 2.3GB 다운로드, HF_HOME 캐시)
 make seed                                                       # 자료 원문 시드 후 reindex_materials로 색인
+```
+
+**코드를 고치며 로컬로 띄울 때**: infra-up이 올린 rag-mcp 컨테이너를 먼저 내린다. 로컬 env는 `infra/.env.local`(`DATABASE_URL`·`API_INTERNAL_URL`을 localhost로, `HF_HOME`은 쓰기 가능한 로컬 폴더. 항목은 [configuration.md](../../docs/guides/configuration.md) "로컬 실행용 `infra/.env.local`").
+
+```
+make infra-up
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml --env-file infra/.env stop rag-mcp
+uv run --directory services/rag-mcp python -m rag_mcp           # 9102. 시작 시 BGE-M3 1회 로드(첫 실행은 약 2.3GB 다운로드, HF_HOME 캐시)
+make seed
 ```
 
 ## MCP 도구

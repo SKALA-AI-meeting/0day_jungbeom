@@ -8,7 +8,7 @@
 
 ```
 invited ──동의·시작──▶ in_progress ──제출 / 세션 만료 자동 제출──▶ completed ──워커 draft──▶ report_ready ──검토 완료──▶ approving ──워커 final──▶ reviewed
-   │                        │                                              └──워커 3회 실패──▶ failed(report) ──재생성──▶ completed
+   │                        │                                              └──워커 3회 실패──▶ failed(report) ──재생성──▶ completed(초안 전 실패) ∣ approving(확정 실패)
    └──취소──▶ cancelled ◀────┘ (시작 후 취소 = 중도 포기, 리포트 없음)
                             └──페르소나 LLM 연속 실패 3회──▶ failed(session)
 ```
@@ -32,7 +32,7 @@ invited ──동의·시작──▶ in_progress ──제출 / 세션 만료 �
 
 ### 단계 진행과 재시작 복구
 
-in_progress 안의 phase: `keyword → problem → solution → proposal → completed`. 토론 단계는 칸 confirmed로만 넘어가고(지원자 확정·AI 합의 채우기·api 시간 초과 채우기), proposal은 제출로만 끝난다. 상태·단계 변경은 api `SessionService` 한 곳만 한다. 지원자 목록 표시는 다섯 묶음(대기·진행·검토 필요·완료·문제), `fail(stage, reason)`은 failed_stage(session∣report)와 담당자 행동 안내를 남긴다. 세션 실패는 리포트를 만들지 않고 재응시는 새 초대(previous_session_id, 같은 별칭 가능). 시작 전 만료는 재발급(같은 세션)으로 연장한다. 리포트 실패는 regenerate로 completed로 되돌린다(`ended_at`은 그대로).
+in_progress 안의 phase: `keyword → problem → solution → proposal → completed`. 토론 단계는 칸 confirmed로만 넘어가고(지원자 확정·AI 합의 채우기·api 시간 초과 채우기), proposal은 제출로만 끝난다. 상태·단계 변경은 api `SessionService` 한 곳만 한다. 지원자 목록 표시는 다섯 묶음(대기·진행·검토 필요·완료·문제), `fail(stage, reason)`은 failed_stage(session∣report)와 담당자 행동 안내를 남긴다. 세션 실패는 리포트를 만들지 않고 재응시는 새 초대(previous_session_id, 같은 별칭 가능). 시작 전 만료는 재발급(같은 세션)으로 연장한다. 리포트 실패의 재생성은 실패 단계에 따라 둘로 나뉜다(정본 [contracts/api.md](../contracts/api.md) `POST /admin/sessions/{id}/report/regenerate`). 초안 전 실패(`failed_step` draft)는 남은 draft를 지우고 completed로 돌려 `report.generate`를 재발행한다(최신 평가에 실패 차원이 있으면 `eval_round` +1). 확정 실패(`failed_step` finalize)는 approving으로 돌려 같은 `eval_round`의 `report.approve`를 재발행하고, 워커는 그 회차의 finalize만 재개한다. `ended_at`은 그대로다.
 
 재시작 복구: api 기동 때와 스케줄러 틱마다 (1) `phase_deadline_at`이 지났는데 칸이 empty인 세션은 api가 바로 시간 초과 채우기, (2) `ends_at`이 지났는데 completed가 아닌 in_progress 세션에 자동 제출, (3) `agent_runs`의 `queued`·`started`(기동 때 전부, 실행 중에는 started 200초 초과)를 같은 run_id로 메일박스에 다시 넣기, (4) 침묵 초대 미전달·카드 미전달 조건을 다시 평가해 idle·card_due enqueue(같은 단계 안일 때만), (5) `report_enqueued_at`·`approve_enqueued_at`이 빈 세션 재발행을 한다. 모든 쓰기가 위 멱등 키를 가지므로 재실행해도 중복이 없다.
 
@@ -96,7 +96,7 @@ in_progress 안의 phase: `keyword → problem → solution → proposal → com
 | draft | 근거마다 원문·시각·앞뒤 맥락(`get_transcript_span` 앞 5·뒤 3, 표시용)을 붙여 Report(`elements`·`dimensions`·`facts`·`contribution_check`·`seats`·`slots`·`cards`·`debrief`, 총점 없음) 조립. 카드 장면 `cards[].scene`은 카드의 고정 문장 `report_template` 그대로(LLM 없음) → 내부 `report/draft` → `report_ready` → ack | assessment-mcp `get_transcript_span`, 내부 REST |
 | interrupt → finalize | 담당자 검토 완료(차원 단위 조정·메모, `reviewer_name`) → `report.approve` → 같은 thread 재개 → **승인된 draft content를 그대로** `report/final`(해시 동일, 조정은 조회 때 병합) → `reviewed` | 내부 REST |
 
-실패는 attempt+1 재발행(백오프 5·15·45초), 3회면 `report.dlq` → `report_failed` → `status=failed`(failed_stage=report). 담당자의 "리포트 다시 생성"은 completed로 되돌리고 다시 발행한다. 최신 평가 실행에 `evaluate_failed`가 없으면 같은 run_id를 재사용하고, 있으면 `eval_round`+1로 새 run_id로 다시 평가한다. 그래프 thread는 `report:{session_id}:{eval_round}`라 새 회차는 이전 interrupt 체크포인트의 draft를 재사용하지 않고 처음부터 실행하며, 같은 회차의 큐 재시도만 체크포인트에서 이어 간다. 리포트는 **담당자가 평가할 때 보는 참고 자료**다. AI 평가 에이전트가 공개된 척도로 근거를 들어 수준을 판단하고 담당자가 그것을 참고해 최종 평가한다. 합격·불합격·순위·총점은 만들지 않는다.
+실패는 attempt+1 재발행(백오프 5·15·45초), 3회면 `report.dlq` → `report_failed` → `status=failed`(failed_stage=report). 담당자의 "리포트 다시 생성"은 위 "단계 진행과 재시작 복구"의 두 경로를 따른다. 초안 전 실패를 다시 만들 때 최신 평가 실행에 `evaluate_failed`가 없으면 같은 run_id를 재사용하고, 있으면 `eval_round`+1로 새 run_id로 다시 평가한다. 그래프 thread는 `report:{session_id}:{eval_round}`라 새 회차는 이전 interrupt 체크포인트의 draft를 재사용하지 않고 처음부터 실행하며, 같은 회차의 큐 재시도만 체크포인트에서 이어 간다. 리포트는 **담당자가 평가할 때 보는 참고 자료**다. AI 평가 에이전트가 공개된 척도로 근거를 들어 수준을 판단하고 담당자가 그것을 참고해 최종 평가한다. 합격·불합격·순위·총점은 만들지 않는다.
 
 ## 칸 확정 규칙
 

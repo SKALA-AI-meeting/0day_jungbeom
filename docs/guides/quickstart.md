@@ -30,7 +30,7 @@ cp infra/.env.example infra/.env
 
 - `OPENAI_API_KEY`(실제 모델을 쓸 때), `JWT_SECRET`(32바이트 이상 임의 값), `INTERNAL_TOKEN`, `ASSESSMENT_MCP_TOKEN`(임의 문자열)을 채운다. 키 값은 이 파일에만 두고 커밋하지 않는다.
 - LLM 없이 결정적으로 돌리려면 `LLM_FAKE=1`. 단계 시드·시간 당기기를 쓰려면 `ENABLE_TEST_API=1`(예시 값 그대로).
-- 앱을 로컬에서 띄울 때는 `infra/.env`를 복사한 `infra/.env.local`을 만들고 서비스 주소를 `localhost`로 바꾼다(`DATABASE_URL`의 호스트, `RABBITMQ_URL`, `API_INTERNAL_URL=http://localhost:8001`, MCP URL 3개). Python 서비스는 `.env.local`을 먼저 읽는다.
+- 앱을 로컬에서 띄울 때는 `infra/.env`를 복사한 `infra/.env.local`을 만들고 서비스 주소를 `localhost`로 바꾼다(바꿀 항목은 [configuration.md](configuration.md) "로컬 실행용 `infra/.env.local`"). Python 서비스는 `.env.local`을 먼저 읽는다.
 
 ## 4. 띄우기 (로컬 개발 모드)
 
