@@ -2,7 +2,7 @@
 
 // 기획안(ProposalEditor): 우측 탭 안 6칸 세로 폼(UX 결정 6). 예시 문장 없이 칸이 무엇인지만 한 줄로 쓴다.
 // idea_credit 안내는 R7 고정 문구. 제출은 기획안 작성 단계에서만, 확인 창 하나를 거친다.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button, ConfirmDialog } from "@/components/ui";
 
@@ -16,6 +16,51 @@ export const SECTION_META: Record<SectionId, { title: string; hint: string }> = 
   expected_effect: { title: "기대효과", hint: "이 기획으로 기대하는 효과" },
   idea_credit: { title: "아이디어 기여", hint: "이 기획에 반영된 의견과 그 의견을 낸 사람" },
 };
+
+/** 공백뿐인 칸의 이름 목록(제출 직전 빈칸 경고용) */
+export function blankSections(sections: Sections): string[] {
+  return SECTION_IDS.filter((id) => sections[id].trim() === "").map((id) => SECTION_META[id].title);
+}
+
+/** 제출 본문: 빈칸 경고 창을 거쳤을 때만 blank_warning_shown을 보낸다 */
+export function submitBody(blankWarningShown: boolean): { blank_warning_shown?: true } {
+  return blankWarningShown ? { blank_warning_shown: true } : {};
+}
+
+/**
+ * 제출 흐름: 저장 완료(409면 최신 초안으로 바뀜) → 그 최신 초안으로 빈 칸 검사 → 빈 칸이 있으면 경고 창 →
+ * 제출 확인 창 → submit. 어느 창에서든 취소하면 submit을 부르지 않는다.
+ */
+export async function submitFlow(steps: {
+  prepare: () => Promise<Sections | null>;
+  askBlank: (names: string[]) => Promise<boolean>;
+  askConfirm: () => Promise<boolean>;
+  submit: (blankWarningShown: boolean) => Promise<void>;
+}) {
+  const latest = await steps.prepare();
+  if (!latest) return;
+  const blank = blankSections(latest);
+  if (blank.length > 0 && !(await steps.askBlank(blank))) return;
+  if (!(await steps.askConfirm())) return;
+  await steps.submit(blank.length > 0);
+}
+
+/** 예/아니오 창 하나를 Promise로 묻는다 */
+function useAsk() {
+  const [open, setOpen] = useState(false);
+  const resolver = useRef<((answer: boolean) => void) | null>(null);
+  const ask = () =>
+    new Promise<boolean>((resolve) => {
+      resolver.current = resolve;
+      setOpen(true);
+    });
+  const answer = (value: boolean) => {
+    setOpen(false);
+    resolver.current?.(value);
+    resolver.current = null;
+  };
+  return { open, ask, answer };
+}
 
 /** 저장 표시는 상대 표기만 쓴다(실제 시계 금지, R7): 방금 / n분 전 / 저장됨 */
 export function savedLabel(savedAt: number, now: number): string {
@@ -32,6 +77,7 @@ export function ProposalEditor({
   canSubmit,
   locked,
   onChange,
+  prepareSubmit,
   onSubmit,
 }: {
   sections: Sections;
@@ -41,10 +87,13 @@ export function ProposalEditor({
   canSubmit: boolean;
   locked: boolean;
   onChange: (id: SectionId, value: string) => void;
-  onSubmit: () => Promise<void>;
+  /** 저장을 마치고(409면 최신 초안으로 바꾸고) 최신 초안을 돌려준다. 저장하지 못하면 null */
+  prepareSubmit: () => Promise<Sections | null>;
+  onSubmit: (blankWarningShown: boolean) => Promise<void>;
 }) {
-  const [open, setOpen] = useState(false);
-  const [pending, setPending] = useState(false);
+  const blankAsk = useAsk();
+  const confirmAsk = useAsk();
+  const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     // 새로 저장되면 savedAt이 now보다 늦어 "방금"으로 보인다(Math.max), 이후 20초마다 경과를 다시 센다
@@ -60,11 +109,12 @@ export function ProposalEditor({
             <span className="text-footnote text-muted">{SECTION_META[id].hint}</span>
             <textarea
               value={sections[id]}
-              disabled={locked}
+              disabled={locked || busy}
               rows={id === "keyword" ? 1 : 2}
               data-section={id}
+              placeholder="여기에 적어요"
               onChange={(event) => onChange(id, event.target.value)}
-              className="mt-1 resize-none border-0 border-b border-line bg-transparent px-0 py-2 text-body outline-none field-sizing-content focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:text-muted"
+              className="mt-1 resize-none rounded-md border-2 border-muted bg-surface px-3 py-2 text-body outline-none field-sizing-content placeholder:text-muted focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:bg-surface-sunken disabled:text-muted"
             />
           </label>
         ))}
@@ -73,11 +123,13 @@ export function ProposalEditor({
         <span className="text-footnote text-muted tabular-nums" aria-live="polite">
           {locked
             ? "제출했어요"
-            : saving
-              ? "저장 중…"
-              : savedAt
-                ? savedLabel(savedAt, Math.max(now, savedAt))
-                : "자동 저장"}
+            : busy
+              ? "제출 중…"
+              : saving
+                ? "저장 중…"
+                : savedAt
+                  ? savedLabel(savedAt, Math.max(now, savedAt))
+                  : "자동 저장"}
         </span>
         {!canSubmit && !locked && (
           <span className="text-footnote text-muted">기획안 작성 단계에서 제출할 수 있어요</span>
@@ -86,23 +138,39 @@ export function ProposalEditor({
           className="ml-auto"
           size="sm"
           disabled={!canSubmit || locked}
-          onClick={() => setOpen(true)}
+          loading={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await submitFlow({
+                prepare: prepareSubmit,
+                askBlank: blankAsk.ask,
+                askConfirm: confirmAsk.ask,
+                submit: onSubmit,
+              });
+            } finally {
+              setBusy(false);
+            }
+          }}
         >
           제출
         </Button>
       </div>
       <ConfirmDialog
-        open={open}
-        onOpenChange={setOpen}
+        open={blankAsk.open}
+        onOpenChange={(next) => !next && blankAsk.answer(false)}
+        title="비워 둔 칸이 있어요. 그대로 제출할까요?"
+        description={blankSections(sections).join(", ")}
+        confirmLabel="그대로 제출"
+        cancelLabel="돌아가서 쓰기"
+        onConfirm={() => blankAsk.answer(true)}
+      />
+      <ConfirmDialog
+        open={confirmAsk.open}
+        onOpenChange={(next) => !next && confirmAsk.answer(false)}
         title="제출하면 수정할 수 없어요"
         confirmLabel="제출"
-        pending={pending}
-        onConfirm={async () => {
-          setPending(true);
-          await onSubmit();
-          setPending(false);
-          setOpen(false);
-        }}
+        onConfirm={() => confirmAsk.answer(true)}
       />
     </div>
   );

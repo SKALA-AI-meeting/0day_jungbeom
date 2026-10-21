@@ -1,7 +1,7 @@
 "use client";
 
-// 디브리핑: 한 열 문서. R1 첫 문장 → 이의 제기 경로 → 장면(카드) 설명 → 보는 요소 → 내 발언 돌아보기 →
-// AI 동료 소개(여기서 처음 성향이 드러난다) → 결과를 보이지 않는 이유·기업이 보는 것·보관 → 기획안 열람 → 설문.
+// 디브리핑: 한 열 문서. R1 첫 문장 → 이의 제기 경로 → 제출 확인 → 설문 → 결과를 보이지 않는 이유·기업이 보는 것·보관 →
+// 장면(카드) 설명 → 보는 요소 → 내 발언 돌아보기(접힘) → AI 동료 소개(여기서 처음 성향이 드러난다) → 기획안 열람(접힘).
 // 척도 세부·수준은 보이지 않는다.
 import { Copy } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -18,7 +18,25 @@ const introSentences = (text: string) => {
   return cut > 0 && cut < text.length ? [text.slice(0, cut), text.slice(cut).trim()] : [text];
 };
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  children,
+  collapsed,
+}: {
+  title: string;
+  children: ReactNode;
+  /** 긴 본문은 접어 두고 제목을 눌러 연다 */
+  collapsed?: boolean;
+}) {
+  if (collapsed)
+    return (
+      <details className="group flex flex-col gap-4 border-t border-line pt-8">
+        <summary className="cursor-pointer text-title2 font-semibold marker:text-muted">
+          {title} <span className="text-footnote font-normal text-muted">눌러서 펼치기</span>
+        </summary>
+        <div className="mt-4 flex flex-col gap-4">{children}</div>
+      </details>
+    );
   return (
     <section className="flex flex-col gap-4 border-t border-line pt-8">
       <h2 className="text-title2 font-semibold">{title}</h2>
@@ -145,6 +163,11 @@ export function DebriefScreen({
       <Wordmark className="h-5 self-start" />
       <header className="flex flex-col gap-3">
         <h1 className="text-large font-bold">{failed ? "세션이 중단됐어요" : "수고하셨습니다"}</h1>
+        {endReason === "submitted" && !failed && (
+          <p className="rounded-md bg-surface-sunken px-4 py-3 text-callout font-semibold">
+            기획안을 제출했어요. 제출한 기획안은 아래에서 다시 볼 수 있어요.
+          </p>
+        )}
         {endReason === "timeout" && !failed && (
           <p className="text-callout text-muted">시간이 끝나 지금 상태로 제출됐어요.</p>
         )}
@@ -164,6 +187,20 @@ export function DebriefScreen({
         </>
       ) : (
         <>
+          <Section title="종료 설문 (건너뛰어도 돼요)">
+            <Survey survey={debrief.survey} onSubmit={onSurvey} />
+          </Section>
+          <Section title="평가와 기록">
+            <ul className="flex flex-col gap-2 text-body">
+              <li>{debrief.scoring_notice}</li>
+              <li>{debrief.retention_notice}</li>
+              {debrief.connection_gaps.length > 0 && (
+                <li>연결이 끊긴 구간이 있었어요. 불편이 있었다면 담당자에게 알려 주세요.</li>
+              )}
+              <li className="text-muted">문의: {debrief.contact_email}</li>
+            </ul>
+          </Section>
+
           {!!debrief.cards?.length && (
             <Section title="이번 세션의 장면">
               <ul className="flex flex-col divide-y divide-line">
@@ -198,7 +235,7 @@ export function DebriefScreen({
           )}
 
           {!!debrief.my_messages?.length && (
-            <Section title="내 발언 돌아보기">
+            <Section title="내 발언 돌아보기" collapsed>
               <ul className="flex flex-col gap-4">
                 {debrief.my_messages.map((m) => (
                   <li key={m.id} className="flex flex-col items-end gap-1">
@@ -237,19 +274,8 @@ export function DebriefScreen({
             </Section>
           )}
 
-          <Section title="평가와 기록">
-            <ul className="flex flex-col gap-2 text-body">
-              <li>{debrief.scoring_notice}</li>
-              <li>{debrief.retention_notice}</li>
-              {debrief.connection_gaps.length > 0 && (
-                <li>연결이 끊긴 구간이 있었어요. 불편이 있었다면 담당자에게 알려 주세요.</li>
-              )}
-              <li className="text-muted">문의: {debrief.contact_email}</li>
-            </ul>
-          </Section>
-
           {debrief.proposal && (
-            <Section title="제출한 기획안">
+            <Section title="제출한 기획안" collapsed>
               <p className="text-footnote text-muted">
                 {new Date(debrief.view_until).toLocaleDateString("ko-KR")}까지 다시 볼 수 있어요.
               </p>
@@ -282,10 +308,6 @@ export function DebriefScreen({
               </div>
             </Section>
           )}
-
-          <Section title="종료 설문">
-            <Survey survey={debrief.survey} onSubmit={onSurvey} />
-          </Section>
         </>
       )}
     </main>

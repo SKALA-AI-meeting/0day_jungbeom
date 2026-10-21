@@ -130,7 +130,9 @@ function prepare(fixture: unknown): StateSnapshot {
           : p,
     );
     snap.slots = snap.slots.map((s) =>
-      s.status === "confirmed" ? { ...s, resolution: "timeout", filled_by: "p3" } : s,
+      s.status === "confirmed"
+        ? { ...s, resolution: "timeout", outcome: "timeout", filled_by: "p3" }
+        : s,
     );
     if (snap.messages.length) {
       const last = snap.messages[snap.messages.length - 1];
@@ -369,7 +371,13 @@ function confirmSlot(
   resolution: "consensus" | "timeout",
 ) {
   const t = round(now(s));
-  emit(s, "slot.confirmed", { phase, value, filled_by: filledBy, resolution, t_min: t });
+  const outcome =
+    resolution === "timeout"
+      ? "timeout"
+      : filledBy === "candidate"
+        ? "candidate_decision"
+        : "consensus";
+  emit(s, "slot.confirmed", { phase, value, filled_by: filledBy, resolution, outcome, t_min: t });
   advance(s, phase, resolution === "timeout" ? "timeout" : "confirmed", value);
 }
 

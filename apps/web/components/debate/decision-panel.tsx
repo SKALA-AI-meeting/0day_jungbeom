@@ -6,15 +6,28 @@ import { CircleCheck, Clock3 } from "lucide-react";
 import { useState } from "react";
 
 import { Button, ConfirmDialog, cn } from "@/components/ui";
+import { resolutionLabel } from "@/lib/resolution";
 
 import { SLOT_LABEL, nameOf } from "./state";
 import { SLOT_PHASES, type Slot, type SlotPhase, type StateSnapshot } from "./types";
 
 export type KeywordOption = { key: string; label: string };
 
+// 입력칸 안내(평가·점수 암시 없이 무엇을 적는지만). 채팅 입력창과 헷갈리지 않게 "여기서 정한다"를 분명히 쓴다.
+const INTRO =
+  "이 토론은 키워드 → 문제 상황 → 해결책을 정해 기획안을 씁니다. 키워드는 여기서 후보 중 하나를 골라 정해요.";
+const PLACEHOLDER: Record<Exclude<SlotPhase, "keyword">, string> = {
+  problem: "정하고 싶은 문제 상황을 한두 문장으로 적어요",
+  solution: "정하고 싶은 해결책을 한두 문장으로 적어요",
+};
+
 function Result({ slot, snap, flash }: { slot: Slot; snap: StateSnapshot; flash: boolean }) {
-  const { filled_by: filledBy, resolution } = slot;
-  const timeout = resolution === "timeout";
+  const { filled_by: filledBy } = slot;
+  const label = resolutionLabel({
+    resolution: slot.resolution ?? "consensus",
+    outcome: slot.outcome,
+  });
+  const timeout = label === "시간 초과";
   return (
     <li className={cn("flex flex-col gap-1 px-6 py-4", flash && "settle")} data-slot={slot.phase}>
       <div className="flex items-baseline gap-2">
@@ -22,11 +35,12 @@ function Result({ slot, snap, flash }: { slot: Slot; snap: StateSnapshot; flash:
         <span
           className={cn(
             "ml-auto inline-flex items-center gap-1 text-footnote",
-            timeout ? "text-muted" : "text-success",
+            timeout ? "text-muted" : label === "합의" ? "text-success" : "text-ink",
           )}
         >
-          {timeout ? <Clock3 size={14} aria-hidden /> : <CircleCheck size={14} aria-hidden />}
-          {timeout ? "시간 초과" : "합의"}
+          {label &&
+            (timeout ? <Clock3 size={14} aria-hidden /> : <CircleCheck size={14} aria-hidden />)}
+          {label}
         </span>
       </div>
       <p className="text-callout font-semibold break-words">{slot.value}</p>
@@ -77,6 +91,7 @@ function SlotInput({
         <span className="text-footnote font-semibold text-accent">{SLOT_LABEL[phase]}</span>
         <span className="text-caption text-muted">지금 정할 항목</span>
       </div>
+      {isKeyword && <p className="text-footnote leading-relaxed text-muted">{INTRO}</p>}
       {isKeyword ? (
         <div
           role="radiogroup"
@@ -109,8 +124,9 @@ function SlotInput({
           disabled={locked}
           maxLength={200}
           aria-label={`${SLOT_LABEL[phase]} 입력`}
+          placeholder={PLACEHOLDER[phase]}
           onChange={(event) => setValue(event.target.value)}
-          className="resize-none rounded-md border border-line bg-surface px-3 py-2 text-body outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:bg-surface-sunken"
+          className="resize-none rounded-md border-2 border-muted bg-surface px-3 py-2 text-body outline-none placeholder:text-muted focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:bg-surface-sunken"
         />
       )}
       {error && (
@@ -118,7 +134,12 @@ function SlotInput({
           {error}
         </p>
       )}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {!ready && !locked && (
+          <span className="text-footnote text-muted">
+            {isKeyword ? "후보를 고르면 정할 수 있어요" : "내용을 적으면 정할 수 있어요"}
+          </span>
+        )}
         <Button size="sm" disabled={!ready || locked} onClick={() => setOpen(true)}>
           이걸로 정하기
         </Button>
@@ -128,7 +149,7 @@ function SlotInput({
         onOpenChange={setOpen}
         title="이걸로 정하면 다음 단계로 넘어가요"
         description={`${SLOT_LABEL[phase]}: ${isKeyword ? (chosen?.label ?? "") : value.trim()}`}
-        confirmLabel="이걸로 정하기"
+        confirmLabel="네, 정할게요"
         pending={pending}
         onConfirm={confirm}
       />

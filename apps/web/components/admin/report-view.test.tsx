@@ -183,3 +183,20 @@ test("전체 기록: 근거 앵커 줄 하이라이트, 오피스 시각, 단계
   expect(html).toContain("자료 열람: 지역별 물 부족 통계");
   expect(html).toContain("09:46");
 });
+
+test("사실 지표에 제출 때 빈 칸과 빈칸 경고 확인이 나오고, 칸 결과는 outcome으로 보인다", () => {
+  const r: Report = {
+    ...sample,
+    facts: { ...sample.facts, blank_sections_at_submit: ["rationale", "idea_credit"] },
+    slots: sample.slots.map((s) => ({
+      ...s,
+      resolution: "consensus",
+      outcome: "candidate_decision",
+    })),
+  };
+  (r.facts as Record<string, unknown>).blank_warning_acknowledged = null;
+  const html = renderToStaticMarkup(<ReportView report={r} recordHref={href} sample />);
+  expect(html).toContain("근거 · 아이디어 기여");
+  expect(html).toContain("자동 제출");
+  expect(html).toContain("지원자 결정");
+});

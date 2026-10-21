@@ -77,10 +77,13 @@ test("solo_confirm: 반대가 남아도 지원자가 혼자 확정하면 칸이 
   }
   await page.locator('[data-slot-input="solution"] textarea').fill(S3);
   await page.getByRole("button", { name: "이걸로 정하기" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "이걸로 정하기" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "네, 정할게요" }).click();
   const result = page.locator('[data-slot="solution"]');
   await expect(result).toContainText(S3);
   await expect(result).toContainText("정한 사람 · 나");
+  // outcome=candidate_decision: 결정 사항과 진행바 모두 "지원자 결정"
+  await expect(result).toContainText("지원자 결정");
+  await expect(page.getByRole("list", { name: "단계 진행" })).toContainText("지원자 결정");
   await shot(page, "solution", "04-혼자 확정");
   const slot = await slotOf(s.sessionId, "solution");
   expect(slot).toMatchObject({ filled_by: "candidate", resolution: "consensus" });

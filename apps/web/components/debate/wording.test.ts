@@ -57,7 +57,8 @@ test("옛 흐름 흔적(보드·분업·파트 문서·팀장·개인 알림·sl
 });
 
 test("지원자 화면 문구에 내부 용어(칸·합의 패널·확정)가 없고 지원자 말을 쓴다", () => {
-  const all = SCREENS.map(code).join("\n");
+  // 기획안의 빈칸 경고 문구("비워 둔 칸")는 design.md가 정한 말이라 뺀다
+  const all = SCREENS.map(code).join("\n").replaceAll("비워 둔 칸", "");
   expect(all).not.toMatch(/칸|합의 패널|확정/);
   expect(all).toContain("결정 사항");
   expect(all).toContain("이걸로 정하기");

@@ -1,6 +1,7 @@
 // 관리자 화면이 쓰는 계약 형태. 정본은 docs/common/contracts.md "관리자 REST"·Report·근거 참조.
 // 요소·차원·카드·유형 id는 문자열로만 받는다(실제 목록은 rubric.md·scenario-model.md).
 import type { Confidence, Level } from "@/components/ui";
+import type { Outcome } from "@/lib/resolution";
 
 export type { Confidence, Level };
 
@@ -99,6 +100,7 @@ export type Evidence =
       phase: PhaseId;
       value: string;
       resolution: "consensus" | "timeout";
+      outcome?: Outcome | null;
       filled_by: Seat;
       support: SupportEntry[];
     })
@@ -152,6 +154,7 @@ export type ReportSlot = {
   option_id: string | null;
   filled_by: Seat;
   resolution: "consensus" | "timeout";
+  outcome?: Outcome | null;
   t_min: number;
   first_proposer: Seat | null;
   support: SupportEntry[];

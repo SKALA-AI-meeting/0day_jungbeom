@@ -70,6 +70,7 @@ export function applyFrame(snap: StateSnapshot, frame: ServerFrame): StateSnapsh
               value: p.value,
               filled_by: p.filled_by,
               resolution: p.resolution,
+              outcome: p.outcome,
               t_min: p.t_min,
             }
           : slot,

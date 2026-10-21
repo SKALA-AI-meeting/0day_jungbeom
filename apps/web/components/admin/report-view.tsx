@@ -31,9 +31,9 @@ import {
   PROPOSAL_FIELDS,
   proposalFieldLabel,
   purgeText,
-  RESOLUTION_TEXT,
   nameOf,
 } from "./format";
+import { resolutionLabel } from "@/lib/resolution";
 import {
   adjustmentsOf,
   editProblem,
@@ -248,7 +248,7 @@ function EvidenceItem({ ctx, e }: { ctx: Ctx; e: Evidence }) {
       <div className="flex flex-col gap-1 text-sm">
         <span>
           {PHASE_TEXT[e.phase]} 칸 확정 · <b className="font-semibold">{e.value}</b> ·{" "}
-          {RESOLUTION_TEXT[e.resolution]} · {nameOf(ctx.names, e.filled_by)} · {ctx.clock(e.t_min)}
+          {resolutionLabel(e) ?? "–"} · {nameOf(ctx.names, e.filled_by)} · {ctx.clock(e.t_min)}
         </span>
         <span className="text-xs text-muted">확정 시점 지지: {supportText(ctx, e.support)}</span>
         <RecordLink ctx={ctx} refValue={e.record_ref} />
@@ -566,6 +566,18 @@ function FactsTable({ facts, ctx }: { facts: Record<string, unknown>; ctx: Ctx }
     rows.push(["문제 상황에서 지원자 안 미채택", yesNo(f.own_option_rejected)]);
   if (f.messages_after_rejection != null)
     rows.push(["미채택 뒤 발언 수", String(f.messages_after_rejection)]);
+  if (Array.isArray(f.blank_sections_at_submit))
+    rows.push([
+      "제출 때 빈 칸",
+      f.blank_sections_at_submit.length
+        ? f.blank_sections_at_submit.map((id) => proposalFieldLabel(String(id))).join(" · ")
+        : "없음",
+    ]);
+  if ("blank_warning_acknowledged" in f)
+    rows.push([
+      "빈칸 경고 확인 뒤 제출",
+      f.blank_warning_acknowledged == null ? "자동 제출" : yesNo(f.blank_warning_acknowledged),
+    ]);
   if ("credit_field_filled" in f)
     rows.push(["아이디어 기여 칸 작성", yesNo(f.credit_field_filled)]);
   return (
@@ -791,7 +803,7 @@ export function ReportView({
                       ) : (
                         <Clock3 aria-hidden className="size-3.5 text-warning" />
                       )}
-                      {RESOLUTION_TEXT[slot.resolution]} · {ctx.clock(slot.t_min)}
+                      {[resolutionLabel(slot), ctx.clock(slot.t_min)].filter(Boolean).join(" · ")}
                     </span>
                     <span className="text-xs text-muted">
                       정한 사람 {nameOf(ctx.names, slot.filled_by)}
