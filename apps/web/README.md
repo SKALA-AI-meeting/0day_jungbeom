@@ -77,7 +77,7 @@ mock 모드의 데이터 구성은 `mocks/README.md`에 있다. `?data=worst`를
 <!-- gen:tests -->
 > 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
 
-**단위·컴포넌트 테스트(vitest, `pnpm test`)**: 테스트 제목 61개(정적 파싱)
+**단위·컴포넌트 테스트(vitest, `pnpm test`)**: 테스트 제목 62개(정적 파싱)
 
 <details><summary><code>app/api/health/route.test.ts</code> (1)</summary>
 
@@ -125,10 +125,11 @@ mock 모드의 데이터 구성은 `mocks/README.md`에 있다. `?data=worst`를
 
 </details>
 
-<details><summary><code>components/admin/report-view.test.tsx</code> (6)</summary>
+<details><summary><code>components/admin/report-view.test.tsx</code> (7)</summary>
 
 - 샘플 리포트 픽스처: 5요소·19차원, 사유 5종, 미발생 카드 1장, 조정 1개, 확신도 3종, 근거 4종
 - 샘플 리포트 화면: 사유 문장 5종, 미발생 카드, 담당자 조정 나란히, 조정·검토 UI 없음
+- 카드 장면: 발동했지만 일부 동료만 전달한 카드에 표시, 전원 전달·미발생 카드에는 없음
 - 리포트 draft 렌더: 안내·요약·타임라인·차원·근거·사실·기획안·AI 활용
 - 차원 조정은 메모 필수, 요소 수준 재계산, 검토 완료 → 확정 중 → final → 메모 추가
 - 전체 기록: 근거 앵커 줄 하이라이트, 오피스 시각, 단계·결과 한국어

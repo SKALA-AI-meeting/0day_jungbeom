@@ -14,6 +14,7 @@ import {
   AI_HEADER,
   DESIGNED_SCENE_NOTICE,
   FACTS_NOTE,
+  PARTIAL_DELIVERY,
   REPORT_NOTICE,
   ReportView,
 } from "./report-view";
@@ -70,6 +71,21 @@ test("샘플 리포트 화면: 사유 문장 5종, 미발생 카드, 담당자 �
   expect(html).toContain("메모 · 09:06 발언 앞뒤에서");
   expect(html).not.toContain("검토 완료");
   expect(html).not.toMatch(TOTAL);
+  expect(judged(html)).toBe(false);
+});
+
+test("카드 장면: 발동했지만 일부 동료만 전달한 카드에 표시, 전원 전달·미발생 카드에는 없음", () => {
+  expect(
+    renderToStaticMarkup(<ReportView report={sample} recordHref={href} sample />),
+  ).not.toContain(PARTIAL_DELIVERY);
+  const partial: Report = {
+    ...sample,
+    cards: sample.cards.map((c) =>
+      c.card_id === "listening_pressure" ? { ...c, delivered: false } : c,
+    ),
+  };
+  const html = renderToStaticMarkup(<ReportView report={partial} recordHref={href} sample />);
+  expect(html).toContain(PARTIAL_DELIVERY);
   expect(judged(html)).toBe(false);
 });
 

@@ -77,6 +77,6 @@ PRD 기능 ID([`PRD.md`](../PRD.md) 8장)별로 사용자 동작, 구현 위치,
 |---|---|---|
 | 토론 그래프 체크포인트 | 토론 그래프는 PostgresSaver를 쓰지 않고 DB 기록(`agent_runs`·메시지·입장)으로 재처리한다. 리포트 그래프만 PostgresSaver를 쓴다 | [`decisions.md`](decisions.md) 2026-10-22 문서·구현 불일치 정리 |
 | 페르소나 자리 기억 | 최근 자기 발언 3개와 최근 대화 30개만 쓴다. 6k 토큰 요약은 구현하지 않았다 | 같은 결정 |
-| 카드 재전달 | `card_due`는 카드당 최대 3회, 30초 간격으로 다시 시도한다. 전원에게 전달될 때까지 다시 큐에 넣지 않는다 | 같은 결정 |
+| 카드 재전달 | `card_due`는 카드당 최대 3회, 30초 간격으로 다시 시도한다. 전원에게 전달될 때까지 다시 큐에 넣지 않는다. 일부만 전달된 카드는 평가에서 핵심 장면으로 세지 않고 리포트에 "일부 동료만 전달됨"으로 보인다 | 같은 결정, [`decisions.md`](decisions.md) 2026-10-22 부분 전달 카드 |
 | 옛 채용 건 | 시나리오 원본 복사(`catalog`)가 없는 채용 건은 저장된 복사본으로 카탈로그를 재구성하고 프롬프트만 현재 파일에서 채운다(경고 로그). 새 세션 시작은 막지 않는다 | [`product/scenario.md`](product/scenario.md) 6장 |
 | 동료 응답 지연 | 15분 전체 세션(실제 LLM gpt-4o-mini)에서 첫 동료 응답 p95가 8.6초로 목표 8초를 근접 초과했다 | [`tests/e2e/records/final-20261022/all_five-live-summary.md`](../tests/e2e/records/final-20261022/all_five-live-summary.md) |

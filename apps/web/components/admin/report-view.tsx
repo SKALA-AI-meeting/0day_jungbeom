@@ -69,6 +69,8 @@ export const REVIEW_CONFIRM =
   "검토 완료 후 수준은 바꿀 수 없습니다. 메모는 계속 추가할 수 있습니다.";
 export const FACTS_NOTE = "수준 판단에 쓰인 참고 기록이며 이것만으로 수준을 정하지 않습니다.";
 export const AI_HEADER = "판단 기준 없음, 면접 확인용";
+// 발동했지만 담당 동료 전원이 카드 발언을 게시하지 못한 카드(delivered=false). 평가는 핵심 장면으로 세지 않는다
+export const PARTIAL_DELIVERY = "일부 동료만 전달됨";
 export const SAMPLE_NOTICE =
   "예시 데이터로 만든 샘플 리포트입니다. 화면의 모든 표시 상태(기록 없음 사유 5종, 미발생 카드, 담당자 조정)를 한 번에 보이도록 꾸민 값입니다.";
 
@@ -292,6 +294,7 @@ function CardScene({ ctx, card }: { ctx: Ctx; card: ReportCard }) {
       <span className="text-muted tabular-nums">
         {card.fired_at != null ? ctx.clock(card.fired_at) : "이벤트 미발생"}
       </span>
+      {card.fired_at != null && !card.delivered && <Chip tone="warning">{PARTIAL_DELIVERY}</Chip>}
       <span className={cn(card.fired_at == null && "text-muted")}>{card.scene}</span>
     </li>
   );
@@ -879,6 +882,9 @@ export function ReportView({
                     {dc && <span className="text-xs text-muted">{PHASE_TEXT[dc.phase]}</span>}
                     <DesignedChip />
                     {card.fired_at == null && <Chip tone="neutral">이벤트 미발생</Chip>}
+                    {card.fired_at != null && !card.delivered && (
+                      <Chip tone="warning">{PARTIAL_DELIVERY}</Chip>
+                    )}
                     <span className={cn("min-w-0 flex-1", card.fired_at == null && "text-muted")}>
                       {card.scene}
                     </span>

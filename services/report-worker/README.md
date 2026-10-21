@@ -66,9 +66,9 @@ make test                                               # 전체
 <!-- gen:tests -->
 > 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
 
-총 51개(live 2개 포함, `make test`는 live를 뺀다).
+총 53개(live 2개 포함, `make test`는 live를 뺀다).
 
-<details><summary><code>tests/test_evaluate.py</code> (29)</summary>
+<details><summary><code>tests/test_evaluate.py</code> (31)</summary>
 
 - `test_fixture_outputs_pass_validation`
 - `test_invalid_dimension_retries_element_once_then_evaluate_failed` ×7
@@ -83,6 +83,8 @@ make test                                               # 전체
 - `test_forbidden_summary_retries_then_fixed_sentence`
 - `test_unparseable_twice_fails_every_dimension`
 - `test_core_card_not_fired_without_support_mark_becomes_event_not_fired`
+- `test_partially_delivered_core_card_counts_as_not_fired`
+- `test_partially_delivered_core_card_with_support_mark_caps_low`
 - `test_summary_rewritten_once_only_for_changed_element`
 - `test_summary_rewrite_failure_uses_fixed_sentence` ×3
 - `test_element_level_rounds_half_up_and_null_when_no_record`

@@ -253,6 +253,34 @@ async def test_core_card_not_fired_without_support_mark_becomes_event_not_fired(
     assert engage["rationale"] == dim(out, "listen_engage")["rationale"] + NOT_FIRED_MARK
 
 
+def _partial_listening_card():
+    record = copy.deepcopy(RECORD)
+    for o in record["observations"]:
+        if o["card_id"] == "listening_pressure":
+            o["delivered"] = False  # 담당 동료 일부만 카드 발언을 전달
+    return record
+
+
+async def test_partially_delivered_core_card_counts_as_not_fired():
+    out = copy.deepcopy(element_outputs()["listening"])
+    rows, _, _, usage = await run(
+        "listening", out, {"summary": "다시 쓴 요약"}, record=_partial_listening_card()
+    )
+    assert usage["element_retries"] == 0
+    engage = rows["listen_engage"]
+    assert engage["level"] is None and engage["no_record_reason"] == "event_not_fired"
+    assert engage["rationale"] == dim(out, "listen_engage")["rationale"] + NOT_FIRED_MARK
+
+
+async def test_partially_delivered_core_card_with_support_mark_caps_low():
+    out = copy.deepcopy(element_outputs()["listening"])
+    for row in out["dimensions"]:
+        row["rationale"] += " 보조 장면에서 관찰함."
+    rows, _, _, _ = await run("listening", out, record=_partial_listening_card())
+    assert rows["listen_engage"]["level"] == 4
+    assert rows["listen_engage"]["confidence"] == "low"
+
+
 async def test_summary_rewritten_once_only_for_changed_element():
     # 경청: 핵심 카드 미발생 → 차원이 바뀌어 요약 재작성 1회. 입력은 이 요소의 최종 차원 행뿐
     record = _without_listening_card()

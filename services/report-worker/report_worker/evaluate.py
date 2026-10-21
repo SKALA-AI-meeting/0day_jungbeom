@@ -11,7 +11,8 @@
   결과를 쓴다. 워커는 수준·근거를 고쳐 쓰지 않는다.
 - 확신도 상한 위반은 거부하지 않고 상한으로 깎는다(clamp).
 - 핵심 카드가 하나도 발동하지 않았는데 `rationale`에 "보조 장면" 표시 없이 수준을 낸 차원은 거부하지
-  않고 `event_not_fired`로 바꾼다(rubric.md 2.4: 부재로만 낮게 보지 않는다).
+  않고 `event_not_fired`로 바꾼다(rubric.md 2.4: 부재로만 낮게 보지 않는다). 담당 동료 일부만 전달한
+  카드(`delivered=false`)는 발동으로 세지 않는다.
 - 검증으로 차원 행(evaluate_failed, 수준 상한 3, event_not_fired)이 모델 출력과 달라진 요소만 최종
   차원 행으로 summary를 1회 다시 쓰게 한다. 실패하면 고정 문장. 입력에 다른 요소 결과는 없다.
 - LLM 전송 오류·타임아웃은 여기서 잡지 않는다(저장 없이 큐 재시도).
@@ -460,7 +461,8 @@ class EvalContext:
 
     @property
     def fired_cards(self) -> set[str]:
-        return {o["card_id"] for o in self.record.get("observations", [])}
+        """담당 동료 전원이 전달한 카드만. 부분 전달은 핵심 장면이 성립하지 않아 미발생과 같다."""
+        return {o["card_id"] for o in self.record.get("observations", []) if o.get("delivered")}
 
     def element_cards(self, element: str) -> list[str]:
         return [c["card_id"] for c in self.rubric.get("cards", []) if c.get("element") == element]
