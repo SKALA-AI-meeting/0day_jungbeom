@@ -53,8 +53,8 @@ python scripts/make_session.py --minutes 15 [--start-at keyword|problem|solution
 | `timeout_all` | **P0** | 지원자가 칸을 확정하지 않아 세 단계 모두 api 시간 초과 채우기, 기획안 자동 제출 |
 | `honesty_claim` | **P0** | C7 흐름(실 스택) |
 | `restart` | P1 | 문제 상황 단계 중 api 컨테이너 재시작 |
-| `no_assistant` | P2 | 어시스턴트 미사용 |
-| 동시 실행 | P2 | 15분 세션 5개(`all_five`×3, `timeout_all`, `no_assistant`) 동시 |
+| `no_assistant` | P2(MVP 이후) | 어시스턴트 미사용 |
+| 동시 실행 | P2(MVP 이후) | 15분 세션 5개(`all_five`×3, `timeout_all`, `no_assistant`) 동시 |
 
 실 스택 15분 실행은 `all_five` 1회가 필수이고, 시간이 되면 `timeout_all` 1회를 더 돌린다. 나머지 대본은 같은 러너를 FakeLLM·가짜 시계 모드로 돌린다.
 
