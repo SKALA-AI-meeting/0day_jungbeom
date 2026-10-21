@@ -10,7 +10,7 @@
 - 인증 헤더: `Authorization: Bearer <jwt>`. 내부: `X-Internal-Token: <secret>`.
 - 시각은 ISO 8601 UTC. 세션 상대 시각은 `t_min`(세션 시작 기준 분, 소수 허용)으로도 함께 준다.
 - 오피스 시각: 지원자 화면과 페르소나 발화는 세션을 09:00 시작·11:00 마감으로 보인다. `오피스 시각 = 09:00 + t_min × 120 / session_minutes`(분 단위 내림, "HH:MM"). 압축 세션도 같은 비율이다. API는 `t_min`과 `session_minutes`를 주고 표시 변환은 web이, 발화의 시각 표현은 에이전트가 같은 식으로 한다.
-- 멱등: MVP는 `Idempotency-Key` 헤더를 쓰지 않는다. 멱등은 도메인 규칙(세션 전이, 리뷰 본문 비교, 아래 내부 저장 키)으로만 보장하며 화면은 채용 건·초대 생성 POST를 자동 재시도하지 않는다. 내부 저장의 멱등 키: 메시지 `(session_id, run_id, seq)`, 동료 문서 보내기 `(doc_id, run_id)`(문서 카드 메시지는 같은 run_id에 파트별 고정 seq = 파트 번호×10), 보드 변경 `(session_id, part_no, field, run_id)`, 관찰 `(session_id, card_id, window_start)`, 관찰 갱신 `(session_id, card_id, window_start, run_id)`. 같은 키의 재요청은 기존 행을 돌려준다.
+- 멱등: MVP는 `Idempotency-Key` 헤더를 쓰지 않는다. 멱등은 도메인 규칙(세션 전이, 리뷰 본문 비교, 아래 내부 저장 키)으로만 보장하며 화면은 채용 건·초대 생성 POST를 자동 재시도하지 않는다. 내부 저장의 멱등 키: 메시지 `(session_id, run_id, seq)`, 동료 문서 보내기 `(doc_id, run_id)`(문서 카드 메시지는 같은 run_id에 파트별 고정 seq = 파트 번호×10), 보드 변경 `(session_id, task_id, field, run_id)`(섹션 담당 변경은 `(session_id, part_no, field, run_id)`), 관찰 `(session_id, card_id, window_start)`, 관찰 갱신 `(session_id, card_id, window_start, run_id)`. 같은 키의 재요청은 기존 행을 돌려준다.
 
 ## 인증 생명주기
 
@@ -130,7 +130,7 @@
 | GET | /sessions/{id}/documents | Bearer | [{doc_id, title, released: bool, release_at_min: number∣null}] (회사 문서. release_at_min은 공유 예정 시각이며 지연 알림 전에는 킥오프에서 예고한 시각(지연 카드 시각), 알림 뒤에는 실제 공개 시각이다. 예정된 지연을 알림 전에 드러내지 않는다. 공개됐거나 시작 공개면 null) |
 | GET | /sessions/{id}/documents/{doc_id} | Bearer | {doc_id, title, content} 또는 423 `not_released`. 열람을 `doc_views`에 기록 |
 | POST | /sessions/{id}/assistant | Bearer {prompt} | {call_id, message_id, content, cited_docs} 또는 429 `assistant_limit`(60회 초과) |
-| POST | /sessions/{id}/submit (한서윤에게 보내기) | Bearer {message?: string} | {status: "completed", completed_at, message_id, ack_message_id} (멱등. 이미 completed 이후 재호출이면 저장된 값을 돌려준다). web은 완료 버튼 → "한서윤에게 보내기" 창(최종본 첨부 표시, 자유 메시지 입력란은 선택, 안내·예시 문구 없이 "보내면 수정할 수 없어요"만) 뒤 대기 중인 저장을 끝내고 호출한다. 처리: 최종본 version 생성 → 한서윤 DM(`manager_dm`)에 제출 메시지(본문 = `message` 또는 빈 문자열, `meta.shared_doc`에 최종본 version, `meta.classification.kind = report`) 저장 → 한서윤 고정 답장 "받았어요, 수고하셨어요."(sender manager, LLM 없음) 저장 → 마지막 창 정리 → `completed`. WS로 두 `message.new`와 `session.ended{submitted}`가 순서대로 간다. 아직 pending인 진행 확인 DM 카드는 보내지 않는다. 2시간 자동 제출은 `message` 없이 같은 처리(`session.ended{timeout}`). 만료 2분 전에는 "지금 상태 그대로 제출됩니다" 경고. 제출 이후 쓰기는 전부 409 `session_ending` |
+| POST | /sessions/{id}/submit (한서윤에게 보내기) | Bearer {message?: string} | {status: "completed", completed_at, message_id, ack_message_id} (멱등. 이미 completed 이후 재호출이면 저장된 값을 돌려준다). web은 완료 버튼 → "한서윤에게 보내기" 창(최종본 첨부 표시, 자유 메시지 입력란은 선택, 안내·예시 문구 없이 "보내면 수정할 수 없어요"만) 뒤 대기 중인 저장을 끝내고 호출한다. 처리: 최종본 version 생성 → 한서윤 DM(`manager_dm`)에 제출 메시지(본문 = `message` 또는 빈 문자열, `meta.shared_doc`에 최종본 version, `meta.classification.kind = report`) 저장 → 한서윤 고정 답장 "받았어요, 수고하셨어요."(sender manager, LLM 없음) 저장 → 마지막 창 정리 → `completed`. WS로 두 `message.new`와 `session.ended{submitted}`가 순서대로 간다. 2시간 자동 제출도 고정 답장을 저장하고 `session.ended{timeout}`을 보낸다. 아직 pending인 진행 확인 DM 카드는 보내지 않는다. 2시간 자동 제출은 `message` 없이 같은 처리(`session.ended{timeout}`). 만료 2분 전에는 "지금 상태 그대로 제출됩니다" 경고. 제출 이후 쓰기는 전부 409 `session_ending` |
 | GET | /sessions/{id}/debrief | Bearer(세션 JWT 또는 debrief_token) | {events: [{card_id, element, name, description, rubric_items: [text]}] (실제 fired된 카드만, 평가표 항목 문장 포함), persona_note(동료가 회사 인재상 페르소나였다는 설명과 values), scoring_notice(점수를 보여 주지 않는 이유·기업이 보는 것·리모트 맥락), connection_gaps: [{from_t_min, to_t_min}], retention_notice, contact_email, final: {sections: [{part_no, title, content}]}∣null, final_view_until(종료 후 7일), survey: {submitted: bool, questions: [{q, text}]}, failed_stage?: "session"∣"report"}. 세션 실패(failed_stage=session)면 events·final 없이 중단 안내와 재응시 안내만 돌려준다(연출 노출 방지, 재응시 가능) |
 | POST | /sessions/{id}/debrief/survey | Bearer(세션 JWT 또는 debrief_token) {answers: [{q: "natural"∣"fair", value: 1~5}]} | {submitted: true}. 종료 설문 2문항(자연스러웠는지·공정했는지). 한 번만 저장하고 재요청은 기존 값(멱등) |
 
@@ -157,7 +157,7 @@
 
 ### 지원자 경로 보충
 
-- 완료 흐름(2026-10-21): 완료 버튼 → 한서윤에게 보내기(최종본 첨부, 메시지 선택) → 제출 메시지와 한서윤 고정 답장 저장 → 바로 completed → 디브리핑. 제출 메시지는 `kind=report`로 저장되고 정직 카드의 근거가 된다. 최종본 첨부와 한서윤 답장은 보고로 세지 않는다. 제출 전이면 L×11/12(오피스 10:50)에 한서윤이 개인 DM으로 고정 문구 진행 확인을 보낸다(카드 `text`, LLM 없음).
+- 완료 흐름(2026-10-21): 완료 버튼 → 한서윤에게 보내기(최종본 첨부, 메시지 선택) → 제출 메시지와 한서윤 고정 답장 저장 → 바로 completed → 화면은 답장 표시·입력 잠금 뒤 [나가기](화면 이동만)로 디브리핑. 제출 메시지는 `kind=report`로 저장되고 정직 카드의 근거가 된다. 최종본 첨부와 한서윤 답장은 보고로 세지 않는다. 제출 전이면 L×11/12(오피스 10:50)에 한서윤이 개인 DM으로 고정 문구 진행 확인을 보낸다(카드 `text`, LLM 없음).
 - 사용자 생성 할 일은 섹션 하나에 반드시 연결되며, 할 일 담당과 섹션 담당은 별개다. 분업안 공유는 섹션 담당(5개)과 `division_min`만 검사하고 할 일 개수는 검사하지 않는다. 분업 최소 조건 문장은 시작부터 화면에 보인다.
 - 알 수 없는 초대 토큰: `/s/{token}` 계열 전부 404 `not_found`.
 - 디브리핑 기한 = 세션 종료 시각 + 7일. 종료 시각은 completed_at(제출과 같은 요청에서 저장), 진행 중 실패면 실패 시각(`fail(session)`이 ends_at을 그 시각으로 당긴다). `debrief_token`의 exp는 이 기한으로 고정되고(발급할 때마다 늘어나지 않음), 기한이 지나면 `GET /s/{token}`과 `GET /sessions/{id}/debrief`는 410 `expired`. 최종본 열람·설문도 같은 기한이다.
@@ -182,7 +182,7 @@
 | task.updated | {op: "created"∣"updated"∣"deleted", task_id, section_part_no, assignee, status, order, due_min, by: "candidate"∣"colleague"} |
 | section_owner.updated | {part_no, owner, status: "draft", draft_differs, by} (섹션 담당 draft 변경. 확정은 division.confirmed) |
 | division.confirmed | {snapshot_id, parts, decided_by: "candidate"∣"colleague_default", t_min} (분업안 공유로 확정됨, 또는 동료 기본안 확정) |
-| session.ended | {reason: "submitted"∣"timeout"∣"failed"∣"cancelled"} |
+| session.ended | {reason: "submitted"∣"timeout"∣"failed"∣"cancelled"}. submitted·timeout이면 세션은 이미 completed다. 화면은 한서윤 DM에 제출 메시지와 고정 답장을 보여 주고 입력·편집을 막은 뒤 상단에 [나가기] 버튼을 띄운다. [나가기]는 디브리핑으로 가는 화면 이동일 뿐 API를 부르지 않고 서버 상태를 바꾸지 않는다. 누르지 않고 이탈해도 재접속(`GET /s/{token}`이 completed)이면 디브리핑으로 간다. failed·cancelled는 바로 안내 화면 |
 
 클라이언트 → 서버:
 

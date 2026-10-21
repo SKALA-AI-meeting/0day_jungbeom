@@ -50,7 +50,7 @@ invited ──동의·시작──▶ in_progress ──한서윤에게 보내�
 
 ## 이벤트 처리 상태
 
-`pending`(예약) → `fired`(스케줄러가 집음) → `done`(그래프가 카드 메시지를 저장함). 그래프 실패 시 attempts+1로 재실행하며 시도는 최초 포함 총 3회, 3회째도 실패면 `failed`이고 세션도 failed. 문서를 보내는 카드(planning_checkin·review)에서 `send_document`가 1회 재시도 뒤에도 실패하면 그 시도는 실패로 세고(같은 3회 규칙), 행에 `document_missing=true`를 남겨 그 문서에 의존하는 항목이 사유 document_missing으로 기록 없음이 된다. 재시작 후 `fired`인데 done이 아닌 행은 재실행 대상이다. 재실행은 `fired` 시점에 기록한 같은 `run_id`를 쓰므로 메시지(run_id, seq)·동료 문서 보내기(doc_id, run_id)·보드 변경(part_no, field, run_id)·관찰(card_id, window_start)·관찰 갱신(card_id, window_start, run_id)이 모두 중복 없이 멱등이다.
+`pending`(예약) → `fired`(스케줄러가 집음) → `done`(그래프가 카드 메시지를 저장함). 그래프 실패 시 attempts+1로 재실행하며 시도는 최초 포함 총 3회, 3회째도 실패면 `failed`이고 세션도 failed. 문서를 보내는 카드(planning_checkin·review)에서 `send_document`가 1회 재시도 뒤에도 실패하면 그 시도는 실패로 세고(같은 3회 규칙), 행에 `document_missing=true`를 남겨 그 문서에 의존하는 항목이 사유 document_missing으로 기록 없음이 된다. 재시작 후 `fired`인데 done이 아닌 행은 재실행 대상이다. 재실행은 `fired` 시점에 기록한 같은 `run_id`를 쓰므로 메시지(run_id, seq)·동료 문서 보내기(doc_id, run_id)·보드 변경(할 일은 task_id, 섹션 담당은 part_no 기준 + field, run_id)·관찰(card_id, window_start)·관찰 갱신(card_id, window_start, run_id)이 모두 중복 없이 멱등이다.
 
 ## 기업 간 격리
 
