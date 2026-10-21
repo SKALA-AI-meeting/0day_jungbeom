@@ -479,11 +479,18 @@ def guard():
     groups = {
         grp["id"]: [re.compile(p, re.IGNORECASE) for p in grp["patterns"]] for grp in g["groups"]
     }
+    groups["__allow_exact__"] = set(g["allow_exact"])
     return g, groups
 
 
 def _hits(groups, text):
-    return {gid for gid, pats in groups.items() if any(p.search(text) for p in pats)}
+    if text.strip() in groups["__allow_exact__"]:
+        return set()
+    return {
+        gid
+        for gid, pats in groups.items()
+        if gid != "__allow_exact__" and any(p.search(text) for p in pats)
+    }
 
 
 def test_guard_patterns_examples(guard):
@@ -501,6 +508,19 @@ def test_guard_patterns_examples(guard):
         assert any(p.search(text) for p in ev), text
     for text in g["evaluator_forbidden"]["examples"]["miss"]:
         assert not any(p.search(text) for p in ev), text
+
+
+def test_guard_allows_exact_evaluation_notice(guard):
+    """정해진 평가 안내문은 정확히 일치할 때만 통과하고, 변형은 여전히 verdict에 걸린다."""
+    g, groups = guard
+    notice = load("prompts/fixed_phrases.yaml")["notices"]["evaluation"]
+    rules = (MISSION / "prompts/common_rules.md").read_text(encoding="utf-8")
+    assert f'평가 방식·기준을 물으면: "{notice}"' in rules
+    assert g["allow_exact"] == [notice]
+    assert _hits(groups, notice) == set()
+    assert _hits(groups, f"  {notice}\n") == set()
+    assert "verdict" in _hits(groups, notice + " 평가 기준은 경청이에요.")
+    assert "verdict" in _hits(groups, "평가 방식은 경청을 보는 거예요.")
 
 
 def test_guard_does_not_block_fixed_lines(guard, cards):

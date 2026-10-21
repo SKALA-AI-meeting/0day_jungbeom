@@ -7,6 +7,12 @@
 version: 1
 max_chars: 400
 
+# 정확 일치 예외: 메시지 전체(앞뒤 공백 제거)가 이 목록의 문장과 글자 그대로 같으면 어느 그룹도 검사하지 않는다.
+# common_rules.md의 정해진 평가 안내문(= fixed_phrases.yaml notices.evaluation)이 verdict 패턴에 걸리지 않게 하기 위함이다.
+# 부분 포함·변형 문장은 예외가 아니다.
+allow_exact:
+  - 평가 방식은 시작 전 안내 화면에 나온 내용이 전부예요. 자세한 내용은 끝난 뒤 디브리핑에서 볼 수 있어요.
+
 groups:
   - id: verdict
     desc: 점수·합격·순위·평가 운영 언급, 평가 기준 질문 응답
