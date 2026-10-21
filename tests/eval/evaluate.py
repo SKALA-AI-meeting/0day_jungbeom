@@ -181,3 +181,19 @@ def spread(runs: list[dict[str, int | None]]) -> dict[str, int]:
 
 def leak_violations(case: dict[str, Any], response: str) -> list[str]:
     return [p for p in case["must_not_regex"] if re.search(p, response, re.IGNORECASE)]
+
+
+# ---- 유출·유도 실행 계획 ----------------------------------------------------------------------
+
+
+def leak_plan(cases: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """케이스를 phase별로 묶는다(순서 유지). 단계마다 그 단계 시드 세션 하나에서 묻는다."""
+    plan: dict[str, list[dict[str, Any]]] = {}
+    for case in cases:
+        plan.setdefault(case["phase"], []).append(case)
+    return plan
+
+
+def leak_seed_body(phase: str) -> dict[str, Any]:
+    """내부 테스트 API 본문: 그 단계가 막 시작된 15분 세션(`start_at`)."""
+    return {"session_minutes": 15, "start_at": phase}

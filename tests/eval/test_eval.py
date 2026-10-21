@@ -166,6 +166,16 @@ def test_bars_scoring_reports_exact_within1_and_distribution():
 # ---- 유출·유도 질문 ---------------------------------------------------------------------------
 
 
+def test_leak_plan_seeds_one_session_per_case_phase():
+    plan = evaluate.leak_plan(evaluate.load_leak()["cases"])
+    assert list(plan) == ["keyword", "problem", "solution", "proposal"]
+    assert [c["id"] for c in plan["proposal"]] == [
+        "credit_preemption"
+    ]  # credit 그룹은 proposal 단계
+    assert sum(len(v) for v in plan.values()) == 7
+    assert evaluate.leak_seed_body("proposal") == {"session_minutes": 15, "start_at": "proposal"}
+
+
 def test_leak_cases_cover_the_seven_prompts():
     cases = evaluate.load_leak()["cases"]
     assert [c["id"] for c in cases] == [
@@ -309,44 +319,58 @@ async def test_bars_live(live_report):
 
 @pytest.mark.live
 async def test_leak_live(live_report):
-    """실 스택에 세션 하나를 열고(키워드 단계) 유출·유도 질문 7건을 실제 경로로 묻는다."""
+    """케이스의 phase마다 그 단계 시드 세션을 만들어(내부 테스트 API start_at) 질문 7건을 묻는다."""
     from e2e.client import Target
     from e2e.run import Runner
 
-    data = evaluate.load_leak()
-    runner = Runner(
-        {"name": "eval_leak", "minutes": 15, "steps": []}, Target.from_env(), clock="real", poll=0.5
-    )
-    await runner.setup()
     names = {"p1": "강한결", "p2": "윤하람", "p3": "서지안"}
     rows = []
-    try:
-        for case in data["cases"]:
-            if case["channel"] == "assistant":
-                reply = await runner.api.json(
-                    "POST",
-                    f"/sessions/{runner.sid}/assistant",
-                    token=runner.jwt,
-                    json_body={"prompt": case["text"]},
-                )
-                text = reply["content"]
-            else:
-                since = len(runner.sock.frames)
-                await runner.say(f"{names[case['target_seat']]}님, {case['text']}")
-                seat = case["target_seat"]
-                frame = await runner.sock.wait_for(
-                    lambda f, seat=seat: (
-                        f["type"] == "message.new" and f["payload"]["sender"] == seat
-                    ),
-                    40,
-                    since,
-                )
-                text = frame["payload"]["content"] if frame else ""
-            rows.append((case["id"], evaluate.leak_violations(case, text), text))
-    finally:
-        await runner.sock.close()
-        await runner.api.aclose()
-    lines = ["## 유출·유도 질문", "", "| 케이스 | 위반 | 응답 |", "|---|---|---|"]
-    lines += [f"| {cid} | {', '.join(v) or '없음'} | {text[:80]} |" for cid, v, text in rows]
+    for phase, cases in evaluate.leak_plan(evaluate.load_leak()["cases"]).items():
+        runner = Runner(
+            {"name": "eval_leak", "minutes": 15, "steps": []},
+            Target.from_env(),
+            clock="real",
+            poll=0.5,
+        )
+        made = await runner.api.json(
+            "POST",
+            "/internal/test/sessions",
+            internal=True,
+            json_body=evaluate.leak_seed_body(phase),
+        )
+        runner.sid, runner.jwt = made["session_id"], made["session_token"]
+        runner.invite_token = made["invite_url"].rstrip("/").split("/")[-1]
+        await runner.connect()
+        try:
+            for case in cases:
+                if case["channel"] == "assistant":
+                    reply = await runner.api.json(
+                        "POST",
+                        f"/sessions/{runner.sid}/assistant",
+                        token=runner.jwt,
+                        json_body={"prompt": case["text"]},
+                    )
+                    text = reply["content"]
+                else:
+                    since = len(runner.sock.frames)
+                    await runner.say(f"{names[case['target_seat']]}님, {case['text']}")
+                    seat = case["target_seat"]
+                    frame = await runner.sock.wait_for(
+                        lambda f, seat=seat: (
+                            f["type"] == "message.new" and f["payload"]["sender"] == seat
+                        ),
+                        40,
+                        since,
+                    )
+                    text = frame["payload"]["content"] if frame else ""
+                rows.append((phase, case["id"], evaluate.leak_violations(case, text), text))
+        finally:
+            await runner.sock.close()
+            await runner.api.aclose()
+    lines = ["## 유출·유도 질문", "", "| 단계 | 케이스 | 위반 | 응답 |", "|---|---|---|---|"]
+    lines += [
+        f"| {phase} | {cid} | {', '.join(v) or '없음'} | {text[:80]} |"
+        for phase, cid, v, text in rows
+    ]
     live_report.append("\n".join(lines))
-    assert all(not v for _, v, _ in rows)
+    assert all(not v for _, _, v, _ in rows)
