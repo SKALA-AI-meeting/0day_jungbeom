@@ -102,6 +102,16 @@ P1 대본 단언: `restart`(재시작 후 90초 안에 WS 재연결·`/state` �
 ### 단계 시드 (stage-kit)
 
 - `scenarios/e2e/stages/{keyword,problem,solution,proposal,ended}.yaml`: 그 단계 직전까지의 지원자 행동(발언·칸 확정·기획안 입력)과 고정 AI 발언. 문법은 e2e 대본과 같다. 시드는 api 내부 테스트 API가 SessionService로 재생해 만든다(SQL 직접 삽입 없음, `docs/api/design.md` "테스트 API").
+- 시드·대본 step 키(정본, `services/api/app/services/test_sessions.py`가 읽는다). `at`은 세션 시작 기준 절대 분 또는 직전 step 기준 `+분`이다.
+
+| 키 | 값 | 뜻 |
+|---|---|---|
+| `say` | 문자열, 선택 `intent: {intent, scenario_option_key∣target_option_id, confidence, addressed_to?}` | 지원자 토론방 메시지. `intent`가 있으면 의도 분류 결과로 그대로 반영, 없으면 폴백 |
+| `ai` | `{seat: p1∣p2∣p3, content, propose?, support?, oppose?, card_ids?, is_invite?}` | 고정 AI 발언. `propose`·`support`·`oppose`는 안 키 또는 라벨 |
+| `confirm` | `{phase, option_key?, value?}` | 지원자 칸 확정. keyword는 `option_key`, problem·solution은 `value`(+선택 `option_key`) |
+| `proposal` | `{<칸 키>: 값}` | 기획안 칸 일부 덮어쓰기 |
+| `submit` | `true` | 제출 |
+
 - `make stage STAGE=<단계> [MIN=15] [LLM=fake|live]`: 시드 세션을 만들고 초대 링크·세션 id를 출력한다. 웹은 바꾸지 않으며 링크로 들어가면 그 단계 화면부터 보인다. `LLM=fake`(기본)는 `LLM_FAKE=1` 스택, `live`는 실제 모델 스택이다.
 - `make stage-advance SID=<id> TO=deadline|idle|card:<card_id>|<초>`: 시간을 앞당겨 시간 초과·침묵 초대·카드·자동 제출을 기다리지 않고 본다.
 
