@@ -16,7 +16,7 @@
 | adaptability | 적응성/유연성 | adaptability_change | 팀장이 핵심 기능 범위와 출시 일정을 바꾼다(마감 그대로) | 다시 정리된 방향 | 4 |
 | collaboration | 협업/조율 | collab_help | 바쁜 시점에 동료가 10분만 같이 봐 달라고 한다 | 답 | 2 |
 | | | collab_disagree | 리뷰 때 동료가 근거를 들어 지원자 결정에 다른 의견을 낸다(내용은 카탈로그 고정) | 들어 줌 | 2 |
-| honesty | 정직/공정한 보고 | honesty_report | 팀장이 "다 됐다고 전해도 되죠?"와 함께 보고를 요청한다 | 인정 | 4 |
+| honesty | 정직/공정한 보고 | honesty_report | 마감 10분 전 팀장이 개인 DM으로 "다 됐다고 전해도 되죠?"라고 진행을 묻는다(제출이 먼저면 DM 없이 제출 메시지만) | 인정 | 4 |
 
 ## 항목 정의
 
@@ -43,7 +43,7 @@
 | honesty_report | honest_credited_colleague | 동료가 한 일을 동료 것으로 말함 | metric credits_colleague eq true, only_if metric has_colleague_shares eq true | label | message |
 | | honest_disclosed_incomplete | 안 된 것을 숨기지 않음 | metric discloses_incomplete eq true, only_if metric has_incomplete_facts eq true | label | message |
 | | honest_no_misattribution | 동료가 쓴 파트를 자기 것으로 말하지 않음 | metric claims_colleague_work eq false, only_if all [metric has_report_message eq true, metric has_colleague_shares eq true] | label | message |
-| | honest_reported_within_10m | 요청 후 10분 안에 보고함 (pilot_value) | metric response_minutes lte 10 | metric | message |
+| | honest_left_report | 제출 메시지나 진행 확인 DM 이후 한서윤 DM에 결과를 직접 적음 | metric has_report_message eq true | metric | message |
 
 ## 카드별 레이블·보조 판정·근거 타입 (단일 정본)
 
@@ -78,7 +78,7 @@
 | 카드 레이블 | 조건대로 1/0 | 조건대로 1/0 |
 | `unclassified` / null(LLM 실패) | 기록 없음(null) | 조건대로 1/0 (metrics는 순수 함수) |
 | `no_evidence` / 관찰 행 없음 | 기록 없음 | 기록 없음 |
-| metric 값이 null | — | 기록 없음. 단 `response_minutes`는 창 안 활동이 있는데 관련 메시지가 없으면 0 |
+| metric 값이 null | — | 기록 없음 |
 | `only_if` 불충족 | 기록 없음(사유 not_applicable) | 동일 |
 | 카드 메시지가 창 끝에 늦게 전달됨 | 기록 없음(사유 window_missed) | 동일 |
 | 카드가 의존하는 동료 문서가 전달되지 않음 | 기록 없음(사유 document_missing) | 동일 |
@@ -92,7 +92,7 @@
 | window_missed | 카드 메시지 전달 지연으로 창을 놓침 | 시스템: 메시지 지연 |
 | document_missing | 동료 문서 전송 실패로 카드가 의존하는 문서가 없음 | 시스템: 문서 미제공 |
 | not_applicable | `only_if` 전제 불충족 | 해당 없음 |
-| event_not_fired | 카드 미발생(조기 제출 등) | 이벤트 미발생 |
+| event_not_fired | 카드 미발생(조기 제출 등. 정직 카드는 제출 시점에 창을 열므로 해당 없음) | 이벤트 미발생 |
 
 0점(미충족)은 근거 행을 요구하지 않는다.
 
@@ -114,7 +114,6 @@
 
 | 지표 | 타입 | 정의 |
 |---|---|---|
-| response_minutes | float·null | 카드 메시지 시각부터 **관련** 지원자 메시지 중 첫 것까지 분. 관련 메시지 없으면 null(활동은 있으면 0점 처리) |
 | first_recipient | manager·colleague·null | 첫 관련 메시지의 recipient |
 | responded_to_request | bool | 관련 메시지가 1건 이상 |
 | division_by_candidate | bool | 계획성: 창 안에 `decided_by=candidate` 스냅샷이 확정되고 섹션 담당 5개 전부가 non-null임. 할 일 생성 여부와 무관하다. 섹션 담당 draft를 지원자가 직접 바꾼 것과 채팅으로 정해 동료 set_division이 쓴 draft를 지원자가 공유한 것을 같게 본다 |
@@ -134,7 +133,7 @@
 | redirected_colleague | bool | 적응성: recipient=colleague이고 kind ∈ {redivide, instruction}인 메시지가 창 안에 있음(동료 수락 여부 무관, 팀장에게 한 제안은 제외) |
 | has_colleague_shares | bool | 정직: facts.shares에 owner=colleague 행이 1개 이상 |
 | has_incomplete_facts | bool | 정직: facts.empty_sections가 비어 있지 않거나 facts.section_owners에 draft_differs=true가 있거나 facts.changed_after_adaptability가 false임(tasks_not_done은 여기서 세지 않는 추가 사실)(null은 세지 않음) |
-| has_report_message | bool | 정직: 완료(submitted_at) 뒤 창 안에 한서윤 manager_dm의 지원자 메시지 중 kind=report가 있음. 팀 채널 메시지와 완료 전 메시지는 보고로 세지 않음(2026-10-21 후속) |
+| has_report_message | bool | 정직: 정직 창(진행 확인 DM 시각 또는 제출 시각부터 completed_at까지) 안에 본문이 있는 한서윤 manager_dm 지원자 메시지가 1건 이상. 제출 메시지(`kind=report`)와 진행 확인 DM 이후 DM 메시지만 세고, 팀 채널 메시지와 DM 이전 메시지는 세지 않음. 보고 시각 기준(요청 후 N분)은 없다 |
 | credits_colleague | bool·null | 정직: aux.credits_colleague(보고 문장이 동료가 보낸 문서의 파트를 동료 몫으로 말함). 사실 입력과 대조 |
 | claims_colleague_work | bool·null | 정직: aux.claims_colleague_work(동료가 보낸 파트를 자기 것으로 말함) |
 | discloses_incomplete | bool·null | 정직: aux.discloses_incomplete(사실 입력의 미완료 항목 중 하나 이상을 보고에서 말함) |
@@ -150,7 +149,7 @@
 ## 리스크와 파일럿 측정
 
 - 한 창에 레이블 하나라 오분류 1번이 1~2점을 움직인다. 항목마다 근거와 basis(기록 기반/AI 분류 기반)를 보여 주고 담당자가 조정한다. 파일럿에서 **담당자 조정 비율**을 근거 정확도와 함께 잰다.
-- 응답 시간 기준(5분·10분)과 약속 이행 허용 오차(±5분)는 파일럿 값이다.
+- 약속 이행 허용 오차(±5분)는 파일럿 값이다. 정직 카드에는 보고 시각 기준이 없다(제출과 동시에 종료되므로 시간 항목 대신 "직접 적어 전함" 사실 항목을 둔다).
 - 요소를 적게 고르면 창이 길어지고 만점이 줄어든다. 요소 구성이 같은 채용 건끼리만 같은 기준이다.
 - 반대 의견 카드의 내용은 카탈로그에 고정되어 지원자 간 공정하다. 지원자가 3번 파트를 쓰지 않았으면(50자 미만) 대체 대상(분업 때 정한 방향 또는 킥오프 기본 가정)에 대해 말한다.
 - 분업 최소 조건(`division_min`: 2번은 지원자, 3번은 동료 또는 같이, 4·5번 중 하나는 동료 단독)으로 책임감·정직 카드의 전제가 모든 분업에서 성립한다. 그래도 영향이 없는 분업이면 해당 항목은 not_applicable이다.

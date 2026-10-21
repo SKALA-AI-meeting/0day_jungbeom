@@ -16,8 +16,8 @@ MVP 원칙: **평가 항목이 요구하는 조각만 분리하고 나머지는 
 ## 원칙
 
 1. **DB 쓰기는 api만 한다.** MCP와 워커는 api의 `/internal/*`(별도 포트 8001, 미공개)을 부른다. 예외는 LangGraph checkpointer 테이블(api 에이전트 모듈은 `session:`·`assistant:` thread, report-worker는 `report:` thread만)과 rag-mcp의 `doc_chunks`.
-2. **시간의 주인은 api다.** 세션 시작·종료 시각과 이벤트 예정 시각을 DB에 두고, 5초마다 도는 스케줄러가 때가 된 이벤트를 집어 그래프를 호출한다. 접속이 끊겨도 시계는 흐른다. 이벤트는 pending→fired→done 상태를 가지며, 프로세스가 재시작되면 fired인데 done이 아닌 이벤트를 재실행한다(메시지 저장이 run_id·seq로 멱등).
-3. **에이전트는 자극에 반응하는 함수다.** 자극은 지원자 메시지, 이벤트 도래, 보드 분업 확정(지원자가 보드로 확정·재배정), 세션 종료 네 가지. 자극마다 그래프를 한 번 실행하고 체크포인트에 남긴다. 세션 하나 = thread 하나.
+2. **시간의 주인은 api다.** 세션 시작·종료 시각과 이벤트 예정 시각을 DB에 두고(화면과 페르소나가 쓰는 오피스 시각 09:00~11:00은 이 시계를 같은 비율로 바꾼 표시값이다), 5초마다 도는 스케줄러가 때가 된 이벤트를 집어 그래프를 호출한다. 접속이 끊겨도 시계는 흐른다. 이벤트는 pending→fired→done 상태를 가지며, 프로세스가 재시작되면 fired인데 done이 아닌 이벤트를 재실행한다(메시지 저장이 run_id·seq로 멱등).
+3. **에이전트는 자극에 반응하는 함수다.** 자극은 지원자 메시지, 이벤트 도래, 분업 확정(지원자의 분업안 공유·재공유), 세션 종료 네 가지. 자극마다 그래프를 한 번 실행하고 체크포인트에 남긴다. 세션 하나 = thread 하나.
 4. **시나리오는 데이터다.** 채용 건의 `mission_id`가 가리키는 미션 카탈로그(`scenarios/missions/<id>/`)를 조립한 `positions.scenario` JSON이 카드 목록과 시점을 담고 코드는 해석만 한다.
 
 ## 요청 흐름
@@ -36,10 +36,10 @@ MVP 원칙: **평가 항목이 요구하는 조각만 분리하고 나머지는 
 3. 실패 시 attempts+1로 재실행(최초 포함 총 3회, 같은 run_id), 3회째도 실패면 이벤트 failed·세션 failed·`session.ended{failed}`. `send_document`가 1회 재시도 뒤에도 실패하면 그 시도는 실패이고 이벤트 행에 `document_missing`을 남긴다
 
 ### 분업 확정
-지원자가 섹션 담당 5개를 정하고 **분업안 공유**를 누르면 api가 `division_min`을 검사해 division을 확정하고(할 일 개수는 검사하지 않음, 2026-10-21; decided_by=candidate, task_events, WS `division.confirmed`) 동료 그래프를 `stimulus=division`으로 한 번 실행해 work_notes·보드 doing을 갱신한다. 채팅으로 정한 분업은 동료 그래프가 `set_division`으로 같은 tasks를 채운다. 다음 요소 카드까지 미확정이면 동료가 기본안으로 확정한다.
+지원자가 섹션 담당 5개를 정하고 **분업안 공유**를 누르면 api가 5개 섹션 담당과 `division_min`을 한꺼번에 검사해 불변 스냅샷으로 division을 확정하고(할 일 개수는 검사하지 않음. decided_by=candidate, task_events, WS `division.confirmed`. 위반이면 422와 위반 섹션 목록) 동료 그래프를 `stimulus=division`으로 한 번 실행해 work_notes를 갱신한다. 동료가 실행 담당인 할 일이 보드에 있으면 그 할 일만 doing으로 바꾸고, 할 일이 0개면 보드는 건드리지 않는다. 채팅으로 정한 분업은 동료 그래프가 `set_division`으로 섹션 담당 draft를 쓰고 같은 검사로 스냅샷을 만든다(할 일 행은 만들지 않음). 다음 요소 카드까지 미확정이면 동료가 기본안으로 확정한다.
 
 ### 세션 종료와 리포트
-1. 제출 또는 `ends_at` 도달 → `SessionService.submit()`: `submitted_at`·`deadline_at(+5분)` 기록과 최종본 version 생성(커밋, 이후 문서·보드·어시스턴트는 409, 메시지는 모든 채널 허용) → `status=reporting`. 보고 요청 카드(01:50)는 완료 전이면 팀 채널에서, 조기 완료로 앞당겨 실행되면 한서윤 DM에서 실행한다(세부 설계 제안, 구현 전 결정). 완료 뒤 팀 채널 재촉은 없다. 완료 뒤 한서윤 확인 답장이 저장되고 주담당이 종료 버튼(`finish`)을 누르거나, 종료 버튼 없이 deadline_at(submitted_at+5분, fallback)이 지나면 `SessionService.complete()`: `AgentRunner.run(stimulus=end, run_id=uuid5(session_id,"end"))`로 마지막 창 정리(열린 창 닫기, collab_help의 `promise_kept`를 `update_observation`으로 갱신)와 팀장 응답 → 재사용 추정 계산 → `status=completed`·`completed_at`(커밋). 제출 즉시 complete()는 두지 않는다(종료 버튼 규칙). end 실행 전에 죽으면 스케줄러가 reporting 세션을 다시 complete()하며 같은 run_id라 중복이 없다. 리포트 발행은 마지막 관찰이 저장된 뒤에만 일어난다
+1. 제출(한서윤에게 보내기) 또는 `ends_at` 도달 → `SessionService.submit(reason, message?)`: 세션 Lock 안에서 대기 중 저장을 끝내고 `submitted_at` 기록과 최종본 version 생성, 제출 메시지(최종본 카드, 본문은 선택)를 한서윤 DM에 `kind=report`로 저장, 한서윤 고정 답장("받았어요, 수고하셨어요.", LLM 없음) 저장(커밋, 이후 문서·보드·어시스턴트는 409 `session_ending`, 메시지는 WS 오류 `session_ending`). 아직 pending인 진행 확인 DM 카드(honesty_report 또는 흐름 report_request)는 DM을 보내지 않고 제출 시점에 정직 창을 연다. 이어서 같은 요청 안에서 `SessionService.complete()`: `AgentRunner.run(stimulus=end, run_id=uuid5(session_id,"end"))`로 마지막 창 정리(열린 창 닫기, collab_help의 `promise_kept`를 `update_observation`으로 갱신) → 재사용 추정 계산 → `status=completed`·`completed_at`(커밋). 중간 상태는 없다. end 실행 전에 죽으면 스케줄러가 `submitted_at`이 있고 `completed_at`이 없는 세션을 다시 complete()하며 같은 run_id라 중복이 없다. 리포트 발행은 마지막 관찰이 저장된 뒤에만 일어난다
 2. api가 RabbitMQ `report.generate`에 `{session_id}` 발행(persistent), `report_enqueued_at` 기록. 발행 실패나 프로세스 종료로 기록이 비어 있으면 스케줄러가 60초마다 재탐색해 재발행
 3. report-worker 그래프 `collect → draft → interrupt → finalize`. interrupt 체크포인트 저장 → draft 저장 → `status=report_ready` → ack(이 순서라 ack 뒤 승인은 항상 재개 대상이 있다). 관리자 검토 완료 → api `status=approving`(커밋) → `report.approve` 발행·`approve_enqueued_at` 기록(비어 있으면 스케줄러가 재발행) → 워커가 같은 thread 재개 → final 저장 → `status=reviewed` → ack
 4. 워커 실패는 attempt+1 재발행(백오프 5·15·45초), 3회면 `report.dlq`. dlq 소비자가 `report_failed` → `status=failed`. api가 내려가 있으면 재발행과 dlq 처리가 큐에 남았다가 복구 후 처리된다. 담당자의 "리포트 다시 생성"(`POST /admin/sessions/{id}/report/regenerate`)은 completed로 되돌리고 `report.generate`를 다시 발행한다
@@ -81,4 +81,4 @@ docs/
 | 유지보수성 | 시나리오 데이터화, 서비스별 컨테이너, 계약 문서가 정본 |
 | 이식성 | Docker Compose 한 번에 기동. 외부 의존은 OpenAI·LangSmith뿐 |
 | 호환성 | MCP 표준 전송, REST·WebSocket 계약 문서화 |
-| 사용성 | 남은 시간 상시 표시, 새로고침 없는 도착, 진행 표시, 이어하기(reporting 포함), 끊김 구간 표시 |
+| 사용성 | 오피스 시각·마감·남은 시간 상시 표시, 메인 영역 탭 전환과 새 메시지 배지, 새로고침 없는 도착, 진행 표시, 이어하기, 끊김 구간 표시 |

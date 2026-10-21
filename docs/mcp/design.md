@@ -11,19 +11,19 @@
 
 | 도구 | 입력 | 내부 API | 종류 |
 |---|---|---|---|
-| get_board | {session_id} | GET /board | 조회 |
+| get_board | {session_id} | GET /board. 할 일이 0개여도 섹션 담당 5행과 확정 스냅샷을 돌려준다 | 조회 |
 | get_shared_documents | {session_id} | GET /docs/shared. 지원자 문서는 보낸 버전만, 동료 문서는 전부. 공유 안 된 지원자 문서·버전은 결과에 없다 | 조회 |
 | post_message | {session_id, channel ∈ team∣dm∣manager_dm∣notice, sender ∈ colleague∣manager∣system, content, event_id?, run_id, seq, meta?} | POST /messages | 변경 |
 | send_document | {session_id, doc_id∣part_no, content, channel, event_id, seq, run_id} | POST /docs/send. 동료 문서를 만들거나 revision+1 하고 버전 vN을 고정한 뒤 채널에 문서 카드 메시지 1건(event_id·seq 포함)을 올린다. seq는 파트별 고정(파트 번호×10). 응답 {doc_id, version, message_id} | 변경 |
-| set_division | {session_id, parts, decided_by} | PUT /division. 같은 tasks 5행을 채우며 division_min 위반은 `invalid_input` | 변경 |
-| update_task | {session_id, part_no, status, run_id} | PUT /tasks/{part_no}. 동료는 **상태만** 바꾼다(order·due_min·depends_on 없음) | 변경 |
+| set_division | {session_id, parts, decided_by, run_id} | PUT /division. 섹션 담당 draft 5개를 쓰고 같은 검사를 통과하면 스냅샷을 만든다. 할 일 행은 읽거나 쓰지 않는다. division_min 위반은 `invalid_input` | 변경 |
+| update_task | {session_id, task_id, status, run_id} | PUT /tasks/{task_id}. 동료는 보드에 있는 자기 실행 담당 할 일의 **상태만** 바꾼다(제목·섹션·order·due_min 없음). 할 일이 없으면 그래프가 부르지 않는다 | 변경 |
 | release_document | {session_id, doc_id} | POST /releases/{doc_id} | 변경 |
 | record_observation | {session_id, card_id, element, window_start, window_end, metrics, label, aux, evidence: [{type, id}], facts?, run_id} | POST /observations | 변경 |
 | update_observation | {session_id, card_id, window_start, metrics, run_id} | PATCH /observations. 같은 (card_id, window_start) 행의 지정한 지표만 갱신(세션 종료 시 collab_help `promise_kept` 확정용) | 변경 |
 
 - 삭제된 도구: 공유 문서 조회·파트 쓰기 도구. 동료는 자기 문서를 send_document로만 쓰고, 지원자 문서는 get_shared_documents로만 읽는다.
 - 허용 목록(그래프가 주입): 동료 respond = search_documents, get_document, get_board, get_shared_documents. 팀장 respond_manager = search_documents, get_board, get_shared_documents. 결정적 노드(코드 호출) = post_message, send_document, set_division, update_task, release_document, record_observation, update_observation.
-- 멱등 키는 그대로 전달하고 판단은 api에 맡긴다: `post_message`는 (run_id, seq), `send_document`는 문서 (doc_id, run_id)·메시지 (run_id, seq)(같은 키면 버전이 늘지 않고 기존 결과), `update_task`는 (part_no, field, run_id), `set_division`은 내용 동일성, `record_observation`은 (card_id, window_start)(run_id는 추적용), `update_observation`은 같은 키에 같은 run_id면 기존 값.
+- 멱등 키는 그대로 전달하고 판단은 api에 맡긴다: `post_message`는 (run_id, seq), `send_document`는 문서 (doc_id, run_id)·메시지 (run_id, seq)(같은 키면 버전이 늘지 않고 기존 결과), `update_task`는 (task_id, field, run_id), `set_division`은 내용 동일성, `record_observation`은 (card_id, window_start)(run_id는 추적용), `update_observation`은 같은 키에 같은 run_id면 기존 값.
 
 ## rag-mcp (`services/rag-mcp/`)
 
