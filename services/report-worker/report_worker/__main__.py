@@ -12,7 +12,7 @@ from report_worker.assessment import AssessmentClient
 from report_worker.config import load_settings
 from report_worker.consumer import RabbitConsumer, ReportWorker
 from report_worker.graph import Deps, build_graph
-from report_worker.llm import OpenAILLM
+from report_worker.llm import FakeEvaluatorLLM, OpenAILLM
 
 
 async def main() -> None:
@@ -26,7 +26,9 @@ async def main() -> None:
     deps = Deps(
         api=api,
         assessment=AssessmentClient(settings.assessment_mcp_url, settings.assessment_mcp_token),
-        llm=OpenAILLM(settings.model_evaluator, os.environ),
+        llm=FakeEvaluatorLLM()
+        if os.environ.get("LLM_FAKE") == "1"
+        else OpenAILLM(settings.model_evaluator, os.environ),
         scenarios_dir=settings.scenarios_dir,
     )
     consumer = RabbitConsumer(settings.rabbitmq_url)

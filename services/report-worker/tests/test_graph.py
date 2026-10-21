@@ -11,9 +11,16 @@ import json
 
 from report_worker.evaluate import ELEMENTS
 from report_worker.graph import evaluation_run_id, thread_config
-from report_worker.llm import LLMUnavailable
+from report_worker.llm import FakeEvaluatorLLM, LLMUnavailable
 
-from tests.conftest import content_hash, contract, element_outputs, load, merged_report
+from tests.conftest import (
+    Harness,
+    content_hash,
+    contract,
+    element_outputs,
+    load,
+    merged_report,
+)
 
 
 def dimension_ids(element: str) -> set[str]:
@@ -236,3 +243,25 @@ async def test_c7_honesty_credit_contrast(h):
     assert dimension["level"] is not None or dimension["no_record_reason"] is not None
     assert dimension["no_record_reason"] != "evaluate_failed"  # FakeLLM 출력이 워커 검증 통과
     assert len(h.llm.calls) == 5
+
+
+async def test_llm_fake_runs_graph_to_draft_without_key(h):
+    h.llm = FakeEvaluatorLLM()
+    h.new_graph()
+    await h.generate()
+
+    draft, usage = h.api.drafts[0]
+    assert usage["llm_calls"] == 5 and usage["element_retries"] == 0
+    assert not any(d["no_record_reason"] == "evaluate_failed" for d in draft["dimensions"])
+    assert {d["level"] for d in draft["dimensions"]} == {3}
+
+
+async def test_llm_fake_same_input_same_result():
+    runs = []
+    for _ in range(2):
+        h = Harness()
+        h.llm = FakeEvaluatorLLM()
+        h.new_graph()
+        await h.generate()
+        runs.append(h.assessment.saved[0])
+    assert runs[0] == runs[1]

@@ -6,6 +6,7 @@
 """
 
 import asyncio
+import json
 import logging
 import time
 from collections.abc import Mapping
@@ -99,3 +100,46 @@ class OpenAILLM:
                 tokens_out=meta.get("output_tokens", 0),
             )
         raise LLMUnavailable(f"evaluator llm failed after retries: {last!r}")
+
+
+class FakeEvaluatorLLM:
+    """`LLM_FAKE=1`: 호출 없이 요소 척도의 차원마다 고정 출력(비용 0, 키 불필요).
+
+    세션 기록에 지원자 메시지가 있으면 첫 지원자 메시지를 근거로 수준 3·medium, 없으면 no_activity.
+    워커 검증(근거 형식·개수·금지어)을 그대로 통과하고, 같은 입력에는 같은 출력을 낸다.
+    """
+
+    model = "fake"
+    temperature = 0.0
+
+    async def complete(self, system: str, user: str) -> Completion:
+        scale = json.loads(user.split("[요소 척도]\n", 1)[1].split("\n\n[요소 지침]", 1)[0])
+        record = json.loads(user.split("[세션 기록]\n", 1)[1])
+        evidence = next(
+            (m["id"] for m in record.get("messages", []) if m.get("sender") == "candidate"), None
+        )
+        dimensions = []
+        for dimension in scale["dimensions"]:
+            if evidence:
+                row = {
+                    "level": 3,
+                    "no_record_reason": None,
+                    "evidence_refs": [f"msg:{evidence}"],
+                    "rationale": "고정 출력: 지원자 메시지 한 건을 근거로 중간 수준으로 둔다.",
+                    "confidence": "medium",
+                }
+            else:
+                row = {
+                    "level": None,
+                    "no_record_reason": "no_activity",
+                    "evidence_refs": [],
+                    "rationale": "고정 출력: 지원자 행동 기록이 없다.",
+                    "confidence": None,
+                }
+            dimensions.append({"dimension_id": dimension["dimension_id"], **row})
+        out = {
+            "element": scale["element"],
+            "summary": "고정 출력: 지원자 메시지 기록을 기준으로 한 요약.",
+            "dimensions": dimensions,
+        }
+        return Completion(text=json.dumps(out, ensure_ascii=False))
