@@ -1,0 +1,8 @@
+package dev.dayzero.backend.repo;
+
+import dev.dayzero.backend.domain.AiTask;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface AiTaskRepository extends JpaRepository<AiTask, String> {
+    java.util.List<AiTask> findBySessionIdOrderByCreatedAtDesc(String sessionId); java.util.List<AiTask> findTop30ByCreatedByOrderByCreatedAtDesc(String createdBy); java.util.List<AiTask> findTop30ByCompanyIdOrderByCreatedAtDesc(Long companyId); java.util.List<AiTask> findBySessionIdAndTypeAndStatusIn(String sessionId, String type, java.util.Collection<String> statuses);
+}

@@ -1,14 +1,17 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { api, sendMessage } from '../api'
+import { useRoute } from 'vue-router'
+import { api, auth, streamTask } from '../api'
 import ChatBubble from '../components/ChatBubble.vue'
 import MilestoneStepper from '../components/MilestoneStepper.vue'
 
 const props = defineProps({ id: String })
+const route = useRoute()
 const meta = ref(null)
 const sess = ref(null)
 const messages = ref([])
 const typing = ref(null)
+const toolStatus = ref('')
 const sending = ref(false)
 const draft = ref('')
 const notes = ref('')
@@ -22,53 +25,92 @@ const whoOf = (sp) => (sp === 'user' ? { name: sess.value.alias } : personas.val
 const done = computed(() => sess.value?.status === 'completed')
 const choosing = computed(() => sess.value?.dilemma && !sess.value.choice && !done.value)
 const optLabel = (id) => sess.value?.dilemma?.options.find((o) => o.id === id)?.label || ''
+const MS = ['communicate', 'coordinate', 'compromise', 'persuade']
 
-async function load() {
-  const [m, s] = await Promise.all([api.meta(), api.getSession(props.id)])
-  meta.value = m
+async function refresh() {
+  const s = await api.getSession(props.id)
   sess.value = s
   messages.value = s.messages
-  notes.value = s.notes
+  if (!noteState.value) notes.value = s.notes
   scrollDown()
+  return s
 }
-onMounted(() => load().catch(() => (error.value = '세션을 불러오지 못했어요.')))
+
+async function load() {
+  if (!auth.candidate(props.id)) {
+    error.value = '이 세션의 입장 정보가 없어요. 초대 링크로 다시 들어와 주세요.'
+    return
+  }
+  meta.value = await api.meta()
+  const s = await refresh()
+  // resume a task that is still running (page reload, or the opening line right after start)
+  let active = route.query.task
+  if (!active && s.busy) {
+    const mine = await api.myTasks(auth.candidate(props.id))
+    active = mine.find((t) => ['QUEUED', 'RUNNING'].includes(t.status))?.id
+  }
+  if (active) follow(active)
+}
+onMounted(() => load().catch((e) => (error.value = e.message || '세션을 불러오지 못했어요.')))
 
 function scrollDown() {
   nextTick(() => chatEl.value && (chatEl.value.scrollTop = chatEl.value.scrollHeight))
 }
-watch(() => [messages.value.length, typing.value], scrollDown)
+watch(() => [messages.value.length, typing.value, messages.value.at(-1)?.text], scrollDown)
+
+/** Apply streamed TOKEN deltas to a live bubble; DONE / FAILED re-read the authoritative state from Spring. */
+async function follow(taskId) {
+  sending.value = true
+  try {
+    await streamTask(taskId, auth.candidate(props.id), (ev) => {
+      const d = ev.data || {}
+      if (ev.type === 'TOKEN') {
+        let m = messages.value.find((x) => x.idx === d.idx)
+        if (!m) {
+          m = { idx: d.idx, speaker: d.speaker, text: '', milestone: d.milestone, live: true }
+          messages.value.push(m)
+        }
+        if (d.reset) m.text = ''
+        m.text += d.delta || ''
+        typing.value = d.speaker
+        const mi = MS.indexOf(d.milestone)
+        if (sess.value && mi > sess.value.milestone_idx) sess.value.milestone_idx = mi
+      } else if (ev.type === 'TOOL_START' && String(d.tool).startsWith('rag.')) {
+        toolStatus.value = '회사 문서를 확인하는 중…'
+      } else if (ev.type === 'TOOL_END') {
+        toolStatus.value = ''
+      } else if (ev.type === 'FAILED') {
+        error.value = '팀원들의 응답을 만들지 못했어요. 같은 내용을 한 번 더 보내 주세요.'
+      }
+    })
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    typing.value = null
+    toolStatus.value = ''
+    sending.value = false
+    await refresh()
+  }
+}
 
 async function send() {
   const text = draft.value.trim()
   if (!text || sending.value || done.value) return
   const choiceId = choosing.value ? pickedOpt.value : null
-  draft.value = ''
-  sending.value = true
   error.value = ''
+  sending.value = true
   try {
-    await sendMessage(props.id, text, (ev) => {
-      if (ev.type === 'user_message') {
-        messages.value.push(ev.message)
-        if (ev.message.choice) sess.value.choice = { option: ev.message.choice } // close the choice panel right away
-      }
-      else if (ev.type === 'typing') typing.value = ev.speaker
-      else if (ev.type === 'message') {
-        typing.value = null
-        messages.value.push(ev.message)
-      } else if (ev.type === 'state') {
-        sess.value.milestone_idx = ev.milestone_idx
-        sess.value.status = ev.status
-        if (ev.choice) sess.value.choice = ev.choice
-      } else if (ev.type === 'dilemma') sess.value.dilemma = ev.dilemma
-      else if (ev.type === 'error') error.value = ev.message
-    }, choiceId)
-    if (choiceId) pickedOpt.value = null
+    const r = await api.submitTurn(props.id, text, choiceId)
+    draft.value = ''
+    messages.value.push(r.userMessage)
+    if (choiceId) {
+      sess.value.choice = { option: choiceId } // close the choice panel right away
+      pickedOpt.value = null
+    }
+    await follow(r.taskId)
   } catch (e) {
     error.value = e.message
-  } finally {
-    typing.value = null
     sending.value = false
-    if (sess.value.status === 'completed') sess.value = await api.getSession(props.id)
   }
 }
 
@@ -99,8 +141,13 @@ function addTemplate(h) {
   notes.value += (notes.value && !notes.value.endsWith('\n') ? '\n' : '') + `${h}: `
 }
 
+const confirmFinish = ref(false)
 async function finish() {
-  if (!confirm('대화를 마무리할까요? 종료하면 더 이상 메시지를 보낼 수 없어요.')) return
+  if (!confirmFinish.value) {
+    confirmFinish.value = true
+    return
+  }
+  confirmFinish.value = false
   sess.value = await api.finish(props.id)
 }
 </script>
@@ -127,15 +174,17 @@ async function finish() {
             · {{ sess.alias }}, <template v-for="(p, i) in sess.scenario.personas" :key="p.id">{{ p.emoji }} {{ p.name }}<template v-if="i === 0">, </template></template>
           </span>
         </div>
-        <button v-if="!done" class="btn sm" @click="finish">대화 마무리</button>
+        <button v-if="!done" class="btn sm" :class="{ warn: confirmFinish }" @click="finish">{{ confirmFinish ? '한 번 더 누르면 종료돼요' : '대화 마무리' }}</button>
         <span v-else class="chip green">종료됨</span>
       </header>
 
       <div ref="chatEl" class="msgs">
         <template v-for="m in messages" :key="m.idx">
-          <ChatBubble :message="m" :who="whoOf(m.speaker)" :mine="m.speaker === 'user'" :tag="m.choice ? optLabel(m.choice) : ''" />
+          <ChatBubble :message="m" :who="whoOf(m.speaker)" :mine="m.speaker === 'user'" :tag="m.choice ? optLabel(m.choice) : ''" :sources="m.sources || []" />
         </template>
-        <div v-if="typing" class="typing">{{ personas[typing]?.emoji }} {{ personas[typing]?.name }} 입력 중…</div>
+        <div v-if="toolStatus" class="typing">📄 {{ toolStatus }}</div>
+        <div v-else-if="typing" class="typing">{{ personas[typing]?.emoji }} {{ personas[typing]?.name }} 입력 중…</div>
+        <div v-else-if="sending" class="typing">팀원들이 읽는 중…</div>
 
         <div v-if="done && sess.debrief" class="debrief card">
           <h3>디브리핑 · 이번 대화에서 준비된 상황</h3>
@@ -193,6 +242,7 @@ async function finish() {
 .chat footer { display: flex; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line); }
 .chat textarea { flex: 1; resize: none; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
 .err { margin: 0 16px 8px; }
+.btn.warn { border-color: var(--warn); color: var(--warn); }
 .choice { margin: 0 16px 8px; padding: 12px 14px; border: 1.5px solid var(--brand); border-radius: 12px; background: color-mix(in srgb, var(--brand-soft) 50%, var(--panel)); }
 .choice-h { display: flex; gap: 10px; align-items: baseline; margin-bottom: 8px; flex-wrap: wrap; }
 .opts { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }

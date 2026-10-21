@@ -1,0 +1,102 @@
+# Day Zero — capstone reference deployment (PDF ch.5): public tier = frontend + backend only.
+# Everything else stays inside the docker network (trust boundary).
+x-agent-image: &agent-image
+  build: ./agent
+  image: d20-agent
+  env_file: .env              # OPENAI_API_KEY / GOOGLE_API_KEY live only here
+  environment: &agent-env
+    INTERNAL_KEY: ${INTERNAL_KEY:-change-me-internal-key}
+    BACKEND_INTERNAL_URL: http://backend:8081
+    MCP_HOST: 0.0.0.0
+
+services:
+  frontend:
+    build: ./frontend
+    ports: ["${FRONTEND_PORT:-18088}:80"]
+    depends_on: [backend]
+
+  backend:
+    build: ./backend
+    ports: ["${BACKEND_PORT:-18080}:8080"]     # 8081 (/internal/**) is NOT published
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/dayzero
+      DB_USER: dayzero
+      DB_PASSWORD: dayzero
+      AGENT_URL: http://agent:8000
+      DISPATCH: rabbit
+      RABBIT_HOST: rabbitmq
+      INTERNAL_KEY: ${INTERNAL_KEY:-change-me-internal-key}
+      JWT_SECRET: ${JWT_SECRET:-change-me-jwt-secret-at-least-32-bytes-long}
+      SEED_DEMO: "true"
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  agent:
+    <<: *agent-image
+    environment:
+      <<: *agent-env
+      BUSINESS_MCP_URL: http://business-mcp:9101/mcp
+      RAG_MCP_URL: http://rag-mcp:9102/mcp
+      DETECTOR_MCP_URL: http://detector-mcp:9103/mcp
+      DATABASE_URL: postgresql://dayzero:dayzero@postgres:5432/agentstate
+      RABBIT_URL: amqp://guest:guest@rabbitmq:5672/
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      LLM_FALLBACK_MODEL: ${LLM_FALLBACK_MODEL:-gpt-4.1-mini}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      business-mcp: { condition: service_started }
+      rag-mcp: { condition: service_started }
+      detector-mcp: { condition: service_started }
+
+  business-mcp:
+    <<: *agent-image
+    command: ["python", "-m", "mcp_servers.business.server"]
+
+  rag-mcp:
+    <<: *agent-image
+    command: ["python", "-m", "mcp_servers.rag.server"]
+    environment:
+      <<: *agent-env
+      VECTOR_DB_URL: postgresql://rag:rag@vectordb:5432/rag
+    depends_on:
+      rag-indexer: { condition: service_completed_successfully }
+
+  rag-indexer:                 # offline pipeline: Documents -> Chunking -> Embedding -> Indexing
+    <<: *agent-image
+    command: ["python", "-m", "rag_pipeline.index"]
+    environment:
+      VECTOR_DB_URL: postgresql://rag:rag@vectordb:5432/rag
+    depends_on:
+      vectordb: { condition: service_healthy }
+    restart: "no"
+
+  detector-mcp:
+    <<: *agent-image
+    command: ["python", "-m", "mcp_servers.detector.server"]
+    environment:
+      DETECTOR_HOST: 0.0.0.0
+      DETECTOR_DB: /data/detector.db
+    volumes: ["detector:/data"]
+
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_DB: dayzero, POSTGRES_USER: dayzero, POSTGRES_PASSWORD: dayzero }
+    volumes: ["pgdata:/var/lib/postgresql/data", "./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U dayzero -d dayzero"], interval: 3s, retries: 20 }
+
+  vectordb:
+    image: pgvector/pgvector:pg16
+    environment: { POSTGRES_DB: rag, POSTGRES_USER: rag, POSTGRES_PASSWORD: rag }
+    volumes: ["vectors:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U rag -d rag"], interval: 3s, retries: 20 }
+
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    healthcheck: { test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"], interval: 5s, retries: 20 }
+
+volumes:
+  pgdata:
+  vectors:
+  detector:

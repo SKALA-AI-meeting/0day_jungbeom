@@ -1,0 +1,35 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application.name: dayzero-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/dayzero}
+    username: ${DB_USER:dayzero}
+    password: ${DB_PASSWORD:dayzero}
+  jpa:
+    open-in-view: false
+    hibernate.ddl-auto: validate
+  flyway.enabled: true
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: ${RABBIT_PORT:5672}
+    username: ${RABBIT_USER:guest}
+    password: ${RABBIT_PASSWORD:guest}
+  mvc.async.request-timeout: 600000
+
+management:
+  endpoints.web.exposure.include: health
+  health.rabbit.enabled: false
+
+dayzero:
+  # Internal API (/internal/**) is served only on this second connector, which compose never publishes.
+  internal-port: ${INTERNAL_PORT:8081}
+  internal-key: ${INTERNAL_KEY:dev-internal-key-change-me}
+  jwt-secret: ${JWT_SECRET:dev-jwt-secret-change-me-at-least-32-bytes!!}
+  jwt-ttl-minutes: ${JWT_TTL_MINUTES:480}
+  agent-url: ${AGENT_URL:http://localhost:8000}
+  # http = POST to the agent; rabbit = publish to RabbitMQ (retry + DLQ); none = only store (tests)
+  dispatch: ${DISPATCH:http}
+  invite-ttl-hours: 72
+  seed-demo: ${SEED_DEMO:true}

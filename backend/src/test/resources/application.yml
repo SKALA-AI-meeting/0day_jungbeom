@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:dayzero;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa.hibernate.ddl-auto: none
+dayzero:
+  internal-port: 8081
+  internal-key: test-internal-key
+  jwt-secret: test-jwt-secret-test-jwt-secret-test-jwt-secret
+  jwt-ttl-minutes: 60
+  agent-url: http://localhost:1
+  dispatch: none
+  invite-ttl-hours: 72
+  seed-demo: true

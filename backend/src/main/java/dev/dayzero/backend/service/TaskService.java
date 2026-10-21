@@ -1,0 +1,179 @@
+package dev.dayzero.backend.service;
+
+import dev.dayzero.backend.domain.AiTask;
+import dev.dayzero.backend.domain.TaskEvent;
+import dev.dayzero.backend.repo.AiTaskRepository;
+import dev.dayzero.backend.repo.ChatSessionRepository;
+import dev.dayzero.backend.repo.TaskEventRepository;
+import dev.dayzero.backend.security.AuthUser;
+import java.time.OffsetDateTime;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.server.ResponseStatusException;
+
+/** Task lifecycle: create (202) -> dispatch -> progress events -> approval -> DONE / FAILED / REJECTED. */
+@Service
+public class TaskService {
+    private static final Logger log = LoggerFactory.getLogger(TaskService.class);
+    public static final Set<String> ACTIVE = Set.of("QUEUED", "RUNNING", "WAITING_APPROVAL");
+
+    private final AiTaskRepository tasks;
+    private final TaskEventRepository events;
+    private final ChatSessionRepository sessions;
+    private final SseHub hub;
+    private final TaskDispatcher dispatcher;
+    private final Json json;
+    private final Map<String, AtomicInteger> seq = new ConcurrentHashMap<>();
+
+    public TaskService(AiTaskRepository tasks, TaskEventRepository events, ChatSessionRepository sessions, SseHub hub, TaskDispatcher dispatcher, Json json) {
+        this.tasks = tasks; this.events = events; this.sessions = sessions; this.hub = hub; this.dispatcher = dispatcher; this.json = json;
+    }
+
+    @Transactional
+    public AiTask create(String type, String sessionId, Long companyId, String createdBy, Map<String, Object> payload) {
+        AiTask t = new AiTask();
+        t.id = UUID.randomUUID().toString();
+        t.type = type;
+        t.sessionId = sessionId;
+        t.companyId = companyId;
+        t.createdBy = createdBy;
+        t.threadId = "REPORT".equals(type) ? "report:" + sessionId + ":" + t.id : type.toLowerCase() + ":" + t.id;
+        t.payloadJson = json.write(payload);
+        tasks.save(t);
+        afterCommit(() -> send(t, "RUN", null));
+        return t;
+    }
+
+    public AiTask get(String id) {
+        return tasks.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "작업을 찾을 수 없어요."));
+    }
+
+    public void authorize(AiTask t, AuthUser u) {
+        boolean ok = (u.isAdmin() && Objects.equals(u.companyId(), t.companyId))
+                || (u.isCandidate() && Objects.equals(u.sessionId(), t.sessionId) && !"REPORT".equals(t.type));
+        if (!ok) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "이 작업에 접근할 수 없어요.");
+    }
+
+    public List<SseHub.Ev> replay(String taskId) {
+        return events.findByTaskIdOrderBySeqAsc(taskId).stream().map(e -> new SseHub.Ev(e.seq, e.type, json.any(e.dataJson))).toList();
+    }
+
+    /** "My history": a candidate sees the tasks of their own session; an admin sees the company's tasks (system-made ones included). */
+    public List<AiTask> mine(AuthUser u) {
+        return u.isAdmin() ? tasks.findTop30ByCompanyIdOrderByCreatedAtDesc(u.companyId()) : tasks.findTop30ByCreatedByOrderByCreatedAtDesc(u.subject());
+    }
+
+    /** Agent -> Spring progress events (batched). Updates task status and relays to subscribers. */
+    @Transactional
+    public void onEvents(String taskId, List<Map<String, Object>> batch) {
+        AiTask t = get(taskId);
+        AtomicInteger counter = seq.computeIfAbsent(taskId, k -> new AtomicInteger(events.countByTaskId(k)));
+        for (Map<String, Object> ev : batch) {
+            String type = String.valueOf(ev.get("type"));
+            Object data = ev.get("data");
+            @SuppressWarnings("unchecked") Map<String, Object> d = data instanceof Map ? (Map<String, Object>) data : Map.of();
+            int n = counter.incrementAndGet();
+            if (!"TOKEN".equals(type)) {
+                TaskEvent e = new TaskEvent();
+                e.taskId = taskId; e.seq = n; e.type = type; e.dataJson = json.write(data);
+                events.save(e);
+            }
+            appendTrace(t, d.get("trace"));  // one entry per agent run (a report task has two: draft + resume)
+            boolean terminal = false;
+            switch (type) {
+                case "APPROVAL_REQUIRED" -> { t.status = "WAITING_APPROVAL"; t.resultJson = json.write(data); reportStatus(t, "awaiting_approval"); }
+                case "DONE" -> {
+                    boolean rejected = Boolean.FALSE.equals(d.get("approved"));
+                    t.status = rejected ? "REJECTED" : "DONE";
+                    t.resultJson = json.write(data);
+                    if (d.get("attempt") instanceof Number a) t.attempts = a.intValue();
+                    if (rejected) reportStatus(t, "rejected");
+                    terminal = true;
+                }
+                case "FAILED" -> {
+                    t.status = "FAILED";
+                    t.error = String.valueOf(d.getOrDefault("error", "unknown"));
+                    if (d.get("attempt") instanceof Number a) t.attempts = a.intValue();
+                    reportStatus(t, "failed");
+                    terminal = true;
+                }
+                default -> { if ("QUEUED".equals(t.status)) t.status = "RUNNING"; }
+            }
+            t.updatedAt = OffsetDateTime.now();
+            hub.publish(taskId, new SseHub.Ev(n, type, data), terminal);
+            if (terminal) seq.remove(taskId);
+        }
+        tasks.save(t);
+    }
+
+    /** Human-in-the-loop: resume the agent's paused graph on the same thread id. */
+    @Transactional
+    public AiTask approve(String taskId, AuthUser u, boolean approved, String comment) {
+        AiTask t = get(taskId);
+        if (!u.isAdmin() || !Objects.equals(u.companyId(), t.companyId)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "승인 권한이 없어요.");
+        if (!"WAITING_APPROVAL".equals(t.status)) throw new ResponseStatusException(HttpStatus.CONFLICT, "승인을 기다리는 작업이 아니에요.");
+        t.status = "QUEUED";
+        t.updatedAt = OffsetDateTime.now();
+        tasks.save(t);
+        Map<String, Object> resume = new HashMap<>();
+        resume.put("approved", approved);
+        resume.put("comment", comment == null ? "" : comment);
+        resume.put("by", u.subject());
+        afterCommit(() -> send(t, "RESUME", resume));
+        return t;
+    }
+
+    @Transactional
+    public void fail(String taskId, String error) {
+        onEvents(taskId, List.of(Map.of("type", "FAILED", "data", Map.of("error", error))));
+    }
+
+    private void appendTrace(AiTask t, Object trace) {
+        if (trace == null) return;
+        List<Object> all = new ArrayList<>(json.list(t.traceJson));
+        all.add(trace);
+        t.traceJson = json.write(all);
+    }
+
+    private void reportStatus(AiTask t, String status) {
+        if (!"REPORT".equals(t.type) || t.sessionId == null) return;
+        sessions.findById(t.sessionId).ifPresent(s -> {
+            if (!"ready".equals(s.reportStatus) || "failed".equals(status)) { s.reportStatus = status; sessions.save(s); }
+        });
+    }
+
+    private void send(AiTask t, String mode, Map<String, Object> resume) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("taskId", t.id);
+        m.put("type", t.type);
+        m.put("mode", mode);
+        m.put("sessionId", t.sessionId);
+        m.put("threadId", t.threadId);
+        m.put("payload", json.map(t.payloadJson));
+        if (resume != null) m.put("resume", resume);
+        try {
+            dispatcher.dispatch(m);
+        } catch (Exception e) {
+            log.warn("dispatch failed for task {}: {}", t.id, e.toString());
+            fail(t.id, "Agent 서버에 작업을 전달하지 못했어요: " + e.getClass().getSimpleName());
+        }
+    }
+
+    private static void afterCommit(Runnable r) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { r.run(); }
+            });
+        } else {
+            r.run();
+        }
+    }
+}

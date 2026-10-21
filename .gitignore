@@ -6,3 +6,8 @@ dist/
 __pycache__/
 .pytest_cache/
 data/raw/
+backend/build/
+backend/.gradle/
+agent/.venv/
+agent/rag_pipeline/index.json
+frontend/node_modules/

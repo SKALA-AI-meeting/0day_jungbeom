@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { api } from '../api'
+import { api, auth, streamTask } from '../api'
 import ChatBubble from '../components/ChatBubble.vue'
 import { COMP_COLOR, MODE_LABEL, MODE_POS, MS_LABEL, SIGNAL, kappaWord } from '../constants'
 
@@ -18,7 +18,7 @@ async function load() {
     d.value = doc
     meta.value = m
   } catch (e) {
-    error.value = e.status === 401 ? '관리자 토큰이 필요해요. 목록 화면에서 입력해 주세요.' : '불러오지 못했어요.'
+    error.value = e.status === 401 ? '관리자 로그인이 필요해요.' : e.message || '불러오지 못했어요.'
   }
 }
 onMounted(load)
@@ -71,12 +71,36 @@ async function jump(o) {
   document.getElementById(`m-${o.msg_idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   setTimeout(() => (hl.value = null), 2500)
 }
+async function watchTask(taskId) {
+  try {
+    await streamTask(taskId, auth.admin(), () => {})
+  } finally {
+    await load()
+  }
+}
 async function regenerate() {
   regen.value = true
   try {
-    d.value = await api.adminRegenerate(props.id)
+    const r = await api.requestReport(props.id)
+    await watchTask(r.taskId)
+  } catch (e) {
+    error.value = e.message
   } finally {
     regen.value = false
+  }
+}
+const approving = ref(false)
+const comment = ref('')
+async function decide(approved) {
+  approving.value = true
+  try {
+    const taskId = d.value.pending_approval.taskId
+    await api.approve(taskId, approved, comment.value)
+    await watchTask(taskId)
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    approving.value = false
   }
 }
 const heat = (c) => {
@@ -85,6 +109,7 @@ const heat = (c) => {
   return { background: `color-mix(in srgb, var(--brand) ${Math.round(a * 100)}%, transparent)` }
 }
 const SRC = { survey: '설문', article: '기사', paper: '논문', report: '보고서' }
+const REPORT_CHIP = { ready: ['green', '준비됨'], awaiting_approval: ['amber', '승인 대기'], pending: ['blue', '생성 중'], failed: ['red', '실패'], rejected: ['gray', '반려됨'], none: ['gray', '대기'] }
 const pct = (x) => `${Math.round(x * 100)}%`
 const FACET_ROLE = { lead: '팀장이', peer: '동료가' }
 const dl = computed(() => d.value?.dilemma)
@@ -119,13 +144,29 @@ function jumpMsg(idx) {
         </div>
         <div class="hr">
           <span class="chip" :class="d.status === 'completed' ? 'green' : 'blue'">{{ d.status === 'completed' ? '완료' : '진행 중' }}</span>
-          <span class="chip" :class="d.report?.status === 'ready' ? 'green' : d.report?.status === 'failed' ? 'red' : 'gray'">
-            리포트 {{ d.report?.status === 'ready' ? '준비됨' : d.report?.status === 'failed' ? '실패' : '대기' }}
+          <span class="chip" :class="REPORT_CHIP[d.report_status]?.[0] || 'gray'">
+            리포트 {{ REPORT_CHIP[d.report_status]?.[1] || '대기' }}
           </span>
-          <button v-if="d.status === 'completed'" class="btn sm" :disabled="regen" @click="regenerate">{{ regen ? '생성 중…' : '리포트 다시 생성' }}</button>
+          <button v-if="d.status === 'completed' && !d.pending_approval" class="btn sm" :disabled="regen || d.report_status === 'pending'" @click="regenerate">{{ regen || d.report_status === 'pending' ? '생성 중…' : '리포트 다시 생성' }}</button>
           <button class="btn sm" @click="load">새로고침</button>
         </div>
       </header>
+
+      <section v-if="d.pending_approval" class="card approve">
+        <h2>리포트 승인 요청 <span class="chip amber">APPROVAL_REQUIRED</span></h2>
+        <p class="small muted">Agent가 <code>{{ d.pending_approval.draft.tool || 'business.save_report' }}</code> 앞에서 멈췄어요. 승인하면 같은 thread id로 재개해 리포트를 저장하고 공개해요.</p>
+        <div class="drafts">
+          <div v-for="(c, cid) in d.pending_approval.draft.draft || {}" :key="cid" class="draft">
+            <b>{{ cid }} {{ c.name }}</b> <span class="muted small">근거 {{ c.count }}건</span>
+            <p>{{ c.summary }}</p>
+          </div>
+        </div>
+        <div class="decide">
+          <input id="approve-comment" v-model="comment" class="text" maxlength="500" placeholder="메모 (선택)" />
+          <button class="btn primary" :disabled="approving" @click="decide(true)">승인하고 저장</button>
+          <button class="btn" :disabled="approving" @click="decide(false)">반려</button>
+        </div>
+      </section>
 
       <!-- 1. milestone timeline -->
       <section class="card">
@@ -421,6 +462,12 @@ h2 small { font-weight: 500; font-size: 12px; }
 blockquote { margin: 6px 0; padding: 6px 12px; border-left: 3px solid var(--line); color: var(--muted); }
 
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.approve { border-color: var(--warn); }
+.drafts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+.draft { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.draft p { margin: 6px 0 0; font-size: 13.5px; }
+.decide { display: flex; gap: 8px; flex-wrap: wrap; }
+.decide .text { flex: 1; min-width: 160px; }
 .dl .q { margin: -4px 0 12px; }
 .dl h3 { font-size: 14px; margin: 14px 0 8px; }
 .dist { margin-bottom: 6px; }

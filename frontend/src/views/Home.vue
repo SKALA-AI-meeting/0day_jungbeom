@@ -1,11 +1,14 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { api } from '../api'
+import { api, auth } from '../api'
 
+const props = defineProps({ token: { type: String, default: '' } })
 const router = useRouter()
+const inviteToken = computed(() => props.token || 'demo') // '/' uses the seeded reusable demo invite
+const invite = ref(null)
 const meta = ref(null)
-const alias = ref(localStorage.getItem('dz_alias') || '')
+const alias = ref((() => { try { return localStorage.getItem('dz_alias') || '' } catch { return '' } })())
 const mode = ref('dilemma') // 'dilemma' = 직무·산업 맞춤 (PR2), 'category' = PR1 상황 카테고리
 const picked = ref(null)
 const job = ref(null)
@@ -17,7 +20,8 @@ const error = ref('')
 
 onMounted(async () => {
   try {
-    meta.value = await api.meta()
+    ;[meta.value, invite.value] = await Promise.all([api.meta(), api.invite(inviteToken.value)])
+    if (invite.value.alias) alias.value = invite.value.alias
   } catch (e) {
     error.value = '서버에 연결하지 못했어요. 백엔드가 실행 중인지 확인해 주세요.'
   }
@@ -31,16 +35,17 @@ watch([job, industry], async ([j, i]) => {
 const scenario = computed(() =>
   mode.value === 'dilemma' ? preview.value : meta.value?.scenarios.find((s) => s.id === picked.value),
 )
-const ready = computed(() => alias.value.trim() && scenario.value && agreed.value && !busy.value)
+const ready = computed(() => alias.value.trim() && scenario.value && agreed.value && !busy.value && invite.value?.valid)
 const ICON = { delay: '⏱️', scope: '🔀', conflict: '⚖️', workload: '🤝' }
 
 async function start() {
   busy.value = true
   error.value = ''
   try {
-    localStorage.setItem('dz_alias', alias.value.trim())
-    const s = await api.createSession(alias.value.trim(), scenario.value.id)
-    router.push(`/s/${s.id}`)
+    try { localStorage.setItem('dz_alias', alias.value.trim()) } catch { /* ignore */ }
+    const s = await api.startSession(inviteToken.value, alias.value.trim(), scenario.value.id)
+    auth.setCandidate(s.sessionId, s.token)
+    router.push({ path: `/s/${s.sessionId}`, query: { task: s.startTaskId } })
   } catch (e) {
     error.value = e.message
     busy.value = false
@@ -53,6 +58,8 @@ async function start() {
     <h1>팀 채널에 합류해 볼까요?</h1>
     <p class="sub">AI 팀원 두 명과 3자 대화방에서 진행 중인 일을 함께 풀어 갑니다. 정답은 없고, 평소 하던 대로 대화하면 돼요.</p>
     <p v-if="error" class="chip red">{{ error }}</p>
+    <p v-if="invite && !invite.valid" class="chip red">{{ invite.message }}</p>
+    <p v-else-if="invite" class="muted small">초대한 회사: <b>{{ invite.company }}</b>{{ props.token ? '' : ' (데모 초대 링크)' }}</p>
 
     <section class="card step">
       <div class="step-h"><b>1</b> 사용할 별칭</div>
