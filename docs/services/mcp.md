@@ -1,6 +1,6 @@
-# MCP 설계
+# MCP 서버 (debate·rag·assessment)
 
-세 서버 모두 Python FastMCP, Streamable HTTP. 도구 목록·입출력·오류 형식·허용 목록은 [contracts/mcp.md](../contracts/mcp.md) "MCP 도구"가 정본이다. 2026-10-21 토론형 전환(브리프 D11)과 "리뷰 반영 결정"(R1~R7) 기준이며, MCP는 **debate-mcp(손)·rag-mcp(눈)·assessment-mcp(기록자)** 3개다. scenario-mcp·웹 검색 MCP·가드 MCP는 두지 않는다(카탈로그는 debate-mcp로 충분, 웹 검색은 공정성·재현성 훼손, 출력 검사는 코드에서 무조건 실행).
+세 서버 모두 Python FastMCP, Streamable HTTP. 도구 목록·입출력·오류 형식·허용 목록은 [contracts/mcp.md](../contracts/mcp.md) "MCP 도구"가 정본이다. MCP는 **debate-mcp(손)·rag-mcp(눈)·assessment-mcp(기록자)** 3개다(D11). scenario-mcp·웹 검색 MCP·가드 MCP는 두지 않는다(카탈로그는 debate-mcp로 충분, 웹 검색은 공정성·재현성 훼손, 출력 검사는 코드에서 무조건 실행).
 
 ## 공통
 
@@ -14,7 +14,7 @@
 
 ## debate-mcp (`services/debate-mcp/`, `:9101/mcp`)
 
-business-mcp를 이름·도구 교체로 재정의한다. 패키지 `business_mcp` → `debate_mcp`, 디렉터리 `services/business-mcp/` → `services/debate-mcp/`. 클라이언트·설정·오류 매핑 골격은 살린다.
+패키지 `debate_mcp`(`__main__`·`server`·`tools`·`client`·`config`).
 
 | 도구 | 내부 API | 구분 | 메모 |
 |---|---|---|---|
@@ -27,7 +27,6 @@ business-mcp를 이름·도구 교체로 재정의한다. 패키지 `business_mc
 | fill_slot | POST /slots/fill | 변경 | 입력 `{session_id, option_id, seat: p1∣p2∣p3, content, run_id}` → 출력 `{slot, phase, message}`. 합의 채우기 전용. 대상 단계는 option의 phase이고 `filled_by` 인자는 없다(`seat`가 공지 화자이자 `filled_by`, api가 `resolution: consensus`로 저장). `content`는 합의 공지 고정 문장이고 api가 칸 확정과 같은 트랜잭션에서 seq 5 메시지(`meta.kind=consensus_fill`)로 저장한다. 별도 `post_message`는 없다. 같은 run_id로 이미 확정됐으면 기존 칸과 공지를 그대로 돌려주고, 아니면 `conflict/phase_not_open` → `conflict/slot_confirmed` → `conflict/no_consensus` 순서로 검사한다. 409면 칸·공지 모두 저장되지 않는다. 시간 초과 채우기는 api가 그래프·MCP 없이 직접 한다(R5-2) |
 
 - 지원자의 안·입장은 api가 의도 분류로 직접 저장하므로 도구 입력에 `candidate`는 없다.
-- 삭제된 도구: get_board, get_shared_documents, send_document, set_division, update_task, release_document, record_observation(→ assessment-mcp), update_observation.
 
 ## rag-mcp (`services/rag-mcp/`, `:9102/mcp`)
 
@@ -38,12 +37,11 @@ business-mcp를 이름·도구 교체로 재정의한다. 패키지 `business_mc
 | reindex_materials | 변경(관리용) | `catalog_version`별로 시드된 자료 원문(원천은 `scenarios/missions/<id>/materials/<keyword>/*.md`)을 400자 청크로 나눠 BGE-M3(1024차원) 임베딩 → `material_chunks(material_id, keyword_key, chunk_no, content, embedding, model, catalog_version)`. 키 (catalog_version, material_id, chunk_no). 이전 버전 청크는 남겨 진행 중 채용 건이 자기 버전으로 검색. 에이전트에 노출하지 않음 |
 
 - catalog_version은 api와 같은 함수(`scenarios/version.py`, 미션 폴더 전체 해시).
-- 이름 변경: `search_documents`→`search_materials`, `get_document`→`get_material`, `reindex_documents`→`reindex_materials`, `doc_chunks`→`material_chunks`(키워드 키 추가), 모듈 `documents.py`→`materials.py`.
 - 모델 로드는 시작 시 1회. 컨테이너 메모리 3GB.
 
-## assessment-mcp (`services/assessment-mcp/`, `:9103/mcp`, 신규)
+## assessment-mcp (`services/assessment-mcp/`, `:9103/mcp`)
 
-평가 입력 조회와 평가 결과 기록 전용(D18·D19 개정, 브리프 "평가 결과 계약"). 모든 요청에 `X-Assessment-Token`(env `ASSESSMENT_MCP_TOKEN`)이 있어야 하고 없거나 다르면 `forbidden`. 정확한 입출력과 내부 API 경로는 [contracts/mcp.md](../contracts/mcp.md) "MCP 도구"가 정본이다(아래 내부 API 열은 대응 관계 메모).
+평가 입력 조회와 평가 결과 기록 전용(D18·D19 개정). 모든 요청에 `X-Assessment-Token`(env `ASSESSMENT_MCP_TOKEN`)이 있어야 하고 없거나 다르면 `forbidden`. 정확한 입출력과 내부 API 경로는 [contracts/mcp.md](../contracts/mcp.md) "MCP 도구"가 정본이다(아래 내부 API 열은 대응 관계 메모).
 
 | 도구 | 내부 API | 구분 | 호출자 | 메모 |
 |---|---|---|---|---|
@@ -60,7 +58,8 @@ business-mcp를 이름·도구 교체로 재정의한다. 패키지 `business_mc
 |---|---|---|
 | 스키마·차원 19개 안·차원 중복·`level`과 `no_record_reason` 중 하나만·사유 코드 | 워커(저장 전) + api(저장 시) | 워커: 요소 단위 1회 재요청 / api: 422 `invalid_input` |
 | `evidence_refs`가 같은 세션의 실제 행 | 워커 + api | 워커: 근거 부재로 보고 요소 단위 재요청 / api: 422 |
-| 근거 최소 개수(1~3은 1개, 4·5는 2개) | 워커만 | 요소 단위 1회 재요청 → 남으면 그 차원 `evaluate_failed` |
+| 수준이 있는데 지원자 근거 단위 0개 | 워커만 | 요소 단위 1회 재요청 → 남으면 그 차원 `evaluate_failed` |
+| 수준 4·5인데 서로 다른 지원자 근거 단위 1개 | 워커만 | 거부하지 않고 수준 3·확신도 최대 medium으로 깎음 |
 | 확신도 상한 | 워커만 | 거부하지 않고 상한으로 깎음(clamp) |
 | 금지어(`rationale`·`summary`) | 워커만 | 요소 단위 1회 재요청 |
 
@@ -68,7 +67,7 @@ MCP는 판단하지 않고 그대로 전달한다.
 
 패키지 구조는 debate-mcp와 같다(`assessment_mcp/{__main__, server, tools, client, config}.py`, `/health`, Dockerfile, pyproject·lockfile).
 
-## 완료 기준
+## 검증 항목
 
 - MCP Inspector에서 세 서버의 도구 목록·설명 확인.
 - 연결 테스트: 그래프 → debate-mcp `post_message` → api 저장 → WS `message.new` 1건, `fill_slot` 합의 전 `conflict`·message `no_consensus`(공지 메시지 0건), 성공 시 `slot.confirmed`·`message.new`(공지) 각 1건, 같은 (run_id, seq) 재호출 중복 없음, 침묵 초대 두 번째 `conflict`, `card_ids` 게시 뒤 DebateState의 카드마다 그 화자 `delivered`(두 카드 공동 전달 포함), 지원자가 먼저 만든 카탈로그 안에 `propose_option`하면 같은 option_id.

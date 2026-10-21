@@ -43,7 +43,7 @@
 1. 제출(자동 제출 포함)로 세션이 종료되면 api가 리포트 작업을 큐에 넣는다.
 2. `collect`·`aggregate`: 워커가 세션 기록 전체(대화 전체·칸 기록·기획안 제출본·카드 발생 기록·`get_contributions`)를 모으고 사실 지표(6장)를 규칙으로 계산한다. 대화 전체를 읽는 정확한 경로는 [contracts/README.md](../contracts/README.md)가 정한다.
 3. `evaluate`: 평가 에이전트가 모은 세션 전체 기록과 척도(`get_rubric`)로 **요소마다 한 번** 판단한다. 한 호출은 그 요소의 차원 전부를 내고, 다른 요소의 판단 결과는 입력에 넣지 않는다(후광 방지).
-4. 워커가 출력을 검증한다(7.3). 형식 오류나 근거 부재가 있으면 **그 요소 호출을 1회** 다시 요청하고(R5-14, 이전의 차원 단위 재요청을 대체), 그래도 실패한 차원은 `evaluate_failed`로 둔다(자동 대체 모델 없음, 워커가 근거를 고쳐 쓰지 않음). 근거가 1개인 수준 4·5는 거부하지 않고 수준 3·확신도 최대 medium으로 깎고(상한), 확신도 상한 위반도 거부하지 않고 워커가 상한으로 깎는다(clamp). 근거 개수는 `hon_credit_record` 예외(3.5)를 따른다. LLM 전송·타임아웃 실패는 저장하지 않고 큐가 재시도한다.
+4. 워커가 출력을 검증한다(7.3). 형식 오류나 근거 부재가 있으면 **그 요소 호출을 1회** 다시 요청하고(R5-14), 그래도 실패한 차원은 `evaluate_failed`로 둔다(자동 대체 모델 없음, 워커가 근거를 고쳐 쓰지 않음). 근거가 1개인 수준 4·5는 거부하지 않고 수준 3·확신도 최대 medium으로 깎고(상한), 확신도 상한 위반도 거부하지 않고 워커가 상한으로 깎는다(clamp). 근거 개수는 `hon_credit_record` 예외(3.5)를 따른다. LLM 전송·타임아웃 실패는 저장하지 않고 큐가 재시도한다.
 5. `save_evaluation`으로 차원 평가와 요소 요약(`elements`)을 함께 저장한다(실행 단위 기록 `evaluation_runs`에 `rubric_version`·평가 프롬프트 파일별 해시 맵 `prompt_versions`·모델·`elements`, 정확한 입출력은 [contracts/README.md](../contracts/README.md)). 같은 세션의 재시도는 저장된 평가를 재사용하고, `evaluate_failed`가 섞인 결과는 리포트 재생성 때 새 `run_id`로 다시 평가한다. 요소 수준(평균 반올림)은 워커가 결정적으로 계산하고, 요소 서술 1~2줄은 평가 에이전트가 쓴다. api는 형식·세션 소속만 검증하고 판단 규칙 검증(7.3)은 워커가 한다.
 6. `draft`: 근거마다 `get_transcript_span`(기본 앞 5·뒤 3)으로 앞뒤 맥락을 붙여 리포트 초안을 만든다.
 7. `interrupt`·`finalize`: 리포트를 저장하고 담당자 검토를 기다린다. 같은 작업의 재실행은 멱등이다(저장된 평가가 있으면 재사용).
@@ -70,7 +70,7 @@
 - **"하지 않음"으로 낮게 판단할 때**(초대 없음, 응답 없음 등): 창 안에서 지원자가 활동했지만 그 행동을 하지 않았음을 보이는 지원자 메시지를 근거로 들고, 장면을 만든 AI 동료 메시지를 맥락 참조로 함께 단다.
 - **지원자 행동 근거(메시지·칸 확정·기획안 필드)가 없으면 수준을 내지 않는다.** 기록 없음과 사유(5장)를 둔다.
 - 창 밖 단위는 보조 장면 근거로만 쓰고 `rationale`에 "보조 장면"으로 표시한다.
-- 같은 메시지가 여러 차원·요소의 근거가 될 수 있다. 이때 각 차원은 자기 정의에 해당하는 측면만 해석하고, 한 행동의 부정 측면은 4장 경계표의 주 담당 차원에서만 낮게 판단한다.
+- 같은 메시지가 여러 차원·요소의 근거가 될 수 있다. 이때 각 차원은 자기 정의에 해당하는 측면만 해석하고, 한 행동의 부정 측면은 4장 경계표가 그 행동을 맡긴 차원에서만 낮게 판단한다.
 
 ### 2.3 기록 없음
 
@@ -616,9 +616,9 @@
 
 ## 4. 요소 간 경계표 **[초안]**
 
-같은 장면을 여러 요소가 볼 때 **주 담당 차원**만 그 행동의 부정·긍정 측면을 수준에 반영한다. 다른 차원은 표에 적힌 측면만 보고, 같은 메시지를 근거로 쓰면 `rationale`에 자기 측면을 분명히 적는다. 지원자 안 채택으로 수용 요소가 `not_applicable`인 세션에서도 확정 행위를 다른 차원으로 옮겨 반영하지 않는다(사실 지표 `slot_records`로만 보인다).
+같은 장면을 여러 요소가 볼 때 **그 행동을 맡은 차원**만 그 행동의 부정·긍정 측면을 수준에 반영한다. 다른 차원은 표에 적힌 측면만 보고, 같은 메시지를 근거로 쓰면 `rationale`에 자기 측면을 분명히 적는다. 지원자 안 채택으로 수용 요소가 `not_applicable`인 세션에서도 확정 행위를 다른 차원으로 옮겨 반영하지 않는다(사실 지표 `slot_records`로만 보인다).
 
-| 장면·행동 | 주 담당 | 다른 차원이 보는 측면 | 보지 않는 차원 |
+| 장면·행동 | 맡는 차원 | 다른 차원이 보는 측면 | 보지 않는 차원 |
 |---|---|---|---|
 | 반대가 남았는데 혼자 칸을 확정(또는 "제가 정할게요"로 결론 강행) | `flex_decision_respect` | `hon_process_truth`: 그때 합의 상태를 사실과 다르게 말·기록했는지만. `listen_civility`: 확정 직전 말에 비난·조롱이 있으면 그 말의 태도만. `incl_shared_decision`: 의견을 내지 않은 사람을 확인했는지만. `pers_convergence`: 결론 제안의 근거·정리만 | 확정 행위 자체로는 경청·배려·정직·설득 어느 차원도 낮추지 않는다 |
 | 결정 결과 승복·재론·이탈 | `flex_acceptance` | `flex_forward`: 다음 단계에서 결정을 전제로 기여했는지 | 경청, 설득 |
@@ -682,7 +682,7 @@
 
 ## 7. 평가 에이전트 출력 형식
 
-정확한 필드 타입, 저장 테이블, `save_evaluation` 입출력, 근거 참조 문자열 형식은 [contracts/README.md](../contracts/README.md)·[architecture/data-model.md](../architecture/data-model.md)가 정한다. 이 장은 담아야 할 내용을 정한다.
+정확한 필드 타입, 저장 테이블, `save_evaluation` 입출력, 근거 참조 문자열 형식은 [contracts/internal.md](../contracts/internal.md)·[architecture/data-model.md](../architecture/data-model.md)가 정한다. 이 장은 담아야 할 내용을 정한다.
 
 ### 7.1 차원 평가 (DimensionEvaluation)
 
@@ -695,16 +695,7 @@
 | `rationale` | 판단 이유 1~3문장. 어떤 앵커에 맞췄는지, 핵심/보조 장면, ±1 조정·상한 적용, 경계표 측면을 적는다. 관찰된 행동을 서술하고 판정 형용사(미흡·부족·우수·낮은/높은 수준)는 쓰지 않는다. 합격·순위·총점 표현 금지 |
 | `confidence` | `high` ∣ `medium` ∣ `low`. 기록 없음이면 `null` |
 
-**근거 참조 형식**(`evidence_refs[]`의 문자열 하나가 근거 하나, 정본은 [contracts/api.md](../contracts/api.md) "근거 참조"):
-
-| 형식 | 가리키는 것 | 예시 | 개수에 듦 |
-|---|---|---|---|
-| `msg:<message_id>` | room 메시지. 지원자 메시지면 근거 단위, AI 동료·시스템 메시지면 맥락 | `msg:<m1>` | 지원자 메시지만 |
-| `slot:<phase>` | 지원자가 확정한 칸(`filled_by = candidate`) | `slot:problem` | 예 |
-| `proposal:<field>` | 제출 기획안 필드 | `proposal:idea_credit` | 예 |
-| `contribution:<option_id>` | Contributions 대조표 행(맥락) | `contribution:<option_id>` | 아니오(`hon_credit_record` 예외, 3.5) |
-
-리포트는 참조마다 `evidence[]` 항목을 만들고 `counted`(근거 개수에 드는지)를 표시한다([contracts/api.md](../contracts/api.md) Report).
+근거 참조 문자열 형식(`msg:`·`slot:`·`proposal:`·`contribution:`)과 개수 산입 여부는 [contracts/api.md](../contracts/api.md) "근거 참조"가 정본이다. 리포트는 참조마다 `evidence[]` 항목을 만들고 `counted`(근거 개수에 드는지)를 표시한다.
 
 ### 7.2 요소 요약 (ElementSummary)
 
@@ -715,21 +706,7 @@
 | `summary` | 평가 에이전트가 쓰는 서술 1~2줄. 기록 없음 차원이 있으면 함께 밝힌다. 판정 형용사는 쓰지 않는다. 워커 검증으로 차원 행이 바뀌면 최종 차원 행으로 다시 쓴 서술(실패하면 고정 문장) |
 | `dimension_count` / `no_record_count` | 차원 수 / 그중 기록 없음 수 |
 
-예시(자리표시 값. 요소 level = (4+3+4)/3 = 3.67 → 4, `no_record_count` = 1):
-
-```json
-{"element":"listening","level":4,"summary":"압박에 대체로 내용으로 응답하고 차분했으나 상대 근거 인정은 형식적이었습니다. 이해 확인 차원은 판단할 장면이 없었습니다.",
- "dimension_count":4,"no_record_count":1,
- "dimensions":[
-  {"dimension_id":"listen_engage","level":4,"evidence_refs":["msg:<m1>","msg:<m2>","msg:<m0>"],
-   "rationale":"세 번의 압박 중 두 번은 상대 근거를 받아 답함(앵커 4). 보조 장면과 같은 방향.","confidence":"high"},
-  {"dimension_id":"listen_understand","level":null,"no_record_reason":"not_applicable","evidence_refs":[],
-   "rationale":"창 안 메시지가 모두 다른 참여자·주제를 향해 이해 확인을 볼 장면이 없음.","confidence":null},
-  {"dimension_id":"listen_acknowledge","level":3,"evidence_refs":["msg:<m2>"],
-   "rationale":"인정이 '좋은 의견인데요' 수준의 형식적 표현(앵커 3).","confidence":"medium"},
-  {"dimension_id":"listen_civility","level":4,"evidence_refs":["msg:<m1>","msg:<m3>"],
-   "rationale":"반대가 일관되게 안을 향하고 정중함(앵커 4).","confidence":"high"}]}
-```
+저장 형식과 한 요소 출력 예시는 [contracts/internal.md](../contracts/internal.md) "EvaluationSave".
 
 ### 7.3 워커 검증
 
@@ -785,6 +762,6 @@
 - **페르소나 이탈**: 페르소나가 고정 입장·선점 금지를 어기면 장면이 오염된다. 확신도 `low`와 `rationale` 표시, 해당 세션을 파일럿 분석에서 따로 본다.
 - **설계된 장면**: 문제 상황 단계는 강한결이 확정 전 다른 안을 고수하고 서지안은 설득해야 바뀌도록, 윤하람은 초대 전 말하지 않도록 설계돼 있다. 리포트에 "설계된 장면"으로 표시하고 디브리핑 첫 문장에서 모든 지원자가 같은 장면을 겪었음을 설명한다.
 - **혼자 확정 오클릭, 자동 제출, 데모 모드(15분)의 짧은 단계**: 수준을 정하되 확신도 `low`.
-- **요소 간 이중 계산**: 경계표(4장)로 주 담당을 고정한다. 파일럿에서 한 메시지가 여러 차원의 부정 근거로 쓰인 사례를 따로 검토한다.
+- **요소 간 이중 계산**: 경계표(4장)로 행동을 맡는 차원을 고정한다. 파일럿에서 한 메시지가 여러 차원의 부정 근거로 쓰인 사례를 따로 검토한다.
 
 MVP 제외: 가중치, 요소 총점, 채용 건 간 비교·정규화, 수준 정렬·통계, 검토 후 값 재조정, 기업별 척도 편집, 지원자에게 수준 공개, AI 활용 평가, 실시간 평가.

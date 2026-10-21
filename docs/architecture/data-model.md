@@ -1,6 +1,6 @@
 # 데이터 모델
 
-PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시각은 timestamptz. 2026-10-21 토론형 전환과 브리프 "리뷰 반영 결정"(R1~R7) 기준이며 계약(필드 이름·상태값)은 [contracts/README.md](../contracts/README.md)와 같다.
+PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시각은 timestamptz. 계약(필드 이름·상태값)은 [contracts/README.md](../contracts/README.md)와 같다.
 
 요소·카드·페르소나 유형·평가표 차원(`dimension_id`)은 **text id로만 저장**하고 목록과 뜻은 [product/rubric.md](../product/rubric.md)·[product/scenario.md](../product/scenario.md)가 정본이다. 채용 건 생성 때 그 시점의 정의가 `positions.scenario`에 복사되므로 이후 카탈로그가 바뀌어도 진행 중 채용 건은 영향받지 않는다.
 
@@ -14,7 +14,7 @@ PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시�
 |---|---|---|
 | companies | id, name | |
 | admins | id, company_id, email(unique), password_hash | bcrypt |
-| positions | id, company_id, name, mission_id text default 'debate', session_minutes int default 60 (60∣15, CHECK), catalog_version text, scenario jsonb, created_at | **요소 선택 컬럼 없음**(모든 채용 건이 5요소·카드 6장). `scenario`는 생성 때 조립·복사: `seats`([{seat: p1∣p2∣p3, persona_type, name, avatar}], 고정 3명: p1 고집형·p2 소극형·p3 비판형. `avatar`는 카탈로그 `personas.yaml`의 `avatar`(에셋 `scenarios/missions/<id>/assets/avatars/`의 파일 경로)를 조립 때 고정한 값이고 API의 `avatar_url`이 이 값으로 만들어진다), `keywords`(후보 목록), 키워드별 단계 고정 안(자리별 `scenario_option_key`·라벨), 카드 6장(시각 트리거 `offset_min`(`session_minutes` 비례 환산, 최소 20초)·담당·리포트 템플릿 문장), 평가표(BARS 척도: 5요소 19차원·수준별 앵커, 척도 버전), 자리별 프롬프트·공통 규칙·금지 문구 패턴·고정 안전 문구, 단계 예산(10·18·18·14 비율)·침묵 초대·마감 임박 설정, 시간 초과·합의 채우기 고정 문장, 키워드별 자료 목록(본문은 `materials` 테이블의 같은 `catalog_version`). 형식은 [product/scenario.md](../product/scenario.md). 수정·삭제 없음 |
+| positions | id, company_id, name, mission_id text default 'debate', session_minutes int default 60 (60∣15, CHECK), catalog_version text, scenario jsonb, created_at | **요소 선택 컬럼 없음**(모든 채용 건이 5요소·카드 6장). `scenario`는 생성 때 조립·복사: `seats`([{seat: p1∣p2∣p3, persona_type, name, avatar}], 고정 3명: p1 고집형·p2 소극형·p3 비판형. `avatar`는 카탈로그 `personas.yaml`의 `avatar`(에셋 `scenarios/missions/<id>/assets/avatars/`의 파일 경로)를 조립 때 고정한 값이고 API의 `avatar_url`이 이 값으로 만들어진다), `keywords`(후보 목록), 키워드별 단계 고정 안(자리별 `scenario_option_key`·라벨), 카드 6장(시각 트리거 `offset_min`(`session_minutes` 비례 환산, 최소 20초)·담당·리포트 템플릿 문장), 평가표(BARS 척도: 5요소 19차원·수준별 앵커, 척도 버전), 자리별 프롬프트·공통 규칙·금지 문구 패턴·고정 안전 문구, 평가 프롬프트(`prompts/evaluator/*.md`)와 평가 금지 패턴, 단계 예산(10·18·18·14 비율)·침묵 초대·마감 임박 설정, 시간 초과·합의 채우기 고정 문장, 키워드별 자료 목록(본문은 `materials` 테이블의 같은 `catalog_version`). 형식은 [product/scenario.md](../product/scenario.md). 수정·삭제 없음 |
 | invites | id, position_id, alias, email, token_hash, expires_at, used_at, cancelled_at, previous_session_id, reissued_at null, superseded_at null | 토큰 원문은 링크에만. 별칭 유일성은 부분 unique `(position_id, alias) WHERE superseded_at IS NULL`. **재발급**(`/reissue`)은 같은 행의 token_hash·expires_at만 바꾸고 `reissued_at` 기록. **재응시**(새 초대 + previous_session_id)는 이전 초대에 `superseded_at`을 찍어 같은 별칭을 다시 쓸 수 있게 한다 |
 
 ### 세션과 토론 상태
@@ -50,32 +50,9 @@ PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시�
 
 | 테이블 | 핵심 컬럼 | 비고 |
 |---|---|---|
-| checkpoints 등 | LangGraph PostgresSaver 기본 테이블 | api는 thread `debate:{id}`·`assistant:{id}`, 워커는 `report:{id}:{eval_round}`만(평가 회차마다 새 thread) |
+| checkpoints 등 | LangGraph PostgresSaver 기본 테이블 | report-worker만 thread `report:{id}:{eval_round}`로 쓴다(평가 회차마다 새 thread). api의 토론 그래프·어시스턴트는 체크포인터를 쓰지 않는다 |
 | materials | (catalog_version, material_id) pk, keyword_key, title, content(Markdown), created_at | 자료 **원문의 버전별 사본**. `scripts/seed.py`가 카탈로그 자료를 그 catalog_version으로 시드(이전 버전 행은 지우지 않음). 목록·본문 조회는 api가 채용 건 `catalog_version`으로 여기서 읽는다(카탈로그 파일 직접 읽기 없음) |
 | material_chunks | id, material_id, keyword_key, chunk_no, content, embedding vector(1024), model, catalog_version | rag-mcp만 쓴다. (catalog_version, material_id, chunk_no) unique. 검색은 세션의 확정 키워드(`keyword_key`)와 catalog_version으로 필터. 원문은 같은 버전의 `materials` 행 |
-
-## 삭제한 테이블·컬럼
-
-| 대상 | 이유 |
-|---|---|
-| session_events | 시각 예약 행 없음. 카드 예정 시각은 시나리오 규칙으로 스케줄러가 계산(card_due 자극), 카드 발동은 `observations`, 단계 마감은 `sessions.phase_deadline_at` |
-| documents, document_revisions, document_versions, document_shares, document_opens, final_document | 파트 문서·최종본 통합 없음. 기획안은 `proposals` 하나 |
-| tasks, task_events, section_owners, division_snapshots, sessions.division | 보드·분업 삭제 |
-| document_releases | 자료 지연 공개 없음. 키워드 확정이 자료를 연다 |
-| doc_views | `material_views`로 대체 |
-| doc_chunks | `material_chunks`로 대체(키워드 키 추가) |
-| assistant_reuse | 파트 문서 재사용 추정 없음. AI 활용은 호출 사실만 |
-| observations의 window_start·window_end·metrics·label·aux·evidence·facts·updated_run_id | 실시간 관찰 분류 없음. 분석은 세션 후 평가 에이전트(BARS) |
-| behavior_codes | 삭제됨. 발언별 행동 코드 산출물 폐기(D18·D19 개정). 평가 결과는 `evaluations` |
-| reports의 auto_met·auto_unmet·auto_no_record·reviewer_met·reviewer_unmet·reviewer_no_record·review_memo, `content.rubric`(items·met·unmet·total_score·auto_total) | 삭제됨. 조건 충족·총점 없음. 요소 요약은 `content.elements[]` |
-| rubric_adjustments의 element·card_id·item_id·auto_value·reviewer_value | 삭제됨. 조정은 차원 단위(`dimension_id`, `level`∣`no_record_reason`, `memo`) |
-| messages.channel의 team·dm·manager_dm·notice, event_id | 토론방 하나, DM·팀장·알림 채널 없음 |
-| positions.elements | 요소 선택 기능 삭제(R2). 모든 채용 건이 5요소 |
-| slots.draft_value·draft_updated_at, slot 상태 `filled` | 칸 초안 저장(PUT slots) 삭제(R5). 칸 상태는 empty∣confirmed |
-| sessions.invite_used_phases, sessions.token_usage | `invite_delivered_phases`(실제 게시 기준)·`debate_cost_usd`·`cost_usd`로 대체 |
-| messages.card_id | 공동 전달을 표현하려고 `card_ids` 배열로 대체 |
-| evaluations.prompt_version·rubric_version·model | 실행 단위 `evaluation_runs`로 이동(`prompt_versions` 맵) |
-| agent_runs.stimulus의 `timeout`, idle_reason `room_quiet` | 시간 초과는 api가 직접 채움, 토론방 정적 자극 삭제(R5) |
 
 ## 쓰기 주체
 
@@ -95,29 +72,20 @@ PostgreSQL 16 + pgvector. DDL은 `infra/db/schema.sql`. 모든 id는 UUID, 시�
 | rubric_adjustments | review 트랜잭션(api) |
 | reports | 내부 report/draft·final (report-worker), review 트랜잭션(api) |
 
-## 세션 상태 전이
+## 세션 상태
 
-```
-invited ──동의·시작──▶ in_progress ──제출 / 세션 만료 자동 제출──▶ completed ──워커 draft──▶ report_ready ──검토 완료──▶ approving ──워커 final──▶ reviewed
-   │                        │                                              └──워커 3회 실패──▶ failed(report) ──재생성──▶ completed
-   └──취소──▶ cancelled ◀────┘ (시작 후 취소 = 중도 포기)
-                            └──페르소나 LLM 연속 실패 3회──▶ failed(session)
-```
-
-in_progress 안의 phase: `keyword → problem → solution → proposal → completed`. 토론 단계는 칸 confirmed로만 넘어가고(지원자 확정·AI 합의 채우기·api 시간 초과 채우기), proposal은 제출로만 끝난다. 상태·단계 변경은 api `SessionService` 한 곳만 한다. 지원자 목록 표시는 다섯 묶음(대기·진행·검토 필요·완료·문제), `fail(stage, reason)`은 failed_stage(session∣report)와 담당자 행동 안내를 남긴다. 세션 실패는 리포트를 만들지 않고 재응시는 새 초대(previous_session_id, 같은 별칭 가능). 시작 전 만료는 재발급(같은 세션)으로 연장한다. 리포트 실패는 regenerate로 completed로 되돌린다(`ended_at`은 그대로).
-
-재시작 복구: api 기동 때와 스케줄러 틱마다 (1) `phase_deadline_at`이 지났는데 칸이 empty인 세션은 api가 바로 시간 초과 채우기, (2) `ends_at`이 지났는데 completed가 아닌 in_progress 세션에 자동 제출, (3) `agent_runs`의 `queued`·`started`(기동 때 전부, 실행 중에는 started 200초 초과)를 같은 run_id로 메일박스에 다시 넣기, (4) 침묵 초대 미전달·카드 미전달 조건을 다시 평가해 idle·card_due enqueue(같은 단계 안일 때만), (5) `report_enqueued_at`·`approve_enqueued_at`이 빈 세션 재발행을 한다. 모든 쓰기가 위 멱등 키를 가지므로 재실행해도 중복이 없다.
+상태·단계 전이와 재시작 복구는 [session-lifecycle.md](session-lifecycle.md)가 정본이다. 상태·단계 변경은 api `SessionService` 한 곳만 한다.
 
 ## 보관과 삭제 (90일)
 
-세션 종료 시각 `sessions.ended_at`(completed·failed(session)·cancelled 모두 설정) 후 90일. 삭제 예정일 `purge_at = ended_at + 90일`은 관리자 목록·리포트에 표시한다. `scripts/purge.py`가 `ended_at + 90일 ≤ now`인 세션을 세션 단위로 지운다. 끝나지 않은 세션(invited·in_progress)은 대상이 아니다.
+세션 종료 시각 `sessions.ended_at`(completed·failed(session)·cancelled 모두 설정) 후 90일. 삭제 예정일 `purge_at = ended_at + 90일`은 관리자 목록·리포트에 표시한다. api 스케줄러가 틱마다 `services/purge.py`의 `purge_expired`로 `ended_at + 90일 ≤ now`인 세션을 세션 단위로 지운다. 끝나지 않은 세션(invited·in_progress)은 대상이 아니다.
 
 | 지우는 것 | 남기는 것 |
 |---|---|
-| messages, message_intents, options, stances, slots, session_cards, proposals, agent_runs, connection_gaps, material_views, assistant_calls, debrief_surveys, observations, evaluation_runs, evaluations, reports, rubric_adjustments(조정 메모 포함), report_notes, checkpoints(`debate:`·`assistant:`·`report:` thread), sessions 행, invites의 email·alias·token_hash | positions(채용 건 정의와 지원자 수), companies, admins, materials·material_chunks(세션 무관) |
+| messages, message_intents, options, stances, slots, session_cards, proposals, agent_runs, connection_gaps, material_views, assistant_calls, debrief_surveys, observations, evaluation_runs, evaluations, reports, rubric_adjustments(조정 메모 포함), report_notes, checkpoints(그 세션의 thread, 실제로는 `report:` thread), sessions 행, invites의 email·alias·token_hash | positions(채용 건 정의와 지원자 수), companies, admins, materials·material_chunks(세션 무관) |
 
 LangSmith는 프로젝트 보존 기간을 90일로 둔다.
 
-## 기업 간 격리
+## 기업 간 격리와 스키마 변경
 
-관리자 API의 모든 조회는 JWT의 company_id로 positions를 거쳐 필터한다. 내부 API는 별도 포트(8001)에서만 열리고 session_id로만 접근한다. assessment-mcp는 별도 토큰을 요구한다.
+기업 간 격리 규칙은 [security.md](security.md). 새 DB 초기화와 기존 볼륨에 열을 더하는 절차는 [guides/database.md](../guides/database.md).

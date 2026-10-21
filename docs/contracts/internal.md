@@ -29,8 +29,8 @@ MCP 서버·report-worker·토론 그래프가 쓰는 내부 REST와 평가 저�
 | POST | /internal/sessions/{id}/report/draft | {content, usage?} | {status: "report_ready"} (멱등) | 워커 |
 | POST | /internal/sessions/{id}/report/final | {content} | {status: "reviewed", reviewed_at}. content는 승인된 draft content 그대로(조정 병합하지 않음). 해시가 draft와 다르면 409 `draft_mismatch` | 워커 |
 | POST | /internal/sessions/{id}/report_failed | {error} | {status: "failed"} | 워커 |
-| POST | /internal/test/sessions | {session_minutes: 60∣15, alias?, company_id?, admin_email?, start_at?: entry∣keyword∣problem∣solution∣proposal∣ended, stage?} | {session_id, token, invite_url, phase, session_token?, debrief_token?, admin_report_url?}. `start_at` 기본 `entry`(초대만 만든 상태). 그 밖이면 단계 시드 `scenarios/e2e/stages/<stage∣start_at>.yaml`의 행동을 SessionService로 재생해(가짜 시계, LLM 없음) 그 단계가 막 시작된 in_progress 세션을 만들고 `session_token`을 준다. `ended`는 제출까지 재생한 completed 세션이고 `debrief_token`·`admin_report_url`을 준다(리포트는 워커가 평소대로 만든다). 단계 마감은 재생이 끝난 시각 기준으로 다시 잡는다 | e2e, stage-kit |
-| POST | /internal/test/sessions/{id}/advance | {seconds?: int, to?: deadline∣idle∣"card:<card_id>"} | {shifted_seconds, phase, phase_deadline_at, ends_at}. in_progress 세션의 `started_at`·`phase_started_at`·`phase_deadline_at`·`ends_at`을 같은 초만큼 앞당겨 시간이 흐른 것처럼 만든다(스키마 변경 없음, 카드 예정 시각은 시작 시각 기준이라 함께 당겨짐). `to`는 그 시점에 닿는 초를 api가 계산한다(`deadline` = 현재 단계 마감, `idle` = 침묵 초대 조건, `card:<id>` = 그 카드 예정 시각). 처리는 다음 스케줄러 틱이 평소대로 한다. 둘 다 없거나 둘 다 있으면 422 | e2e, stage-kit |
+| POST | /internal/test/sessions | {session_minutes: 60∣15, alias?, company_id?, admin_email?, start_at?: entry∣keyword∣problem∣solution∣proposal∣ended, stage?} | {session_id, token, invite_url, phase, session_token?, debrief_token?, admin_report_url?}. `start_at` 기본 `entry`(초대만 만든 상태). 그 밖이면 단계 시드 `scenarios/e2e/stages/<stage∣start_at>.yaml`의 행동을 SessionService로 재생해(가짜 시계, LLM 없음) 그 단계가 막 시작된 in_progress 세션을 만들고 `session_token`을 준다. `ended`는 제출까지 재생한 completed 세션이고 `debrief_token`·`admin_report_url`을 준다(리포트는 워커가 평소대로 만든다). 단계 마감은 재생이 끝난 시각 기준으로 다시 잡는다 | e2e 러너, 단계 시드(`make stage`) |
+| POST | /internal/test/sessions/{id}/advance | {seconds?: int, to?: deadline∣idle∣"card:<card_id>"} | {shifted_seconds, phase, phase_deadline_at, ends_at}. in_progress 세션의 `started_at`·`phase_started_at`·`phase_deadline_at`·`ends_at`을 같은 초만큼 앞당겨 시간이 흐른 것처럼 만든다(스키마 변경 없음, 카드 예정 시각은 시작 시각 기준이라 함께 당겨짐). `to`는 그 시점에 닿는 초를 api가 계산한다(`deadline` = 현재 단계 마감, `idle` = 침묵 초대 조건, `card:<id>` = 그 카드 예정 시각). 처리는 다음 스케줄러 틱이 평소대로 한다. 둘 다 없거나 둘 다 있으면 422 | e2e 러너, 단계 시드(`make stage`) |
 
 `/internal/test/*`는 `ENABLE_TEST_API=1`일 때만 열리고 아니면 404다(운영 compose에서는 끈다). 내부 읽기는 상태 제한이 없다. 내부 쓰기는 세션이 in_progress일 때만 받고 아니면 409 `conflict`(이미 저장된 키의 재전달은 기존 결과). 단, `evaluations`·`report/*`는 completed 이후에만 받는다.
 
@@ -95,11 +95,27 @@ MCP 서버·report-worker·토론 그래프가 쓰는 내부 REST와 평가 저�
  "elements":[{"element":"listening","level":4,"summary":"...","dimension_count":4,"no_record_count":1}]}
 ```
 
+평가 에이전트의 요소 하나 출력 예시(자리표시 값, 요소 level = (4+3+4)/3 = 3.67 → 4, `no_record_count` = 1):
+
+```json
+{"element":"listening","level":4,"summary":"압박에 대체로 내용으로 응답하고 차분했으나 상대 근거 인정은 형식적이었습니다. 이해 확인 차원은 판단할 장면이 없었습니다.",
+ "dimension_count":4,"no_record_count":1,
+ "dimensions":[
+  {"dimension_id":"listen_engage","level":4,"evidence_refs":["msg:<m1>","msg:<m2>","msg:<m0>"],
+   "rationale":"세 번의 압박 중 두 번은 상대 근거를 받아 답함(앵커 4). 보조 장면과 같은 방향.","confidence":"high"},
+  {"dimension_id":"listen_understand","level":null,"no_record_reason":"not_applicable","evidence_refs":[],
+   "rationale":"창 안 메시지가 모두 다른 참여자·주제를 향해 이해 확인을 볼 장면이 없음.","confidence":null},
+  {"dimension_id":"listen_acknowledge","level":3,"evidence_refs":["msg:<m2>"],
+   "rationale":"인정이 '좋은 의견인데요' 수준의 형식적 표현(앵커 3).","confidence":"medium"},
+  {"dimension_id":"listen_civility","level":4,"evidence_refs":["msg:<m1>","msg:<m3>"],
+   "rationale":"반대가 일관되게 안을 향하고 정중함(앵커 4).","confidence":"high"}]}
+```
+
 | 필드 | 값 |
 |---|---|
 | run_id | 평가 실행 id. 워커가 `uuid5(session_id, "evaluate:" + eval_round)`로 정한다. `eval_round`는 큐 메시지 `report.generate`의 값(첫 발행 1). 큐 재시도는 같은 round라 같은 평가를 재사용한다. 리포트 재생성 때 api는 최신 `evaluation_runs.has_failed`가 true면 `sessions.eval_round`를 +1(새 run_id로 다시 평가), 아니면 그대로(재사용) 두고 그 값으로 발행한다. 파일럿 재실행 안정성 측정만 별도 run_id를 쓴다 |
 | rubric_version, prompt_versions, model | 척도 버전(`get_rubric`), 평가 프롬프트 버전 맵 `{common: prompts/evaluator/common.md 해시, <element>: prompts/evaluator/<element>.md 해시}`(5요소 모두), `MODEL_EVALUATOR` 모델 이름. 단일 `prompt_version` 필드는 없다 |
-| dimensions[] (DimensionEvaluation) | `dimension_id`(19개 차원마다 정확히 한 행) · `level` 1~5 ∣ null · `no_record_reason`(level null일 때만): `no_activity` ∣ `evaluate_failed` ∣ `not_applicable` ∣ `event_not_fired` ∣ `auto_submitted_blank` · `evidence_refs[]`(위 "근거 참조" 형식) · `rationale` 1~3문장 · `confidence` `high`∣`medium`∣`low`, 기록 없음이면 null |
+| dimensions[] (DimensionEvaluation) | `dimension_id`(19개 차원마다 정확히 한 행) · `level` 1~5 ∣ null · `no_record_reason`(level null일 때만): `no_activity` ∣ `evaluate_failed` ∣ `not_applicable` ∣ `event_not_fired` ∣ `auto_submitted_blank` · `evidence_refs[]`([api.md](api.md) "근거 참조" 형식) · `rationale` 1~3문장 · `confidence` `high`∣`medium`∣`low`, 기록 없음이면 null |
 | elements[] (ElementSummary) | `element` · `level`(워커가 차원 평균 반올림, .5 올림, 모두 기록 없음이면 null) · `summary`(평가 에이전트 1~2줄) · `dimension_count` · `no_record_count` |
 
 **검증 경계** (항목마다 실행 주체 하나):
@@ -154,5 +170,5 @@ MCP 서버·report-worker·토론 그래프가 쓰는 내부 REST와 평가 저�
 
 - `purpose`: `respond`(지원자에게 답) ∣ `push_option`(자기 고정 안 주장) ∣ `react`(다른 동료 발언에 반응) ∣ `invite`(침묵 초대) ∣ `card`(카드가 정한 발언. 이전 run에서 전달되지 않은 카드 화자를 이어서 포함). `card_ids`는 그 발언이 전달하는 카드 id 배열(카드 발언이 아니면 []).
 - `speakers`는 0~2명이고 일반 발언 루프(respond → apply)를 탄다. 합의 채우기 공지 화자는 `speakers`에 넣지 않는다.
-- `fill`은 `{option_id, seat}`(합의 채우기만, seat = 공지·채우는 자리) 또는 null. `fill` 노드의 `announce_fill` 분기가 이 값으로 `fill_slot{option_id, seat, content, run_id}`를 한 번 불러 칸 확정과 공지를 함께 저장한다(위 "합의 채우기"). load 때 합의가 없었어도 apply 뒤 재판정에서 합의가 생기면 같은 분기를 탄다.
+- `fill`은 `{option_id, seat}`(합의 채우기만, seat = 공지·채우는 자리) 또는 null. `fill` 노드의 `announce_fill` 분기가 이 값으로 `fill_slot{option_id, seat, content, run_id}`를 한 번 불러 칸 확정과 공지를 함께 저장한다([세션 생명주기](../architecture/session-lifecycle.md) "합의 채우기"). load 때 합의가 없었어도 apply 뒤 재판정에서 합의가 생기면 같은 분기를 탄다.
 - 규칙 결과가 0명이고 자극이 `message`일 때만 턴 LLM(`MODEL_TURN`)을 부른다(`llm_used`). 나머지 자극은 규칙만.

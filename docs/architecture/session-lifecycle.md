@@ -75,7 +75,7 @@ in_progress 안의 phase: `keyword → problem → solution → proposal → com
 | 전환 공통 | api `SessionService.advance_phase`: `phase`·`phase_started_at`·`phase_deadline_at` 갱신, `generation += 1`, 시스템 안내 메시지("지금 할 일"과 남은 시간, 시나리오 고정 문구) 저장, WS `slot.confirmed`·`phase.changed`·`timer`. keyword 확정이면 그 키워드 자료를 열고 WS `materials.opened`. proposal 시작이면 기획안 초안의 빈 칸(키워드·문제 상황·해결책)을 확정 칸 값으로 채운다. 이어서 `phase_started`를 메일박스에 넣기만 한다(기획안 단계 `phase_started` 실행이 `honesty_credit` 관찰을 남긴다) |
 | 마감 임박 | 단계 마감 `L/30` 전(60분 기준 2분, 압축 비율)에 시스템 안내 메시지 1건. 시점은 시나리오 데이터 |
 | 침묵 초대 | 토론 단계에서 침묵 초대 조건([product/scenario.md](../product/scenario.md) 3.1)이 참이고 그 단계 `invite_delivered`가 false면 스케줄러가 `idle`을 넣는다(같은 단계 idle이 큐·실행 중이면 안 넣음, 지원자 입력 중이면 다음 틱). 초대 메시지(`is_invite`)가 실제 게시돼야 `invite_delivered_phases`에 들어가고, 안 됐으면 다음 틱에 다시 넣는다. 묻는 자리는 시나리오의 `silence_inviter`(비판형) |
-| 카드 예정 시각 | 카드의 `offset_min`(단계 시작 기준, 최소 20초)에 도달했고 `session_cards`상 아직 delivered가 아니면 `card_due{card_id}`. 첫 처리 때 `session_cards` 행을 만들고 문제 상황 카드는 기준안을 잠근다(`locked_option_id`). 담당 화자가 게시할 때마다 `card_ids`의 카드마다 `delivered_seats`가 늘고, 남은 화자는 다음 run이 이어서 말한다. 전원 delivered 전까지 `card_due`는 새 uuid4 run_id로 다시 들어간다 |
+| 카드 예정 시각 | 카드의 `offset_min`(단계 시작 기준, 최소 20초)에 도달했고 `session_cards`상 아직 delivered가 아니면 `card_due{card_id}`. 첫 처리 때 `session_cards` 행을 만들고 문제 상황 카드는 기준안을 잠근다(`locked_option_id`). 담당 화자가 게시할 때마다 `card_ids`의 카드마다 `delivered_seats`가 늘고, 남은 화자는 다음 run이 이어서 말한다. 전원 delivered 전까지 `card_due`를 새 uuid4 run_id로 다시 넣되 같은 카드는 마지막 run 뒤 30초 간격·카드당 최대 3회다. 상한에 닿으면 더 넣지 않고 남은 담당 화자는 미전달로 남는다(리포트 `cards[].delivered: false`) |
 | 세션 만료 | `ends_at` 도달 → 현재 기획안 초안으로 자동 제출(아래) |
 
 ### 기획안 작성과 제출
@@ -98,11 +98,13 @@ in_progress 안의 phase: `keyword → problem → solution → proposal → com
 
 실패는 attempt+1 재발행(백오프 5·15·45초), 3회면 `report.dlq` → `report_failed` → `status=failed`(failed_stage=report). 담당자의 "리포트 다시 생성"은 completed로 되돌리고 다시 발행한다. 최신 평가 실행에 `evaluate_failed`가 없으면 같은 run_id를 재사용하고, 있으면 `eval_round`+1로 새 run_id로 다시 평가한다. 그래프 thread는 `report:{session_id}:{eval_round}`라 새 회차는 이전 interrupt 체크포인트의 draft를 재사용하지 않고 처음부터 실행하며, 같은 회차의 큐 재시도만 체크포인트에서 이어 간다. 리포트는 **담당자가 평가할 때 보는 참고 자료**다. AI 평가 에이전트가 공개된 척도로 근거를 들어 수준을 판단하고 담당자가 그것을 참고해 최종 평가한다. 합격·불합격·순위·총점은 만들지 않는다.
 
+## 칸 확정 규칙
+
 ### 합의 판정과 시간 초과 선택 (api의 함수 하나 `consensus.judge`)
 
 수치·우선순위·채우는 자리 선택은 [product/scenario.md](../product/scenario.md) "AI 동료가 칸을 채우는 조건"·"시간 초과 규칙"이 정본이다. 계약은 입력과 결과만 고정한다.
 
-- 입력: 그 단계의 안과 `stances` 이력. **현재 지지는 참여자당 하나**다 = 참여자별로 그 단계의 마지막 `support` 행의 안. 다른 안을 support하면 이전 지지를 대체한다(두 안을 동시에 지지하지 않는다). 그 뒤에 **같은 안에 대한 `oppose`가 있으면 지지를 철회**한 것으로 보고 현재 지지는 null이다. 다른 안에 대한 oppose는 현재 지지를 바꾸지 않는다. 제안(propose)은 제안자의 지지를 포함한다. 지원자 입장은 의도 분류 `confidence = high`일 때만 stances 행이 된다(아래 "의도 분류 출력 스키마"). AI 입장은 항상 유효하다.
+- 입력: 그 단계의 안과 `stances` 이력. **현재 지지는 참여자당 하나**다 = 참여자별로 그 단계의 마지막 `support` 행의 안. 다른 안을 support하면 이전 지지를 대체한다(두 안을 동시에 지지하지 않는다). 그 뒤에 **같은 안에 대한 `oppose`가 있으면 지지를 철회**한 것으로 보고 현재 지지는 null이다. 다른 안에 대한 oppose는 현재 지지를 바꾸지 않는다. 제안(propose)은 제안자의 지지를 포함한다. 지원자 입장은 의도 분류 `confidence = high`일 때만 stances 행이 된다([contracts/internal.md](../contracts/internal.md) "의도 분류 출력 스키마"). AI 입장은 항상 유효하다.
 - 합의 결과 `consensus_option_id`: 한 안의 현재 지지자가 4명 중 3명 이상이고 **지원자가 그 지지자**이면 그 안, 아니면 null. 대기 시간 조건은 없다(성립하는 즉시 AI가 채운다).
 - 시간 초과 결과 `timeout_option_id`: 지지자 최다 → 동률이면 지원자 지지 안 → 먼저 제안된 안 → 안이 없으면 단계 기준안(문제 상황은 카드가 잠근 `session_cards.locked_option_id`가 있으면 그것, 키워드는 `default_keyword`). 기준안 행이 없으면 채우기 트랜잭션에서 그 안을 만든다(proposer는 공지하는 자리).
 - 두 값은 DebateState에 실리고, api의 `fill` 검사와 시간 초과 채우기가 같은 함수를 쓴다.
@@ -129,8 +131,8 @@ in_progress 안의 phase: `keyword → problem → solution → proposal → com
 
 형식: `Stimulus = {type, phase, generation, message_id?, card_id?}`. `message` 자극의 `generation`은 **그 메시지 저장 트랜잭션이 올린 값**이다(enqueue 시점에 다시 읽지 않는다. 그사이 다른 메시지가 저장됐으면 이 자극은 낡은 자극이 된다). 다른 자극의 `generation`은 enqueue 시점의 `sessions.generation`. `message` 자극의 `phase`는 그 메시지의 `messages.phase`.
 
-- **다시 넣기(재평가)**: 스케줄러는 5초 틱마다 조건을 다시 본다. 침묵 초대가 아직 전달되지 않았으면(`invite_delivered` false) `idle`을, 카드가 아직 `delivered`가 아니면 `card_due`를 다시 넣는다. 같은 단계의 `idle`, 같은 card_id의 `card_due`가 이미 큐에 있거나 실행 중이면 넣지 않는다. 지원자가 입력 중(`typing` 유효)이면 그 틱에는 넣지 않는다.
-- `card_due`는 담당 자리 전원이 delivered될 때까지 enqueue마다 **새 uuid4 run_id**로 다시 넣는다. 카드 1회 실행 제한이나 고정 run_id는 없다. 앞 run이 `finished`여도 일부 화자가 버려졌으면 다음 `card_due`가 남은 화자를 이어서 넣는다. 카드 전달의 멱등은 `session_cards.delivered_seats`(자리 집합)와 관찰의 (session_id, card_id)로만 판단한다.
+- **다시 넣기(재평가)**: 스케줄러는 5초 틱마다 조건을 다시 본다. 침묵 초대가 아직 전달되지 않았으면(`invite_delivered` false) `idle`을, 카드가 아직 `delivered`가 아니면 `card_due`를 다시 넣는다(카드는 아래 상한 안에서만). 같은 단계의 `idle`, 같은 card_id의 `card_due`가 이미 큐에 있거나 실행 중이면 넣지 않는다. 지원자가 입력 중(`typing` 유효)이면 그 틱에는 넣지 않는다.
+- `card_due`는 담당 자리 전원이 delivered될 때까지 enqueue마다 **새 uuid4 run_id**로 다시 넣는다(고정 run_id 없음). 앞 run이 `finished`여도 일부 화자가 버려졌으면 다음 `card_due`가 남은 화자를 이어서 넣는다. 같은 카드의 `card_due`는 마지막 run의 `queued_at` 뒤 30초 간격으로 **카드당 최대 3회**까지만 넣는다(`scheduler.py` `CARD_DUE_MAX_RUNS`). 상한에 닿으면 그 카드는 미전달로 남고 리포트 `cards[].delivered`가 false다. 카드 전달의 멱등은 `session_cards.delivered_seats`(자리 집합)와 관찰의 (session_id, card_id)로만 판단한다.
 - 카드 트리거는 시각 기반 `card_due` 하나다(이벤트 트리거 없음). 예외로 페르소나 발언이 없는 `honesty_credit`은 기획안 단계 `phase_started` 실행에서 `record_observation`만 남긴다(`trigger_message_id` = 그 단계 시작 시스템 안내 메시지).
 - **카드 진행 상태 `session_cards`**: 카드마다 `(session_id, card_id)` 한 행. `card_due` 첫 처리 때 행을 만들고, 문제 상황 카드(`flexibility_majority`·`listening_pressure`)는 그때 기준안을 계산해 `locked_option_id`·`locked_at`으로 잠근다 = "지원자의 현재 지지 안이 아닌 첫 시나리오 안"([product/scenario.md](../product/scenario.md) 순서). 그 시나리오 안의 행이 아직 없으면 잠금 트랜잭션에서 만든다(proposer = 그 카드의 첫 담당 자리, 곧바로 카드 발언으로 그 안을 밀기 때문). 같은 단계의 두 카드는 같은 기준안을 쓰고 한 번 잠그면 바꾸지 않는다. 예정 시각이 같은 카드들은 먼저 실행된 `card_due` run의 `cards` 노드가 예정 시각이 지난 미전달 카드를 함께 처리한다(뒤에 꺼낸 같은 시각 카드의 `card_due`는 `delivered_seats`에 이미 든 자리를 다시 말하게 하지 않는다). 카드 전에는 고집형도 입장을 밝히지 않는다.
 - **전달 기록**: 카드 화자가 실제로 게시해야 전달이다. 메시지 하나가 여러 카드를 함께 전달할 수 있다(예: 같은 시각의 `flexibility_majority`·`listening_pressure`는 고집형의 첫 기준안 발언이 두 카드의 첫 발언). `POST /internal/sessions/{id}/messages`의 `card_ids`(카드 id 배열)에 든 **카드마다** api가 그 `session_cards` 행의 `delivered_seats`에 sender 자리를 더한다. 담당 자리([product/scenario.md](../product/scenario.md) 카드 `actor`를 `seats`로 대응) 전원이 들어가면 그 카드는 delivered이고, 아직이면 다음 run의 결정적 노드가 남은 화자를 이어서 넣으며 스케줄러도 `card_due`를 다시 넣는다. 카드 관찰(`record_observation`)은 **카드마다 1건**, 그 카드의 첫 카드 발언이 게시된 뒤 기록한다(`trigger_message_id` = 그 메시지. 공동 전달이면 두 관찰이 같은 메시지를 가리킨다).
@@ -139,7 +141,7 @@ in_progress 안의 phase: `keyword → problem → solution → proposal → com
 
 - api 프로세스에 세션마다 메일박스 하나(`app/mailbox.py`): asyncio Queue + 소비 Task 1개가 자극을 하나씩 직렬로 실행한다. 세션 Lock·`lock_held`·처리 집합(`handled`)은 없다. api는 단일 프로세스로 운영한다.
 - 큐 밖의 지원자 메시지 처리는 저장·`sessions.generation += 1`(같은 트랜잭션)·`message` 자극 enqueue뿐이다. 단계 전환(`advance_phase`)도 +1. 그래프는 **각 게시 직전** generation을 다시 읽어 실행 시작 때 값과 다르면 남은 화자를 버린다(실행은 `finished`, `decision.dropped_seats`에 기록). `post_message`의 `expected_generation`이 api에서 같은 검사를 원자적으로 한 번 더 한다(다르면 409 `stale_generation`).
-- `message` 자극은 꺼낸 순서대로 먼저 의도 분류와 안·입장 반영을 한다(위 "의도 분류 출력 스키마", 저장된 `messages.phase` 기준, 낡은 자극도 생략하지 않음). 그다음 자극이 낡았으면 턴 선택·페르소나 발언 생성을 하지 않고 `agent_runs.status = skipped`로 닫는다: phase가 현재 단계와 다름, 또는 `message` 자극인데 generation이 현재 값보다 작음(뒤의 메시지 자극이 응답을 맡음). 다른 자극은 낡았으면 아무것도 하지 않고 skipped.
+- `message` 자극은 꺼낸 순서대로 먼저 의도 분류와 안·입장 반영을 한다([contracts/internal.md](../contracts/internal.md) "의도 분류 출력 스키마", 저장된 `messages.phase` 기준, 낡은 자극도 생략하지 않음). 그다음 자극이 낡았으면 턴 선택·페르소나 발언 생성을 하지 않고 `agent_runs.status = skipped`로 닫는다: phase가 현재 단계와 다름, 또는 `message` 자극인데 generation이 현재 값보다 작음(뒤의 메시지 자극이 응답을 맡음). 다른 자극은 낡았으면 아무것도 하지 않고 skipped.
 - 지원자 입력 중 대기(그래프 노드 `wait_typing`): 게시 직전 지원자 `typing`이 유효하면 최대 10초 기다린다. 그래도 유효하면 게시하지 않고 같은 자극을 새 run_id로 큐 뒤에 다시 넣고 이번 실행은 `deferred`.
 - `advance_phase`는 `phase_started`를 큐에 넣기만 한다.
 - 멱등은 `agent_runs.status`와 DB 멱등 키만 쓴다. 자극 저장: `agent_runs` 행을 `queued`로 만든 뒤 큐에 넣는다. 재시작하면 `queued`·`started` 행을 같은 run_id로 다시 넣는다. 실행 중 프로세스에서 `started`가 200초(역할별 타임아웃 합 + 여유)를 넘으면 `failed`로 닫고 같은 run_id로 다시 넣는다. 같은 run_id 재실행의 게시는 (session_id, run_id, seq) 멱등으로 중복되지 않는다. 합의 채우기는 칸 확정·공지·generation +1이 한 트랜잭션(위 "합의 채우기")이라 fill 커밋 뒤 재실행이 단계 변경으로 `skipped`돼도 미게시 공지가 남지 않는다.

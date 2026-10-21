@@ -1,8 +1,8 @@
 # 에이전트 설계 (api 안의 LangGraph 모듈)
 
-2026-10-21 토론형 전환(`docs/handoff/briefs/brief-debate-pivot.md` D10·D11·D12·D16·D17)과 같은 브리프의 "리뷰 반영 결정"(R1~R7) 기준이다. R 결정이 앞선 결정과 다르면 R이 우선한다. 요소 id는 `persuasion, listening, inclusion, flexibility, honesty`, 카드 id는 `persuasion_keyword, flexibility_majority, listening_pressure, inclusion_silence, persuasion_solution, honesty_credit`, 페르소나 유형 id는 `stubborn, quiet, critic, agreeable, divergent`다(정본 [product/scenario.md](../product/scenario.md)). MVP 세션 자리는 **고정**이다(R2): `p1` 고집형 강한결(`stubborn`), `p2` 소극형 윤하람(`quiet`), `p3` 비판형 서지안(`critic`). 동조형·발산형은 MVP 이후 확장이며 아래 규칙의 우선순위 목록에 남아 있어도 MVP 세션에는 나오지 않는다. 참여자 id는 `candidate`·`p1`·`p2`·`p3`·`system`. 칸 결과는 `resolution: consensus | timeout`. 지원자 호칭은 "지원자", 대화 속에서는 표시 이름 + "님"이다.
+토론 그래프(턴 매니저 + 페르소나 에이전트 3)·의도 분류·어시스턴트·guard·평가 에이전트의 구조다. 결정 근거는 [decisions.md](../decisions.md) "2026-10-21 토론형 전환"(D10·D11·D12·D16·D17, R1~R7). 요소 id는 `persuasion, listening, inclusion, flexibility, honesty`, 카드 id는 `persuasion_keyword, flexibility_majority, listening_pressure, inclusion_silence, persuasion_solution, honesty_credit`, 페르소나 유형 id는 `stubborn, quiet, critic, agreeable, divergent`다(정본 [product/scenario.md](../product/scenario.md)). MVP 세션 자리는 **고정**이다(R2): `p1` 고집형 강한결(`stubborn`), `p2` 소극형 윤하람(`quiet`), `p3` 비판형 서지안(`critic`). 동조형·발산형은 MVP 이후 확장이며 아래 규칙의 우선순위 목록에 남아 있어도 MVP 세션에는 나오지 않는다. 참여자 id는 `candidate`·`p1`·`p2`·`p3`·`system`. 칸 결과는 `resolution: consensus | timeout`. 지원자 호칭은 "지원자", 대화 속에서는 표시 이름 + "님"이다.
 
-모듈: `app/agent/{debate, assistant, intent, guard, llm, mcp_client}`, `runner.py`. `mcp_client`는 env `DEBATE_MCP_URL`·`RAG_MCP_URL`·`ASSESSMENT_MCP_URL`(+`ASSESSMENT_MCP_TOKEN`)로 접속한다([contracts/mcp.md](../contracts/mcp.md) "MCP 도구"). 실시간 관찰 분류(`observe/`)와 세션 그래프(`session/`)는 삭제한다. 평가(차원별 수준 판단)는 세션 후 report-worker 안의 평가 에이전트 몫이다(아래 "평가 에이전트", 실행 흐름은 [services/report-worker.md](../services/report-worker.md)). G-F 전까지 `app/agent/intent` 등 교차 인터페이스 stub은 be-foundation 소유이고 G-F 뒤 agent 트랙이 인계받는다(R6-d).
+모듈: `app/agent/{debate, assistant, intent, guard, llm, mcp_client}`, `runner.py`. `mcp_client`는 env `DEBATE_MCP_URL`·`RAG_MCP_URL`·`ASSESSMENT_MCP_URL`(+`ASSESSMENT_MCP_TOKEN`)로 접속한다([contracts/mcp.md](../contracts/mcp.md) "MCP 도구"). 평가(차원별 수준 판단)는 세션 후 report-worker 안의 평가 에이전트 몫이다(아래 "평가 에이전트", 실행 흐름은 [services/report-worker.md](../services/report-worker.md)).
 
 ## AgentRunner 인터페이스와 SessionPorts
 
@@ -18,39 +18,40 @@ class AgentRunner(Protocol):
 #              usage: {llm_calls, retries, tokens_in, tokens_out, cost_usd, latency_ms, tool_calls}}
 ```
 
-- 그래프가 api에 기대는 것은 `SessionPorts`(api `ports.py`, R6-d) 세 가지뿐이다: typing 전송(hub), generation 조회, 자극 enqueue. 나머지 읽기·쓰기는 MCP를 거친다.
+- 그래프가 api에 기대는 것은 `SessionPorts`(api `ports.py`) 세 가지뿐이다: typing 전송(hub), generation 조회, 자극 enqueue. 나머지 읽기·쓰기는 MCP를 거친다.
 - 실행은 api 세션 **메일박스**가 한다(R5-1, [services/api.md](../services/api.md)). 자극은 세션마다 직렬로 처리되므로 그래프 안에 Lock이 없고 `lock_held`·`handled`도 없다.
 - `agent_runs`(run_id, graph=debate, stimulus, status, decision, usage). 멱등은 `agent_runs.status`와 DB 멱등 키만 쓴다. started로 200초(역할별 타임아웃 합 + 여유)를 넘긴 run은 스케줄러가 같은 run_id로 재실행한다.
-- 자극 4종과 run_id 규칙은 [architecture/session-lifecycle.md](session-lifecycle.md) "그래프 자극"이 정본이다: message는 api가 새로 발급, phase_started는 `uuid5(session, "phase:"+phase)`, card_due는 enqueue마다 새 uuid4(담당 전원 delivered까지 스케줄러가 다시 넣음, 멱등은 `session_cards.delivered_seats`), idle은 스케줄러가 enqueue할 때마다 발급(침묵 초대 중복은 `invite_delivered`와 `is_invite` 409가 막음). `timeout` 자극과 `room_quiet`는 없다(R5-2·R5-3).
+- 자극 4종과 run_id 규칙은 [architecture/session-lifecycle.md](session-lifecycle.md) "그래프 자극"이 정본이다: message는 api가 새로 발급, phase_started는 `uuid5(session, "phase:"+phase)`, card_due는 enqueue마다 새 uuid4(담당 전원 delivered까지 스케줄러가 다시 넣음, 카드당 최대 3회·30초 간격, 멱등은 `session_cards.delivered_seats`), idle은 스케줄러가 enqueue할 때마다 발급(침묵 초대 중복은 `invite_delivered`와 `is_invite` 409가 막음). `timeout` 자극과 `room_quiet`는 없다(R5-2·R5-3).
 
 ## 토론 그래프 (`app/agent/debate/`)
 
-MVP 구조는 **턴 매니저 + 페르소나 에이전트 3**(D10). thread `debate:{session_id}`, PostgresSaver.
+MVP 구조는 **턴 매니저 + 페르소나 에이전트 3**(D10). 그래프는 체크포인터 없이 컴파일한다(`app/agent/factory.py` `build_debate_runner(..., checkpointer=None)`). 실행 기록은 `agent_runs`, 토론 상태는 DB가 원천이고 매 실행의 `load`가 다시 읽으므로 재시작 복구는 같은 자극을 처음부터 다시 실행하는 방식이다.
 
 ```
-load → cards → turn ─┬─ (화자마다) typing_on → respond → guard → stance_check → wait_typing → apply → typing_off ─┐
-                     │                                                                                       ├→ fill → END
-                     └─ 화자 0명 ─────────────────────────────────────────────────────────────────────────────┘
+load ─▶ cards ─▶ turn ─┬─ (화자마다) respond → guard → stance_check → wait_typing → apply ─┬─ 다음 화자 → respond
+       └ skipped·failed → END                              └ 미게시·generation 변경 → END ┘   └─▶ fill ─▶ END
+                       └─ 화자 0명 ──────────────────────────────────────────────────────────▶ fill ─▶ END
 ```
+
+등록된 노드는 9개다(`load`·`cards`·`turn`·`respond`·`guard`·`stance_check`·`wait_typing`·`apply`·`fill`, `graph.py` `build_graph`). typing 표시는 노드가 아니라 `respond`가 시작할 때 `start`, 게시·버림 때 `stop`을 SessionPorts로 보내는 부수 동작이다.
 
 ### State
 
-`session_id, run_id, stimulus, phase, generation, debate_state, transcript, seats, decision, speaker_idx, seat_memory, card_progress, tool_calls_used, cost_left, last_error`
+`session_id, run_id, stimulus, phase, generation, ds, transcript, names, intent, brief, lead, decision, idx, plan, draft, status, posted, observed, fallback_used, last_error, llm_failed, notice` (`graph.py` `DebateState`)
 
 - `generation`: 실행 시작 때 읽은 `sessions.generation`. 화자마다 게시 직전 SessionPorts 값과 비교한다.
-- `debate_state`: debate-mcp `get_debate_state` 결과(DebateState + seats). 페르소나 컨텍스트에 미리 넣는다(R5-12, 조회 도구 왕복 줄이기). 페르소나에게 줄 때 `card_progress`·`cost_left`를 뺀다.
-- `seats`: 내부 `GET /internal/sessions/{id}`의 `seats` 그대로. 지원자 `{seat: candidate, display_name}`과 AI 자리 `{seat, display_name, avatar_url, persona_type}`(D13-3). `persona_type`은 그래프 안에서만 쓰고 페르소나 프롬프트에는 자기 성향 설명으로만 들어간다.
-- `seat_memory[seat]`: `{pushed: {phase: option_id}, said_to_candidate: [짧은 요약], persuaded: {phase: bool}, pressure_count: int, hesitated: bool}`. 요약으로 접히지 않는 자리별 기억.
-- `card_progress`: DebateState의 카드 진행(발동한 카드, 담당 화자별 `delivered`, 잠긴 기준안). api 기록이 원천이고 그래프는 읽기만 한다.
+- `ds`: debate-mcp `get_debate_state` 결과(DebateState + seats). 페르소나 컨텍스트에 미리 넣는다(R5-12, 조회 도구 왕복 줄이기). 페르소나에게 줄 때 `card_progress`·`cost_left`를 뺀다.
+- `names`·자리 정보: 내부 `GET /internal/sessions/{id}`의 `seats`에서 만든다. 지원자 `{seat: candidate, display_name}`과 AI 자리 `{seat, display_name, avatar_url, persona_type}`(D13-3). `persona_type`은 그래프 안에서만 쓰고 페르소나 프롬프트에는 자기 성향 설명으로만 들어간다.
+- 자리 기억: 별도 State 필드 없이 `transcript`(최근 대화 30개) 중 그 자리의 최근 발언 3개(`persona.py` `MEMORY_MESSAGES`)를 `[내 기억]`으로 넣는다. 밀었던 안·설득 이동·압박 횟수는 DB의 입장 이력과 메시지에서 매 실행 계산한다. 토큰 한도에 따른 요약 접기는 없다.
+- `brief`: 이번 실행에서 말할 카드 담당과 고정 내용(`cards` 노드 결과). 카드 진행(`ds.card_progress`: 발동한 카드, 담당 화자별 `delivered`, 잠긴 기준안)은 api 기록이 원천이고 그래프는 읽기만 한다.
 
 ### 노드
 
 | 노드 | 종류 | 하는 일 |
 |---|---|---|
-| load | 결정적 | debate-mcp `get_debate_state`·`get_transcript(phase, limit 30)`, SessionPorts로 generation. 이 run_id가 이미 `finished`면 END |
+| load | 결정적 | debate-mcp `get_debate_state`·`get_transcript(phase, limit 30)`, SessionPorts로 generation. 낡은 자극이면 `skipped`로 END. 이미 `finished`인 run_id는 api 메일박스가 `agent_runs.status`를 보고 실행하지 않는다 |
 | cards | 결정적 | `stimulus=card_due`면 그 카드와 **예정 시각이 지난 같은 단계의 미전달 카드**를 함께 발동 대상으로(공동 처리, `delivered_seats`에 이미 든 자리는 다시 넣지 않음), 그 밖의 자극이면 **이미 발동했지만 `delivered`가 아닌 담당 화자**를 이어서 말할 대상으로 정한다(R5-4). 결과는 이번 실행의 `card_brief`(누가 어떤 고정 내용을 말할지). `flexibility_majority`면 여기서 기준안을 계산해 잠근다(아래). 관찰 기록은 이 노드가 아니라 apply가 첫 카드 발언 게시 뒤에 한다 |
 | turn | 결정적 규칙 + LLM(`MODEL_TURN`) | 화자 0~2명과 목적을 정한다(아래 규칙). 출력은 계약의 턴 매니저 결정 스키마 그대로 `agent_runs.decision`에 저장 |
-| typing_on / typing_off | 결정적 | SessionPorts로 hub에 `typing{participant, state}` |
 | respond | LLM(`MODEL_PERSONA`) + 도구 | 자리의 페르소나 에이전트가 발언을 만든다(아래). 구조화 출력 |
 | guard | 결정적 | 금지 문구 검사 → 재생성 1회 → 자리별 안전 문구(아래) |
 | stance_check | 결정적 | 게시 문장과 입장이 `stance_plan`과 맞는지 검증. 계획 밖이면 응답 전체 1회 재생성 → 그래도 밖이면 계획과 맞는 고정 문구로 교체(R5-8, 아래) |
@@ -73,7 +74,7 @@ load → cards → turn ─┬─ (화자마다) typing_on → respond → guard
 
 ### 페르소나 에이전트 (respond)
 
-- 입력(Context, [architecture/harness.md](harness.md)): 자기 자리의 성향 프롬프트(`prompts/persona_<type>.md`의 말투·행동 규칙), 공통 규칙, 이번 목적과 대상 안, 자기 고정 입장(`stance_plan`), 카드 brief(해당 자리만), 자리 기억, **미리 넣은 DebateState**(지지 현황·확정된 칸·단계 남은 시간), 최근 대화 30개, 지원자 표시 이름(대화에서 "OO님"), 다른 자리 이름. 시간은 단계 남은 시간으로만 말한다.
+- 입력(Context, [architecture/harness.md](harness.md)): 자기 자리의 성향 프롬프트(`prompts/persona_<type>.md`의 말투·행동 규칙), 공통 규칙, 이번 목적과 대상 안, 자기 고정 입장(`stance_plan`), 카드 brief(해당 자리만), 자리 기억(자기 최근 발언 3개), **미리 넣은 DebateState**(지지 현황·확정된 칸·단계 남은 시간), 최근 대화 30개, 지원자 표시 이름(대화에서 "OO님"), 다른 자리 이름. 시간은 단계 남은 시간으로만 말한다.
 - 도구(허용 목록, 응답당 3회): `get_transcript`(30개보다 앞 대화가 필요할 때), `search_materials`, `get_material`, `get_draft`(proposal 단계에서만 바인딩). `get_debate_state`는 컨텍스트에 이미 있으므로 바인딩하지 않는다. 자료는 확정 키워드 것만 열려 있고 키워드 단계에서는 상식 수준으로만 말한다.
 - 출력(구조화): `{content, proposes?: {scenario_option_key∣label}, stance?: {option_id, stance: support∣oppose}}`. `content`는 1~3문장, 200자 이내 권장(guard 상한 400자).
 - `stance_plan`은 결정적으로 계산한다: 단계별 고정 입장 표, 수용 카드 담당(고집형 1명 확정 전 불변 + 다른 1명 설득 가능, R1), 설득 가능 규칙(지원자가 그 자리 안에 반대·대안 제안을 두 번 하면 지원자 안으로 단계당 1회 이동, `stubborn`은 확정 전 불변).
@@ -106,7 +107,7 @@ load → cards → turn ─┬─ (화자마다) typing_on → respond → guard
 
 ### 고정 문장과 seq
 
-`seq`는 노드별 고정 슬롯이다: 화자1 발언=1, 화자2 발언=2, 칸 채우기 공지=5(`fill_slot` 트랜잭션에서 api가 저장). api 시간 초과 공지는 run_id `uuid5(session, "timeout:"+phase)`·seq 0(api 소유). 변경 도구 전에 같은 (run_id, seq) 메시지가 있으면 LLM 생성 없이 재사용한다(변경 성공 뒤 체크포인트 전에 죽어도 같은 결과로 수렴).
+`seq`는 노드별 고정 슬롯이다: 화자1 발언=1, 화자2 발언=2, 칸 채우기 공지=5(`fill_slot` 트랜잭션에서 api가 저장). api 시간 초과 공지는 run_id `uuid5(session, "timeout:"+phase)`·seq 0(api 소유). 같은 run_id 재실행은 초안을 다시 생성하고, 게시는 api의 (run_id, seq) 멱등이 기존 메시지를 돌려준다. 그래서 재실행에서 다시 만든 초안의 입장이 원 게시와 다를 수 있다(`LLM_FAKE=1`에서는 같다).
 
 칸 채우기 공지 골격(시나리오 고정, 이름만 치환): consensus "그럼 X로 정리할게요." fill 노드가 LLM 없이 만들어 `fill_slot`의 `content`로 넘기고, api가 칸 확정과 같은 트랜잭션에서 저장한다. 칸 확정과 공지는 함께 남거나 함께 남지 않는다. 시간 초과 공지("시간이 다 돼서 대화에서 가장 많이 모인 의견인 X로 할게요.", R7)는 api가 게시한다.
 
@@ -119,7 +120,7 @@ load → cards → turn ─┬─ (화자마다) typing_on → respond → guard
 
 ### 재실행 멱등
 
-- 같은 run_id가 `agent_runs`에서 `finished`면 load가 END.
+- 같은 run_id가 `agent_runs`에서 `finished`면 api 메일박스가 다시 실행하지 않는다.
 - 모든 변경은 run_id를 가지고 api가 멱등 키로 막는다(메시지 (run_id, seq), 안 (scenario_option_key∣source_message_id), 입장 (source_message_id, participant, option_id), 칸 (session, phase), 관찰 (session, card_id)).
 - 같은 run_id의 `fill_slot` 재호출은 기존 결과(칸과 공지 메시지)를 돌려준다. 칸 확정과 공지가 한 트랜잭션이라 확정 뒤 공지만 빠지는 상태가 없다.
 - LangGraph config 메타데이터 키는 `agent_run_id`(`run_id`를 쓰면 같은 run_id 재호출을 끝난 실행으로 보고 건너뛴다).
@@ -134,11 +135,11 @@ D16·R4·R5-6. api 메일박스가 `message` 자극마다 들어온 순서대로
 - 출력: 계약의 의도 분류 스키마(`intent`, 대상 안(생긴 안이면 option_id, 아직 안 생긴 카탈로그 안이면 `scenario_option_key`), `new_option_label`, `addressed_to`, `confidence: high|low`). 허용 값 밖·없는 option_id·스키마 위반은 폴백 `{intent: other, ...}`, `fallback=true`.
 - 쓰임: 안별 지지자 누적(high인 agree·propose만 지지), 카탈로그 안의 최초 제안자 귀속, 턴 매니저 규칙 3, 합의 판정, 침묵 초대 조건, 설득 가능 규칙, stance_check의 문장 판정. **평가 수준에 직접 쓰지 않는다.** 평가 에이전트에는 참고 입력(사실 지표 `intent_counts`, 메시지별 의도)으로만 가고, 원문과 다르면 원문을 따른다([product/rubric.md](../product/rubric.md) 1.2).
 - 지원자 칸 확정 값의 안 연결에는 쓰지 않는다. 확정 경로에는 LLM이 없다(R5-5, [services/api.md](../services/api.md)).
-- 실 모델 정확도 기준선은 픽스처 20문장에서 0.85다(gpt-4o-mini, agent-spike 실측). 이 값은 기준선이고 MVP 통과 조건이 아니다.
+- 실 모델 정확도 기준선은 픽스처 20문장에서 0.85다(gpt-4o-mini, [harness.md](harness.md) "실측 기준선"). 이 값은 기준선이고 MVP 통과 조건이 아니다.
 
 ## 어시스턴트 (`app/agent/assistant/`)
 
-**tool-calling 루프**(R5-13, 모델의 도구 선택 시연). thread `assistant:{session_id}`, 모델 `MODEL_ASSISTANT`.
+LangGraph가 아닌 **Python 도구 호출 루프**다(R5-13, 모델의 도구 선택 시연. `app/agent/assistant/runner.py` `AssistantGraphRunner`). 모델 `MODEL_ASSISTANT`. 이어지는 질문을 위한 대화 이력은 세션별 프로세스 메모리에만 있어 api를 재시작하면 비고, 요청·응답 원문은 `messages`(channel=assistant)와 `assistant_calls`에 남는다. 같은 세션의 요청은 세션별 asyncio Lock으로 한 번에 하나씩 처리한다.
 
 ```
 agent(LLM, 도구 바인딩) ⇄ tools(search_materials·get_material) … 최대 3회 → answer → guard
@@ -175,7 +176,7 @@ agent(LLM, 도구 바인딩) ⇄ tools(search_materials·get_material) … 최�
 
 D18·D19 개정과 R5-14. 세션 종료 후 report-worker의 `evaluate` 노드에서 돈다. api 안의 모듈이 아니지만 프롬프트·LLM 규칙을 이 문서가 정한다. 판단 규칙·앵커·검증 규칙의 정본은 [product/rubric.md](../product/rubric.md)(2장 공통 판단 규칙, 3장 척도, 4장 경계표, 7장 출력 형식), 저장 형식은 [contracts/internal.md](../contracts/internal.md) `save_evaluation`이다. 원칙: AI 평가 에이전트가 공개된 척도로 근거를 들어 수준을 판단하고, 담당자가 그것을 참고해 최종 평가한다. 합격·불합격·순위·총점은 만들지 않는다.
 
-**호출 단위**: 요소마다 1회(5요소 고정이므로 세션당 5회). 한 호출이 그 요소의 차원 3~4개를 모두 낸다. 다른 요소의 판단 결과·요약은 입력에 넣지 않는다(후광 방지). 모델 `MODEL_EVALUATOR`, temperature 0~0.2 **[초안]**, JSON 스키마 구조화 출력, 도구 바인딩 없음(입력은 워커가 미리 모은다).
+**호출 단위**: 요소마다 1회(5요소 고정이므로 기본 5회). 검증에 걸린 요소의 재요청 1회와, 검증으로 차원 행이 바뀐 요소의 summary 재작성 1회가 조건부로 더해진다(`evaluate.py`). 한 호출이 그 요소의 차원 3~4개를 모두 낸다. 다른 요소의 판단 결과·요약은 입력에 넣지 않는다(후광 방지). 모델 `MODEL_EVALUATOR`, temperature 0~0.2 **[초안]**, JSON 스키마 구조화 출력, 도구 바인딩 없음(입력은 워커가 미리 모은다).
 
 **프롬프트 구성**(순서 고정):
 
@@ -201,11 +202,11 @@ D18·D19 개정과 R5-14. 세션 종료 후 report-worker의 `evaluate` 노드�
 
 - `level`은 1~5 정수 또는 null. null이면 `no_record_reason`(`no_activity`·`not_applicable`·`event_not_fired`·`auto_submitted_blank`; `evaluate_failed`는 워커만 쓴다)과 `confidence: null`.
 - 요소 `level`은 모델이 내지 않는다. 워커가 차원 평균 반올림(.5 올림)으로 계산한다. 모델은 `summary`만 쓴다.
-- 검증 경계(R5-14): 형식 오류(스키마 위반·차원 누락·중복)나 근거 부재(수준이 있는데 유효 근거가 최소 개수 미만)면 **그 요소 호출 전체를 1회 재요청**한다(실패 사유를 붙여서). 그래도 남은 실패 차원은 워커가 `evaluate_failed`로 둔다. 확신도 상한 위반은 재요청하지 않고 워커가 상한으로 깎는다(clamp). LLM 전송 오류·타임아웃은 저장하지 않고 큐 재시도로 넘긴다.
+- 검증 경계(R5-14, 정본 [product/rubric.md](../product/rubric.md) 7.3): 형식 오류(스키마 위반·차원 누락·중복·금지어)나 근거 부재(수준이 있는데 지원자 근거 단위 0개)면 **그 요소 호출 전체를 1회 재요청**한다(차원별 실패 사유를 붙여서). 그래도 남은 실패 차원은 워커가 `evaluate_failed`로 둔다. 수준 4·5에 지원자 근거 단위가 1개뿐이면 거부하지 않고 수준 3·확신도 최대 medium으로 깎고, 확신도 상한 위반도 워커가 상한으로 깎는다(clamp). LLM 전송 오류·타임아웃은 저장하지 않고 큐 재시도로 넘긴다.
 
-**버전**: 평가 프롬프트 파일(`prompts/evaluator/common.md`와 `prompts/evaluator/<element>.md` 5개)마다 개별 해시를 `prompt_versions` 맵(형식은 [contracts/internal.md](../contracts/internal.md) EvaluationSave)으로, 세션 척도 버전을 `rubric_version`으로, 실제 모델 id를 `model`로 `save_evaluation`에 함께 저장한다(api가 `evaluation_runs`에 보관). 단일 `prompt_version` 필드는 쓰지 않는다. 프롬프트는 카탈로그(`scenarios/missions/debate/prompts/`)에 두고 `positions.scenario`에 복사돼 채용 건에 고정된다.
+**버전**: 평가 프롬프트 파일(`prompts/evaluator/common.md`와 `prompts/evaluator/<element>.md` 5개)마다 개별 해시를 `prompt_versions` 맵(형식은 [contracts/internal.md](../contracts/internal.md) EvaluationSave)으로, 세션 척도 버전을 `rubric_version`으로, 실제 모델 id를 `model`로 `save_evaluation`에 함께 저장한다(api가 `evaluation_runs`에 보관). 단일 `prompt_version` 필드는 쓰지 않는다. 프롬프트는 카탈로그(`scenarios/missions/debate/prompts/`)에 두고, 평가 프롬프트와 평가 금지 패턴(`guard_patterns.yaml`의 평가용 목록)은 채용 건 생성 때 `positions.scenario`에 복사된다. 워커는 그 스냅샷을 읽어 같은 채용 건의 지원자를 같은 프롬프트로 평가한다. 스냅샷이 없는 옛 채용 건만 마운트된 카탈로그의 현재 파일을 읽는다.
 
-**리포트 요약 문장과의 관계**: 요소 서술(`elements[].summary`)은 이 평가 호출이 쓰고 draft에서 다시 만들지 않는다. 리포트의 카드 장면(`cards[].scene`)은 LLM 없이 카드의 고정 문장 `report_template`을 그대로 쓴다. 평가 호출 외에 리포트용 요약 LLM 호출은 없다. 평가 호출이 실패해 요소의 모든 차원이 `evaluate_failed`면 요소 서술은 템플릿 고정 문장으로 대신하고, 차원 수준을 템플릿이나 다른 모델로 메우지 않는다.
+**리포트 요약 문장과의 관계**: 요소 서술(`elements[].summary`)은 이 평가 호출이 쓰고 draft에서 다시 만들지 않는다. 리포트의 카드 장면(`cards[].scene`)은 LLM 없이 카드의 고정 문장 `report_template`을 그대로 쓴다. draft 단계에는 LLM 호출이 없다. 리포트용 요약 호출은 검증으로 차원 행이 바뀐 요소의 summary 재작성 1회뿐이다. 평가 호출이 실패해 요소의 모든 차원이 `evaluate_failed`면 요소 서술은 템플릿 고정 문장으로 대신하고, 차원 수준을 템플릿이나 다른 모델로 메우지 않는다.
 
 ## 역할별 모델
 
@@ -217,11 +218,11 @@ D18·D19 개정과 R5-14. 세션 종료 후 report-worker의 `evaluate` 노드�
 | 어시스턴트 | `MODEL_ASSISTANT` | assistant tool-calling 루프 |
 | 평가 에이전트 | `MODEL_EVALUATOR` | report-worker 평가 에이전트(요소별 차원 수준·근거·요약). 카드 장면 `cards[].scene`은 고정 문장이라 LLM을 쓰지 않는다 |
 
-비어 있으면 `OPENAI_MODEL`(기본 gpt-4o-mini). 키는 모델 id로 고른다(gpt-4o-mini → 제한 키, 그 외 gpt-* → 개인 키, gemini-* → Gemini 키). 규칙은 공용 LLM 래퍼(`app/agent/llm`, 워커는 같은 규칙의 사본) 한 곳이고, 래퍼가 호출마다 토큰과 환산 달러를 `usage.cost_usd`로 낸다(R5-11). 프롬프트·규칙 수정으로 안 되는 역할만 사용자 결정으로 올린다(`docs/decisions.md`). 이전 env(`MODEL_COLLEAGUE`·`MODEL_MANAGER`·`MODEL_OBSERVE`·`MODEL_REPORT`)는 폐기. env 이름 5개는 be-foundation이 `infra/.env.example`과 `roles.py`에 넣고 G-F에서 동결한다.
+비어 있으면 `OPENAI_MODEL`(기본 gpt-4o-mini). 키는 모델 id로 고른다(gpt-4o-mini → 제한 키, 그 외 gpt-* → 개인 키, gemini-* → Gemini 키). 규칙은 공용 LLM 래퍼(`app/agent/llm`, 워커는 같은 규칙의 사본) 한 곳이고, 래퍼가 호출마다 토큰과 환산 달러를 `usage.cost_usd`로 낸다(R5-11). 프롬프트·규칙 수정으로 안 되는 역할만 사용자 결정으로 올린다(`docs/decisions.md`). 역할별 타임아웃·재시도·temperature는 [harness.md](harness.md) "역할별 모델" 표가 정본이다.
 
 ### 결정적 LLM 모드 (`LLM_FAKE=1`)
 
-실 스택(compose·로컬)에서 그래프·의도 분류·어시스턴트·평가 에이전트를 **그대로 돌리고 LLM 호출만** 결정적 고정 응답으로 바꾸는 모드다. 단계별 화면 테스트(stage-e2e)·단계 시드·e2e mock 실행이 쓴다([guides/testing.md](../guides/testing.md) "단계별 테스트"). 공용 LLM 래퍼(`app/agent/llm`, 워커는 같은 규칙의 사본)가 env를 보고 `FakeLLM`을 돌려주므로 노드 코드는 모드를 모른다.
+실 스택(compose·로컬)에서 그래프·의도 분류·어시스턴트·평가 에이전트를 **그대로 돌리고 LLM 호출만** 결정적 고정 응답으로 바꾸는 모드다. 단계별 화면 테스트·단계 시드·e2e mock 실행이 쓴다([guides/testing.md](../guides/testing.md) "단계별 테스트"). 공용 LLM 래퍼(`app/agent/llm`, 워커는 같은 규칙의 사본)가 env를 보고 `FakeLLM`을 돌려주므로 노드 코드는 모드를 모른다.
 
 | 역할 | 고정 응답 |
 |---|---|
@@ -231,25 +232,12 @@ D18·D19 개정과 R5-14. 세션 종료 후 report-worker의 `evaluate` 노드�
 | 어시스턴트 | 도구 1회(`search_materials` 질문 그대로) 뒤 첫 결과 제목을 인용한 고정 문장 |
 | 평가 에이전트 | 요소마다 형식 검증을 통과하는 고정 출력(차원마다 지원자 메시지 근거가 있으면 수준 3·confidence medium, 없으면 `no_activity`) |
 
-사용량은 0으로 기록하고 LangSmith trace는 남기지 않는다. 운영 compose에서는 끈다. 실제 LLM 확인은 같은 실행을 `LLM_FAKE` 없이 다시 돌린다(`make stage … LLM=live`).
+사용량은 0으로 기록하고 LLM 호출 trace는 남기지 않는다(`LANGCHAIN_TRACING_V2`가 켜져 있으면 그래프 실행 trace는 남는다). 운영 compose에서는 끈다. 실제 LLM 확인은 같은 실행을 `LLM_FAKE` 없이 다시 돌린다(`make stage … LLM=live`).
 
-### 실측 기준선 (agent-spike, gpt-4o-mini)
+### 측정 기준선
 
-| 항목 | p50 | p95 |
-|---|---|---|
-| 의도 분류 | 1.0초 | 1.2초 |
-| 페르소나 발언 | 1.2초 | 1.4초 |
-| 턴 LLM | 1.2초 | 1.5초 |
+지연·비용·의도 분류 정확도 기준선은 [harness.md](harness.md) "실측 기준선".
 
-60분 세션 LLM 비용 추정 $0.08~0.11, 의도 분류 정확도 0.85. 문서·보고서의 기준선이며 MVP 완료 조건은 아니다.
-
-## MVP 이후
-
-- 생성 전에 지원자 입력 중인지 먼저 확인해 버리는 생성 줄이기
-- 한 메시지의 복수 의도 분류
-- 대상 안 라벨이 없을 때 `confidence`를 low로 강제하는 후처리
-- 턴 LLM의 화자 쏠림 보정
-- websockets 버전 통일
 
 ## 복구
 
@@ -260,9 +248,9 @@ D18·D19 개정과 R5-14. 세션 종료 후 report-worker의 `evaluate` 노드�
 - 시간 초과: 그래프와 무관하게 api가 결정적으로 채운다.
 - MCP upstream_unavailable: 1회 재시도, 그래도 실패면 그 변경을 건너뛰고 실행 failed(스케줄러 재실행).
 
-## 완료 기준
+## 검증 항목
 
-완료 기준은 가짜 MCP·가짜 hub(SessionPorts 가짜 구현) 위의 단위 기준이다. WS·재시작은 web-integrate·e2e가 확인한다(R6-e).
+가짜 MCP·가짜 hub(SessionPorts 가짜 구현) 위 단위 테스트가 확인하는 항목이다. WS·재시작은 e2e와 단계별 화면 테스트가 확인한다.
 
 - 최소 흐름: 지원자 메시지 1개 → 의도 분류 → 토론 그래프(turn이 지명된 자리 선택) → respond → guard → stance_check → apply(post_message·set_stance) → 가짜 hub에 `typing` start/stop(FakeAgentRunner 교체).
 - 15분 세션 대본(가짜 시계): 단계 시작마다 고정 입장 화자가 말함(문제 상황은 카드 전 입장 표명 없음), 합의 3/4 즉시 지지자 자리의 `fill_slot` 한 번으로 칸과 공지(seq 5)가 함께 저장, 이미 합의가 있는 자극에서 respond·apply 호출 0회·공지용 `post_message` 0건, 이번 AI 발언으로 3/4가 되면 같은 run에서 채움, `fill_slot` 409면 칸·공지 0건, 같은 run_id 재실행은 기존 결과, 합의 전에는 칸을 채우지 않음(409 `no_consensus` 흐름 포함), 그래프가 timeout 채우기를 하지 않음, 카드 6장이 `card_due`로 발동하고 `record_observation`이 첫 카드 발언 게시 뒤 1회씩.
@@ -278,4 +266,4 @@ D18·D19 개정과 R5-14. 세션 종료 후 report-worker의 `evaluate` 노드�
 - 의도 분류: 픽스처 20문장에서 스키마 위반 0과 실 모델 정확도 기준선 기록, `confidence` 출력, 단계 전환 뒤 꺼낸 이전 단계 메시지가 그 메시지 단계의 카탈로그로 분류·저장됨, 카탈로그 안을 지원자가 먼저 말하면 `scenario_option_key`로 판정, 실패 주입 시 other·fallback=true.
 - LangSmith trace에 `agent_run_id`, `agent_runs.decision`에 턴 결정 저장.
 - 결정적 LLM 모드: `LLM_FAKE=1`에서 같은 단계 시드·같은 지원자 입력을 두 번 돌리면 게시 문장·안·입장·칸 결과가 같고 LLM 실제 호출 0회, `AGENT_RUNNER` 기본값이 config와 runner 선택에서 `session`으로 같다.
-- 평가 에이전트: 픽스처 세션에서 요소마다 호출 1회, 프롬프트 스냅샷에 대화 전체·그 요소 척도와 앵커만 있고 다른 요소 결과가 없음, 출력 스키마 위반 0, 근거 참조가 4종 문자열 형식, 모델이 요소 `level`을 내지 않음, 형식 오류 주입 시 요소 단위 재요청 1회, 확신도 상한 위반은 clamp. 같은 세션 3회 재평가의 차원 수준 변동 폭 기록(R7, [product/rubric.md](../product/rubric.md) 9.2).
+- 평가 에이전트: 픽스처 세션에서 검증에 걸리지 않으면 요소마다 호출 1회, 프롬프트 스냅샷에 대화 전체·그 요소 척도와 앵커만 있고 다른 요소 결과가 없음, 출력 스키마 위반 0, 근거 참조가 4종 문자열 형식, 모델이 요소 `level`을 내지 않음, 형식 오류 주입 시 요소 단위 재요청 1회, 확신도 상한 위반은 clamp. 같은 세션 3회 재평가의 차원 수준 변동 폭 기록(R7, [product/rubric.md](../product/rubric.md) 9.2).

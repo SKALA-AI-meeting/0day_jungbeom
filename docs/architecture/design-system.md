@@ -1,8 +1,8 @@
 # 디자인 시스템 (web)
 
-컨셉은 **Apple스러운 디자인**(브리프 D13-2): 넓은 여백과 분명한 위계, 흰색·#F5F5F7 바탕, 시스템 블루 강조색 하나, 시스템 폰트 + Pretendard, 일관된 둥근 모서리와 얇은 구분선, 최소한의 반투명, 절제된 전환. 채팅은 iMessage식 말풍선이고 D13-1(이름+아바타, 색만으로 구분 금지)·D13-3(지원자 표시 이름, AI 동료 프로필 이미지)을 함께 따른다. 라이트·다크 모두 지원한다.
+컨셉은 **Apple스러운 디자인**(D13-2): 넓은 여백과 분명한 위계, 흰색·#F5F5F7 바탕, 시스템 블루 강조색 하나, 시스템 폰트 + Pretendard, 일관된 둥근 모서리와 얇은 구분선, 최소한의 반투명, 절제된 전환. 채팅은 iMessage식 말풍선이고 D13-1(이름+아바타, 색만으로 구분 금지)·D13-3(지원자 표시 이름, AI 동료 프로필 이미지)을 함께 따른다. 라이트·다크 모두 지원한다.
 
-토큰은 `apps/web/app/globals.css`가 정본이고 이 문서는 뜻·쓰임과 web-kit이 정한 현재 값을 적는다. 라이트는 `@theme`, 다크는 `@media (prefers-color-scheme: dark)` 안의 `:root:not(.light)` 재정의다(UX 결정 9: 시스템 설정만 따름). `:root.dark`·`.light` 클래스는 캡처·점검에서 테마를 강제로 켤 때만 쓴다. Tailwind 유틸리티 이름은 토큰 이름 그대로(`bg-accent-fill`, `text-on-accent`, `rounded-bubble-tail` 등)다. 값을 바꾸면 globals.css와 이 문서를 함께 고치고 대비 표를 다시 잰다. 관찰 목적·디자인 컨셉·레이아웃과 화면별 규칙은 `design.md`.
+토큰은 `apps/web/app/globals.css`가 정본이고 이 문서는 뜻·쓰임과 현재 값을 적는다. 라이트는 `@theme`, 다크는 `@media (prefers-color-scheme: dark)` 안의 `:root:not(.light)` 재정의다(UX 결정 9: 시스템 설정만 따름). `:root.dark`·`.light` 클래스는 캡처·점검에서 테마를 강제로 켤 때만 쓴다. Tailwind 유틸리티 이름은 토큰 이름 그대로(`bg-accent-fill`, `text-on-accent`, `rounded-bubble-tail` 등)다. 값을 바꾸면 globals.css와 이 문서를 함께 고치고 대비 표를 다시 잰다. 관찰 목적·레이아웃과 화면별 규칙은 [product/user-flows.md](../product/user-flows.md).
 
 ## 디자인 컨셉: Apple스러운 디자인 (D13-2)
 
@@ -15,7 +15,6 @@
 - 피하는 것: 보라·파랑 그라데이션, 반짝이(✨)·로봇 아이콘, 글래스모피즘 남용, 네온, 과한 그림자, 카드만 반복되는 대시보드, 이모지 리액션, 실존 인물 사진.
 - 관리자 화면도 같은 컨셉이다. 리포트는 카드 격자가 아니라 한 열로 읽히는 문서(큰 제목 → 요약표 → 섹션), 목록은 얇은 행 구분선의 표.
 - 서비스 이름과 로고는 Day Zero, Day-Zero, Day-0 중 자유롭게 변주한다.
-- `emilkowalski/skills`는 `apps/web/.agents/skills/<이름>/SKILL.md`에 설치되어 있다(git 무시). 없으면 `npx skills@latest add emilkowalski/skills`. 화면 구성 `emil-design-eng`, 라이브러리 확인 `pick-ui-library`, 모션 `animate`, 마무리 `review-animations`·`break-ui`(긴 별칭, 빈 목록, 긴 메시지, 긴 기획안, 요소 5개).
 
 ## 색
 
@@ -71,7 +70,7 @@ AI 동료 틴트는 **자리**(`p1`·`p2`·`p3`)에 붙고 페르소나 유형�
 | 이니셜 아바타 on-seat | 4.5:1 이상 | 라이트 흰 글자/seat-p1·p2·p3·candidate ≈ 5.1·5.4·5.8·4.7, 다크 검은 글자/seat-p1·p2·p3·candidate ≈ 10.2·10.4·6.0·5.8 |
 
 - 색만으로 구분하지 않는다: AI 동료 말풍선 묶음에는 이름이 항상 보이고, 지원자는 오른쪽 정렬로 구분된다. 칸 결과·수준·확신도·상태도 아이콘 + 글자로 쓴다.
-- 대비 검사는 목업 완료 기준에 들어간다(`design.md`). 값을 바꾸면 이 표를 다시 잰다.
+- 대비 검사는 화면 검증 항목에 들어간다([services/web.md](../services/web.md)). 값을 바꾸면 이 표를 다시 잰다.
 
 ## 타이포·간격·모서리
 
@@ -99,7 +98,7 @@ AI 동료 틴트는 **자리**(`p1`·`p2`·`p3`)에 붙고 페르소나 유형�
 | ConsensusPanel / SlotResult / SlotInput | 화면 이름 "결정 사항": 결과 줄 목록과 현재 정할 항목 입력·[이걸로 정하기] | 결과 줄은 구분선 목록(카드 아님), 시각 없음. SlotInput은 field(keyword는 분절 버튼 4개) + 주 버튼(accent-fill + on-accent) |
 | MaterialList / MarkdownViewer | 자료 목록·잠금 상태, 읽기 전용 Markdown | 본문 폭 최대 68자, 제목 위계는 타이포 표 |
 | AssistantPanel | 요청·응답·인용 칩·복사 | 말풍선 아님. 반짝이·로봇 아이콘 금지 |
-| ProposalEditor | 기획안 6칸·저장 시각·[제출] | 칸 제목 title3, 칸 설명 한 줄(footnote muted, 예: `idea_credit` "이 기획에 반영된 의견과 그 의견을 낸 사람"), textarea는 테두리 없는 문서형 + 하단 구분선 |
+| ProposalEditor | 기획안 6칸·저장 시각·[제출] | 칸 제목 title3, 칸 설명 한 줄(footnote muted, 예: `idea_credit` "이 기획에 반영된 의견과 그 의견을 낸 사람"), textarea는 placeholder "여기에 적어요"와 굵은 테두리(`border-2`, 포커스 시 accent 테두리·링), 잠기면 sunken 바탕 |
 | EvidenceItem | 리포트 근거(`msg:`·`slot:`·`proposal:`, 맥락용 `contribution:`·AI 동료 메시지) | 메시지 근거는 MessageBubble 축소판 재사용(같은 틴트·이름·아바타). 누르면 원문·앞 5·뒤 3 맥락 펼침, 근거 메시지 accent-soft 강조. 맥락 참조는 "맥락" 칩과 보조색 |
 | LevelChip | 요소·차원 수준 "수준 N (1~5)" / 목록용 "설득 3", 기록 없음은 사유 문장 | 숫자 tabular, 수준별 색 구분 없이 중립 톤(높고 낮음을 색으로 서열화하지 않음). 담당자 조정 값은 "담당자 조정됨" 글자 동반 |
 | ConfidenceTag | 차원 확신도 높음/보통/낮음 | 아이콘 + 글자. 낮음은 warning 톤 글자 "근거 약함, 원문 확인 권장" |
@@ -107,7 +106,7 @@ AI 동료 틴트는 **자리**(`p1`·`p2`·`p3`)에 붙고 페르소나 유형�
 | Timeline | 리포트 토론 흐름 띠 | 단계 4칸·칸 결과·카드 표식("설계된 장면" 칩, R1) |
 | Toast | 저장·충돌·제출 안내 | Sonner, 하단 가운데, 그림자 최소 |
 
-삭제: RailItem, ChannelHeader(채널 목록용), DocCard, DocViewer, DocEditor, FinalDoc, BoardColumn, BoardCard, PropertyRow, 파트 태그 색, 상태 알약의 보드 상태(할 일·진행 중·완료). globals.css에 옛 화면 호환으로 남은 `part1~5`·`part*-ink`·`person-*` 토큰은 화면 트랙이 해당 컴포넌트를 지울 때 함께 지운다(새 화면에서 쓰지 않음). StatusPill은 관리자 목록 상태 표시로만 남긴다.
+`globals.css`의 `part1~5`·`part*-ink`·`person-*` 토큰은 `components/ui/chip.tsx`·`avatar.tsx`가 아직 참조한다. StatusPill은 관리자 목록 상태 표시로만 쓴다.
 
 ## 아이콘
 
@@ -125,7 +124,7 @@ AI 동료 틴트는 **자리**(`p1`·`p2`·`p3`)에 붙고 페르소나 유형�
 | 읽기 전용 Markdown(자료) | react-markdown + remark-gfm(표·목록). `skipHtml`로 원문 HTML은 그리지 않음 |
 | 아이콘 | lucide-react |
 
-dnd kit(`@dnd-kit/core`)은 보드 삭제로 의존성에서 뺀다.
+`@dnd-kit/*`는 소스에서 쓰지 않는다(`apps/web/package.json`에 남은 의존성은 정리 대상).
 
 ## 모션 (`animate`·`review-animations` 기준)
 

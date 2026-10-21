@@ -1,5 +1,7 @@
 # 사용자 흐름과 화면 규칙
 
+지원자(입장 → 동의 → 대기 → 토론 → 기획안 → 디브리핑)와 관리자(채용 건 → 초대 → 리포트 검토)의 흐름과 화면 규칙이다. 토큰·컴포넌트는 [architecture/design-system.md](../architecture/design-system.md), 구현 구조와 mock은 [services/web.md](../services/web.md), API·WS 필드는 [contracts/api.md](../contracts/api.md)·[contracts/ws.md](../contracts/ws.md).
+
 ## 관찰 목적
 
 핵심은 **채팅 과정에서 지원자의 인성이 잘 분석되는 것**이고 UI는 거기에 맞춘다. 화면은 평가를 드러내지 않고, 장면이 자연스럽게 일어나고 행동이 기록되게만 한다.
@@ -246,9 +248,9 @@ D13-2 톤: 흰 바탕, 한 열 문서처럼 읽히는 구조, 큰 제목과 분�
 - 필터: 종류, 주체(지원자·AI 동료별·시스템), 단계.
 - 리포트에서 들어오면 `#<record_ref id>` 줄로 스크롤하고 accent-soft 하이라이트, 상단 "리포트로 돌아가기". 읽기 전용, 인쇄 CSS.
 
-## UX 결정 (G-U, 2026-10-21)
+## UX 결정 (2026-10-21)
 
-`docs/review/ux-options.html` 시안 중 추천안으로 사용자가 확정했다.
+사용자가 시안 중 추천안으로 확정한 결정이다. 이유와 기각한 대안은 [decisions.md](../decisions.md) "G-U UX 결정".
 
 | 항목 | 결정 | 이유 |
 |---|---|---|

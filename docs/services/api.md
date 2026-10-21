@@ -1,6 +1,6 @@
-# api 설계 (FastAPI + LangGraph 모듈)
+# api (FastAPI)
 
-2026-10-21 토론형 전환(`docs/handoff/briefs/brief-debate-pivot.md`)과 같은 브리프의 "리뷰 반영 결정"(R1~R7) 기준이다. R 결정이 앞선 결정과 다르면 R이 우선한다. 경로·필드·오류 코드는 [contracts/README.md](../contracts/README.md), 테이블은 [architecture/data-model.md](../architecture/data-model.md), 단계·칸·카드 규칙은 [product/scenario.md](../product/scenario.md), 차원 id·수준 앵커·기록 없음 사유·사실 지표는 [product/rubric.md](../product/rubric.md)(BARS)가 정본이다. 칸 결과는 `resolution: consensus | timeout`, 채운 사람은 자리 id `filled_by: candidate | p1 | p2 | p3`으로 쓴다(시간 초과도 공지한 자리 id, `system` 값은 없다). 트랙 이름과 파일 소유권은 `docs/plan.md`.
+인증·REST·WebSocket·세션 시계·메일박스·DB 쓰기를 맡는 한 프로세스다(공개 8000 + 내부 8001). 실행·테스트 명령은 `services/api/README.md`, 결정 근거(R1~R7 등)는 [decisions.md](../decisions.md). 경로·필드·오류 코드는 [contracts/README.md](../contracts/README.md), 테이블은 [architecture/data-model.md](../architecture/data-model.md), 단계·칸·카드 규칙은 [product/scenario.md](../product/scenario.md), 차원 id·수준 앵커·기록 없음 사유·사실 지표는 [product/rubric.md](../product/rubric.md)(BARS)가 정본이다. 칸 결과는 `resolution: consensus | timeout`, 채운 사람은 자리 id `filled_by: candidate | p1 | p2 | p3`으로 쓴다(시간 초과도 공지한 자리 id, `system` 값은 없다).
 
 ## 구조
 
@@ -12,27 +12,31 @@ services/api/app/
   auth.py                JWT, 역할 의존성, bcrypt, 초대 토큰 해시
   hub.py                 세션별 WS 연결, 세션별 단일 송신 큐(seq 부여), typing 상태(만료 6초)
   mailbox.py             세션별 메일박스: asyncio Task 1개가 자극 큐를 직렬 소비(R5-1)
-  ports.py               SessionPorts: api/agent 경계(typing 전송·generation 조회·자극 enqueue, R6-d)
+  ports.py               SessionPorts: api/agent 경계(typing 전송·generation 조회·자극 enqueue)
   queue.py               RabbitMQ publish(persistent, publisher confirm)
   masking.py             전화번호·이메일 마스킹
   scheduler.py           5초 루프
   services/
     session.py           SessionService: 상태·단계 전이의 유일한 소유자
-    scenario.py          미션 카탈로그 로드(catalog_version), 고정 자리 3·카드 6장 조립, positions.scenario 복사, 자료 원문 시드
+    scenario.py          미션 카탈로그 로드(catalog_version), 고정 자리 3·카드 6장 조립, positions.scenario 복사(평가 프롬프트·금지 패턴 포함), 자료 원문 시드
     consensus.py         합의 판정·시간 초과 선택 함수(아래). api fill 검사와 DebateState가 같은 함수
     timeout.py           단계 마감 결정적 채우기(R5-2, 그래프 없음)
     debate.py            메시지 저장·generation 증가, 의도 분류 반영(안·입장), DebateState 계산, 칸 확정·fill
-    proposal.py          기획안 저장·proposal 시작 채우기·제출
+    proposal.py          기획안 조회·디바운스 저장(revision 검사)·제출
     facts.py             사실 지표 계산([product/rubric.md](../product/rubric.md) 6장), record 타임라인
     budget.py            세션 LLM 비용 누적(`debate_cost_usd`·`cost_usd`)·하드 상한, DebateState `cost_left` 계산
-    office_clock.py      t_min ↔ 오피스 시각(유지)
+    phases.py            단계 전환(start·advance_phase)과 시스템·AI 메시지 저장, run 기록(queue_run)
+    context.py           공개·내부 앱이 함께 쓰는 객체(hub·메일박스·runner·큐·DB·시계) 조립
+    views.py             지원자 쪽 읽기 모델: State 스냅샷, 자료, 디브리핑, 참여자(페르소나 유형 비노출)
+    reports.py           평가 저장(save_evaluation)·리포트 draft/final·담당자 검토·조회 병합·전체 기록
+    admin.py             채용 건 조립 호출·초대·재응시·지원자 목록
+    purge.py             보관 기한(ended_at + 90일) 삭제, 스케줄러가 호출
+    clock.py             시계 주입(가짜 시계 테스트)
+    common.py            오류, 커밋 뒤 효과(WS·자극·큐), 시각 변환, 직렬화
     test_sessions.py     테스트 API: 단계 시드 재생·시간 당기기(`ENABLE_TEST_API=1`일 때만)
-    runs.py              agent_runs 기록, run_agent
   agent/                 debate/ · assistant/ · intent/ · guard/ · llm/ · mcp_client/ · runner.py ([architecture/agents.md](../architecture/agents.md))
   routers/               admin.py · candidate.py · ws.py · internal.py
 ```
-
-삭제: `services/board.py`·`documents.py`·`events.py`(시각 예약 카드)·`releases.py`(자료 지연)·`reuse.py`(재사용 추정)·`views.py`(doc_views), `locks.py`(세션 Lock, R5-1에서 메일박스로 대체), `agent/session/`·`agent/observe/`(실시간 관찰 분류). `states.py`·`context.py`·`messages.py`는 토론형으로 고쳐 `debate.py`에 합친다. `ports.py`와 `services/api/pyproject.toml` 의존성(G-F 동결 버전은 `docs/plan.md` "agent-spike 결과"), G-F 교차 인터페이스 stub(`app/agent/intent` stub 등)은 be-foundation이 먼저 넣고 G-F 뒤 agent 트랙에 인계한다(R6-d).
 
 ## 인증
 
@@ -47,7 +51,7 @@ services/api/app/
 
 1. 미션 폴더 해시 → `catalog_version`(`scenarios/version.py`, rag-mcp 색인과 같은 함수).
 2. 자리 3개는 **고정**(R2): `p1` 고집형 강한결, `p2` 소극형 윤하람, `p3` 비판형 서지안. `seats: [{seat, persona_type, name, avatar}]`로 저장(D13-3, `avatar`는 카탈로그 `personas.yaml`의 `avatar` 필드). 동조형·발산형과 요소 → 페르소나 결정 규칙은 MVP 이후 확장이다([product/scenario.md](../product/scenario.md)).
-3. 카드 6장(카드별 `offset_min`을 `session_minutes`에 비례 환산, 최소 20초), 키워드 후보 4개와 키워드별 문제·해결책 고정 안(해결책은 "방향" 단위)·자료 목록, 자리별 프롬프트·공통 규칙·금지 문구 패턴·고정 문장(칸 채우기·시간 초과·안전 문구), 단계 예산(10·18·18·14 비율)·마감 임박·침묵 초대 설정, 척도(차원 19개·수준 앵커·`rubric_version`)와 평가 프롬프트를 복사.
+3. 카드 6장(카드별 `offset_min`을 `session_minutes`에 비례 환산, 최소 20초), 키워드 후보 4개와 키워드별 문제·해결책 고정 안(해결책은 "방향" 단위)·자료 목록, 자리별 프롬프트·공통 규칙·금지 문구 패턴·고정 문장(칸 채우기·시간 초과·안전 문구), 단계 예산(10·18·18·14 비율)·마감 임박·침묵 초대 설정, 척도(차원 19개·수준 앵커·`rubric_version`)와 평가 프롬프트·평가 금지 패턴을 복사. 워커는 이 복사본으로 평가하므로 카탈로그 파일이 바뀌어도 같은 채용 건의 평가 프롬프트는 같다.
 4. 자료 원문 시드(R5-18): 카탈로그 `materials/<keyword>/*.md` 원문을 `catalog_version`별로 DB에 넣는다(이미 그 버전이 있으면 건너뜀). 목록·검색·본문 조회가 모두 같은 `catalog_version`을 쓴다. 카탈로그 파일을 바꿔도 기존 채용 건은 자기 버전 원문을 본다.
 
 응답과 지원자 쪽 API는 자리 id·`display_name`·`avatar_url`만 내보내고 `persona_type`은 관리자 리포트·디브리핑·내부 API에서만 낸다.
@@ -97,7 +101,7 @@ services/api/app/
 
 ## 합의 판정과 시간 초과 선택 (`services/consensus.py`)
 
-순수 함수 `judge(options, stances, intents, participants, default_option) -> {consensus_option_id, timeout_option_id, current_support}`. 수치·우선순위는 [product/scenario.md](../product/scenario.md)가 정본이고 계약은 입력과 결과만 고정한다.
+순수 함수 `judge(options, stances, default_option_id=None)`(`services/consensus.py`)가 합의 안·시간 초과 안·참여자별 현재 지지를 함께 돌려준다. 지원자 입장은 의도 분류가 `confidence: high`일 때만 `stances` 행이 되므로 입력은 안과 입장 이력뿐이다. 수치·우선순위는 [product/scenario.md](../product/scenario.md)가 정본이고 계약은 입력과 결과만 고정한다.
 
 - 현재 지지 = **참여자당 하나**. 다른 안을 support하면 이전 지지를 대체하고, 같은 안에 대한 후속 `oppose`는 그 지지를 철회한다(R5-7). 지원자 입장은 `confidence: high`인 `agree`·`propose`만 지지로 센다(R4).
 - consensus: 지원자 포함 4명 중 3명 이상 지지. 성립 즉시 판정한다(합의 대기 시간 없음, R4).
@@ -125,7 +129,7 @@ services/api/app/
 - `GET /sessions/{id}/materials`: keyword 칸 확정 전 `locked=true`·빈 목록. 확정 키워드의 자료 목록은 `positions.scenario`의 키워드별 자료.
 - `GET .../materials/{material_id}`: 열린 자료가 아니면 423 `not_released`. 본문은 채용 건 `catalog_version`으로 DB에 시드된 원문(R5-18). `material_views` 기록.
 - 내부 `GET /internal/sessions/{id}/materials`(+본문): rag-mcp가 잠금·키워드·catalog_version을 확인하고 본문을 읽는 원천.
-- `POST /sessions/{id}/assistant{prompt}`: 세션 60회 초과 429 `assistant_limit`. 요청·응답 메시지(channel=assistant)와 `assistant_calls`(도구 호출 내역 포함) 기록, 어시스턴트 그래프 실행(메일박스 밖, 토론 그래프와 독립). 어시스턴트는 tool-calling 루프다([architecture/agents.md](../architecture/agents.md), R5-13).
+- `POST /sessions/{id}/assistant{prompt}`: 세션 60회 초과 429 `assistant_limit`. 요청·응답 메시지(channel=assistant)와 `assistant_calls`(도구 호출 내역 포함) 기록, 어시스턴트 실행(메일박스 밖, 토론 그래프와 독립). 어시스턴트는 Python 도구 호출 루프다([architecture/agents.md](../architecture/agents.md), R5-13).
 
 ## 비용 (`services/budget.py`, R5-11)
 
@@ -142,11 +146,12 @@ idle:      토론 단계에서 그 단계 `invite_delivered`가 false이고 침�
            같은 단계의 idle이 큐에 대기 중이면 넣지 않는다. 매 틱 조건을 다시 보므로 이전 idle이 초대 없이 끝났어도 다시 들어간다(R5-3)
 card_due:  토론 단계에서 세션 카드의 예정 시각(phase_started_at + offset_min, 최소 20초) 도달
            AND 그 카드의 단계가 현재 단계 AND 담당 자리 전원이 delivered가 아님 → stimulus=card_due{card_id} (enqueue마다 새 uuid4 run_id).
-           같은 card_id의 card_due가 큐에 있거나 실행 중이면 넣지 않는다. 멱등은 `session_cards.delivered_seats`로 판단
+           같은 card_id의 card_due가 큐에 있거나 실행 중이면 넣지 않는다. 같은 카드는 마지막 run 뒤 30초 간격·최대 3회까지만.
+           멱등은 `session_cards.delivered_seats`로 판단
 expiry:    in_progress AND now ≥ ends_at → submit("timeout")
 runs:      agent_runs.status=started AND started_at < now-200s(역할별 타임아웃 합 + 여유) → 같은 run_id로 재실행
 outbox:    completed AND report_enqueued_at null → report.generate 재발행 / approving AND approve_enqueued_at null → report.approve 재발행
-purge:     ended_at + 90일 지난 세션 삭제(completed·failed·cancelled 모두, [architecture/data-model.md](../architecture/data-model.md) 보관 표, R5-21)
+purge:     ended_at + 90일 지난 세션 삭제(`services/purge.py` `purge_expired`, completed·failed·cancelled 모두, [architecture/data-model.md](../architecture/data-model.md) 보관 표, R5-21)
 ```
 
 그래프 자극은 4종(`message`·`phase_started`·`idle`·`card_due`)이고 정본은 [architecture/session-lifecycle.md](../architecture/session-lifecycle.md) "그래프 자극"이다. `timeout`과 `room_quiet`는 없다(R5-2·R5-3). 카드 트리거는 시각 기반 `card_due` 하나뿐이다(이벤트 트리거 없음, R5-4). 침묵 초대 전달 여부는 단계별 `invite_delivered` 플래그로 추적한다(초대 메시지가 실제 게시될 때 api가 켬).
@@ -195,16 +200,16 @@ e2e·단계별 테스트가 15분을 처음부터 기다리지 않게 하는 두
 
 `GET /sessions/{id}/debrief`: 첫 문장은 고정 문구 "같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 반응을 봅니다"(R1). 이어서 실제 발동한 카드(`observations`)마다 시나리오 디브리핑 문장, 평가 요소 이름과 "이렇게 봅니다" 한 줄(척도 세부·차원 앵커는 공개하지 않음), 지원자 본인 발언 원문(토론 단계마다 가장 긴 지원자 메시지 1개, 최대 3개, 결정적 선택, 읽기 전용 회고, R7), 자리별 `display_name`·`avatar_url`·성향 설명(지원자는 `display_name`만), 평가 결과 비공개 안내, 이의 제기 경로(문의 창구와 절차 한 줄, R1·R7), 끊김 구간, 보관 안내, 제출 기획안, 설문 상태(2문항 + 자유 의견 한 칸, R7). 세션 실패면 중단 안내만. 기한 = `ended_at` + 7일.
 
-## 완료 기준
+## 검증 항목
 
-- 기반: `docker compose up`에서 api healthy, 토론형 스키마 마이그레이션(삭제 테이블 제거, options·stances·slots(`empty|confirmed`)·message_intents(`confidence`)·proposals·observations·evaluations·`evaluation_runs`·차원 단위 rubric_adjustments 새 형태, `sessions.display_name`·`generation`·`ended_at`, 버전별 자료 원문), SessionService 단위 테스트(전이 전부·멱등, 제출 즉시 completed·자동 제출 `auto_submitted`·시작 후 취소·실패와 취소의 `ended_at`·regenerate·reissue 토큰 교체).
+- 기반: compose에서 api healthy, 스키마(options·stances·slots(`empty|confirmed`)·message_intents(`confidence`)·proposals·observations·evaluations·`evaluation_runs`·차원 단위 rubric_adjustments 새 형태, `sessions.display_name`·`generation`·`ended_at`, 버전별 자료 원문), SessionService 단위 테스트(전이 전부·멱등, 제출 즉시 completed·자동 제출 `auto_submitted`·시작 후 취소·실패와 취소의 `ended_at`·regenerate·reissue 토큰 교체).
 - 조립: 자리 3개가 강한결·윤하람·서지안 고정, 카드 6장·차원 19개, `offset_min` 환산 최소 20초, `avatar` 파일 이름에 유형 이름이 없음, 자료 원문이 `catalog_version`별로 시드. 지원자 응답(`/state`, entry, consent, start)에 `persona_type`이 없다.
 - 이름·입장: 입장·consent·resume 응답에 `session_id`, 입장 응답에 초대 이름, 시작 전 `/state`에 참여자 이름·아바타, consent의 `display_name`이 `/state.participants`·디브리핑에 쓰이고 비우면 별칭, `/assets/...` 이미지가 200.
 - 메일박스: 가짜 시계·가짜 그래프로 자극이 직렬 처리됨, 메시지 저장 시 generation +1이고 그 자극의 generation이 저장 값, `message.ack`이 의도 분류 전에 나감, `agent_runs`가 `queued`로 저장된 뒤 enqueue, 단계 전환 뒤 꺼낸 이전 단계 메시지가 그 메시지 단계의 카탈로그로 분류·저장되고 턴·발언만 skipped, 게시 직전 generation이 바뀌면 남은 화자 버림, `phase_started`는 enqueue만, 같은 run_id의 finished run은 재실행 안 됨, 낡은 message 자극도 의도 분류·안·지지 반영은 되고 그래프만 skipped, 200초 넘은 started run 재실행.
 - 단계·칸: 지원자 확정 → `slot.confirmed`·`phase.changed`·`timer` 순서와 keyword 확정 시 `materials.opened`, 마감 누적 이월, keyword 후보 밖 422, problem·solution 확정의 문자열·카탈로그 키 연결과 불일치 시 `option_id=null`(LLM 호출 0), AI fill의 합의 전 409 `no_consensus`(칸·공지 0건), AI fill 성공 시 칸 확정과 공지(seq 5, `consensus_fill`)가 같은 트랜잭션이고 WS가 `message.new` → `slot.confirmed` → `phase.changed` → `timer`, 같은 run_id 재호출은 기존 칸·공지, 409 검사 순서 `phase_not_open` → `slot_confirmed` → `no_consensus`, 동시 확정 시 하나만 성공, 마감 시 api 결정적 채우기(우선순위 자리 이름·R7 문구·LLM 0), proposal 진입 시 기획안 앞 3칸 채우기.
 - 합의 판정 단위 테스트: 3/4 즉시 성립(대기 없음), confidence low인 지원자 agree 미집계, 다른 안 support가 이전 지지를 대체, 같은 안 후속 oppose가 지지 철회, 카탈로그 안을 지원자가 먼저 말하면 같은 option_id·proposer=candidate이고 이후 AI propose도 같은 행.
 - 메시지·WS: ack·증분·재연결 후 `/state`, `origin`(초대 뒤 첫 발언만 invited), 의도 분류 → 안·입장 반영, 분류 실패 시 other, 모든 프레임에 연속 `seq`, typing 6초 만료.
-- 시간(가짜 시계 단위 테스트 + 15분 실 스택 1~2개, R3): 단계 마감 → `phase.changed` 15초 안, 마감 임박 안내 1건, 침묵 초대 조건에서 `invite_delivered=false`인 동안 idle 재enqueue(대기 중이면 중복 없음), 카드 예정 시각에 card_due, 담당 전원 delivered 전까지 새 run_id로 재enqueue(큐·실행 중이면 중복 없음), `ends_at` 자동 제출과 큐 발행.
+- 시간(가짜 시계 단위 테스트 + 15분 실 스택 1~2개, R3): 단계 마감 → `phase.changed` 15초 안, 마감 임박 안내 1건, 침묵 초대 조건에서 `invite_delivered=false`인 동안 idle 재enqueue(대기 중이면 중복 없음), 카드 예정 시각에 card_due, 담당 전원 delivered 전까지 새 run_id로 재enqueue(큐·실행 중이면 중복 없음, 카드당 최대 3회·30초 간격), `ends_at` 자동 제출과 큐 발행.
 - 자료·어시스턴트: 키워드 확정 전 목록 잠김·본문 423, 확정 뒤 그 키워드 자료만(채용 건 버전 원문), 열람 기록, 어시스턴트 60회 초과 429.
 - 비용: `debate_cost_usd` 하드 상한 $2 초과 주입 시 페르소나가 고정 안전 문구만 게시, 세션 진행은 계속. 리포트 비용은 `cost_usd`에만 더해지고 `cost_left`에 영향 없음.
 - 테스트 API: `start_at`마다(keyword·problem·solution·proposal·ended) 만든 세션의 `/state`가 그 단계 시작 상태이고 앞 단계 칸이 시드대로 confirmed, generation·seq가 연속, `advance{to: deadline}` 뒤 다음 틱에 시간 초과 채우기, `advance{to: "card:<id>"}` 뒤 card_due enqueue, `ENABLE_TEST_API` 없으면 404.

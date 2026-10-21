@@ -1,8 +1,6 @@
-# 워커와 인프라
+# report-worker
 
-2026-10-21 토론형 전환과 D18·D19 개정(BARS + 평가 에이전트, 브리프 "평가 결과 계약"), 같은 브리프의 "리뷰 반영 결정" R5-14·15 기준이다(R이 앞선 결정보다 우선). 차원 id·수준 앵커·기록 없음 사유·사실 지표·워커 검증 규칙은 [product/rubric.md](../product/rubric.md), 리포트 형식·`save_evaluation` 입출력·근거 참조 형식·큐 메시지는 [contracts/README.md](../contracts/README.md)가 정본이다.
-
-## report-worker (`services/report-worker/`)
+BARS + 평가 에이전트(D18·D19 개정, R5-14·15, [decisions.md](../decisions.md)). 큐 설정과 compose 의존은 [architecture/deployment.md](../architecture/deployment.md). 차원 id·수준 앵커·기록 없음 사유·사실 지표·워커 검증 규칙은 [product/rubric.md](../product/rubric.md), 리포트 형식·근거 참조 형식은 [contracts/api.md](../contracts/api.md), `save_evaluation` 입출력은 [contracts/internal.md](../contracts/internal.md), 큐 메시지는 [contracts/queue.md](../contracts/queue.md)가 정본이다.
 
 세션 종료 후 큐 작업으로 **세션 기록 수집 → 사실 지표 → 평가 에이전트의 차원별 수준 판단 → 리포트 초안 → 담당자 승인 대기 → 확정**을 한다. 작은 LangGraph 그래프, thread_id `report:{session_id}:{eval_round}`, PostgresSaver(워커는 이 thread만 접근). 평가 회차마다 thread가 따로라 새 `eval_round`는 이전 회차의 interrupt 체크포인트를 재사용하지 않는다. 리포트는 담당자가 평가할 때 보는 참고 자료이고 합격·불합격·순위·총점은 만들지 않는다.
 
@@ -12,20 +10,21 @@ collect → aggregate → evaluate → draft → approval[interrupt] → finaliz
 
 draft와 approval(interrupt)을 나눈 이유: LangGraph는 재개 시 interrupt가 있던 노드를 처음부터 다시 실행하므로, 같은 노드에 두면 draft 조립(근거 맥락 조회·검증)이 재실행된다.
 
-### 처리 순서
+## 처리 순서
 
 1. `report.generate` 소비(prefetch 1, manual ack). 본문 `{session_id, attempt, eval_round}`(`eval_round`는 api가 정한 평가 회차, 첫 발행 1). 본문의 `eval_round`로 thread `report:{session_id}:{eval_round}`를 열고 그 상태를 본다: interrupt에 멈춰 있으면 6단계(draft 저장)부터, final까지 끝났으면 ack만, 체크포인트가 없으면 collect부터. 체크포인트 재개는 같은 `eval_round`의 재시도에만 일어난다.
 2. **collect**: assessment-mcp `get_session_record`로 평가 입력 묶음(대화 전체·칸 기록·기획안 제출본·카드 발생 observations·사실 지표·Contributions)을 한 번에 받고 `get_rubric`(세션에 복사된 척도와 버전), `get_contributions`를 읽는다. 리포트 머리용 세션 정보(seats·alias·display_name·completed_at·session_minutes)·어시스턴트 호출·접속 끊김은 내부 REST로 읽는다. 사실 지표는 api 계산값을 그대로 쓰고 워커는 재계산하지 않는다.
 3. **aggregate**(결정적): 사실 지표([product/rubric.md](../product/rubric.md) 6장)를 리포트 `facts`로 정리하고, 카드 창([product/scenario.md](../product/scenario.md) 4.2 `window`, 관찰의 발동 시각 기준)과 `contribution_check`(안별 실제 최초 제안자 / 기획안에 적힌 기여자)를 만든다. 이 단계는 수준을 정하지 않는다.
-4. **evaluate**(LLM, `MODEL_EVALUATOR`, temperature 0~0.2): 평가 에이전트가 **요소마다 별도 호출**(5요소 고정, R2)로 그 요소의 차원 전부를 판단한다. 입력은 세션 대화 전체와 칸 기록·기획안·카드 발생 기록·사실 지표·Contributions, 그 요소의 척도와 앵커(프롬프트 구성은 [architecture/agents.md](../architecture/agents.md) "평가 에이전트"). **다른 요소의 판단 결과는 입력에 넣지 않는다**(후광 방지). 카드 관찰 창은 핵심 장면 위치일 뿐 입력을 자르지 않는다. 검증으로 차원 행이 바뀐 요소는 최종 차원 행만 입력으로 summary를 최대 1회 다시 쓴다([product/rubric.md](../product/rubric.md) 7.3).
+4. **evaluate**(LLM, `MODEL_EVALUATOR`, temperature 0~0.2): 평가 에이전트가 **요소마다 별도 호출**(5요소 고정, R2)로 그 요소의 차원 전부를 판단한다. 입력은 세션 대화 전체와 칸 기록·기획안·카드 발생 기록·사실 지표·Contributions, 그 요소의 척도와 앵커(프롬프트 구성은 [architecture/agents.md](../architecture/agents.md) "평가 에이전트"). **다른 요소의 판단 결과는 입력에 넣지 않는다**(후광 방지). 카드 관찰 창은 핵심 장면 위치일 뿐 입력을 자르지 않는다. 검증으로 차원 행이 바뀐 요소는 최종 차원 행만 입력으로 summary를 최대 1회 다시 쓴다([product/rubric.md](../product/rubric.md) 7.3). 그래서 평가 LLM 호출은 기본 5회이고 재요청·summary 재작성이 조건부로 더해진다.
+   - 평가 프롬프트(`prompts/evaluator/*.md`)와 평가 금지 패턴은 `positions.scenario`의 채용 건 스냅샷에서 읽는다. 스냅샷이 없는 옛 채용 건만 마운트된 카탈로그(`SCENARIOS_DIR`)의 현재 파일을 읽는다.
    - 먼저 현재 run_id로 저장된 평가가 있는지 내부 `GET /evaluations`로 본다(차원 행 + `evaluation_runs`의 요소 요약 `elements`). 있으면 LLM을 다시 부르지 않고 차원·요소 요약을 그대로 재사용한다(재전달 멱등, 저장 직후 체크포인트 전에 죽어도 요소 요약이 복구된다).
    - **워커 검증**([product/rubric.md](../product/rubric.md) 7.3, 차원마다): `dimension_id`가 그 요소의 차원 목록 안이고 차원마다 정확히 한 행, `level`과 `no_record_reason` 중 하나만, **근거 없는 수준 금지**(수준이 있으면 `evidence_refs`가 같은 세션의 실제 행이고 수준 1~3은 지원자 근거 1개 이상, **4·5는 서로 다른 지원자 근거 2개 이상**(1개면 거부하지 않고 수준 3·확신도 최대 medium으로 상한), 맥락 참조는 개수에 안 셈, `hon_credit_record` 예외), `rationale`·`summary` 금지어(합격·불합격·순위·추천·척도 밖 점수 표현).
-   - **재요청은 요소 단위 1회**(R5-14, 이전의 "차원 단위 1회"를 대체): 형식 오류(스키마 위반·차원 누락·중복·금지어)나 근거 부재가 하나라도 있으면 그 요소 호출 전체를 실패 차원과 사유를 붙여 1회 다시 요청한다. 재요청 뒤에도 실패한 차원만 `level=null`, `no_record_reason=evaluate_failed`(화면 문구는 [product/rubric.md](../product/rubric.md) 5장)로 두고 나머지는 재요청 결과를 쓴다. 자동 대체 모델 없음, 워커가 근거를 고쳐 쓰지 않음(근거 1개 수준 4·5 상한과 확신도 clamp만 예외).
+   - **재요청은 요소 단위 1회**(R5-14): 형식 오류(스키마 위반·차원 누락·중복·금지어)나 근거 부재가 하나라도 있으면 그 요소 호출 전체를 실패 차원과 사유를 붙여 1회 다시 요청한다. 재요청 뒤에도 실패한 차원만 `level=null`, `no_record_reason=evaluate_failed`(화면 문구는 [product/rubric.md](../product/rubric.md) 5장)로 두고 나머지는 재요청 결과를 쓴다. 자동 대체 모델 없음, 워커가 근거를 고쳐 쓰지 않음(근거 1개 수준 4·5 상한과 확신도 clamp만 예외).
    - **확신도 상한은 거부하지 않고 깎는다**(clamp): 근거 1개면 최대 medium, 설득 카드 하나만 발동이면 최대 medium, 보조 장면만이면 최대 low. 상한보다 높게 나오면 워커가 상한 값으로 바꿔 저장한다.
    - LLM 전송 오류·타임아웃은 그 요소를 `evaluate_failed`로 만들지 않는다. 아무것도 저장하지 않고 작업을 실패시켜 큐 재시도(8단계)로 넘긴다.
    - 요소 요약: `level`은 수준이 있는 차원 평균을 워커가 반올림(.5 올림, 전부 기록 없음이면 null), `summary` 1~2줄은 평가 에이전트가 쓴다. `dimension_count`·`no_record_count` 포함.
    - 저장: assessment-mcp `save_evaluation{session_id, run_id, rubric_version, prompt_versions, model, dimensions[], elements[]}`를 5요소를 모두 마친 뒤 한 번. `run_id = uuid5(session_id, "evaluate:" + eval_round)`(큐 재시도는 같은 round라 같은 run_id). `prompt_versions`는 평가 프롬프트 파일(`prompts/evaluator/common.md`와 `prompts/evaluator/<element>.md` 5개)마다의 개별 해시 맵이다(형식 정본 [contracts/internal.md](../contracts/internal.md) EvaluationSave, 단일 `prompt_version` 없음). api가 차원 행과 `evaluation_runs` 한 행(요소 요약 포함)을 함께 저장한다. 멱등 키 `(session_id, run_id)`.
-5. **draft**: Report 형식([contracts/api.md](../contracts/api.md))으로 `elements[]`(element·level·summary), `dimensions[]`(수준·`no_record_reason`·`rationale`·`confidence`·근거), `facts`, `contribution_check`, `seats[]`(지원자 `display_name`, AI 자리 `display_name`·`avatar_url`·유형), `slots`, `cards[]`(card_id·element·fired_at·scene), `debrief.cards`(발동·창), `ai_usage`(시간순 사실만, 분류·비율 없음, 인용은 내부 `GET /assistant_calls`의 `request`·`response` 원문), `position`(`name`은 내부 `GET /sessions/{id}`의 `position.name`)을 만든다. 근거마다 원문(기획안 필드는 발췌)·오피스 시각·`record_ref`를 붙이고, 메시지 근거는 `get_transcript_span`(기본 앞 5·뒤 3)으로 앞뒤 맥락을 붙인다(보여 주기 용도, 판단 입력 아님). 요소 `summary`는 evaluate가 저장한 평가 에이전트 문장을 그대로 쓴다(draft에서 다시 만들지 않음). 카드 장면 `cards[].scene`은 LLM 없이 `positions.scenario`에 복사된 카드 `report_template`([product/scenario.md](../product/scenario.md) 1.1)을 그대로 넣는다. draft에는 LLM 호출이 없다. 요소의 모든 차원이 `evaluate_failed`라 `summary`가 없으면 고정 문장 "시스템: 판단 실패로 요약이 없습니다"를 쓴다. 텍스트 필드 금지어 검사, 모든 evidence 참조가 같은 세션의 실제 행인지 재확인. 총점·합계 필드는 없다.
+5. **draft**: Report 형식([contracts/api.md](../contracts/api.md))으로 `elements[]`(element·level·summary), `dimensions[]`(수준·`no_record_reason`·`rationale`·`confidence`·근거), `facts`, `contribution_check`, `seats[]`(지원자 `display_name`, AI 자리 `display_name`·`avatar_url`·유형), `slots`, `cards[]`(card_id·element·fired_at·scene), `debrief.cards`(발동·창), `ai_usage`(시간순 사실만, 분류·비율 없음, 인용은 내부 `GET /assistant_calls`의 `request`·`response` 원문), `position`(`name`은 내부 `GET /sessions/{id}`의 `position.name`)을 만든다. 근거마다 원문(기획안 필드는 발췌)·오피스 시각·`record_ref`를 붙이고, 메시지 근거는 `get_transcript_span`(기본 앞 5·뒤 3)으로 앞뒤 맥락을 붙인다(보여 주기 용도, 판단 입력 아님). 요소 `summary`는 evaluate가 저장한 평가 에이전트 문장을 그대로 쓴다(draft에서 다시 만들지 않음). 카드 장면 `cards[].scene`은 LLM 없이 `positions.scenario`에 복사된 카드 `report_template`([product/scenario.md](../product/scenario.md) 1.1)을 그대로 넣는다. draft에는 LLM 호출이 없다. 요소의 모든 차원이 `evaluate_failed`라 `summary`가 없으면 고정 문장 "근거가 충분한 판단이 나오지 않아 요약을 쓰지 않았습니다. 원문 기록 확인을 권장합니다"(`evaluate.py` `FAILED_SUMMARY`)를 쓴다. 텍스트 필드 금지어 검사, 모든 evidence 참조가 같은 세션의 실제 행인지 재확인. 총점·합계 필드는 없다.
 6. **approval**: `interrupt(draft)`로 멈춘다(체크포인트 먼저 저장). 워커가 state의 draft로 `POST /report/draft`(멱등, api가 content_hash 저장) → `report_ready` → **ack**. 순서가 체크포인트 → draft 저장 → ack이라 ack 뒤 승인이 와도 재개 대상이 있다.
 7. `report.approve{session_id, eval_round}` 소비 → 본문 `eval_round`의 thread `report:{session_id}:{eval_round}`로 `Command(resume=True)` → **finalize**: draft content를 **그대로** `POST /report/final`(해시 동일, R5-15) → `reviewed` → ack. 담당자 조정은 content에 섞지 않는다. api가 조회 때 `rubric_adjustments`를 병합한다. 멈춘 체크포인트가 없으면(generate가 아직) 15초 뒤 재발행.
 8. 실패·예외(LLM 전송 오류·타임아웃 포함): attempt+1로 재발행(백오프 5·15·45초) 후 원본 ack. attempt ≥ 3이면 `report.dlq`. "3회"는 최초 포함 총 3회. 평가 검증 실패는 이 큐 재시도가 아니라 4단계의 요소 단위 재요청·`evaluate_failed`로 처리한다.
@@ -33,14 +32,13 @@ draft와 approval(interrupt)을 나눈 이유: LangGraph는 재개 시 interrupt
 
 담당자의 "리포트 다시 생성"은 api가 completed로 되돌리고 재발행한다. 저장된 평가에 `evaluate_failed`가 없으면 api가 `eval_round`를 그대로 두므로 같은 thread의 체크포인트에서 재개하고, evaluate에 닿으면 같은 run_id의 저장 평가를 재사용한다(LLM 재호출 없음). `evaluate_failed`가 섞여 있으면 api가 `eval_round`를 +1 해 발행하므로 **새 thread·새 run_id**로 collect부터 다시 돌고 evaluate를 새로 한다(R5-14). 이전 run의 행은 남고 리포트는 새 run 결과를 쓴다.
 
-### 모듈
+## 모듈
 
-`report_worker/{consumer, graph, api, assessment, llm, evaluate, report, heartbeat, config}.py`. `assessment.py`(assessment-mcp 클라이언트, `X-Assessment-Token`)를 새로 두고, `evaluate.py`가 요소별 평가 호출·워커 검증·요소 단위 재요청·확신도 clamp·요소 평균을 맡는다(검증·clamp는 순수 함수로 분리해 단위 테스트). 이전 관찰 레이블·카드 7장 기반 로직, 이전 규칙 집계 모듈(`rubric.py`), 산출물(최종본 출처·문서 목록)·정직 사실(honesty_facts) 섹션은 삭제한다.
+`report_worker/{consumer, graph, api, assessment, llm, evaluate, report, heartbeat, config}.py`. `assessment.py`(assessment-mcp 클라이언트, `X-Assessment-Token`)를 새로 두고, `evaluate.py`가 요소별 평가 호출·워커 검증·요소 단위 재요청·확신도 clamp·요소 평균을 맡는다(검증·clamp는 순수 함수로 분리해 단위 테스트).
 
-## 완료 기준
+## 검증 항목
 
-- `docker compose up`으로 8개 서비스 전부 healthy, 공개 포트가 web·api 8000·rabbitmq 관리(로컬)뿐.
-- 픽스처 세션(지원자 메시지·칸 확정·기획안·관찰)으로: evaluate가 요소마다 LLM 호출 1회(5회, 다른 요소 결과가 프롬프트에 없음), temperature·`MODEL_EVALUATOR` 설정 확인, `save_evaluation` 1회에 척도 버전·`prompt_versions` 맵·모델 포함, 같은 작업 재전달에 LLM 재호출 없음(같은 `(session_id, run_id)`의 차원과 `evaluation_runs.elements` 재사용), save 직후 강제 종료 뒤 재실행에서 요소 요약 복구.
+- 픽스처 세션(지원자 메시지·칸 확정·기획안·관찰)으로: evaluate가 요소마다 LLM 호출 1회(검증에 걸리지 않으면 5회, 다른 요소 결과가 프롬프트에 없음), temperature·`MODEL_EVALUATOR` 설정 확인, `save_evaluation` 1회에 척도 버전·`prompt_versions` 맵·모델 포함, 같은 작업 재전달에 LLM 재호출 없음(같은 `(session_id, run_id)`의 차원과 `evaluation_runs.elements` 재사용), save 직후 강제 종료 뒤 재실행에서 요소 요약 복구.
 - 워커 검증 단위 테스트([product/rubric.md](../product/rubric.md) 7.3): 근거 없는 수준, 맥락 참조만 있는 근거, 다른 세션 메시지 참조, `level`·`no_record_reason` 동시 존재, 차원 누락·중복, 금지어 → 각각 실패하고 요소 호출 1회 재요청. 재요청 뒤에도 실패한 차원만 `evaluate_failed`(다른 차원은 재요청 결과). 수준 4·5에 근거 1개와 확신도 상한 위반은 실패가 아니라 각각 수준 3·확신도 최대 medium, clamp된 값으로 저장. LLM 타임아웃 주입은 저장 0건·큐 재시도. 요소 level이 평균 반올림(.5 올림)과 같고 전부 기록 없음이면 null.
 - 리포트 형태: `elements[]` 5개, `dimensions[]` 19개([product/rubric.md](../product/rubric.md) 3장 id), 수준 있는 차원마다 근거 ≥ 1(4·5는 ≥ 2), evidence가 모두 같은 세션 행, 메시지 근거마다 `record_ref`와 앞 5·뒤 3 맥락, contribution_check가 `get_contributions`와 일치, facts 키가 [product/rubric.md](../product/rubric.md) 6장과 같음, ai_usage 시간순 사실만, 총점·합계 필드 없음, 텍스트 필드 금지어 없음.
 - draft의 `cards[].scene`이 카드 `report_template`과 같고 draft 단계 LLM 호출이 0회.
