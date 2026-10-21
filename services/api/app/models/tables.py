@@ -1,21 +1,24 @@
-"""테이블 모델. infra/db/schema.sql과 1:1이며 DDL은 그 파일이 정본이다.
+"""테이블 모델. infra/db/schema.sql과 1:1이며 DDL은 그 파일이 정본이다(docs/common/data-model.md).
 
-여기서 create_all 하지 않는다.
-
-LangGraph checkpointer 테이블과 rag-mcp 전용 doc_chunks는 매핑하지 않는다.
+여기서 create_all 하지 않는다. CHECK·부분 unique 인덱스는 DDL에만 있다.
+LangGraph checkpointer 테이블과 rag-mcp 전용 material_chunks는 매핑하지 않는다.
 """
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import REAL, Boolean, ForeignKey, Integer, SmallInteger, Text, text
+from sqlalchemy import Boolean, ForeignKey, ForeignKeyConstraint, Integer, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 TZ = TIMESTAMP(timezone=True)
 NOW = text("now()")
 GEN_UUID = text("gen_random_uuid()")
+EMPTY_JSON = text("'{}'::jsonb")
+EMPTY_LIST_JSON = text("'[]'::jsonb")
+EMPTY_ARRAY = text("'{}'")
 
 
 class Base(DeclarativeBase):
@@ -26,61 +29,67 @@ def _pk() -> Mapped[uuid.UUID]:
     return mapped_column(UUID(as_uuid=True), primary_key=True, server_default=GEN_UUID)
 
 
+def _uuid(fk: str | None = None, *, nullable: bool = True) -> Mapped[Any]:
+    args = (ForeignKey(fk),) if fk else ()
+    return mapped_column(UUID(as_uuid=True), *args, nullable=nullable)
+
+
 def _session_fk() -> Mapped[uuid.UUID]:
-    return mapped_column(UUID(as_uuid=True), ForeignKey("sessions.id"), nullable=False)
+    return _uuid("sessions.id", nullable=False)
 
 
-def _doc_fk() -> Mapped[uuid.UUID]:
-    return mapped_column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=False)
+def _created() -> Mapped[datetime]:
+    return mapped_column(TZ, server_default=NOW)
+
+
+# 계정·채용 건 ------------------------------------------------------------------
 
 
 class Company(Base):
     __tablename__ = "companies"
     id: Mapped[uuid.UUID] = _pk()
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
+    created_at: Mapped[datetime] = _created()
 
 
 class Admin(Base):
     __tablename__ = "admins"
     id: Mapped[uuid.UUID] = _pk()
-    company_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False
-    )
+    company_id: Mapped[uuid.UUID] = _uuid("companies.id", nullable=False)
     email: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
+    created_at: Mapped[datetime] = _created()
 
 
 class Position(Base):
     __tablename__ = "positions"
     id: Mapped[uuid.UUID] = _pk()
-    company_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False
-    )
+    company_id: Mapped[uuid.UUID] = _uuid("companies.id", nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    mission_id: Mapped[str] = mapped_column(Text, server_default=text("'planning'"))
-    elements: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
-    session_minutes: Mapped[int] = mapped_column(Integer, server_default=text("120"))
+    mission_id: Mapped[str] = mapped_column(Text, server_default=text("'debate'"))
+    session_minutes: Mapped[int] = mapped_column(Integer, server_default=text("60"))
     catalog_version: Mapped[str] = mapped_column(Text, nullable=False)
     scenario: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
+    created_at: Mapped[datetime] = _created()
 
 
 class Invite(Base):
     __tablename__ = "invites"
     id: Mapped[uuid.UUID] = _pk()
-    position_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("positions.id"), nullable=False
-    )
+    position_id: Mapped[uuid.UUID] = _uuid("positions.id", nullable=False)
     alias: Mapped[str] = mapped_column(Text, nullable=False)
     email: Mapped[str] = mapped_column(Text, nullable=False)
     token_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     expires_at: Mapped[datetime] = mapped_column(TZ, nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(TZ)
     cancelled_at: Mapped[datetime | None] = mapped_column(TZ)
-    previous_session_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
+    previous_session_id: Mapped[uuid.UUID | None] = _uuid()
+    reissued_at: Mapped[datetime | None] = mapped_column(TZ)
+    superseded_at: Mapped[datetime | None] = mapped_column(TZ)
+    created_at: Mapped[datetime] = _created()
+
+
+# 세션과 토론 상태 ----------------------------------------------------------------
 
 
 class Session(Base):
@@ -90,41 +99,31 @@ class Session(Base):
         UUID(as_uuid=True), ForeignKey("invites.id"), nullable=False, unique=True
     )
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'invited'"))
+    phase: Mapped[str | None] = mapped_column(Text)
+    display_name: Mapped[str | None] = mapped_column(Text)
     consented_at: Mapped[datetime | None] = mapped_column(TZ)
     started_at: Mapped[datetime | None] = mapped_column(TZ)
     ends_at: Mapped[datetime | None] = mapped_column(TZ)
-    division: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
-    submitted_at: Mapped[datetime | None] = mapped_column(TZ)
-    deadline_at: Mapped[datetime | None] = mapped_column(TZ)
-    reported_at: Mapped[datetime | None] = mapped_column(TZ)
-    completed_at: Mapped[datetime | None] = mapped_column(TZ)
-    llm_failures: Mapped[int] = mapped_column(Integer, server_default=text("0"))
-    redivisions: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, server_default=text("'[]'::jsonb")
+    phase_started_at: Mapped[datetime | None] = mapped_column(TZ)
+    phase_deadline_at: Mapped[datetime | None] = mapped_column(TZ)
+    generation: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    invite_delivered_phases: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=EMPTY_ARRAY
     )
+    submitted_at: Mapped[datetime | None] = mapped_column(TZ)
+    completed_at: Mapped[datetime | None] = mapped_column(TZ)
+    ended_at: Mapped[datetime | None] = mapped_column(TZ)
+    llm_failures: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    debate_cost_usd: Mapped[Decimal] = mapped_column(
+        Numeric, nullable=False, server_default=text("0")
+    )
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric, nullable=False, server_default=text("0"))
     report_enqueued_at: Mapped[datetime | None] = mapped_column(TZ)
     approve_enqueued_at: Mapped[datetime | None] = mapped_column(TZ)
+    eval_round: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     failed_stage: Mapped[str | None] = mapped_column(Text)
     failed_reason: Mapped[str | None] = mapped_column(Text)
-    token_usage: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
-
-
-class SessionEvent(Base):
-    __tablename__ = "session_events"
-    id: Mapped[uuid.UUID] = _pk()
-    session_id: Mapped[uuid.UUID] = _session_fk()
-    card_id: Mapped[str] = mapped_column(Text, nullable=False)
-    element: Mapped[str | None] = mapped_column(Text)
-    due_at: Mapped[datetime] = mapped_column(TZ, nullable=False)
-    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"))
-    fired_at: Mapped[datetime | None] = mapped_column(TZ)
-    done_at: Mapped[datetime | None] = mapped_column(TZ)
-    attempts: Mapped[int] = mapped_column(Integer, server_default=text("0"))
-    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    texture: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    or_on_submit: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    document_missing: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    created_at: Mapped[datetime] = _created()
 
 
 class Message(Base):
@@ -133,166 +132,116 @@ class Message(Base):
     session_id: Mapped[uuid.UUID] = _session_fk()
     channel: Mapped[str] = mapped_column(Text, nullable=False)
     sender: Mapped[str] = mapped_column(Text, nullable=False)
+    phase: Mapped[str | None] = mapped_column(Text)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    event_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("session_events.id")
-    )
-    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    run_id: Mapped[uuid.UUID | None] = _uuid()
     seq: Mapped[int | None] = mapped_column(Integer)
     client_msg_id: Mapped[str | None] = mapped_column(Text)
-    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
+    origin: Mapped[str | None] = mapped_column(Text)
+    is_invite: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    card_ids: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=EMPTY_ARRAY
+    )
+    cited_material_ids: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=EMPTY_ARRAY
+    )
+    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=EMPTY_JSON)
+    created_at: Mapped[datetime] = _created()
+
+
+class Option(Base):
+    __tablename__ = "options"
+    id: Mapped[uuid.UUID] = _pk()
+    session_id: Mapped[uuid.UUID] = _session_fk()
+    phase: Mapped[str] = mapped_column(Text, nullable=False)
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    proposer: Mapped[str] = mapped_column(Text, nullable=False)
+    scenario_option_key: Mapped[str | None] = mapped_column(Text)
+    source_message_id: Mapped[uuid.UUID | None] = _uuid("messages.id")
+    created_at: Mapped[datetime] = _created()
+
+
+class MessageIntent(Base):
+    __tablename__ = "message_intents"
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("messages.id"), primary_key=True
+    )
+    session_id: Mapped[uuid.UUID] = _session_fk()
+    phase: Mapped[str] = mapped_column(Text, nullable=False)
+    intent: Mapped[str] = mapped_column(Text, nullable=False)
+    target_option_id: Mapped[uuid.UUID | None] = _uuid("options.id")
+    scenario_option_key: Mapped[str | None] = mapped_column(Text)
+    new_option_label: Mapped[str | None] = mapped_column(Text)
+    confidence: Mapped[str] = mapped_column(Text, nullable=False)
+    addressed_to: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=EMPTY_ARRAY
+    )
+    fallback: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    model: Mapped[str | None] = mapped_column(Text)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = _created()
+
+
+class Stance(Base):
+    __tablename__ = "stances"
+    id: Mapped[uuid.UUID] = _pk()
+    session_id: Mapped[uuid.UUID] = _session_fk()
+    phase: Mapped[str] = mapped_column(Text, nullable=False)
+    participant: Mapped[str] = mapped_column(Text, nullable=False)
+    option_id: Mapped[uuid.UUID] = _uuid("options.id", nullable=False)
+    stance: Mapped[str] = mapped_column(Text, nullable=False)
+    source_message_id: Mapped[uuid.UUID] = _uuid("messages.id", nullable=False)
+    run_id: Mapped[uuid.UUID | None] = _uuid()
+    created_at: Mapped[datetime] = _created()
+
+
+class Slot(Base):
+    __tablename__ = "slots"
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sessions.id"), primary_key=True
+    )
+    phase: Mapped[str] = mapped_column(Text, primary_key=True)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'empty'"))
+    value: Mapped[str | None] = mapped_column(Text)
+    option_id: Mapped[uuid.UUID | None] = _uuid("options.id")
+    filled_by: Mapped[str | None] = mapped_column(Text)
+    resolution: Mapped[str | None] = mapped_column(Text)
+    support: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    confirmed_at: Mapped[datetime | None] = mapped_column(TZ)
+    run_id: Mapped[uuid.UUID | None] = _uuid()
+
+
+class Proposal(Base):
+    __tablename__ = "proposals"
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sessions.id"), primary_key=True
+    )
+    sections: Mapped[dict[str, str]] = mapped_column(
+        JSONB, nullable=False, server_default=EMPTY_JSON
+    )
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    updated_at: Mapped[datetime] = _created()
+    submitted: Mapped[dict[str, str] | None] = mapped_column(JSONB)
+    submitted_at: Mapped[datetime | None] = mapped_column(TZ)
+    auto_submitted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
 
 class AgentRun(Base):
     __tablename__ = "agent_runs"
     run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     session_id: Mapped[uuid.UUID] = _session_fk()
-    stimulus: Mapped[str] = mapped_column(Text, nullable=False)
-    ref_ids: Mapped[list[uuid.UUID]] = mapped_column(
-        ARRAY(UUID(as_uuid=True)), server_default=text("'{}'")
-    )
-    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'started'"))
-    usage: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
-    started_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
+    graph: Mapped[str] = mapped_column(Text, nullable=False)
+    stimulus: Mapped[str | None] = mapped_column(Text)
+    ref_id: Mapped[str | None] = mapped_column(Text)
+    generation: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'queued'"))
+    decision: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    usage: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=EMPTY_JSON)
+    queued_at: Mapped[datetime] = _created()
+    started_at: Mapped[datetime | None] = mapped_column(TZ)
     finished_at: Mapped[datetime | None] = mapped_column(TZ)
-
-
-class Document(Base):
-    """파트 문서 또는 최종본(part_no null, final). 주인 한 명."""
-
-    __tablename__ = "documents"
-    id: Mapped[uuid.UUID] = _pk()
-    session_id: Mapped[uuid.UUID] = _session_fk()
-    owner: Mapped[str] = mapped_column(Text, nullable=False)
-    part_no: Mapped[int | None] = mapped_column(Integer)
-    final: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    title: Mapped[str] = mapped_column(Text, nullable=False)
-    content: Mapped[str] = mapped_column(Text, server_default=text("''"))
-    revision: Mapped[int] = mapped_column(Integer, server_default=text("0"))
-    updated_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
-
-
-class DocumentRevision(Base):
-    __tablename__ = "document_revisions"
-    id: Mapped[uuid.UUID] = _pk()
-    doc_id: Mapped[uuid.UUID] = _doc_fk()
-    revision: Mapped[int] = mapped_column(Integer, nullable=False)
-    by: Mapped[str] = mapped_column(Text, nullable=False)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-    length: Mapped[int] = mapped_column(Integer, nullable=False)
-    diff_ratio: Mapped[float | None] = mapped_column(REAL)
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
-
-
-class DocumentVersion(Base):
-    __tablename__ = "document_versions"
-    id: Mapped[uuid.UUID] = _pk()
-    doc_id: Mapped[uuid.UUID] = _doc_fk()
-    version: Mapped[int] = mapped_column(Integer, nullable=False)
-    revision: Mapped[int] = mapped_column(Integer, nullable=False)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
-
-
-class DocumentShare(Base):
-    __tablename__ = "document_shares"
-    id: Mapped[uuid.UUID] = _pk()
-    doc_id: Mapped[uuid.UUID] = _doc_fk()
-    version: Mapped[int] = mapped_column(Integer, nullable=False)
-    channel: Mapped[str] = mapped_column(Text, nullable=False)
-    message_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("messages.id"), nullable=False
-    )
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
-
-
-class DocumentOpen(Base):
-    __tablename__ = "document_opens"
-    id: Mapped[uuid.UUID] = _pk()
-    doc_id: Mapped[uuid.UUID] = _doc_fk()
-    version: Mapped[int] = mapped_column(Integer, nullable=False)
-    by: Mapped[str] = mapped_column(Text, server_default=text("'candidate'"))
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
-
-
-class FinalDocument(Base):
-    """최종본 섹션별 내용과 출처. 저장 이력은 최종본 documents 행의 revisions에 남긴다."""
-
-    __tablename__ = "final_document"
-    session_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("sessions.id"), primary_key=True
-    )
-    sections: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, server_default=text("'[]'::jsonb")
-    )
-    updated_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
-
-
-class DocView(Base):
-    __tablename__ = "doc_views"
-    id: Mapped[uuid.UUID] = _pk()
-    session_id: Mapped[uuid.UUID] = _session_fk()
-    doc_id: Mapped[str] = mapped_column(Text, nullable=False)
-    viewed_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
-
-
-class Task(Base):
-    __tablename__ = "tasks"
-    session_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("sessions.id"), primary_key=True
-    )
-    part_no: Mapped[int] = mapped_column(Integer, primary_key=True)
-    assignee: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'todo'"))
-    order: Mapped[int] = mapped_column("order", Integer, nullable=False)
-    due_min: Mapped[int | None] = mapped_column(Integer)
-    depends_on: Mapped[list[int]] = mapped_column(ARRAY(Integer), server_default=text("'{}'"))
-
-
-class TaskEvent(Base):
-    __tablename__ = "task_events"
-    id: Mapped[uuid.UUID] = _pk()
-    session_id: Mapped[uuid.UUID] = _session_fk()
-    part_no: Mapped[int] = mapped_column(Integer, nullable=False)
-    by: Mapped[str] = mapped_column(Text, nullable=False)
-    field: Mapped[str] = mapped_column(Text, nullable=False)
-    old_value: Mapped[str | None] = mapped_column(Text)
-    new_value: Mapped[str | None] = mapped_column(Text)
-    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
-
-
-class DocumentRelease(Base):
-    __tablename__ = "document_releases"
-    session_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("sessions.id"), primary_key=True
-    )
-    doc_id: Mapped[str] = mapped_column(Text, primary_key=True)
-    release_at: Mapped[datetime] = mapped_column(TZ, nullable=False)
-    released_at: Mapped[datetime | None] = mapped_column(TZ)
-
-
-class Observation(Base):
-    __tablename__ = "observations"
-    id: Mapped[uuid.UUID] = _pk()
-    session_id: Mapped[uuid.UUID] = _session_fk()
-    card_id: Mapped[str] = mapped_column(Text, nullable=False)
-    element: Mapped[str] = mapped_column(Text, nullable=False)
-    window_start: Mapped[datetime] = mapped_column(TZ, nullable=False)
-    window_end: Mapped[datetime] = mapped_column(TZ, nullable=False)
-    metrics: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
-    label: Mapped[str | None] = mapped_column(Text)
-    aux: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
-    evidence: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, server_default=text("'[]'::jsonb")
-    )
-    facts: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
-    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    updated_run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
-    updated_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
 
 
 class ConnectionGap(Base):
@@ -303,32 +252,27 @@ class ConnectionGap(Base):
     reconnected_at: Mapped[datetime | None] = mapped_column(TZ)
 
 
+class MaterialView(Base):
+    __tablename__ = "material_views"
+    id: Mapped[uuid.UUID] = _pk()
+    session_id: Mapped[uuid.UUID] = _session_fk()
+    material_id: Mapped[str] = mapped_column(Text, nullable=False)
+    viewed_at: Mapped[datetime] = _created()
+
+
 class AssistantCall(Base):
     __tablename__ = "assistant_calls"
     id: Mapped[uuid.UUID] = _pk()
     session_id: Mapped[uuid.UUID] = _session_fk()
-    request_message_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("messages.id"), nullable=False
+    request_message_id: Mapped[uuid.UUID] = _uuid("messages.id", nullable=False)
+    response_message_id: Mapped[uuid.UUID | None] = _uuid("messages.id")
+    cited_material_ids: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=EMPTY_ARRAY
     )
-    response_message_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("messages.id")
+    tool_calls: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default=EMPTY_LIST_JSON
     )
-    cited_doc_ids: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"))
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
-
-
-class AssistantReuse(Base):
-    __tablename__ = "assistant_reuse"
-    call_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("assistant_calls.id"), primary_key=True
-    )
-    doc_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("documents.id"), primary_key=True
-    )
-    part_no: Mapped[int | None] = mapped_column(Integer)
-    ratio: Mapped[float] = mapped_column(REAL, nullable=False)
-    applied: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    computed_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
+    created_at: Mapped[datetime] = _created()
 
 
 class DebriefSurvey(Base):
@@ -337,7 +281,72 @@ class DebriefSurvey(Base):
         UUID(as_uuid=True), ForeignKey("sessions.id"), primary_key=True
     )
     answers: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
+    free_comment: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created()
+
+
+# 관찰·분석·리포트 -----------------------------------------------------------------
+
+
+class SessionCard(Base):
+    __tablename__ = "session_cards"
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sessions.id"), primary_key=True
+    )
+    card_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    locked_option_id: Mapped[uuid.UUID | None] = _uuid("options.id")
+    delivered_seats: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, server_default=EMPTY_LIST_JSON
+    )
+    locked_at: Mapped[datetime | None] = mapped_column(TZ)
+
+
+class Observation(Base):
+    __tablename__ = "observations"
+    id: Mapped[uuid.UUID] = _pk()
+    session_id: Mapped[uuid.UUID] = _session_fk()
+    card_id: Mapped[str] = mapped_column(Text, nullable=False)
+    element: Mapped[str] = mapped_column(Text, nullable=False)
+    phase: Mapped[str] = mapped_column(Text, nullable=False)
+    fired_at: Mapped[datetime] = mapped_column(TZ, nullable=False)
+    trigger_message_id: Mapped[uuid.UUID | None] = _uuid("messages.id")
+    run_id: Mapped[uuid.UUID | None] = _uuid()
+    created_at: Mapped[datetime] = _created()
+
+
+class EvaluationRun(Base):
+    __tablename__ = "evaluation_runs"
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sessions.id"), primary_key=True
+    )
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    rubric_version: Mapped[str] = mapped_column(Text, nullable=False)
+    prompt_versions: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False)
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    elements: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    has_failed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    created_at: Mapped[datetime] = _created()
+
+
+class Evaluation(Base):
+    __tablename__ = "evaluations"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["session_id", "run_id"], ["evaluation_runs.session_id", "evaluation_runs.run_id"]
+        ),
+    )
+    id: Mapped[uuid.UUID] = _pk()
+    session_id: Mapped[uuid.UUID] = _session_fk()
+    run_id: Mapped[uuid.UUID] = _uuid(nullable=False)
+    dimension_id: Mapped[str] = mapped_column(Text, nullable=False)
+    level: Mapped[int | None] = mapped_column(Integer)
+    no_record_reason: Mapped[str | None] = mapped_column(Text)
+    evidence_refs: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, server_default=EMPTY_LIST_JSON
+    )
+    rationale: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    confidence: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created()
 
 
 class Report(Base):
@@ -348,17 +357,11 @@ class Report(Base):
     stage: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     content_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    generated_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
+    eval_run_id: Mapped[uuid.UUID | None] = _uuid()
+    generated_at: Mapped[datetime] = _created()
     reviewed_at: Mapped[datetime | None] = mapped_column(TZ)
-    attempts: Mapped[int] = mapped_column(Integer, server_default=text("0"))
-    usage: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
-    auto_met: Mapped[int | None] = mapped_column(Integer)
-    auto_unmet: Mapped[int | None] = mapped_column(Integer)
-    auto_no_record: Mapped[int | None] = mapped_column(Integer)
-    reviewer_met: Mapped[int | None] = mapped_column(Integer)
-    reviewer_unmet: Mapped[int | None] = mapped_column(Integer)
-    reviewer_no_record: Mapped[int | None] = mapped_column(Integer)
-    review_memo: Mapped[str | None] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    usage: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=EMPTY_JSON)
     reviewer_name: Mapped[str | None] = mapped_column(Text)
 
 
@@ -366,17 +369,13 @@ class RubricAdjustment(Base):
     __tablename__ = "rubric_adjustments"
     id: Mapped[uuid.UUID] = _pk()
     session_id: Mapped[uuid.UUID] = _session_fk()
-    element: Mapped[str] = mapped_column(Text, nullable=False)
-    card_id: Mapped[str] = mapped_column(Text, nullable=False)
-    item_id: Mapped[str] = mapped_column(Text, nullable=False)
-    auto_value: Mapped[int | None] = mapped_column(SmallInteger)
-    reviewer_value: Mapped[int | None] = mapped_column(SmallInteger)
+    dimension_id: Mapped[str] = mapped_column(Text, nullable=False)
+    level: Mapped[int | None] = mapped_column(Integer)
+    no_record_reason: Mapped[str | None] = mapped_column(Text)
     memo: Mapped[str] = mapped_column(Text, nullable=False)
+    adjusted_by: Mapped[uuid.UUID] = _uuid("admins.id", nullable=False)
     reviewer_name: Mapped[str] = mapped_column(Text, nullable=False)
-    admin_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("admins.id"), nullable=False
-    )
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
+    adjusted_at: Mapped[datetime] = _created()
 
 
 class ReportNote(Base):
@@ -385,7 +384,20 @@ class ReportNote(Base):
     session_id: Mapped[uuid.UUID] = _session_fk()
     text: Mapped[str] = mapped_column(Text, nullable=False)
     reviewer_name: Mapped[str] = mapped_column(Text, nullable=False)
-    admin_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("admins.id"), nullable=False
-    )
-    created_at: Mapped[datetime] = mapped_column(TZ, server_default=NOW)
+    admin_id: Mapped[uuid.UUID] = _uuid("admins.id", nullable=False)
+    created_at: Mapped[datetime] = _created()
+
+
+# 검색 저장소 ------------------------------------------------------------------------
+
+
+class Material(Base):
+    """자료 원문의 catalog_version별 사본. scripts/seed.py가 시드하고 api가 읽는다."""
+
+    __tablename__ = "materials"
+    catalog_version: Mapped[str] = mapped_column(Text, primary_key=True)
+    material_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    keyword_key: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = _created()
