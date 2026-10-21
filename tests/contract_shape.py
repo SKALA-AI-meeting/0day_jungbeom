@@ -11,6 +11,7 @@
 - `[x]`: 원소가 모두 x인 목록, `{키: x}`: 키 집합이 정확히 같은 객체. 키 끝의 `?`는 없어도 되는 키
 - `Map(x)`: 키가 자유로운 객체(값은 x), `ANY`: 무엇이든, `Union(...)`: 하나라도 맞으면 통과
 - `Tagged(키, {값: 형태})`: 키 값(예: WS `type`)으로 형태를 고름
+- `Checked(x, 함수)`: x 형태 검사 뒤 값 사이 규칙(함수가 오류 문장을 돌려주면 실패)을 본다
 """
 
 import json
@@ -48,6 +49,11 @@ class Tagged:
         self.key, self.specs = key, specs
 
 
+class Checked:
+    def __init__(self, spec: Any, check: Any) -> None:
+        self.spec, self.check = spec, check
+
+
 ANY = object()
 NUM = (int, float)
 
@@ -75,6 +81,10 @@ def validate(value: Any, spec: Any, path: str = "$") -> None:
             except AssertionError as error:
                 errors.append(str(error))
         raise AssertionError(f"{path}: no union branch matched: {errors}")
+    elif isinstance(spec, Checked):
+        validate(value, spec.spec, path)
+        error = spec.check(value)
+        assert error is None, f"{path}: {error}"
     elif isinstance(spec, Tagged):
         assert isinstance(value, dict), f"{path}: expected object"
         tag = value.get(spec.key)
@@ -118,6 +128,7 @@ SLOT_PHASE = Enum("keyword", "problem", "solution")
 SEAT = Enum("p1", "p2", "p3")
 PARTICIPANT = Enum("candidate", "p1", "p2", "p3")
 SENDER = Enum("candidate", "p1", "p2", "p3", "system")
+AI_SENDER = Enum("p1", "p2", "p3", "system")  # 내부 게시·MCP post_message
 PERSONA = Enum("stubborn", "quiet", "critic")
 SESSION_STATUS = Enum(
     "invited",
@@ -223,7 +234,7 @@ INTERNAL_MESSAGE = {
     "origin": Opt(ORIGIN),
     "intent": Opt(INTENT_OUTPUT),
 }
-SLOT_PUBLIC = {
+_SLOT_PUBLIC = {
     "phase": SLOT_PHASE,
     "status": Enum("empty", "confirmed"),
     "value": Opt(str),
@@ -231,7 +242,7 @@ SLOT_PUBLIC = {
     "resolution": Opt(RESOLUTION),
     "t_min": Opt(NUM),
 }
-SLOT_FULL = {
+_SLOT_FULL = {
     "phase": SLOT_PHASE,
     "status": Enum("empty", "confirmed"),
     "value": Opt(str),
@@ -242,6 +253,18 @@ SLOT_FULL = {
     "confirmed_at": Opt(TS),
     "t_min": Opt(NUM),
 }
+
+
+def _confirmed_slot(slot: dict) -> str | None:
+    """confirmed 칸은 value·filled_by·resolution·t_min이 있어야 한다."""
+    if slot["status"] != "confirmed":
+        return None
+    empty = [k for k in ("value", "filled_by", "resolution", "t_min") if slot.get(k) is None]
+    return f"confirmed slot missing {empty}" if empty else None
+
+
+SLOT_PUBLIC = Checked(_SLOT_PUBLIC, _confirmed_slot)
+SLOT_FULL = Checked(_SLOT_FULL, _confirmed_slot)
 PROPOSAL = {"sections": SECTIONS, "revision": int, "updated_at": Opt(TS), "submitted_at": Opt(TS)}
 MATERIALS = {"locked": bool, "keyword": Opt(str), "materials": [MATERIAL_ITEM]}
 STATE = {
@@ -421,14 +444,43 @@ EVIDENCE = Tagged(
         "contribution": {**_EVIDENCE_HEAD, **CONTRIBUTION_OPTION, "record_ref": RECORD_REF},
     },
 )
-DIMENSION_EVAL = {
-    "dimension_id": DIMENSION,
-    "level": Opt(LEVEL),
-    "no_record_reason?": Opt(NO_RECORD),
-    "evidence_refs": [str],
-    "rationale": str,
-    "confidence": Opt(CONFIDENCE),
-}
+
+
+def _no_record(dim: dict) -> str | None:
+    """level null ↔ no_record_reason 있음, 기록 없음이면 confidence null."""
+    if dim["level"] is None:
+        if dim.get("no_record_reason") is None:
+            return "level null needs no_record_reason"
+        if dim["confidence"] is not None:
+            return "no-record dimension must have confidence null"
+    elif dim.get("no_record_reason") is not None:
+        return "level and no_record_reason are exclusive"
+    return None
+
+
+def _all_dimensions(dims: list) -> str | None:
+    ids = [d["dimension_id"] for d in dims]
+    ok = len(ids) == len(DIMENSION_IDS) and set(ids) == set(DIMENSION_IDS)
+    return None if ok else f"need each of 19 dimensions exactly once, got {len(ids)}"
+
+
+def _all_elements(elements: list) -> str | None:
+    ids = [e["element"] for e in elements]
+    ok = len(ids) == len(ELEMENT.values) and set(ids) == ELEMENT.values
+    return None if ok else f"need each of 5 elements exactly once, got {len(ids)}"
+
+
+DIMENSION_EVAL = Checked(
+    {
+        "dimension_id": DIMENSION,
+        "level": Opt(LEVEL),
+        "no_record_reason?": Opt(NO_RECORD),
+        "evidence_refs": [str],
+        "rationale": str,
+        "confidence": Opt(CONFIDENCE),
+    },
+    _no_record,
+)
 ELEMENT_SUMMARY = {
     "element": ELEMENT,
     "level": Opt(LEVEL),
@@ -436,6 +488,8 @@ ELEMENT_SUMMARY = {
     "dimension_count": int,
     "no_record_count": int,
 }
+DIMENSIONS_19 = Checked([DIMENSION_EVAL], _all_dimensions)
+ELEMENTS_5 = Checked([ELEMENT_SUMMARY], _all_elements)
 PROMPT_VERSIONS = {"common": str, **{e: str for e in ELEMENT.values}}
 FACTS = {
     "message_count": {
@@ -489,31 +543,40 @@ REPORT = {
         "prompt_versions": PROMPT_VERSIONS,
         "model": str,
     },
-    "elements": [
-        {
-            **ELEMENT_SUMMARY,
-            "name": str,
-            "low_confidence_count": int,
-            "adjusted_level": Opt(LEVEL),
-        }
-    ],
-    "dimensions": [
-        {
-            "element": ELEMENT,
-            "dimension_id": DIMENSION,
-            "name": str,
-            "level": Opt(LEVEL),
-            "no_record_reason": Opt(NO_RECORD),
-            "rationale": str,
-            "confidence": Opt(CONFIDENCE),
-            "reviewer_hint?": str,
-            "adjusted_level": Opt(LEVEL),
-            "adjusted_no_record_reason": Opt(NO_RECORD),
-            "adjust_memo": Opt(str),
-            "evidence_refs": [str],
-            "evidence": [EVIDENCE],
-        }
-    ],
+    "elements": Checked(
+        [
+            {
+                **ELEMENT_SUMMARY,
+                "name": str,
+                "low_confidence_count": int,
+                "adjusted_level": Opt(LEVEL),
+            }
+        ],
+        _all_elements,
+    ),
+    "dimensions": Checked(
+        [
+            Checked(
+                {
+                    "element": ELEMENT,
+                    "dimension_id": DIMENSION,
+                    "name": str,
+                    "level": Opt(LEVEL),
+                    "no_record_reason": Opt(NO_RECORD),
+                    "rationale": str,
+                    "confidence": Opt(CONFIDENCE),
+                    "reviewer_hint?": str,
+                    "adjusted_level": Opt(LEVEL),
+                    "adjusted_no_record_reason": Opt(NO_RECORD),
+                    "adjust_memo": Opt(str),
+                    "evidence_refs": [str],
+                    "evidence": [EVIDENCE],
+                },
+                _no_record,
+            )
+        ],
+        _all_dimensions,
+    ),
     "facts": FACTS,
     "contribution_check": [
         {
@@ -680,7 +743,7 @@ SESSION_RECORD = {
             "intent": Opt({"intent": INTENT, "target_option_id": Opt(str), "addressed_to": [SEAT]}),
         }
     ],
-    "slots": [{k: v for k, v in SLOT_FULL.items() if k not in ("status", "confirmed_at")}],
+    "slots": [{k: v for k, v in _SLOT_FULL.items() if k not in ("status", "confirmed_at")}],
     "proposal": {"sections": SECTIONS, "submitted_at": TS, "auto_submitted": bool},
     "observations": [
         {
@@ -702,22 +765,22 @@ EVALUATION_SAVE = {
     "rubric_version": str,
     "prompt_versions": PROMPT_VERSIONS,
     "model": str,
-    "dimensions": [DIMENSION_EVAL],
-    "elements": [ELEMENT_SUMMARY],
+    "dimensions": DIMENSIONS_19,
+    "elements": ELEMENTS_5,
 }
 EVALUATIONS = {
     "run_id": str,
     "rubric_version": str,
     "prompt_versions": PROMPT_VERSIONS,
     "model": str,
-    "elements": [ELEMENT_SUMMARY],
-    "dimensions": [DIMENSION_EVAL],
+    "elements": ELEMENTS_5,
+    "dimensions": DIMENSIONS_19,
     "has_failed": bool,
     "created_at": TS,
 }
 OBSERVATION_CREATED = {"observation_id": str, "fired_at": TS, "t_min": NUM}
 POST_MESSAGE_REQUEST = {
-    "sender": SENDER,
+    "sender": AI_SENDER,
     "content": str,
     "run_id": str,
     "seq": int,

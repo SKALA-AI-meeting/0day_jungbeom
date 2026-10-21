@@ -9,8 +9,8 @@
     "session_minutes": 60,
     "phase_started_at": "2026-10-21T01:25:24Z",
     "phase_deadline_at": "2026-10-21T01:46:00Z",
-    "phase_remaining_seconds": 840,
-    "session_remaining_seconds": 1680,
+    "phase_remaining_seconds": 783,
+    "session_remaining_seconds": 1623,
     "office_start": "09:00",
     "office_end": "10:00",
     "completed_at": null
@@ -160,7 +160,7 @@
     {
       "id": "m-09",
       "sender": "p3",
-      "content": "듣고 보니 물이 근거가 더 많겠네요. 저도 물로 갈게요.",
+      "content": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
       "phase": "keyword",
       "is_invite": false,
       "t_min": 7.0,
@@ -355,5 +355,5 @@
     }
   ],
   "connection_gaps": [],
-  "ws_seq": 46
+  "ws_seq": 47
 }

@@ -165,7 +165,7 @@
     "payload": {
       "id": "m-09",
       "sender": "p3",
-      "content": "듣고 보니 물이 근거가 더 많겠네요. 저도 물로 갈게요.",
+      "content": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
       "phase": "keyword",
       "is_invite": false,
       "t_min": 7.0,
@@ -542,8 +542,16 @@
     }
   },
   {
-    "type": "message.new",
+    "type": "typing",
     "seq": 47,
+    "payload": {
+      "participant": "p1",
+      "state": "start"
+    }
+  },
+  {
+    "type": "message.new",
+    "seq": 48,
     "payload": {
       "id": "m-26",
       "sender": "p1",
@@ -555,8 +563,16 @@
     }
   },
   {
+    "type": "typing",
+    "seq": 49,
+    "payload": {
+      "participant": "p1",
+      "state": "stop"
+    }
+  },
+  {
     "type": "message.ack",
-    "seq": 48,
+    "seq": 50,
     "payload": {
       "client_msg_id": "c-09",
       "message_id": "m-27",
@@ -565,7 +581,7 @@
   },
   {
     "type": "message.new",
-    "seq": 49,
+    "seq": 51,
     "payload": {
       "id": "m-27",
       "sender": "candidate",
@@ -578,7 +594,7 @@
   },
   {
     "type": "message.new",
-    "seq": 50,
+    "seq": 52,
     "payload": {
       "id": "m-28",
       "sender": "system",
@@ -591,7 +607,7 @@
   },
   {
     "type": "message.new",
-    "seq": 51,
+    "seq": 53,
     "payload": {
       "id": "m-29",
       "sender": "p3",
@@ -604,7 +620,7 @@
   },
   {
     "type": "slot.confirmed",
-    "seq": 52,
+    "seq": 54,
     "payload": {
       "phase": "solution",
       "value": "센서·데이터 기반 물 관리·경보",
@@ -615,7 +631,7 @@
   },
   {
     "type": "phase.changed",
-    "seq": 53,
+    "seq": 55,
     "payload": {
       "phase": "proposal",
       "previous_phase": "solution",
@@ -627,7 +643,7 @@
   },
   {
     "type": "timer",
-    "seq": 54,
+    "seq": 56,
     "payload": {
       "phase": "proposal",
       "phase_deadline_at": "2026-10-21T02:00:00Z",
@@ -637,7 +653,7 @@
   },
   {
     "type": "message.new",
-    "seq": 55,
+    "seq": 57,
     "payload": {
       "id": "m-30",
       "sender": "system",
@@ -650,7 +666,7 @@
   },
   {
     "type": "message.ack",
-    "seq": 56,
+    "seq": 58,
     "payload": {
       "client_msg_id": "c-10",
       "message_id": "m-31",
@@ -659,7 +675,7 @@
   },
   {
     "type": "message.new",
-    "seq": 57,
+    "seq": 59,
     "payload": {
       "id": "m-31",
       "sender": "candidate",
@@ -672,7 +688,7 @@
   },
   {
     "type": "session.ended",
-    "seq": 58,
+    "seq": 60,
     "payload": {
       "reason": "submitted"
     }

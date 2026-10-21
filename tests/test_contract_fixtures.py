@@ -63,3 +63,38 @@ def test_persona_type_hidden_from_candidate_fixtures():
         text = (cs.CONTRACTS / f"{name}.json").read_text(encoding="utf-8")
         for word in ("stubborn", "quiet", "critic", "agreeable", "divergent"):
             assert word not in text, f"{name}: {word}"
+
+
+@pytest.mark.parametrize(
+    "name", ["state_keyword", "state_problem", "state_solution", "state_proposal"]
+)
+def test_state_matches_ws_replay(name):
+    """스냅샷의 typing·메시지가 ws_seq까지의 WS 재생 결과와 같다."""
+    state = cs.load_contract(name)
+    typing, message_ids = set(), []
+    for frame in cs.load_contract("ws_events"):
+        if frame["seq"] > state["ws_seq"]:
+            break
+        payload = frame["payload"]
+        if frame["type"] == "typing":
+            (typing.add if payload["state"] == "start" else typing.discard)(payload["participant"])
+        elif frame["type"] == "message.new":
+            message_ids.append(payload["id"])
+    assert set(state["typing"]) == typing
+    assert [m["id"] for m in state["messages"]] == message_ids
+
+
+def test_shape_rules_reject_contract_violations():
+    """값 사이 규칙(확정 칸 필수 값, 기록 없음 배타, 19차원, 내부 sender)이 실제로 걸린다."""
+    slot = {**cs.load_contract("slot_confirm")["slot"], "value": None}
+    dims = cs.load_contract("evaluation_save")["dimensions"]
+    bad_dim = {**dims[0], "level": None, "confidence": "high"}
+    post = {**cs.load_contract("internal_message_post_request"), "sender": "candidate"}
+    for value, spec in [
+        (slot, cs.SLOT_PUBLIC),
+        (bad_dim, cs.DIMENSION_EVAL),
+        (dims[:-1], cs.DIMENSIONS_19),
+        (post, cs.POST_MESSAGE_REQUEST),
+    ]:
+        with pytest.raises(AssertionError):
+            cs.validate(value, spec)
