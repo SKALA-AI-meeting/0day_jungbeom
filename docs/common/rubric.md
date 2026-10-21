@@ -674,6 +674,8 @@
 | `messages_after_rejection` | int | 문제 상황 칸 확정 후 해결책 단계 끝까지 지원자 메시지 수 | `flex_acceptance` |
 | `ai_adopted_units` | list | 확정 칸의 `option_id` 중 `options.proposer`가 AI 동료 자리(`p1`~`p3`)인 안과 그 제안자 | `hon_credit_record` |
 | `credit_field_filled` | bool | `idea_credit`가 비어 있지 않음(공백·"없음" 제외) | `hon_credit_record` |
+| `blank_sections_at_submit` | list[str] | 제출본에서 비어 있던 기획안 칸 id(`proposals.submit_blank_sections`) | 맥락 참고(단독으로 수준을 정하지 않음, 안의 질 평가 금지) |
+| `blank_warning_acknowledged` | bool∣null | 빈칸 경고 창을 본 뒤 제출했는지(`proposals.blank_warning_shown`, 자동 제출이면 null) | 맥락 참고(`hon_credit_record`의 자발 빈칸 구분 보조) |
 | `assistant_calls` | list | AI 어시스턴트 요청·응답·인용 자료(시간순). 사용하지 않았으면 "사용하지 않음" | 설득(인용 출처 확인만) |
 | `material_views` | list | 자료 열람 기록 | 설득(인용 출처 확인만) |
 | `connection_gaps` | list | 접속이 끊긴 구간 | 전 차원(확신도) |
