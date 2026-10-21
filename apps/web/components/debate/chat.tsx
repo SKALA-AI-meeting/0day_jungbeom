@@ -90,7 +90,10 @@ function groupLines(lines: Line[]) {
 
 function SystemNotice({ text, time }: { text: string; time?: string }) {
   return (
-    <p className="px-6 py-1 text-center text-footnote text-system-notice" title={time}>
+    <p
+      className="mx-auto max-w-[40rem] px-6 py-1 text-center text-footnote break-keep text-balance text-system-notice"
+      title={time}
+    >
       {text}
     </p>
   );
@@ -387,7 +390,7 @@ export function Composer({
         type="submit"
         aria-label="보내기"
         disabled={locked || !text.trim()}
-        className="press flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-fill text-on-accent hover:bg-accent-fill-hover disabled:opacity-40"
+        className="press flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-fill text-on-accent not-disabled:hover:bg-accent-fill-hover disabled:bg-surface-sunken disabled:text-subtle"
       >
         <ArrowUp size={20} />
       </button>

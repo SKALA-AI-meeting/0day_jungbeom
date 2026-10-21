@@ -1,9 +1,11 @@
 """C1 지원자 확정과 단계·칸 규칙(design.md "단계·칸")."""
 
 import asyncio
+import uuid
 from datetime import datetime, timedelta
 
-from kit import bearer, high, to_phase, types
+from app.models import Session
+from kit import bearer, finish, high, to_phase, types
 
 
 async def test_keyword_confirm_frames_support_and_cumulative_deadline(api, ctx, classifier):
@@ -129,3 +131,132 @@ async def test_outcome_is_candidate_decision_below_three_supporters_of_confirmed
     slots = (await api.internal.get(f"/internal/sessions/{unlinked.id}/slots")).json()
     assert slots[2]["option_id"] is None
     assert r.json()["slot"]["outcome"] == "candidate_decision"
+
+
+def gate_after_commit(ctx):
+    """다음으로 닫히는 DB 세션 하나를 커밋·close 뒤(프레임 emit 전) 멈춰 둔다. (멈춤 신호, 풀기)."""
+    real = ctx.session_factory
+    stopped, release = asyncio.Event(), asyncio.Event()
+    armed = [True]
+
+    class Gated:
+        def __init__(self):
+            self.inner = real()
+
+        async def __aenter__(self):
+            return await self.inner.__aenter__()
+
+        async def __aexit__(self, *exc):
+            out = await self.inner.__aexit__(*exc)
+            if armed[0]:
+                armed[0] = False
+                stopped.set()
+                await release.wait()
+            return out
+
+    ctx.session_factory = Gated
+    return stopped, release
+
+
+async def _race(ctx, first, second):
+    """first가 커밋 뒤 멈춘 사이 second를 시작하고, 잠시 뒤 first를 푼다."""
+    stopped, release = gate_after_commit(ctx)
+    a = asyncio.create_task(first())
+    await stopped.wait()
+    b = asyncio.create_task(second())
+    await asyncio.sleep(0.3)  # second가 먼저 emit할 기회를 준다
+    release.set()
+    return await asyncio.gather(a, b)
+
+
+async def test_ai_message_committed_before_confirm_is_sent_before_confirm_frames(api, ctx):
+    """A2: AI 발언 게시 커밋 뒤 전송 전에 지원자가 확정해도 프레임 순서 = 커밋 순서.
+
+    확정 프레임(slot.confirmed·phase.changed) 뒤에 이전 단계 발언이 뜨지 않아야 한다.
+    """
+    sess = await api.new_session()
+    await to_phase(api, sess, "solution")
+    mark = api.mark(sess)
+    message, r = await _race(
+        ctx,
+        lambda: api.post_ai(sess, "p3", "그 방향은 반대예요"),
+        lambda: api.confirm(sess, "solution", value="센서·데이터 기반 물 관리·경보"),
+    )
+    assert r.status_code == 200, r.text
+
+    frames = api.frames_since(sess, mark)
+    order = [
+        "ai" if f["type"] == "message.new" and f["payload"]["id"] == message["id"] else f["type"]
+        for f in frames
+        if f["type"] in ("message.new", "slot.confirmed", "phase.changed")
+    ]
+    assert order.index("ai") < order.index("slot.confirmed") < order.index("phase.changed")
+
+
+async def test_start_committed_before_confirm_keeps_frame_and_generation_order(api, ctx):
+    """시작 커밋 뒤 emit 전에 키워드 확정이 끼어도 keyword → problem 순, generation 역행 없음."""
+    sess = await api.new_session(start=False)
+    start, r = await _race(
+        ctx,
+        lambda: api.public.post(f"/s/{sess.token}/start", headers=sess.auth),
+        lambda: api.confirm(sess, "keyword", value="물", option_key="water"),
+    )
+    assert start.status_code == 200 and r.status_code == 200, r.text
+    phases = [f["payload"]["phase"] for f in api.frames(sess) if f["type"] == "phase.changed"]
+    assert phases[:2] == ["keyword", "problem"]
+    async with ctx.session_factory() as db:
+        assert ctx.generations[sess.id] == (await db.get(Session, sess.id)).generation
+
+
+class _StuckSocket:
+    def __init__(self):
+        self.never = asyncio.Event()
+
+    async def send_json(self, data):
+        await self.never.wait()
+
+    async def close(self, code=1000):
+        pass
+
+
+async def test_slow_socket_does_not_block_writes_or_other_sessions(api, ctx):
+    """전송이 멈춘 연결이 있어도 같은 세션 다음 쓰기·다른 세션 쓰기·리포트 발행이 막히지 않는다."""
+    slow, other = await api.new_session(), await api.new_session()
+    await ctx.hub.connect(slow.id, _StuckSocket())
+    for text in ("첫 발언", "둘째 발언"):
+        await asyncio.wait_for(api.post_ai(slow, "p1", text), 2)
+    await asyncio.wait_for(api.post_ai(other, "p1", "다른 세션"), 2)
+    assert [f["payload"]["content"] for f in api.frames(slow) if f["type"] == "message.new"][
+        -2:
+    ] == ["첫 발언", "둘째 발언"]
+
+    locked = []
+    publish = ctx.publisher.publish
+
+    async def watch(routing_key, body):
+        locked.append(ctx.ordered(uuid.UUID(body["session_id"])).locked())
+        await publish(routing_key, body)
+
+    ctx.publisher.publish = watch
+    await asyncio.wait_for(finish(api, slow), 5)
+    assert locked == [False]  # 브로커 발행은 순서 잠금 밖
+
+
+async def test_hub_drop_on_send_timeout_records_connection_gap(api, ctx):
+    """hub가 전송 타임아웃으로 먼저 끊어도 connection_gaps에 끊김이 한 번 기록된다."""
+    from app.models import ConnectionGap
+    from sqlalchemy import select
+
+    sess = await api.new_session()
+    ctx.hub.send_timeout = 0.05
+    stuck = _StuckSocket()
+    await ctx.hub.connect(sess.id, stuck)
+    ctx.hub.enqueue(sess.id, "timer", {})
+    await asyncio.sleep(0.3)
+    assert not ctx.hub.is_connected(sess.id)
+    assert not ctx.hub.disconnect(sess.id, stuck)  # 라우터 종료 처리는 다시 기록하지 않는다
+    async with ctx.session_factory() as db:
+        gaps = (
+            await db.scalars(select(ConnectionGap).where(ConnectionGap.session_id == sess.id))
+        ).all()
+    assert len(gaps) == 1 and gaps[0].reconnected_at is None

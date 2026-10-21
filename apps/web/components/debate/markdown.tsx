@@ -51,6 +51,64 @@ const COMPONENTS: Components = {
   td: styled("td", "border-t border-line px-3 py-2 align-top first:whitespace-nowrap"),
 };
 
+// 어시스턴트 답 전용 제한 모드: 굵게·기울임·목록·문단·코드만 서식으로 그린다.
+// 링크는 글자만(클릭 불가), 이미지는 대체 글자, 제목·인용은 일반 문단, 원문 HTML은 태그 글자 그대로 보인다.
+const PLAIN = ({ node, children }: ComponentPropsWithoutRef<"span"> & ExtraProps) => {
+  void node;
+  return <span>{children}</span>;
+};
+const heading = styled("p", "my-2.5 first:mt-0 last:mb-0");
+
+const ASSISTANT_COMPONENTS: Components = {
+  p: COMPONENTS.p,
+  ul: COMPONENTS.ul,
+  ol: COMPONENTS.ol,
+  li: COMPONENTS.li,
+  strong: COMPONENTS.strong,
+  code: COMPONENTS.code,
+  pre: styled("pre", "my-2.5 font-mono text-[0.9em] whitespace-pre-wrap"),
+  a: PLAIN,
+  img: ({ node, alt }) => {
+    void node;
+    return <span>{alt}</span>;
+  },
+  h1: heading,
+  h2: heading,
+  h3: heading,
+  h4: heading,
+  h5: heading,
+  h6: heading,
+  blockquote: styled("blockquote", "my-2.5"),
+  hr: () => null,
+};
+
+type MdNode = { type: string; value?: string; children?: MdNode[] };
+
+/** 원문 HTML 노드를 글자 노드로 바꿔 태그가 글자 그대로 보이게 한다 */
+function htmlAsText() {
+  const walk = (node: MdNode) => {
+    if (node.type === "html") node.type = "text";
+    node.children?.forEach(walk);
+  };
+  return (tree: MdNode) => walk(tree);
+}
+
+export function AssistantMarkdown({
+  children,
+  className,
+}: {
+  children: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("break-words break-keep", className)}>
+      <ReactMarkdown remarkPlugins={[remarkBreaks, htmlAsText]} components={ASSISTANT_COMPONENTS}>
+        {children}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 export function Markdown({
   children,
   className,

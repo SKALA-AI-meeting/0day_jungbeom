@@ -280,7 +280,7 @@
   <table>
     <tr><th style="width:19%">에이전트</th><th>하는 일</th><th style="width:30%">도구</th></tr>
     <tr><td><b>턴 매니저</b></td><td>자극마다 화자 0~2명을 규칙으로 정하고, 결과가 0명인 메시지에만 LLM을 씀</td><td>결정적 노드가 <span class="nw">debate-mcp 전부</span> · record_observation</td></tr>
-    <tr><td><b>페르소나 × 3</b></td><td>성향 · 고정 입장 · 자리 기억으로 1~3문장 발언</td><td>get_transcript · get_draft · rag 2, 응답당 3회. DebateState는 컨텍스트로</td></tr>
+    <tr><td><b>페르소나 × 3</b></td><td>성향 · 고정 입장 · 자리 기억(자기 발언 최대 3개)으로 1~3문장 발언</td><td>get_transcript · get_draft · rag 2, 응답당 3회. DebateState는 컨텍스트로</td></tr>
     <tr><td><b>의도 분류</b></td><td>지원자 메시지를 저장된 단계(messages.phase) 기준으로 제안 · 동의 · 반대 · 질문 · 기타와 대상 안으로 분류</td><td>없음, 10초 넘으면 기타</td></tr>
     <tr><td><b>어시스턴트</b></td><td>지원자 요청에 자료를 스스로 골라 인용과 함께 답함</td><td>rag 2, 최대 3회</td></tr>
     <tr><td><b>평가 에이전트</b></td><td>요소마다 1회 호출로 차원별 수준 · 근거 · 확신도 판단</td><td>없음(워커가 입력 주입)</td></tr>
@@ -335,7 +335,7 @@
     <tr><td><b>기획안 제출</b></td><td>[제출]</td><td>저장 완료 뒤 빈 칸이 있으면 비운 칸 이름과 함께 경고 창. 확인하면 제출하고 빈 칸 목록과 경고 확인 여부를 저장(평가는 맥락 참고만)</td></tr>
     <tr><td><b>단계 마감</b></td><td>스케줄러 · 칸이 비어 있음</td><td>api가 한 트랜잭션으로 안을 고르고 우선순위 자리 이름으로 고정 문장 게시</td></tr>
     <tr><td><b>침묵 초대</b></td><td>스케줄러 · 지원자 침묵</td><td>서지안이 "OO님은 어떻게 생각하세요?" 단계당 1회</td></tr>
-    <tr><td><b>카드 시각</b></td><td>단계 시작 + offset</td><td>담당 화자가 고정 내용을 말하고 메시지의 card_ids로 카드마다 전달 자리를 기록. 담당 전원이 말할 때까지 card_due를 다시 넣음. 발언 없는 honesty_credit만 기획안 단계 시작 때 cards 노드가 기록</td></tr>
+    <tr><td><b>카드 시각</b></td><td>단계 시작 + offset</td><td>담당 화자가 고정 내용을 말하고 메시지의 card_ids로 카드마다 전달 자리를 기록. 담당 전원이 말할 때까지 card_due는 최초 포함 카드당 최대 3회(30초 간격) 넣음. 발언 없는 honesty_credit만 기획안 단계 시작 때 cards 노드가 기록</td></tr>
     <tr><td><b>세션 만료</b></td><td>스케줄러 · 종료 시각</td><td>현재 기획안 초안을 자동 제출하고 세션 종료</td></tr>
   </table>
   <div class="note"><div class="t">시간 규칙</div><p class="bal">단계 마감 시각은 고정이라 일찍 확정하면 남은 시간이 다음 단계로 넘어갑니다. 15분 데모는 같은 비율이고 카드 시각은 최소 20초이며, 시간 로직은 가짜 시계 단위 테스트로 검증합니다.</p></div>
@@ -411,7 +411,7 @@
     <tr><td><b>Instructions</b></td><td>공통 규칙 · 페르소나별 프롬프트 · 평가 프롬프트를 채용 건에 복사해 고정</td></tr>
     <tr><td><b>Tools</b></td><td>노드별 허용 목록, 응답당 도구 3회, 검색 상위 3, 페르소나의 assessment 차단</td></tr>
     <tr><td><b>Context</b></td><td>페르소나에게 척도 · 관찰 · 다른 자리 성향 · 열리지 않은 자료를 넣지 않음</td></tr>
-    <tr><td><b>State · Memory</b></td><td>PostgresSaver 체크포인트(<span class="k">debate:</span> · <span class="k">assistant:</span> · <span class="k">report:{session_id}:{eval_round}</span>), 자리별 기억</td></tr>
+    <tr><td><b>State · Memory</b></td><td>토론 그래프는 DB 기록(<span class="k">agent_runs</span> · 메시지 · 입장)으로 재처리하고, PostgresSaver 체크포인트는 report-worker의 <span class="k">report:{session_id}:{eval_round}</span>만 씁니다. 어시스턴트 이력은 프로세스 메모리, 페르소나 기억은 현재 단계 최근 대화 30개 안의 자기 발언 최대 3개입니다.</td></tr>
     <tr><td><b>Agent Loop</b></td><td>실행당 화자 2명, 같은 자리 연속 3회 금지 <span class="nw">(카드 · 지명 응답 제외)</span>, 침묵 초대 단계당 1회, 설득 이동 자리별 1회</td></tr>
     <tr><td><b>Guardrails</b></td><td>guard · stance_check · 반복 재생성, 합의 전 칸 채우기 409, 근거 없는 수준 거부 · 근거 1개 수준 상한</td></tr>
     <tr><td><b>Recovery</b></td><td>발언 실패 생략, 리포트 최초 포함 3회<span class="nw">(추가 재시도 2회)</span> 뒤 DLQ, 멱등 키로 재실행</td></tr>

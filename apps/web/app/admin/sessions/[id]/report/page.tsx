@@ -7,12 +7,15 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 import { adminApi, errorMessage, useLoad, useToken } from "@/components/admin/client";
+import { ReportFailed } from "@/components/admin/report-failed";
 import { ReportView } from "@/components/admin/report-view";
 import {
   phaseOf,
   recordAnchor,
-  REPORT_POLL_MS,
-  reportNotReady,
+  nextWaiting,
+  pollDelay,
+  reportScreen,
+  reportTransient,
   reviewBodyFrom,
 } from "@/components/admin/review";
 import type { ReviewBody } from "@/components/admin/types";
@@ -31,6 +34,7 @@ function ReportPageBody() {
     data: report,
     error,
     code,
+    extra,
     failures,
     reload,
   } = useLoad((t) => adminApi.report(t, id), id);
@@ -39,7 +43,25 @@ function ReportPageBody() {
   const [polls, setPolls] = useState(0);
   const lastBody = useRef<ReviewBody | null>(null);
 
-  const approving = !!report && phaseOf(report) === "approving";
+  // 생성 중(report_not_ready)이면 안내를 보이고 5초마다 다시 읽는다. 일시 오류(5xx·네트워크)는 간격을 늘려 계속 읽는다
+  const [waiting, setWaiting] = useState(false);
+  if (waiting !== nextWaiting(waiting, error, code)) setWaiting(!waiting);
+  const backoff = useRef(1);
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setTimeout(() => {
+      backoff.current = reportTransient(error, code) ? backoff.current * 2 : 1;
+      reload();
+    }, pollDelay(backoff.current));
+    return () => clearTimeout(timer);
+  }, [waiting, error, code, failures, reload]);
+
+  // 실패 화면의 [다시 만들기]: 재생성을 요청하고 다시 읽으면 생성 중(report_not_ready) 폴링으로 이어진다
+  const screen = reportScreen(report, code, waiting);
+  const failed = screen === "failed";
+  const missing = screen === "missing";
+
+  const approving = screen === "report" && !!report && phaseOf(report) === "approving";
   const polling = approving && failures < MAX_FAILURES && polls < STALL_POLLS;
   useEffect(() => {
     if (!polling) return;
@@ -49,14 +71,20 @@ function ReportPageBody() {
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [polling, reload]);
-
-  // 리포트가 아직 없으면(draft 생성 전) 안내를 보이고 5초마다 다시 읽는다
-  const notReady = !report && reportNotReady(code);
-  useEffect(() => {
-    if (!notReady) return;
-    const timer = setInterval(reload, REPORT_POLL_MS);
-    return () => clearInterval(timer);
-  }, [notReady, reload]);
+  const [regenError, setRegenError] = useState<string | null>(null);
+  async function regenerate() {
+    if (!token) return;
+    setPending(true);
+    setRegenError(null);
+    try {
+      await adminApi.regenerate(token, id);
+      reload();
+    } catch (e) {
+      setRegenError(errorMessage(e));
+    } finally {
+      setPending(false);
+    }
+  }
 
   async function review(body: ReviewBody) {
     if (!token) return;
@@ -86,22 +114,36 @@ function ReportPageBody() {
           전체 기록 보기
         </Link>
       </div>
-      {notReady && (
+      {screen === "generating" && (
         <p role="status" className="mx-auto w-full max-w-3xl text-muted">
           리포트를 만드는 중입니다. 준비되면 이 화면에 바로 나타납니다.
         </p>
       )}
-      {error && !notReady && (
-        <div role="alert" className="flex items-center gap-3 text-danger">
-          <span>{error}</span>
-          {failures >= MAX_FAILURES && (
+      {missing && (
+        <p role="status" className="mx-auto w-full max-w-3xl text-muted">
+          이 지원자의 리포트가 아직 없습니다.
+        </p>
+      )}
+      {failed && (
+        <ReportFailed
+          failedStep={typeof extra.failed_step === "string" ? extra.failed_step : null}
+          pending={pending}
+          error={regenError}
+          onRegenerate={regenerate}
+        />
+      )}
+      {error &&
+        screen !== "failed" &&
+        screen !== "missing" &&
+        !(screen === "generating" && !reportTransient(error, code)) && (
+          <div role="alert" className="flex items-center gap-3 text-danger">
+            <span>{error}</span>
             <Button size="sm" variant="secondary" onClick={reload}>
               다시 불러오기
             </Button>
-          )}
-        </div>
-      )}
-      {report && (
+          </div>
+        )}
+      {report && screen === "report" && (
         <ReportView
           report={report}
           printing={printing}

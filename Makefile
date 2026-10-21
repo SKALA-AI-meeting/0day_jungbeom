@@ -27,6 +27,9 @@ down:            ## 전체 compose 내림
 seed:            ## 자료 원문 시드 → 관리자·채용 건 → rag 재색인 (postgres 5432, api 8000, rag-mcp 9102)
 	uv run --project services/api python scripts/seed.py
 
+seed-compose:    ## 전체 compose(make up)에 시드. 포트를 열지 않고 compose 안 일회성 seed 서비스로 실행: make seed-compose [SEED_ARGS="--minutes 15"]
+	$(COMPOSE) run --rm seed $(SEED_ARGS)
+
 test:            ## 단위 테스트 전부(LLM mock, live 제외). 기대 실패 목록(tests/expected-failures.txt)의 테스트는 건너뛴다
 	@p=""; fn=--deselect; fp=--ignore; skips=$$($(XFAIL_ARGS)); \
 	  echo "== root $(ROOT_TESTS)"; uv run pytest -q -p no:cacheprovider $$skips $(ROOT_TESTS) || exit 1
@@ -99,4 +102,4 @@ docs-check:      ## 생성 블록이 코드와 같은지, docs/features.md의 �
 help:            ## 타깃 목록
 	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "%-16s %s\n", $$1, $$2 }'
 
-.PHONY: help docs-gen docs-check infra-up infra-down up down seed test test-live lint e2e test-e2e eval-live e2e-auth e2e-faults stage stage-advance e2e-stack-up e2e-stack-seed e2e-stack-down e2e-stages
+.PHONY: help docs-gen docs-check infra-up infra-down up down seed seed-compose test test-live lint e2e test-e2e eval-live e2e-auth e2e-faults stage stage-advance e2e-stack-up e2e-stack-seed e2e-stack-down e2e-stages

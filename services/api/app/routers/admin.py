@@ -186,12 +186,14 @@ async def reissue(session_id: uuid.UUID, ctx: Ctx, principal: AdminP) -> dict[st
 @router.post("/sessions/{session_id}/cancel")
 async def cancel(session_id: uuid.UUID, ctx: Ctx, principal: AdminP) -> dict[str, str]:
     fx = Effects()
-    async with ctx.session_factory() as db:
-        await admin_service.company_session(db, principal.company_id, session_id)
-        session = await db.get(Session, session_id, with_for_update=True)
-        session_service.cancel(session, ctx.clock.now(), fx)
-        await db.commit()
-    await ctx.apply(session_id, fx)
+    async with ctx.ordered(session_id):
+        async with ctx.session_factory() as db:
+            await admin_service.company_session(db, principal.company_id, session_id)
+            session = await db.get(Session, session_id, with_for_update=True)
+            session_service.cancel(session, ctx.clock.now(), fx)
+            await db.commit()
+        ctx.emit(session_id, fx)
+    await ctx.publish(session_id, fx)
     return {"status": "cancelled"}
 
 
@@ -201,8 +203,18 @@ async def report(session_id: uuid.UUID, ctx: Ctx, principal: AdminP) -> dict[str
         session, inv, position = await admin_service.company_session(
             db, principal.company_id, session_id
         )
+        if session.status == "failed" and session.failed_stage == "report":
+            raise ServiceError(
+                409,
+                "report_failed",
+                "report generation failed",
+                failed_stage="report",
+                failed_step=await session_service.report_failed_step(db, session),
+            )
         merged = await reports.merged_report(db, session, position, inv)
         if merged is None:
+            if session.status == "completed":
+                raise conflict("report_not_ready", "report is being generated")
             raise not_found("report not found")
         return merged
 
@@ -213,10 +225,10 @@ async def regenerate(session_id: uuid.UUID, ctx: Ctx, principal: AdminP) -> dict
     async with ctx.session_factory() as db:
         await admin_service.company_session(db, principal.company_id, session_id)
         session = await db.get(Session, session_id, with_for_update=True)
-        await session_service.regenerate(db, session, fx)
+        status = await session_service.regenerate(db, session, fx)
         await db.commit()
     await ctx.apply(session_id, fx)
-    return {"status": "completed"}
+    return {"status": status}
 
 
 @router.post("/sessions/{session_id}/review")

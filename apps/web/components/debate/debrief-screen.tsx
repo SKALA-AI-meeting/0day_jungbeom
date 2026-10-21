@@ -3,7 +3,7 @@
 // 디브리핑: 한 열 문서. R1 첫 문장 → 이의 제기 경로 → 제출 확인 → 설문 → 결과를 보이지 않는 이유·기업이 보는 것·보관 →
 // 장면(카드) 설명 → 보는 요소 → 내 발언 돌아보기(접힘) → AI 동료 소개(여기서 처음 성향이 드러난다) → 기획안 열람(접힘).
 // 척도 세부·수준은 보이지 않는다.
-import { Copy } from "lucide-react";
+import { CircleCheck, Copy } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Avatar, Button, Wordmark, cn, toast } from "@/components/ui";
@@ -73,8 +73,8 @@ function Scale({
           className={cn(
             "w-12 rounded-[calc(var(--radius-md)-2px)] py-1.5 text-body tabular-nums",
             value === n
-              ? "border border-line bg-surface font-semibold"
-              : "border border-transparent text-muted",
+              ? "border border-accent bg-accent-soft font-semibold text-accent"
+              : "border border-transparent text-ink hover:bg-surface",
           )}
         >
           {n}
@@ -118,7 +118,7 @@ function Survey({
               maxLength={500}
               value={comment}
               onChange={(event) => setComment(event.target.value)}
-              className="resize-none rounded-md border border-line bg-surface px-3 py-2 text-body outline-none focus-visible:border-accent"
+              className="resize-none rounded-md border border-subtle bg-surface px-3 py-2 text-body outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/30"
             />
           </label>
         ),
@@ -157,6 +157,8 @@ export function DebriefScreen({
   onSurvey: (answers: { q: string; value: number }[], comment: string) => Promise<boolean>;
 }) {
   const failed = !!debrief.failed_stage;
+  // 결과를 보이지 않는다는 첫 문장은 머리 안내에도 올리고, "평가와 기록"에는 전체 문구를 그대로 둔다
+  const [scoringFirst] = introSentences(debrief.scoring_notice);
   const elementName = new Map(debrief.elements?.map((e) => [e.element, e]) ?? []);
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 px-6 py-16">
@@ -164,7 +166,8 @@ export function DebriefScreen({
       <header className="flex flex-col gap-3">
         <h1 className="text-large font-bold">{failed ? "세션이 중단됐어요" : "수고하셨습니다"}</h1>
         {endReason === "submitted" && !failed && (
-          <p className="rounded-md bg-surface-sunken px-4 py-3 text-callout font-semibold">
+          <p className="flex items-center gap-2 rounded-md bg-success-soft px-4 py-3 text-callout font-semibold text-ink">
+            <CircleCheck size={16} className="shrink-0 text-success" aria-hidden />
             기획안을 제출했어요. 제출한 기획안은 아래에서 다시 볼 수 있어요.
           </p>
         )}
@@ -177,6 +180,7 @@ export function DebriefScreen({
             {sentence}
           </p>
         ))}
+        {!failed && <p className="text-body text-muted">{scoringFirst}</p>}
         <p className="text-body text-muted">{debrief.appeal_contact}</p>
       </header>
 

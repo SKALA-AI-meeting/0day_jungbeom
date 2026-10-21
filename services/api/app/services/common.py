@@ -20,11 +20,12 @@ RETENTION = timedelta(days=90)
 
 
 class ServiceError(Exception):
-    """계약 오류 `{"error": {code, message}}`와 HTTP 상태."""
+    """계약 오류 `{"error": {code, message, ...extra}}`와 HTTP 상태."""
 
-    def __init__(self, status: int, code: str, message: str | None = None) -> None:
+    def __init__(self, status: int, code: str, message: str | None = None, **extra: Any) -> None:
         super().__init__(message or code)
         self.status, self.code, self.message = status, code, message or code
+        self.extra = extra
 
 
 def conflict(code: str = "conflict", message: str | None = None) -> ServiceError:

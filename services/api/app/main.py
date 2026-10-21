@@ -38,7 +38,7 @@ async def _http_error(_: Request, exc: HTTPException) -> JSONResponse:
 
 async def _service_error(_: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(
-        {"error": {"code": exc.code, "message": exc.message}}, status_code=exc.status
+        {"error": {"code": exc.code, "message": exc.message, **exc.extra}}, status_code=exc.status
     )
 
 

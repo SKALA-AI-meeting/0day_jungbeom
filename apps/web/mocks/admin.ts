@@ -31,6 +31,8 @@ class MockApiError extends Error {
     readonly status: number,
     readonly code: string,
     message?: string,
+    /** 오류 객체의 추가 필드(failed_step 등) */
+    readonly extra: Record<string, unknown> = {},
   ) {
     super(message ?? code);
   }
@@ -48,7 +50,15 @@ const REASONS = [
   "auto_submitted_blank",
 ];
 
-type ReportState = { report: Report; polls: number; submitted: string | null; stuck: boolean };
+type ReportState = {
+  report: Report;
+  polls: number;
+  submitted: string | null;
+  stuck: boolean;
+  /** 생성 실패 지점(실패 상태면). 재생성하면 비워지고 generating만큼 생성 중으로 응답한다 */
+  failedStep?: "draft" | "finalize" | null;
+  generating?: number;
+};
 
 type Store = {
   positions: Position[];
@@ -101,6 +111,14 @@ function fresh(): Store {
         stuck: false,
       },
       "sess-6": { report: reviewedReport(), polls: 0, submitted: null, stuck: false },
+      // 생성 실패 리포트(조회 → 409 report_failed, 다시 만들기 → 생성 중 409 두 번 뒤 리포트)
+      "sess-7": {
+        report: structuredClone(reportFixture) as unknown as Report,
+        polls: 0,
+        submitted: null,
+        stuck: false,
+        failedStep: "draft",
+      },
     },
     counter: 0,
   };
@@ -253,6 +271,13 @@ function cancel(sessionId: string) {
 }
 
 function regenerate(sessionId: string) {
+  const failedReport = store.reports[sessionId];
+  if (failedReport?.failedStep) {
+    const status = failedReport.failedStep === "finalize" ? "approving" : "completed";
+    failedReport.failedStep = null;
+    failedReport.generating = POLLS_UNTIL_FINAL;
+    return { status };
+  }
   const { candidate } = findSession(sessionId);
   if (candidate.status !== "failed" || candidate.failed_stage !== "report") {
     throw new MockApiError(409, "conflict");
@@ -282,6 +307,16 @@ function setStatus(sessionId: string, status: string, group: Candidate["display_
 
 function getReport(sessionId: string) {
   const state = reportState(sessionId);
+  if (state.failedStep) {
+    throw new MockApiError(409, "report_failed", "리포트 생성에 실패했습니다.", {
+      failed_stage: "report",
+      failed_step: state.failedStep,
+    });
+  }
+  if (state.generating) {
+    state.generating -= 1;
+    throw new MockApiError(409, "report_not_ready", "리포트를 만드는 중입니다.");
+  }
   const { report } = state;
   if (report.stage === "draft" && report.review && !state.stuck) {
     state.polls += 1;

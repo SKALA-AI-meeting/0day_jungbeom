@@ -8,6 +8,7 @@ import asyncio
 import importlib
 import logging
 import uuid
+from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -49,10 +50,15 @@ class AppContext:
     spawned: set[asyncio.Task] = field(default_factory=set)
     record_frames: bool = False
     engine: AsyncEngine | None = None
+    order_locks: dict[uuid.UUID, asyncio.Lock] = field(
+        default_factory=lambda: defaultdict(asyncio.Lock)
+    )
 
     def __post_init__(self) -> None:
         if self.hub is None:
             self.hub = Hub(self.clock.now, record=self.record_frames)
+        if self.hub.on_drop is None:
+            self.hub.on_drop = self.mark_disconnected
         if self.mailboxes is None:
             self.mailboxes = Mailboxes(self)
         if self.classify is None:
@@ -73,19 +79,51 @@ class AppContext:
         while self.spawned:
             await asyncio.gather(*list(self.spawned), return_exceptions=True)
 
-    async def apply(self, session_id: uuid.UUID, fx: Effects) -> None:
-        """커밋 뒤 효과: generation 캐시 → 큐 발행 → WS 프레임(순서대로) → 자극 enqueue."""
+    def ordered(self, session_id: uuid.UUID) -> asyncio.Lock:
+        """세션별 순서 잠금. '행 잠금 → 커밋 → emit(프레임에 seq 부여·송신 큐에 넣기)'을 감싸 커밋
+        순서 = WS 프레임 순서를 보장한다(게시 커밋 뒤 전송 전에 확정이 끼어들어 이전 단계 발언이
+        확정 프레임 뒤에 가는 것을 막음). 실제 소켓 전송(hub 송신 작업)과 브로커 발행(publish)은
+        잠금 밖이라 느린 연결·브로커가 다른 쓰기를 막지 않는다. 잠금 안에서 runner 실행이나 같은
+        세션의 다른 ordered 구간을 기다리지 않는다."""
+        return self.order_locks[session_id]
+
+    def set_generation(self, session_id: uuid.UUID, generation: int) -> None:
+        """generation 캐시는 늘기만 한다(늦게 읽은 옛 값으로 되돌아가지 않음)."""
+        self.generations[session_id] = max(self.generations.get(session_id, generation), generation)
+
+    def emit(self, session_id: uuid.UUID, fx: Effects) -> None:
+        """커밋 직후(순서 잠금 안): generation 캐시 → 프레임 enqueue → 자극 enqueue(대기 없음)."""
         if fx.generation is not None:
-            self.generations[session_id] = fx.generation
+            self.set_generation(session_id, fx.generation)
+        self.hub.enqueue_many(session_id, fx.events)
+        for stimulus, run_id in fx.stimuli:
+            self.mailboxes.put(session_id, stimulus, run_id)
+
+    async def publish(self, session_id: uuid.UUID, fx: Effects) -> None:
+        """순서 잠금 밖: 리포트 큐 발행(브로커 확인 뒤 *_enqueued_at 기록)."""
         for routing_key in fx.publish:
             async with self.session_factory() as db:
                 session = await db.get(Session, session_id)
                 await queue.publish_report(
                     db, self.publisher, session, routing_key, self.clock.now()
                 )
-        await self.hub.send_many(session_id, fx.events)
-        for stimulus, run_id in fx.stimuli:
-            self.mailboxes.put(session_id, stimulus, run_id)
+
+    async def apply(self, session_id: uuid.UUID, fx: Effects) -> None:
+        """순서 잠금이 필요 없는 경로의 커밋 뒤 효과: emit → publish."""
+        self.emit(session_id, fx)
+        await self.publish(session_id, fx)
+
+    async def mark_disconnected(self, session_id: uuid.UUID) -> None:
+        """현재 연결이 끊긴 시각을 connection_gaps에 남긴다(진행 중 세션만). ws 라우터 종료와
+        hub가 먼저 끊은 경우(전송 실패·타임아웃)가 같은 경로를 쓴다."""
+        from app.models import ConnectionGap
+        from app.services.common import load_session
+
+        async with self.session_factory() as db:
+            session = await load_session(db, session_id)
+            if session.status == "in_progress":
+                db.add(ConnectionGap(session_id=session_id, disconnected_at=self.clock.now()))
+                await db.commit()
 
     async def post_message(self, *, session_id: uuid.UUID, **body: Any) -> dict[str, Any]:
         """내부 POST /messages와 같은 저장(개발용 FakeAgentRunner의 post_message)."""
@@ -93,12 +131,14 @@ class AppContext:
         from app.services.common import load_session, serialize_message
 
         fx = Effects()
-        async with self.session_factory() as db:
-            session = await load_session(db, session_id, lock=True)
-            message = await debate.post_internal_message(db, session, body, self.clock, fx)
-            await db.commit()
-            payload = serialize_message(session, message)
-        await self.apply(session_id, fx)
+        async with self.ordered(session_id):
+            async with self.session_factory() as db:
+                session = await load_session(db, session_id, lock=True)
+                message = await debate.post_internal_message(db, session, body, self.clock, fx)
+                await db.commit()
+                payload = serialize_message(session, message)
+            self.emit(session_id, fx)
+        await self.publish(session_id, fx)
         return payload
 
 

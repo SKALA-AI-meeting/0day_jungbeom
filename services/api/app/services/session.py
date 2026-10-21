@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import queue
 from app.auth import INVITE_TTL, new_invite_token
-from app.models import EvaluationRun, Invite, Position, Proposal, Session, Slot
+from app.models import EvaluationRun, Invite, Position, Proposal, Report, Session, Slot
 from app.services import scenario as sc
 from app.services.clock import Clock
 from app.services.common import ENDED_STATUSES, Effects, conflict, empty_sections, iso
@@ -147,10 +147,25 @@ def fail(session: Session, stage: str, reason: str, now: datetime, fx: Effects) 
     session.failed_reason = reason
 
 
-async def regenerate(db: AsyncSession, session: Session, fx: Effects) -> None:
-    """failed(report) → completed 재발행. 최신 평가에 실패 차원이 있으면 eval_round +1."""
+async def report_failed_step(db: AsyncSession, session: Session) -> str:
+    """failed(report)가 난 곳: 담당자 승인 뒤 확정이면 finalize, 그 전(초안 생성)이면 draft."""
+    report = await db.get(Report, session.id)
+    return "finalize" if report is not None and report.reviewed_at is not None else "draft"
+
+
+async def regenerate(db: AsyncSession, session: Session, fx: Effects) -> str:
+    """failed(report) 복구. 확정 실패는 approving으로 돌려 같은 회차 finalize를 재개하고(draft
+    유지), 초안 전 실패는 남은 draft를 지우고 completed로 재발행한다(최신 평가에 실패 차원이
+    있으면 eval_round +1). 지운 draft는 새 draft가 저장될 때까지 조회·후보 목록에 나가지 않는다."""
     if session.status != "failed" or session.failed_stage != "report":
         raise conflict("conflict", "only report failures can be regenerated")
+    session.failed_stage = None
+    session.failed_reason = None
+    if await report_failed_step(db, session) == "finalize":
+        session.status = "approving"
+        session.approve_enqueued_at = None
+        fx.publish.append(queue.APPROVE)
+        return session.status
     latest = await db.scalar(
         select(EvaluationRun)
         .where(EvaluationRun.session_id == session.id)
@@ -159,11 +174,13 @@ async def regenerate(db: AsyncSession, session: Session, fx: Effects) -> None:
     )
     if latest is not None and latest.has_failed:
         session.eval_round += 1
+    stale = await db.get(Report, session.id)
+    if stale is not None:
+        await db.delete(stale)
     session.status = "completed"
-    session.failed_stage = None
-    session.failed_reason = None
     session.report_enqueued_at = None
     fx.publish.append(queue.GENERATE)
+    return session.status
 
 
 def invite_url(base: str, raw: str) -> str:

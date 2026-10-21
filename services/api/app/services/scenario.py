@@ -169,6 +169,13 @@ def assemble(
         "office_clock": mission["office_clock"],
         "rubric": rubric,
         "prompts": prompts,
+        # 그래프·어시스턴트 Catalog(app/agent/catalog.py)가 읽는 미션 YAML 원본(입장·카드·후보 고정)
+        "catalog": {
+            "mission": mission,
+            "personas": personas,
+            "cards": cards,
+            "keywords": keywords,
+        },
     }
 
 

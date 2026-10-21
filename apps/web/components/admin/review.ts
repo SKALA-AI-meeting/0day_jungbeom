@@ -17,9 +17,34 @@ export function phaseOf(report: Report): Phase {
   return report.review ? "approving" : "draft";
 }
 
-/** 리포트가 아직 없다(completed 뒤 draft 생성 전): 404 not_found. 안내를 보이고 다시 조회한다 */
+/** 리포트 조회 응답 구분: 409 report_not_ready(생성 중, 폴링) / 409 report_failed(실패, 다시 만들기) / 404 not_found(리포트 없음) */
 export const REPORT_POLL_MS = 5000;
-export const reportNotReady = (code: string | null) => code === "not_found";
+export const reportNotReady = (code: string | null) => code === "report_not_ready";
+export const reportFailed = (code: string | null) => code === "report_failed";
+export const reportMissing = (code: string | null) => code === "not_found";
+
+/** 일시 오류(5xx·네트워크): 오류 코드가 없거나 http_error. 생성 중 폴링은 이때도 멈추지 않는다 */
+export const reportTransient = (error: string | null, code: string | null) =>
+  error !== null && (code === null || code === "http_error");
+
+/** 생성 중 폴링 여부: report_not_ready를 본 뒤로 성공·실패·없음 응답이 올 때까지 일시 오류를 넘겨 유지한다 */
+export function nextWaiting(waiting: boolean, error: string | null, code: string | null) {
+  if (reportNotReady(code)) return true;
+  return waiting && reportTransient(error, code);
+}
+
+export type ReportScreen = "failed" | "generating" | "missing" | "report" | "empty";
+
+/** 화면 상태. 오류 코드가 이전 데이터보다 우선한다(확정 중 report_failed가 와도 이전 리포트에 가려지지 않게) */
+export function reportScreen(report: unknown, code: string | null, waiting: boolean): ReportScreen {
+  if (reportFailed(code)) return "failed";
+  if (reportNotReady(code) || (waiting && !report)) return "generating";
+  if (reportMissing(code)) return "missing";
+  return report ? "report" : "empty";
+}
+
+/** 폴링 간격: 일시 오류가 이어지면 두 배씩 늘려 40초까지 */
+export const pollDelay = (backoff: number) => REPORT_POLL_MS * Math.min(backoff, 8);
 
 export const PHASE_LABEL: Record<Phase, string> = {
   draft: "검토 대기",

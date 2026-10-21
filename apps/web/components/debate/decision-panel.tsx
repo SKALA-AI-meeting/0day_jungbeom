@@ -2,7 +2,7 @@
 
 // 결정 사항(ConsensusPanel): 정한 결과 줄만 쌓이고 현재 정할 항목에만 입력과 [이걸로 정하기].
 // 후보안·지지 현황·오피스 시각은 보이지 않는다(D14·R7). 정하기는 늘 확인 창 하나(UX 결정 1·2).
-import { CircleCheck, Clock3 } from "lucide-react";
+import { Check, CircleCheck, Clock3 } from "lucide-react";
 import { useState } from "react";
 
 import { Button, ConfirmDialog, cn } from "@/components/ui";
@@ -17,8 +17,8 @@ export type KeywordOption = { key: string; label: string };
 const INTRO =
   "이 토론은 키워드 → 문제 상황 → 해결책을 정해 기획안을 씁니다. 키워드는 여기서 후보 중 하나를 골라 정해요.";
 const PLACEHOLDER: Record<Exclude<SlotPhase, "keyword">, string> = {
-  problem: "정하고 싶은 문제 상황을 한두 문장으로 적어요",
-  solution: "정하고 싶은 해결책을 한두 문장으로 적어요",
+  problem: "누가 어떤 상황에서 무엇이 어려운지 한두 문장으로 적어요",
+  solution: "누가 무엇을 어떻게 하는지 한두 문장으로 적어요",
 };
 
 function Result({ slot, snap, flash }: { slot: Slot; snap: StateSnapshot; flash: boolean }) {
@@ -86,10 +86,15 @@ function SlotInput({
   };
 
   return (
-    <li className="flex flex-col gap-3 px-6 py-5" data-slot-input={phase}>
+    <li
+      className="flex flex-col gap-3 border-l-2 border-l-accent py-5 pr-6 pl-[22px]"
+      data-slot-input={phase}
+    >
       <div className="flex items-baseline gap-2">
-        <span className="text-footnote font-semibold text-accent">{SLOT_LABEL[phase]}</span>
-        <span className="text-caption text-muted">지금 정할 항목</span>
+        <span className="text-callout font-semibold text-ink">{SLOT_LABEL[phase]}</span>
+        <span className="rounded-sm bg-accent-soft px-1.5 py-px text-caption font-medium text-accent">
+          지금 정할 항목
+        </span>
       </div>
       {isKeyword && <p className="text-footnote leading-relaxed text-muted">{INTRO}</p>}
       {isKeyword ? (
@@ -108,11 +113,13 @@ function SlotInput({
               onClick={() => setKeyword(option.key)}
               className={cn(
                 "flex-1 rounded-[calc(var(--radius-md)-2px)] px-3 py-1.5 text-body transition-colors duration-150",
+                "inline-flex items-center justify-center gap-1",
                 keyword === option.key
-                  ? "border border-line bg-surface font-semibold text-ink"
-                  : "border border-transparent text-muted",
+                  ? "border border-accent bg-accent-soft font-semibold text-accent"
+                  : "border border-transparent text-ink hover:bg-surface",
               )}
             >
+              {keyword === option.key && <Check size={14} aria-hidden />}
               {option.label}
             </button>
           ))}
@@ -126,7 +133,7 @@ function SlotInput({
           aria-label={`${SLOT_LABEL[phase]} 입력`}
           placeholder={PLACEHOLDER[phase]}
           onChange={(event) => setValue(event.target.value)}
-          className="resize-none rounded-md border-2 border-muted bg-surface px-3 py-2 text-body outline-none placeholder:text-muted focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:bg-surface-sunken"
+          className="resize-none rounded-md border border-subtle bg-surface px-3 py-2 text-body outline-none placeholder:text-muted focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 disabled:bg-surface-sunken"
         />
       )}
       {error && (

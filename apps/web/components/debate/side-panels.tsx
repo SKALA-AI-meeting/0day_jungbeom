@@ -7,7 +7,7 @@ import { useState } from "react";
 
 import { Button, toast } from "@/components/ui";
 
-import { Markdown } from "./markdown";
+import { AssistantMarkdown, Markdown } from "./markdown";
 import type { AssistantEntry, Material, Materials } from "./types";
 
 export function MaterialsPanel({
@@ -47,8 +47,10 @@ export function MaterialsPanel({
     return <p className="px-6 py-16 text-center text-muted">이 키워드에는 준비된 자료가 없어요</p>;
 
   return (
-    <div className="flex flex-col gap-2 py-2">
-      <p className="px-6 text-footnote text-muted">「{materials.keyword}」 자료</p>
+    <div className="flex flex-col pb-2">
+      <p className="px-6 pt-4 pb-1 text-footnote font-semibold text-muted">
+        「{materials.keyword}」 자료
+      </p>
       <ul className="flex flex-col divide-y divide-line">
         {materials.materials.map((m) => (
           <li key={m.material_id}>
@@ -107,12 +109,16 @@ export function AssistantPanel({
       <p className="px-6 pt-4 text-footnote text-muted">
         열린 자료만 찾아 답합니다. 토론방의 AI 동료는 이 대화를 보지 않습니다.
       </p>
-      <ol className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-4">
+      <ol className="flex flex-1 flex-col divide-y divide-line overflow-y-auto px-6">
         {entries.map((entry) => (
-          <li key={entry.call_id} className="flex flex-col gap-1.5">
-            <p className="text-body font-semibold break-words">{entry.request}</p>
-            <p className="text-body break-words whitespace-pre-wrap">{entry.response}</p>
-            <div className="flex flex-wrap items-center gap-1.5">
+          <li key={entry.call_id} className="flex flex-col gap-3 py-5">
+            <p className="border-l-2 border-line pl-3 text-footnote break-words text-muted">
+              {entry.request}
+            </p>
+            <AssistantMarkdown className="text-body leading-relaxed">
+              {entry.response}
+            </AssistantMarkdown>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {entry.cited_material_ids.map((id) => (
                 <span
                   key={id}
@@ -136,8 +142,10 @@ export function AssistantPanel({
           </li>
         ))}
         {waiting && (
-          <li className="flex flex-col gap-1.5">
-            <p className="text-body font-semibold">{waiting}</p>
+          <li className="flex flex-col gap-3 py-5">
+            <p className="border-l-2 border-line pl-3 text-footnote break-words text-muted">
+              {waiting}
+            </p>
             <p className="text-body text-muted">자료를 찾는 중…</p>
           </li>
         )}
@@ -153,6 +161,7 @@ export function AssistantPanel({
           value={prompt}
           disabled={locked}
           aria-label="AI 어시스턴트에게 요청"
+          placeholder="열린 자료에 대해 물어보세요"
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -160,7 +169,7 @@ export function AssistantPanel({
               void ask();
             }
           }}
-          className="resize-none rounded-md border border-line bg-surface px-3 py-2 text-body outline-none focus-visible:border-accent disabled:bg-surface-sunken"
+          className="resize-none rounded-md border border-subtle bg-surface px-3 py-2 text-body outline-none placeholder:text-muted focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 disabled:bg-surface-sunken"
         />
         <div className="flex justify-end">
           <Button
