@@ -20,3 +20,8 @@ docs/handoff/reports/web-polish-shots/
 tests/e2e/records/stages/.artifacts/
 tests/e2e/records/stages/html-report/
 apps/web/test-results/
+
+# playtest 영상·스크린샷(용량이 커서 커밋하지 않음, 로그·제안·요약만 커밋)
+tests/playtest/records/**/*.webm
+tests/playtest/records/**/shots/
+tests/playtest/records/**/video/
