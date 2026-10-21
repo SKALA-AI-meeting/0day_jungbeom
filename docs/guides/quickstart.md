@@ -47,7 +47,7 @@ make seed                                                        # 자료 원문
 ```
 
 - rag-mcp는 첫 기동 때 BGE-M3 모델(약 2.3GB)을 받는다. healthy가 될 때까지 몇 분 걸릴 수 있다.
-- `make seed`는 postgres 5432·api 8000·rag-mcp 9102에 붙는다. 기본 관리자는 `admin@dayzero.example` / `dayzero-seed`(`scripts/seed.py` 옵션으로 바꾼다).
+- `make seed`는 postgres 5432·api 8000·rag-mcp 9102에 붙는다. 관리자 계정 `admin@dayzero.example`(회사 "데모 회사")과 채용 건을 만든다. 비밀번호 기본값과 바꾸는 옵션은 `scripts/seed.py`의 `--email`·`--password`.
 - 각 명령은 저장소 루트 기준 경로다. 터미널을 나눠 띄운다.
 
 ## 5. 지원자 화면 열기
@@ -58,6 +58,8 @@ make stage STAGE=keyword MIN=15        # 단계 시드 세션을 만들고 초�
 
 출력된 링크를 브라우저로 열면 그 단계부터 진행된다. 시간 초과·침묵 초대·카드를 기다리지 않고 보려면 `make stage-advance SID=<세션 id> TO=deadline|idle|card:<카드 id>`. 관리자 화면은 `http://localhost:3000/admin/login`.
 
+계정은 둘로 나뉜다. `make seed`가 만든 `admin@dayzero.example` 회사와 `make stage`(테스트 API)가 만드는 세션의 회사는 다르다. 단계 시드 세션은 별도 기업의 관리자 `e2e@example.com`이 소유하므로(기업 간 격리), 그 세션의 리포트(`STAGE=ended`가 출력하는 `admin_report_url`)는 `e2e@example.com`으로 로그인해 본다. 이 계정의 비밀번호는 `services/api/app/services/test_sessions.py`의 `SEED_PASSWORD`, 다른 관리자로 만들려면 `scripts/make_session.py --admin-email`.
+
 ## 6. 정상 확인과 종료
 
 - api `curl -fs http://localhost:8000/health`, web `http://localhost:3000/api/health`.
@@ -66,5 +68,5 @@ make stage STAGE=keyword MIN=15        # 단계 시드 세션을 만들고 초�
 
 ## 다른 실행 방식
 
-- 8개 서비스를 모두 컨테이너로: `make up` / `make down`. 이 모드는 postgres·rag-mcp를 호스트에 열지 않으므로 호스트의 `make seed`가 닿지 않는다([configuration.md](configuration.md) "실행 모드").
+- 8개 서비스를 모두 컨테이너로: `make up` / `make down`. 이 모드는 postgres·rag-mcp를 호스트에 열지 않으므로 호스트의 `make seed`가 닿지 않는다. 전체 compose용 시드 명령은 `Makefile`을 참고한다([configuration.md](configuration.md) "실행 모드").
 - 단계별 화면 테스트용 격리 스택: `make e2e-stack-up` → `make e2e-stack-seed` → `make e2e-stages` → `make e2e-stack-down`([testing.md](testing.md)).

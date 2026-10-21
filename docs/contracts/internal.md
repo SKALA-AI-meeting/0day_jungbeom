@@ -158,7 +158,7 @@ MCP 서버·report-worker·토론 그래프가 쓰는 내부 REST와 평가 저�
 - `propose` + scenario_option_key → 그 키로 안 행을 만들거나(이미 있으면 기존 행, 멱등 키 (session_id, phase, scenario_option_key)) proposer = candidate. 뒤에 AI가 같은 안을 `propose_option`해도 같은 행이 돌아오므로 최초 제안자가 보존된다. `propose` + new_option_label → 자유 안(proposer = candidate). **안 행은 confidence와 상관없이 만든다**(최초 제안 사실 기록).
 - 입장: confidence = high일 때만 stances 행을 쓴다. `propose`·`agree` + 대상 → support, `oppose` + 대상 → oppose(같은 안의 이전 support를 철회). confidence = low·`question`·`other` → 입장 없음.
 - 실패·스키마 위반은 `{"intent": "other", "target_option_id": null, "scenario_option_key": null, "new_option_label": null, "confidence": "low", "addressed_to": []}`, `fallback=true`.
-- 분류는 토론 진행용이다. 세션 후 평가 에이전트에는 참고 입력으로만 들어가고 원문과 다르면 원문을 따른다([product/rubric.md](../product/rubric.md) 1.2). 정확도 기준선은 `tests/eval/` 의도 분류 20문장을 실 모델(gpt-4o-mini)로 잰 0.85다.
+- 분류는 토론 진행용이다. 세션 후 평가 에이전트에는 참고 입력으로만 들어가고 원문과 다르면 원문을 따른다([product/rubric.md](../product/rubric.md) 1.2). 정확도 목표는 `tests/eval/` 의도 분류 20문장 기준 0.85다(최근 측정은 [architecture/harness.md](../architecture/harness.md) "실측 기준선").
 
 ## 턴 매니저 결정 스키마
 

@@ -88,4 +88,4 @@ LangSmith는 프로젝트 보존 기간을 90일로 둔다.
 
 ## 기업 간 격리와 스키마 변경
 
-기업 간 격리 규칙은 [security.md](security.md). 새 DB 초기화와 기존 볼륨에 열을 더하는 절차는 [guides/database.md](../guides/database.md).
+기업 간 격리 규칙은 [security.md](security.md). 새 DB 초기화와 스키마를 바꾼 뒤 로컬 DB를 다시 만드는 절차는 [guides/database.md](../guides/database.md).

@@ -1,38 +1,41 @@
 # 데이터베이스 초기화와 스키마 변경
 
-테이블과 컬럼의 뜻은 [architecture/data-model.md](../architecture/data-model.md), DDL은 `infra/db/schema.sql`이다.
+테이블과 컬럼의 뜻은 [architecture/data-model.md](../architecture/data-model.md), DDL은 `infra/db/schema.sql`이다. 지금은 공유·운영 DB가 없고 DB는 사람마다 로컬 개발용이므로 마이그레이션 도구를 두지 않는다.
 
 ## 새 DB
 
-- compose의 postgres는 볼륨(`pgdata`, 격리 e2e 스택은 `dayzero-debate_pgdata`)이 비어 있을 때만 `infra/db/schema.sql`을 `/docker-entrypoint-initdb.d`로 한 번 적용한다.
+- compose의 postgres는 볼륨이 비어 있을 때만 `infra/db/schema.sql`을 `/docker-entrypoint-initdb.d`로 한 번 적용한다. 볼륨 이름은 compose 프로젝트 이름을 앞에 붙인다: `make up`·`make infra-up`은 `infra_pgdata`, 격리 e2e 스택은 `dayzero-debate_pgdata`.
 - api 단위 테스트는 실행마다 임시 DB(`dayzero_test_<랜덤>`)를 만들어 `schema.sql`을 적용하고 끝나면 지운다(`services/api/tests/conftest.py`). 그래서 `schema.sql` 수정은 다른 사람의 개발 DB를 건드리지 않는다.
-- 자료 원문(`materials`)과 검색 청크(`material_chunks`)는 스키마가 아니라 시드가 채운다(`make seed`, 격리 스택은 `make e2e-stack-seed`).
+- 자료 원문(`materials`)과 검색 청크(`material_chunks`)는 스키마가 아니라 시드가 채운다(로컬 개발 `make seed`, 격리 스택 `make e2e-stack-seed`).
 
-## 기존 DB에 변경 반영
+## schema.sql을 바꾼 뒤
 
-볼륨이 이미 있으면 `schema.sql`을 고쳐도 다시 적용되지 않는다. 보존할 데이터가 있는 DB는 볼륨을 지우지 않고 변경 SQL을 적용한다. 볼륨 삭제(`docker compose down -v`)는 데이터를 버려도 되는 개인 개발 DB에서만 쓰고 기본 절차로 삼지 않는다.
+볼륨이 이미 있으면 `schema.sql`을 고쳐도 다시 적용되지 않는다. 로컬 DB는 개발용이므로 볼륨을 지우고 다시 만든다.
 
-1. 변경 SQL을 쓴다. 다시 실행해도 안전하게(`ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS` 등) 쓰고, 같은 내용을 `schema.sql`에도 반영한다.
-2. 백필이 필요하면 같은 파일에 `UPDATE`를 두고, 새 컬럼의 null이 기존 행에서 무슨 뜻인지 data-model.md에 적는다.
-3. 적용 전 백업: `docker compose -f infra/docker-compose.yml --env-file infra/.env exec postgres pg_dump -U dayzero dayzero > backup.sql`
-4. 적용: `docker compose -f infra/docker-compose.yml --env-file infra/.env exec -T postgres psql -U dayzero -d dayzero -v ON_ERROR_STOP=1 < <변경 SQL>`
-5. 확인: `psql`의 `\d <테이블>`로 컬럼을 보고, api를 다시 띄워 관련 화면·테스트를 한 번 돌린다.
-6. 되돌리기가 필요하면 3의 백업을 `psql`로 다시 넣는다.
-
-예: 제출 때 빈 칸 기록 컬럼(`proposals.submit_blank_sections`, `proposals.blank_warning_shown`)을 기존 DB에 더하는 SQL.
-
-```sql
-ALTER TABLE proposals ADD COLUMN IF NOT EXISTS submit_blank_sections text[];
-ALTER TABLE proposals ADD COLUMN IF NOT EXISTS blank_warning_shown boolean;
--- 기존 행은 null로 둔다(제출 전과 같은 뜻: 기록 없음)
+```
+make down                       # 또는 make infra-down
+docker volume rm infra_pgdata   # 격리 스택이면 make e2e-stack-down 뒤 dayzero-debate_pgdata
+make infra-up                   # 또는 make up. 빈 볼륨에 schema.sql이 적용된다
+make seed                       # 자료 원문·채용 건·재색인 다시 만들기
 ```
 
-## 변경 SQL 보관 규칙 (제안)
+## 데이터를 남겨야 할 때
 
-지금 저장소에는 변경 SQL 폴더가 없다. 다른 사람과 같은 DB를 이어 쓰려면 아래 규칙을 쓴다.
+지우기 전에 `pg_dump`로 백업한다. 이 백업은 **바꾸기 전 스키마 그대로** 되돌리는 용도다. 새 스키마로 데이터를 옮기는 것은 마이그레이션이 필요하므로 지금은 지원하지 않는다.
 
-- 위치 `infra/db/migrations/`, 이름 `NNNN_<짧은 설명>.sql`(번호는 4자리로 1씩 증가).
-- 파일 하나는 한 번의 스키마 변경이고, 다시 실행해도 결과가 같아야 한다.
-- `schema.sql`은 항상 "모든 변경을 적용한 최종 상태"다. 새 DB는 `schema.sql`만으로 만들고 변경 SQL은 기존 DB에만 쓴다.
-- 스키마를 바꾸는 PR은 `schema.sql`, 변경 SQL, data-model.md, 필요하면 계약([contracts/](../contracts/README.md))을 함께 고친다([contributing.md](contributing.md) "DB 변경").
-- 적용 이력 테이블과 자동 적용 도구는 아직 없다. 도입하면 이 문서를 그 도구 기준으로 바꾼다.
+```
+# 백업(스택이 떠 있는 상태)
+docker compose -f infra/docker-compose.yml --env-file infra/.env exec -T postgres pg_dump -U dayzero -Fc dayzero > backup.dump
+
+# 새 볼륨에 복원: 볼륨을 지우고 postgres만 띄운 뒤 백업으로 덮어쓴다
+docker compose -f infra/docker-compose.yml --env-file infra/.env down
+docker volume rm infra_pgdata
+docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --wait postgres
+docker compose -f infra/docker-compose.yml --env-file infra/.env exec -T postgres pg_restore -U dayzero -d dayzero --clean --if-exists --no-owner < backup.dump
+```
+
+복원한 DB는 백업 당시 스키마이므로 그 스키마를 기대하는 코드(백업 시점의 커밋)로 띄운다.
+
+## 나중에
+
+공유 DB나 운영 DB가 생기면 볼륨을 지울 수 없으므로 마이그레이션 규칙을 도입한다. 그때 정할 것: 변경 SQL 위치와 이름 규칙(예: `infra/db/migrations/NNNN_<설명>.sql`), 적용 이력 테이블, 적용 도구, `schema.sql`과의 관계, 백필·되돌리기 절차. 도입하면 이 문서와 [contributing.md](contributing.md) "DB 변경"을 함께 고친다.

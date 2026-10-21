@@ -44,7 +44,7 @@ PR 설명에는 실행한 명령과 검증 방식(mock / 격리 DB / 실 API / �
 
 ## DB 변경
 
-- `infra/db/schema.sql`과 [architecture/data-model.md](../architecture/data-model.md)를 함께 고치고, 기존 DB에 적용할 변경 SQL을 [database.md](database.md) 규칙대로 PR에 넣는다.
+- `infra/db/schema.sql`과 [architecture/data-model.md](../architecture/data-model.md)를 함께 고친다. 마이그레이션은 두지 않으므로 PR 설명에 "로컬 볼륨을 지우고 다시 만들 것"을 적는다([database.md](database.md)).
 - DB 쓰기는 api만 한다. 다른 서비스는 내부 API(8001)를 거친다.
 
 ## 시나리오·프롬프트 변경

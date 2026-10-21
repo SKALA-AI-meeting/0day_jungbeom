@@ -510,7 +510,7 @@ AI 기반 채용 평가는 이미 검증된 시장이고, 해외에서는 AI 동
 
 ## 부록. 기술 설계 (참고용)
 
-> 정본은 `docs/architecture/overview.md`(구성·흐름·권한), `docs/contracts/mcp.md`(API·MCP 도구), `docs/product/scenario.md`, `docs/product/rubric.md`입니다. 아래는 요약입니다. LLM은 API 키 제약 때문에 **gpt-4o-mini**를 기본으로 쓰고, 역할별 모델은 env `MODEL_INTENT`·`MODEL_TURN`·`MODEL_PERSONA`·`MODEL_ASSISTANT`·`MODEL_EVALUATOR`로 따로 정합니다(비어 있으면 `OPENAI_MODEL`). gpt-4o-mini 실측 응답 시간(p50/p95)은 의도 분류 1.0/1.2초, 페르소나 발언 1.2/1.4초, 턴 판단 1.2/1.5초이고, 60분 세션 비용 추정은 $0.08~0.11입니다.
+> 정본은 `docs/architecture/overview.md`(구성·흐름·권한), `docs/contracts/README.md`(API·MCP 도구 계약 색인), `docs/product/scenario.md`, `docs/product/rubric.md`입니다. 아래는 요약입니다. LLM은 API 키 제약 때문에 **gpt-4o-mini**를 기본으로 쓰고, 역할별 모델은 env `MODEL_INTENT`·`MODEL_TURN`·`MODEL_PERSONA`·`MODEL_ASSISTANT`·`MODEL_EVALUATOR`로 따로 정합니다(비어 있으면 `OPENAI_MODEL`). gpt-4o-mini 실측 응답 시간(p50/p95)은 의도 분류 1.0/1.2초, 페르소나 발언 1.2/1.4초, 턴 판단 1.2/1.5초이고, 60분 세션 비용 추정은 $0.08~0.11입니다.
 
 ### A.1 기술 스택
 

@@ -18,12 +18,12 @@ env 이름과 기본값의 예시는 `infra/.env.example`, 코드의 기본값�
 | rag-mcp(호스트) | `127.0.0.1:9102` | 열지 않음 | `127.0.0.1:9112` |
 | debate·assessment MCP | 로컬 9101·9103 | 컨테이너 네트워크만 | 컨테이너 네트워크만 |
 | rag-mcp가 부르는 내부 API | `http://host.docker.internal:8001`(로컬 api) | `http://api:8001` | `http://api:8001` |
-| 시드 | `make seed` | 호스트에서 닿는 경로 없음(아래) | `make e2e-stack-seed` |
+| 시드 | `make seed` | 호스트의 `make seed`는 닿지 않음. 전체 compose용 시드 명령은 `Makefile` 참고 | `make e2e-stack-seed` |
 | 테스트 API | `ENABLE_TEST_API=1`이면 `localhost:8001/internal/test/*` | 컨테이너 안에서만 | `127.0.0.1:8101/internal/test/*` |
 
 - **같은 DB·큐를 쓰는 api는 하나만 띄운다.** 세션 메일박스·WS 송신 큐·스케줄러가 api 프로세스 메모리에 있어 둘이면 같은 세션을 두 번 처리한다. 다른 DB·큐를 쓰는 격리 스택(위 e2e 스택)은 함께 띄워도 된다.
 - 로컬 개발 모드와 전체 compose는 호스트 포트 3000·8000을 함께 쓰므로 동시에 띄우지 않는다. 같은 기계에서 두 번째 스택이 필요하면 격리 e2e 스택을 쓰거나 `API_PORT`·`WEB_PORT`·`RABBITMQ_UI_PORT`와 프로젝트 이름(`-p`)을 바꾼다.
-- 전체 compose 모드는 postgres·rag-mcp를 호스트에 열지 않아 `scripts/seed.py`가 자료 원문 시드와 재색인을 할 수 없다. 자료가 필요한 확인은 로컬 개발 모드나 격리 e2e 스택에서 한다.
+- 전체 compose 모드는 postgres·rag-mcp를 호스트에 열지 않아 호스트에서 `scripts/seed.py`가 닿지 않는다. 이 모드의 시드는 `Makefile`의 compose용 시드 타깃을 쓴다.
 
 ## env를 읽는 순서
 
