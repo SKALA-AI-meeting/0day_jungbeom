@@ -27,6 +27,15 @@ def test_fixed_seats_cards_dimensions_and_neutral_avatars(scenarios_dir):
         assert not any(t in seat["avatar"] for t in sc.PERSONA_TYPES)
 
 
+def test_scenario_copies_evaluator_prompts_and_forbidden_patterns(scenarios_dir):
+    """report-worker는 이 복사본으로 평가한다(같은 채용 건 = 같은 평가 프롬프트)."""
+    prompts = sc.assemble(scenarios_dir, "debate", 60)["prompts"]
+    elements = ("persuasion", "listening", "inclusion", "flexibility", "honesty")
+    for name in ("evaluator/common.md", *(f"evaluator/{e}.md" for e in elements)):
+        assert prompts[name].strip()
+    assert "evaluator_forbidden:" in prompts["guard_patterns.yaml"]
+
+
 def test_fifteen_minute_offsets_scale_with_20_second_floor(scenarios_dir):
     offsets = {
         c["card_id"]: c["offset_min"] for c in sc.assemble(scenarios_dir, "debate", 15)["cards"]

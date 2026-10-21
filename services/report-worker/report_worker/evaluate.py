@@ -56,7 +56,10 @@ REWRITE_FALLBACK = (
 REF_PATTERN = re.compile(r"^(msg|slot|proposal|contribution):(.+)$")
 
 
-# ---- 프롬프트·금지어 (카탈로그 파일) -------------------------------------------------------------
+# ---- 프롬프트·금지어 (채용 건 복사본, 없으면 카탈로그 파일) ------------------------------------
+
+EVALUATOR_FILES = ("evaluator/common.md", *(f"evaluator/{e}.md" for e in ELEMENTS))
+GUARD_FILE = "guard_patterns.yaml"
 
 
 @dataclass(frozen=True)
@@ -70,18 +73,49 @@ def _digest(text: str) -> str:
     return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
 
-def load_prompts(scenarios_dir: Path, mission_id: str) -> Prompts:
-    folder = Path(scenarios_dir) / "missions" / mission_id / "prompts" / "evaluator"
-    common = (folder / "common.md").read_text(encoding="utf-8")
-    elements = {e: (folder / f"{e}.md").read_text(encoding="utf-8") for e in ELEMENTS}
+def _read_files(scenarios_dir: Path, mission_id: str) -> dict[str, str]:
+    folder = Path(scenarios_dir) / "missions" / mission_id / "prompts"
+    return {
+        name: (folder / name).read_text(encoding="utf-8") for name in (*EVALUATOR_FILES, GUARD_FILE)
+    }
+
+
+def _prompts(texts: dict[str, str]) -> Prompts:
+    common = texts["evaluator/common.md"]
+    elements = {e: texts[f"evaluator/{e}.md"] for e in ELEMENTS}
     versions = {"common": _digest(common), **{e: _digest(t) for e, t in elements.items()}}
     return Prompts(common, elements, versions)
 
 
-def load_forbidden(scenarios_dir: Path, mission_id: str) -> list[re.Pattern]:
-    path = Path(scenarios_dir) / "missions" / mission_id / "prompts" / "guard_patterns.yaml"
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+def _forbidden(guard_yaml: str) -> list[re.Pattern]:
+    data = yaml.safe_load(guard_yaml)
     return [re.compile(p) for p in data["evaluator_forbidden"]["patterns"]]
+
+
+def load_prompts(scenarios_dir: Path, mission_id: str) -> Prompts:
+    return _prompts(_read_files(scenarios_dir, mission_id))
+
+
+def load_forbidden(scenarios_dir: Path, mission_id: str) -> list[re.Pattern]:
+    return _forbidden(_read_files(scenarios_dir, mission_id)[GUARD_FILE])
+
+
+def pinned_catalog(
+    scenario: dict[str, Any], scenarios_dir: Path, mission_id: str
+) -> tuple[Prompts, list[re.Pattern]]:
+    """채용 건 생성 때 `positions.scenario.prompts`에 복사된 평가 프롬프트·금지 패턴.
+
+    같은 채용 건의 지원자는 같은 프롬프트로 평가된다. 복사본에 평가 파일이 빠진 옛 채용 건만
+    현재 카탈로그 파일을 읽고 읽을 때마다 로그 1줄을 남긴다.
+    """
+    texts = scenario.get("prompts") or {}
+    pinned = all(texts.get(n) for n in (*EVALUATOR_FILES, GUARD_FILE)) and (
+        "evaluator_forbidden" in (yaml.safe_load(texts[GUARD_FILE]) or {})
+    )
+    if not pinned:
+        log.info("position scenario lacks evaluator prompts; reading %s files", mission_id)
+        texts = _read_files(scenarios_dir, mission_id)
+    return _prompts(texts), _forbidden(texts[GUARD_FILE])
 
 
 def has_forbidden(text: str, forbidden: list[re.Pattern]) -> bool:
