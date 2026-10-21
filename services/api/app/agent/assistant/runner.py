@@ -17,6 +17,7 @@ agent(LLM, 도구 바인딩) ⇄ tools(search_materials·get_material) … 최�
 
 import asyncio
 import logging
+import re
 import uuid
 from collections import defaultdict
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -41,6 +42,13 @@ HISTORY_TURNS = 6
 SOURCE_PREFIX = "출처: "
 FALLBACK_TEXT = "잠시 후 다시 시도해 주세요."
 LOCKED_TEXT = "키워드가 정해지면 자료를 찾을 수 있어요."
+
+# 본문에서 손대지 않는 구역: 코드 블록(``` · ~~~ 펜스, 4칸·탭 들여쓴 줄), URL.
+# 인라인 코드는 맨 id 치환에서만 보호한다.
+FENCE_OR_URL = re.compile(
+    r"```.*?```|~~~.*?~~~|^(?: {4}|\t)[^\n]*|https?://\S+", re.DOTALL | re.MULTILINE
+)
+INLINE_CODE = re.compile(r"`[^`\n]*`")
 
 RagFactory = Callable[[uuid.UUID], AbstractAsyncContextManager[ToolScope]]
 ScenarioLoader = Callable[[uuid.UUID], Awaitable[dict[str, Any]]]
@@ -203,6 +211,7 @@ class _Loop:
         """
         body = text.strip()
         cited = [m for m, t in self.retrieved.items() if t in body or m in body]
+        body = hide_ids(body, self.retrieved)
         if not cited:
             cited = list(self.retrieved)[:MAX_TOOL_CALLS]
         missing = [self.retrieved[m] for m in cited if self.retrieved[m] not in body]
@@ -211,3 +220,69 @@ class _Loop:
             room = self.guard.max_chars - len(line) - 1
             body = f"{body[: max(room, 0)].rstrip()}\n{line}"
         return body[: self.guard.max_chars], cited
+
+
+def hide_ids(text: str, titles: dict[str, str]) -> str:
+    """지원자에게 보이는 본문에서 이번 응답이 받은 자료 id(titles의 키)만 지운다.
+
+    - "material_id: id", "(material_id=`id`)", {"material_id": "id"}, "cited_material_ids": [...]
+      같은 표기는 표기째 지운다(값이 모두 아는 id일 때만). 공백은 지운 자리 주변만 정리한다.
+    - 표기 없이 남은 아는 id는 자료 제목으로 바꾼다.
+    - 코드 블록·URL 안은 그대로 두고, 인라인 코드 안의 맨 id도 그대로 둔다. 인용 id는
+      cited_material_ids 필드로만 나간다.
+    """
+    if not titles:
+        return text
+    ids = "|".join(re.escape(m) for m in sorted(titles, key=len, reverse=True))
+    value = rf"[\"'`]?(?:{ids})[\"'`]?"
+    label = (
+        rf"[\"'`]?(?:cited_)?material_ids?[\"']?[ \t]*[:=][ \t]*"
+        rf"(?:\[[ \t]*{value}(?:[ \t]*,[ \t]*{value})*[ \t]*\]|{value})(?![A-Za-z0-9_\-])"
+    )
+    labelled = re.compile(
+        rf"(?P<pre>[ \t]*)(?:\([ \t]*{label}[ \t]*\)|\{{[ \t]*{label}[ \t]*\}}|{label})"
+        r"(?P<comma>[ \t]*,)?(?P<post>[ \t]*)"
+    )
+    bare = re.compile(rf"(?<![A-Za-z0-9_\-/.])(?:{ids})(?![A-Za-z0-9_\-])")
+
+    def dropper(line_start: bool):
+        def drop(match: re.Match[str]) -> str:
+            """표기와 그 앞뒤 공백만 바꾼다(줄 처음이면 뒤 쉼표까지, 문장 중간이면 공백 하나)."""
+            line = match.string
+            pre, post = match.group("pre"), match.group("post")
+            if line_start and not line[: match.start()].strip():
+                return ""
+            if match.group("comma"):
+                return "," + post
+            nxt = line[match.end() : match.end() + 1]
+            return "" if not nxt or nxt in ".,!?)" else (pre or post)
+
+        return drop
+
+    def outside(pattern: re.Pattern[str], body: str, fn) -> str:
+        """pattern 구역은 그대로 두고 나머지 조각에 fn(조각, 줄 처음에서 시작하는지)."""
+        out, last = [], 0
+        for found in pattern.finditer(body):
+            out.append(fn(body[last : found.start()], last == 0 or body[last - 1] == "\n"))
+            out.append(found.group(0))
+            last = found.end()
+        out.append(fn(body[last:], last == 0 or body[last - 1] == "\n"))
+        return "".join(out)
+
+    def strip_labels(chunk: str, line_start: bool) -> str:
+        lines = chunk.split("\n")
+        kept = []
+        for i, line in enumerate(lines):
+            new = labelled.sub(dropper(i > 0 or line_start), line)
+            whole = (i > 0 or line_start) and i < len(lines) - 1
+            if whole and line.strip() and not new.strip():
+                continue  # 표기만 있던 줄은 줄째 없앤다
+            kept.append(new)
+        return "\n".join(kept)
+
+    def plain(chunk: str, _line_start: bool) -> str:
+        return bare.sub(lambda m: titles[m.group(0)], chunk)
+
+    body = outside(FENCE_OR_URL, text, strip_labels)
+    body = outside(FENCE_OR_URL, body, lambda c, _s: outside(INLINE_CODE, c, plain))
+    return body.strip()
