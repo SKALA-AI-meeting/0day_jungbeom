@@ -8,7 +8,13 @@ import { Suspense, useEffect, useRef, useState } from "react";
 
 import { adminApi, errorMessage, useLoad, useToken } from "@/components/admin/client";
 import { ReportView } from "@/components/admin/report-view";
-import { phaseOf, recordAnchor, reviewBodyFrom } from "@/components/admin/review";
+import {
+  phaseOf,
+  recordAnchor,
+  REPORT_POLL_MS,
+  reportNotReady,
+  reviewBodyFrom,
+} from "@/components/admin/review";
 import type { ReviewBody } from "@/components/admin/types";
 import { Button, Toaster } from "@/components/ui";
 
@@ -21,7 +27,13 @@ function ReportPageBody() {
   const { id } = useParams<{ id: string }>();
   const printing = useSearchParams().get("print") === "1";
   const token = useToken();
-  const { data: report, error, failures, reload } = useLoad((t) => adminApi.report(t, id), id);
+  const {
+    data: report,
+    error,
+    code,
+    failures,
+    reload,
+  } = useLoad((t) => adminApi.report(t, id), id);
   const [pending, setPending] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [polls, setPolls] = useState(0);
@@ -37,6 +49,14 @@ function ReportPageBody() {
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [polling, reload]);
+
+  // 리포트가 아직 없으면(draft 생성 전) 안내를 보이고 5초마다 다시 읽는다
+  const notReady = !report && reportNotReady(code);
+  useEffect(() => {
+    if (!notReady) return;
+    const timer = setInterval(reload, REPORT_POLL_MS);
+    return () => clearInterval(timer);
+  }, [notReady, reload]);
 
   async function review(body: ReviewBody) {
     if (!token) return;
@@ -66,7 +86,12 @@ function ReportPageBody() {
           전체 기록 보기
         </Link>
       </div>
-      {error && (
+      {notReady && (
+        <p role="status" className="mx-auto w-full max-w-3xl text-muted">
+          리포트를 만드는 중입니다. 준비되면 이 화면에 바로 나타납니다.
+        </p>
+      )}
+      {error && !notReady && (
         <div role="alert" className="flex items-center gap-3 text-danger">
           <span>{error}</span>
           {failures >= MAX_FAILURES && (

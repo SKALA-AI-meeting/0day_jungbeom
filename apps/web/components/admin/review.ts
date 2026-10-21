@@ -17,6 +17,10 @@ export function phaseOf(report: Report): Phase {
   return report.review ? "approving" : "draft";
 }
 
+/** 리포트가 아직 없다(completed 뒤 draft 생성 전): 404 not_found. 안내를 보이고 다시 조회한다 */
+export const REPORT_POLL_MS = 5000;
+export const reportNotReady = (code: string | null) => code === "not_found";
+
 export const PHASE_LABEL: Record<Phase, string> = {
   draft: "검토 대기",
   approving: "확정 중",

@@ -123,6 +123,8 @@ export const adminApi = {
 export type Loaded<T> = {
   data: T | null;
   error: string | null;
+  /** 마지막 실패의 api 오류 코드(없으면 null) */
+  code: string | null;
   /** 연속 실패 횟수(성공하면 0) */
   failures: number;
   reload: () => void;
@@ -135,9 +137,15 @@ export type Loaded<T> = {
 export function useLoad<T>(load: (token: string) => Promise<T>, key = ""): Loaded<T> {
   const token = useToken();
   const loadRef = useRef(load);
-  const [state, setState] = useState<{ data: T | null; error: string | null; failures: number }>({
+  const [state, setState] = useState<{
+    data: T | null;
+    error: string | null;
+    code: string | null;
+    failures: number;
+  }>({
     data: null,
     error: null,
+    code: null,
     failures: 0,
   });
   const [tick, setTick] = useState(0);
@@ -150,12 +158,13 @@ export function useLoad<T>(load: (token: string) => Promise<T>, key = ""): Loade
     if (!token) return;
     let live = true;
     loadRef.current(token).then(
-      (data) => live && setState({ data, error: null, failures: 0 }),
+      (data) => live && setState({ data, error: null, code: null, failures: 0 }),
       (error) =>
         live &&
         setState((prev) => ({
           data: prev.data,
           error: errorMessage(error),
+          code: errorCode(error),
           failures: prev.failures + 1,
         })),
     );
