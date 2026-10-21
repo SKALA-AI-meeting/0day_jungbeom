@@ -240,3 +240,38 @@ async def test_live_one_element_has_no_evaluate_failed():
     rows, _ = await evaluate_element(llm, ctx(), element_rubric("listening"), usage)
     assert not any(r["no_record_reason"] == "evaluate_failed" for r in rows)
     print("live llm_calls", usage["llm_calls"], "retries", usage["element_retries"])
+
+
+def test_with_refs_exposes_all_four_reference_kinds():
+    from report_worker.evaluate import with_refs
+
+    record = {**RECORD, "contributions": CONTRIBUTIONS}
+    shown = with_refs(record)
+    assert all(m["ref"] == f"msg:{m['id']}" for m in shown["messages"])
+    assert all(s["ref"] == f"slot:{s['phase']}" for s in shown["slots"])
+    assert shown["proposal"]["section_refs"]["idea_credit"] == "proposal:idea_credit"
+    assert all(
+        o["ref"] == f"contribution:{o['option_id']}" for o in shown["contributions"]["options"]
+    )
+    assert "ref" not in record["messages"][0]  # 원본은 바꾸지 않는다
+
+
+@pytest.mark.live
+async def test_live_honesty_credit_record_cites_idea_credit():
+    import os
+
+    from report_worker.config import _load_env_files, evaluator_model
+    from report_worker.llm import OpenAILLM
+
+    _load_env_files()
+    llm = OpenAILLM(evaluator_model(os.environ), os.environ)
+    usage = empty_usage(llm.model)
+    record = {**RECORD, "contributions": CONTRIBUTIONS}
+    rows, _ = await evaluate_element(llm, ctx(record), element_rubric("honesty"), usage)
+    by_id = {r["dimension_id"]: r for r in rows}
+    credit = by_id["hon_credit_record"]
+    assert credit["no_record_reason"] is None
+    assert "proposal:idea_credit" in credit["evidence_refs"]
+    print(
+        "live llm_calls", usage["llm_calls"], "retries", usage["element_retries"], credit["level"]
+    )

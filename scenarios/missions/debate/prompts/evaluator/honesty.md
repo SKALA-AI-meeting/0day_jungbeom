@@ -16,6 +16,7 @@
 ## 특수 지침
 
 - **근거 개수 예외(`hon_credit_record`)**: 판단 대상이 기획안 필드 하나이므로, 수준 4·5는 `idea_credit` 필드 참조와 채택된 AI 안마다 일치를 보이는 대조표 행 참조(`contribution:<option_id>`, 또는 본문 기여 서술 필드)를 합쳐 2개 이상으로 채운다. 수준 1·2는 위반 문장을 원문으로 인용하고 해당 대조표 행을 함께 단다.
+- `hon_credit_record`에 수준을 줄 때, 세션 기록 `proposal.section_refs`에 `idea_credit`가 있으면 그 칸을 `proposal:idea_credit`로 근거에 단다. 기록에 없는 참조는 만들지 않는다.
 - **대조 방법**:
   1. 대조표를 만든다: 안·아이디어 id → 최초 제안자 자리(Contributions `first_proposer`) → 표시 이름 → 채택 여부 → 기획안 본문 사용 여부.
   2. `idea_credit`를 (아이디어, 적힌 기여자) 쌍으로 나눈다. 아이디어는 안 내용으로 의미 매칭하고 기여자는 표시 이름·"본인/제가"·명확한 지칭으로 매칭한다.

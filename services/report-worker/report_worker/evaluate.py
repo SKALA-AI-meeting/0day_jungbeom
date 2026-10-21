@@ -316,9 +316,19 @@ def user_prompt(
 
 
 def with_refs(record: dict[str, Any]) -> dict[str, Any]:
-    """메시지마다 `ref`("msg:<id>")를 붙여 모델이 근거 문자열을 그대로 베끼게 한다."""
-    messages = [{**m, "ref": f"msg:{m['id']}"} for m in record.get("messages", [])]
-    return {**record, "messages": messages}
+    """근거로 달 수 있는 행마다 `ref`(계약 근거 4종 문자열)를 붙여 모델이 그대로 베끼게 한다."""
+    out = {**record}
+    out["messages"] = [{**m, "ref": f"msg:{m['id']}"} for m in record.get("messages", [])]
+    out["slots"] = [{**s, "ref": f"slot:{s['phase']}"} for s in record.get("slots", [])]
+    proposal = record.get("proposal")
+    if proposal and proposal.get("sections"):
+        refs = {field: f"proposal:{field}" for field in proposal["sections"]}
+        out["proposal"] = {**proposal, "section_refs": refs}
+    contributions = record.get("contributions")
+    if contributions and contributions.get("options"):
+        options = [{**o, "ref": f"contribution:{o['option_id']}"} for o in contributions["options"]]
+        out["contributions"] = {**contributions, "options": options}
+    return out
 
 
 def retry_block(errors: dict[str, str]) -> str:
