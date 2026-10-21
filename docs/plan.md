@@ -37,12 +37,12 @@ PRD와 계약은 문서 턴에서 먼저 바뀌었다. 구현은 아래 게이�
 | 트랙 | 범위 | 소유 파일 | 선행 조건 | 완료 기준 |
 |---|---|---|---|---|
 | flow-docs (오케스트레이터 1명) | PRD·docs/common·decisions·proposals·fixes 정합. PRD.html은 PRD.md와 같은 커밋에서 `sh build/build.sh`로 재생성 | 위 문서 전부 | 없음 | G1 커밋, grep 정합 검사 통과 |
-| **G1 계약 기준 커밋** | contracts 예시 JSON(tasks 생성, 섹션 담당, division/share, finish, reporting, session.end_available)을 `tests/fixtures/contracts/`에 반영. TBD 필드는 픽스처에 넣지 않음 | 공용 담당 | flow-docs | 생산자·소비자 양쪽이 같은 픽스처를 읽음 |
-| flow-docs-followup (문서 1명, 개발과 병렬) | G1 이후 역할별 상세 설계·테스트 문서를 계약에 맞춘다. 공용 계약은 수정하지 않고 변경요청만 올린다. 아래 "문서 후속 트랙" 참조 | `docs/api/design.md`, `docs/agent/design.md`, `docs/mcp/design.md`, `docs/worker-infra/design.md`, `docs/frontend/{design-direction,design,design-system}.md`, `docs/common/testing.md`, `docs/common/harness.md`, `docs/handoff/change-requests/` | G1 | G2(백엔드 설계 동기화) → G3(프론트·테스트 설계 동기화) 기준 커밋 |
-| flow-api | 빈 보드, 할 일 생성·수정, 섹션 담당 PUT, division/share 검사(섹션 담당 5개 + division_min), finish, 완료 시각 기준 5분 자동 종료, 한서윤 DM 보고 kind 분류 | `services/api/app/` 중 routers/candidate·internal, services/session, scheduler | G1, scenario-redesign 병합 뒤(api 쓰기 충돌 회피) | api 단위 테스트, 5분 fallback 재시작 복구 테스트 |
-| flow-agent | 한서윤 확인 답장 노드, 01:50 요청의 채널 분기(완료 전 팀 채널·조기 완료 DM), 분업 자극 갱신 | `services/api/app/agent/` 전부 | G1, flow-api의 내부 division·complete 계약 동결 | FakeLLM 단위 테스트, 판정 발언 금지(F-24) 검사 |
-| flow-web | 완료 확인 창, 한서윤 DM 이동 안내, 종료 버튼(`end_available`), 빈 보드, 섹션 담당 UI | `apps/web/app/s/`, `components/office/` | G1, web-redesign 사용자 mock 확인 뒤(web 소유권 충돌 회피) | mock 전 흐름, break-ui |
-| flow-verify (e2e-runner) | 대본 갱신: DM 보고, 5분 자동 종료, 조기 완료, 빈 보드 분업. 최소 테스트 6건의 reporting 항목 재배정 | `tests/e2e/`, `scenarios/e2e/` | flow-api·flow-agent·flow-web 병합 | e2e mock 통과 |
+| **G1 계약 기준 커밋** | contracts 예시 JSON(tasks 생성, 섹션 담당, division/share, finish, reporting, session.end_available)을 `tests/fixtures/contracts/`에 반영. TBD 필드는 픽스처에 넣지 않음. 포함 범위: contracts의 get_board·set_division·honesty_facts·internal board/division 예시, rubric.md의 정직 사실 입력과 계획성 지표 정의(섹션 담당 기준). 완료 판정은 픽스처 양쪽 소비 확인 | 공용 담당 | flow-docs | 생산자·소비자 양쪽이 같은 픽스처를 읽음 |
+| flow-docs-followup (문서 1명, 개발과 병렬) | G1 이후 역할별 상세 설계·테스트 문서를 계약에 맞춘다. 공용 계약은 수정하지 않고 변경요청만 올린다. 아래 "문서 후속 트랙" 참조 | `docs/api/design.md`, `docs/agent/design.md`, `docs/mcp/design.md`, `docs/worker-infra/design.md`, `docs/frontend/{design-direction,design,design-system}.md`, `docs/common/testing.md`, `docs/common/harness.md`, `docs/handoff/change-requests/` | G1 | G2(백엔드 설계 동기화) → G3(프론트·테스트 설계 동기화) 기준 커밋. G2는 flow-api·flow-agent 시작 조건이고, G3 작업은 개발 트랙과 병렬로 계속 진행한다 |
+| flow-api | 빈 보드, 할 일 생성·수정, 섹션 담당 PUT, division/share 검사(섹션 담당 5개 + division_min), finish, 완료 시각 기준 5분 자동 종료, 한서윤 DM 보고 kind 분류 | `services/api/app/` 중 routers/candidate·internal, services/session, scheduler | G1 + G2(api 설계 완료) + scenario-redesign 병합 뒤(api 쓰기 충돌 회피) | api 단위 테스트, 5분 fallback 재시작 복구 테스트 |
+| flow-agent | 한서윤 확인 답장 노드, 01:50 요청의 채널 분기(완료 전 팀 채널·조기 완료 DM), 분업 자극 갱신 | `services/api/app/agent/` 전부 | G1 + G2(agent 설계 완료) + flow-api 내부 계약 동결. 01:50 채널 분기 구현은 D1 확정 전 보류 | FakeLLM 단위 테스트, 판정 발언 금지(F-24) 검사 |
+| flow-web | 완료 확인 창, 한서윤 DM 이동 안내, 종료 버튼(`end_available`), 빈 보드, 섹션 담당 UI | `apps/web/app/s/`, `components/office/` | G1 + G3(frontend 설계 완료) + web-redesign 사용자 mock 확인 뒤(web 소유권 충돌 회피) | mock 전 흐름, break-ui |
+| flow-verify (e2e-runner) | 대본 갱신: DM 보고, 5분 자동 종료, 조기 완료, 빈 보드 분업. 최소 테스트 6건의 reporting 항목 재배정 | `tests/e2e/`, `scenarios/e2e/` | flow-api·flow-agent·flow-web 병합 + G3(testing 설계 완료) | e2e mock 통과 |
 | **progress-channel (독립)** | active_runs(`/state`)와 WS `agent.progress`의 이름·상태 고정. 흐름 전환과 파일을 공유하지 않음 | 계약(공용 담당), hub·state(api-candidate), `lib/ws.ts`(web-office) | G4 계약 커밋 별도. CX 트랙을 막지 않음 | 계약 픽스처 일치, 재연결 후 active_runs 복원 |
 | 개선 후보 required-card-failure (변경 없음) | 필수 카드 3회 실패 → 세션 실패(현행 규칙 유지). 이번 전환에서 바꾸지 않음 | — | 없음 | 별도 제안으로 M3 이후 검토 |
 
@@ -64,15 +64,17 @@ PRD와 계약은 문서 턴에서 먼저 바뀌었다. 구현은 아래 게이�
 - **충돌 회피.** flow-docs-followup과 개발 트랙은 파일 소유권이 겹치지 않는다. 같은 문서를 두 담당이 고쳐야 하면 오케스트레이터가 나눈다.
 - **검증 순서.** G1 픽스처 확인 → G2 문서 체크리스트 → 개발 트랙 단위 테스트(계약 픽스처 기준) → G3 문서 체크리스트 → web mock → e2e mock.
 
-**구현 전 결정 항목 (PRD 16과 일치)**
-1. 분업 최소 조건 유지 여부(CX-04): 현행 유지, 변경은 별도 승인.
-2. 할 일 담당과 섹션 담당 불일치 방지 규칙.
-3. 섹션 담당 확정 뒤 재지정 규칙.
-4. 한서윤 확인 답장 실패 처리.
-5. 5분 자동 종료와 답장 지연의 관계(답장이 늦으면 버튼 없이 종료됨).
-6. 01:50 보고 요청 카드 문구. 채널 분기(완료 전 팀 채널, 조기 완료 DM)는 설계 선택으로 decisions 2026-10-21에 기록됐고 사용자 확인 대기.
-7. 보고 인정 채널(반영값은 완료 뒤 한서윤 DM만).
-8. 기본 작업 흐름 예시(자료 탭)의 MVP 포함 여부.
+**시작 조건 요약.** G1 이후 flow-docs-followup과 개발 트랙이 병렬로 간다. flow-api·flow-agent는 G2(백엔드 설계)가 끝난 뒤 시작한다. flow-web·flow-verify는 G3(프론트·테스트 설계)가 끝난 뒤 시작한다. G3 작업 자체는 flow-api·flow-agent 진행과 병렬로 계속한다. 진짜 미결정 D1·D2·D3는 해당 분기만 보류하고 나머지 구현은 진행한다.
+
+**결정 목록 (PRD 16과 일치)**
+1. (확정) 분업 최소 조건은 현행 유지. 변경은 별도 승인.
+2. (확정) 할 일 담당과 섹션 담당의 차이는 허용하며 UI에 따로 표시.
+3. (확정) 확정 뒤 섹션 담당은 draft 수정 후 재공유로 적용. 미공유 시 기존 default_division으로 진행.
+4. (진짜 미결정 D3) 한서윤 확인 답장 전송 실패 처리. 이 분기만 flow-agent에서 보류.
+5. (확정) 5분은 완료 시각 고정 상한. 답장이 늦으면 버튼 없이 자동 종료. 연장하지 않음.
+6. (진짜 미결정 D2, 설계 선택 D1) 01:50 보고 요청 문구. 채널 분기(완료 전 팀 채널, 조기 완료 DM)는 설계 선택으로 decisions 2026-10-21에 있고, 사용자 확인 전까지 flow-agent의 이 분기만 보류.
+7. (확정) 보고 인정은 완료 뒤 한서윤 DM만.
+8. (진짜 미결정 D4) 기본 작업 흐름 예시(자료 탭)의 MVP 포함 여부. 개발 트랙 종속은 없음.
 
 ## 병렬 작업 방식
 

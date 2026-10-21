@@ -36,7 +36,7 @@ MVP 원칙: **평가 항목이 요구하는 조각만 분리하고 나머지는 
 3. 실패 시 attempts+1로 재실행(최초 포함 총 3회, 같은 run_id), 3회째도 실패면 이벤트 failed·세션 failed·`session.ended{failed}`. `send_document`가 1회 재시도 뒤에도 실패하면 그 시도는 실패이고 이벤트 행에 `document_missing`을 남긴다
 
 ### 분업 확정
-지원자가 섹션 담당 5개를 정하고 **분업안 공유**를 누르면 api가 `division_min`을 검사해 division을 확정하고(할 일 개수는 검사하지 않음, 2026-10-21)(decided_by=candidate, task_events, WS `division.confirmed`) 동료 그래프를 `stimulus=division`으로 한 번 실행해 work_notes·보드 doing을 갱신한다. 채팅으로 정한 분업은 동료 그래프가 `set_division`으로 같은 tasks를 채운다. 다음 요소 카드까지 미확정이면 동료가 기본안으로 확정한다.
+지원자가 섹션 담당 5개를 정하고 **분업안 공유**를 누르면 api가 `division_min`을 검사해 division을 확정하고(할 일 개수는 검사하지 않음, 2026-10-21; decided_by=candidate, task_events, WS `division.confirmed`) 동료 그래프를 `stimulus=division`으로 한 번 실행해 work_notes·보드 doing을 갱신한다. 채팅으로 정한 분업은 동료 그래프가 `set_division`으로 같은 tasks를 채운다. 다음 요소 카드까지 미확정이면 동료가 기본안으로 확정한다.
 
 ### 세션 종료와 리포트
 1. 제출 또는 `ends_at` 도달 → `SessionService.submit()`: `submitted_at`·`deadline_at(+5분)` 기록과 최종본 version 생성(커밋, 이후 문서·보드·어시스턴트는 409, 메시지는 모든 채널 허용) → `status=reporting`. 보고 요청 카드(01:50)는 완료 전이면 팀 채널에서, 조기 완료로 앞당겨 실행되면 한서윤 DM에서 실행한다(세부 설계 제안, 구현 전 결정). 완료 뒤 팀 채널 재촉은 없다. 완료 뒤 한서윤 확인 답장이 저장되고 주담당이 종료 버튼(`finish`)을 누르거나, 종료 버튼 없이 deadline_at(submitted_at+5분, fallback)이 지나면 `SessionService.complete()`: `AgentRunner.run(stimulus=end, run_id=uuid5(session_id,"end"))`로 마지막 창 정리(열린 창 닫기, collab_help의 `promise_kept`를 `update_observation`으로 갱신)와 팀장 응답 → 재사용 추정 계산 → `status=completed`·`completed_at`(커밋). 제출 즉시 complete()는 두지 않는다(종료 버튼 규칙). end 실행 전에 죽으면 스케줄러가 reporting 세션을 다시 complete()하며 같은 run_id라 중복이 없다. 리포트 발행은 마지막 관찰이 저장된 뒤에만 일어난다

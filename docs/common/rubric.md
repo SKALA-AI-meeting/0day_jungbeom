@@ -28,8 +28,8 @@
 | | resp_mentioned_impact | 지연이 동료 파트(3번은 2번에 의존)에 미치는 영향을 말함 | metric mentions_colleague_impact eq true, only_if metric impact_possible eq true | label | message |
 | | resp_proposed_alternative | 지연 동안 먼저 할 작업이나 대안을 제시함 | metric proposes_alternative eq true | label | message |
 | | resp_told_manager | 팀장이 보는 곳(팀 채널 또는 팀장 DM)에 지연을 알림 | metric notified_where_manager_sees eq true | metric | message |
-| planning_division | plan_assigned_all_parts | 파트 전부의 담당을 직접 정함 | metric division_by_candidate eq true | metric | task_event, message |
-| | plan_stated_schedule | 누가·언제까지·어떤 순서인지 말하거나 보드에 적음 | metric stated_schedule eq true | metric(보드) 또는 label(채팅) | task_event, message |
+| planning_division | plan_assigned_all_parts | 섹션 담당 5개 전부를 직접 정함 | metric division_by_candidate eq true | metric | task_event, message |
+| | plan_stated_schedule | 누가·언제까지·어떤 순서인지 말하거나 할 일을 만들어 due_min·order를 적음(할 일이 없으면 채팅 레이블만) | metric stated_schedule eq true | metric(보드) 또는 label(채팅) | task_event, message |
 | planning_checkin | plan_opened_draft | 동료가 보낸 초안을 열어 봄 | metric draft_opened eq true, only_if metric draft_delivered eq true | metric | open |
 | | plan_responded_draft | 초안에 대해 반응(의견·확인)을 남김 | label_in [feedback, acknowledge], only_if metric draft_delivered eq true | label | message |
 | adaptability_change | adapt_applied_to_doc | 바뀐 대상을 내 문서(파트 또는 최종본)에 반영함 | all [metric document_changed_after eq true, metric target_applied eq true] | label | document, share |
@@ -55,7 +55,7 @@
 | document | document_revisions | 지원자 문서(파트·최종본)의 자동 저장 스냅샷 |
 | share | document_shares | 지원자가 보낸 버전 |
 | open | document_opens | 지원자가 동료 문서를 연 기록 |
-| task_event | task_events | 보드 변경 |
+| task_event | task_events | 보드 변경(할 일)과 섹션 담당 변경(target=section_owner) |
 | doc_view | doc_views | 회사 문서 열람 |
 | assistant_call | assistant_calls | 어시스턴트 호출 |
 
@@ -101,7 +101,7 @@
 - 리포트 맨 위에 요소별 한 줄 관찰·세 수 요약표(`summary`)를 둔다. 카드 소섹션은 접힘이 기본이다.
 - 담당자 조정: 항목을 1/0/null로 바꿀 수 있고 바꾸면 메모 필수. 최종값 = 조정 행이 있으면 reviewer_value(null 포함), 없으면 자동 값. 요청에 같은 item_id가 두 번 오면 400. 조정 저장·합계·approving 전이는 한 트랜잭션. 검토 완료 뒤 값 재조정은 409이고, 메모 추가(`POST /admin/sessions/{id}/report/notes`)만 허용한다. 검토 제출에는 검토자 이름(`reviewer_name`)이 들어간다. 조정 메모는 해당 관찰 문장 옆에도 표시해 자동 서술과 담당자 정정이 함께 보이게 한다. 조정 행은 card_id를 함께 갖는다.
 - 지원자 목록: 요소별 세 수 칩과 합계, 출처(`auto`/`reviewer`). 헤더에 "요소 구성이 같으면 같은 기준, 다르면 만점이 다르다" 한 줄. 점수 정렬 없음.
-- 정직 카드 소섹션에는 "미완료는 보드 기준이며 지원자가 보드를 갱신하지 않았을 수 있음" 주석을 붙인다.
+- 정직 카드 소섹션에는 "미완료는 최종본 섹션 기준이며, 사용자가 만든 할 일의 미완료는 참고 사실이다" 주석을 붙인다.
 - ai_usage와 산출물 품질은 점수화하지 않는다.
 
 ## 조건 문법 (`when`)
@@ -117,7 +117,7 @@
 | response_minutes | float·null | 카드 메시지 시각부터 **관련** 지원자 메시지 중 첫 것까지 분. 관련 메시지 없으면 null(활동은 있으면 0점 처리) |
 | first_recipient | manager·colleague·null | 첫 관련 메시지의 recipient |
 | responded_to_request | bool | 관련 메시지가 1건 이상 |
-| division_by_candidate | bool | 계획성: 창 안에 `division.decided_by=candidate`로 확정되고 파트 전부에 담당이 있음. 보드 PUT으로 채운 것과 채팅으로 정해 동료 set_division이 채운 것을 같게 본다 |
+| division_by_candidate | bool | 계획성: 창 안에 `decided_by=candidate` 스냅샷이 확정되고 섹션 담당 5개 전부가 non-null임. 할 일 생성 여부와 무관하다. 섹션 담당 draft를 지원자가 직접 바꾼 것과 채팅으로 정해 동료 set_division이 쓴 draft를 지원자가 공유한 것을 같게 본다 |
 | stated_schedule | bool | 계획성: 창 안 task_events에 지원자가 적은 due_min이 있거나, order 변경이 2건 이상이거나, 관련 메시지가 순서·시점을 말함(aux.mentions_schedule) |
 | draft_delivered | bool | 계획성: 카드의 동료 초안 문서(doc, version)가 실제로 전송됨(send_document 성공). false면 사유 document_missing |
 | draft_opened | bool | 계획성: 카드로 보낸 동료 초안(doc, version)에 지원자 document_opens가 창 안에 있음 |
@@ -133,13 +133,13 @@
 | mentions_scope_or_division | bool·null | 적응성: aux.mentions_scope |
 | redirected_colleague | bool | 적응성: recipient=colleague이고 kind ∈ {redivide, instruction}인 메시지가 창 안에 있음(동료 수락 여부 무관, 팀장에게 한 제안은 제외) |
 | has_colleague_shares | bool | 정직: facts.shares에 owner=colleague 행이 1개 이상 |
-| has_incomplete_facts | bool | 정직: facts.empty_sections 또는 facts.tasks_not_done이 비어 있지 않거나 facts.changed_after_adaptability가 false임(null은 세지 않음) |
-| has_report_message | bool | 정직: 창 안에 kind=report인 지원자 메시지(팀 채널 또는 팀장 DM)가 있음 |
+| has_incomplete_facts | bool | 정직: facts.empty_sections가 비어 있지 않거나 facts.section_owners에 draft_differs=true가 있거나 facts.changed_after_adaptability가 false임(tasks_not_done은 여기서 세지 않는 추가 사실)(null은 세지 않음) |
+| has_report_message | bool | 정직: 완료(submitted_at) 뒤 창 안에 한서윤 manager_dm의 지원자 메시지 중 kind=report가 있음. 팀 채널 메시지와 완료 전 메시지는 보고로 세지 않음(2026-10-21 후속) |
 | credits_colleague | bool·null | 정직: aux.credits_colleague(보고 문장이 동료가 보낸 문서의 파트를 동료 몫으로 말함). 사실 입력과 대조 |
 | claims_colleague_work | bool·null | 정직: aux.claims_colleague_work(동료가 보낸 파트를 자기 것으로 말함) |
 | discloses_incomplete | bool·null | 정직: aux.discloses_incomplete(사실 입력의 미완료 항목 중 하나 이상을 보고에서 말함) |
 
-정직 카드의 **사실 입력**은 api가 규칙으로 만들고(내부 `GET /honesty_facts`) observe가 LLM에 함께 준다(점수 계산은 규칙): `shares`(문서별 주인·보낸 버전·시각), `final_sections`(source_doc_id·version·edited), `tasks`(보드 상태), `empty_sections`(본문이 비어 있는 최종본 섹션 part_no 목록), `tasks_not_done`(status가 done이 아닌 파트), `changed_after_adaptability`(적응성 카드 이후 주담당 문서 revision·share 유무. 적응성 미선택이면 null이며 미완료로 보지 않음). 품질 판단은 없다.
+정직 카드의 **사실 입력**은 api가 규칙으로 만들고(내부 `GET /honesty_facts`) observe가 LLM에 함께 준다(점수 계산은 규칙): `shares`(문서별 주인·보낸 버전·시각), `final_sections`(source_doc_id·version·edited), `section_owners`(확정 snapshot의 섹션 담당과 현재 draft의 차이), `empty_sections`(본문이 비어 있는 최종본 섹션 part_no 목록), `tasks_not_done`(사용자가 만든 할 일 중 done이 아닌 것. 추가 사실로만 보이며 점수에 넣지 않음), `changed_after_adaptability`(적응성 카드 이후 주담당 문서 revision·share 유무. 적응성 미선택이면 null이며 미완료로 보지 않음). 품질 판단은 없다.
 
 **약속 이행의 확정**: collab_help 창을 닫을 때 `promise_kept`는 null로 저장한다. 세션 종료 run(finalize)에서 related_card=collab_help인 메시지로 다시 계산해 그 지표만 `update_observation`(내부 PATCH observations, `metrics_patch`)으로 갱신한다. 같은 run_id의 재실행은 멱등이다. 워커는 갱신된 값을 읽는다.
 
