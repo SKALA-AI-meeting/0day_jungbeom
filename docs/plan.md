@@ -18,7 +18,9 @@
 | 5 개발 (서비스) · S2 | W5-1 | api ∥ agent ∥ gm-fix ∥ report-worker(리뷰) → 빈 자리에 e2e | `track/debate` | 트랙별 완료 기준 | mcp 병합 완료(`track/debate` e4b91f8). api·agent는 WIP 재개 |
 | 5 개발 (연결) · S3 | W5-2 | stage-kit ∥ web-integrate ∥ e2e(러너·대본 + stage-e2e) | `track/debate` | — | api·agent 병합 대기 |
 | 5 개발 (검증) · S4 | W5-3 | stage-e2e 전 단계 → playtest → 실 스택 `all_five` 15분 1회 → fix-* | `track/debate` → main | **G-E** | 대기 |
-| 후속 · S5 | G-E 뒤 | report-refresh ∥ arch-refresh | main | 사용자 확인 | 대기 |
+| 개선 · S4.5 | G-E 뒤 | web-ux ∥ api 빈칸 이벤트 ∥ persona 튜닝 | `track/debate` → main | G-E 재확인 | 대기 |
+| 후속 · S5 | S4.5 뒤 | report-refresh ∥ arch-refresh | main | — | 대기 |
+| 산출물 · S6 | S5 뒤 | visual-report(HTML + 압축 미디어) | main | — | 대기 |
 
 **남은 순서** (기준 `track/debate` e4b91f8, 동시 개발 최대 4, 작성 모델 ≠ 리뷰 모델):
 
@@ -29,8 +31,17 @@ S2  api(Opus→Sonnet) ∥ agent(Opus→Sonnet) ∥ gm-fix(Sonnet→Opus) ∥ re
     병합 순서: report-worker → gm-fix → api → agent
 S3  (api·agent 병합 뒤) stage-kit ∥ web-integrate ∥ e2e + stage-e2e spec   (모두 Sonnet→Opus)
 S4  stage-e2e 전 단계 통과(LLM_FAKE, 영상·trace) → playtest 파일럿 후 확대(실 LLM, GIF)
-    → 실 스택 all_five 15분 1회 → fix-* 영역별 병렬(최대 4) → G-E → main 병합(사용자 확인)
+    → 실 스택 all_five 15분 1회 → fix-* 영역별 병렬(최대 4) → G-E → main 병합(확인 없이)
+S4.5 playtest 반영 (계약·문서 먼저, 오케스트레이터)
+    web-ux(Sonnet→Opus): 입력칸 placeholder·비활성 이유, 키워드 목적·위치 안내, 디브리핑 제출 확인·설문 위치,
+      확인 창 버튼 이름, 관리자 목록 상태 열, 합의 표시(확정 시점 지지 3/4 이상만 "합의", 아니면 "지원자 결정"),
+      빈칸 제출 경고 창
+    ∥ api 빈칸 이벤트(Opus→Sonnet): submit 때 빈 칸을 api가 계산해 저장(경고 확인 여부 포함), facts·record에 노출,
+      report-worker는 맥락 참고로만 전달(단독으로 수준을 정하지 않음)
+    ∥ persona 튜닝(Opus→Sonnet): 반복률·지원자 질문 응답률·지목 응답률 live eval을 먼저 만들고 프롬프트·턴 규칙 조정(고정 입장 유지)
+    → stage-e2e·all_five --live·eval-live 재확인 → playtest 일부 재실행 → main 병합
 S5  report-refresh ∥ arch-refresh   (Sonnet→Opus)
+S6  visual-report: docs/share/visual-report/index.html + 압축 미디어(4배속 webm 960px, 스크린샷 축소) 커밋, Artifact로도 띄움
 ```
 
 - **동시 개발 트랙은 웨이브를 넘어 합쳐서 최대 4개**다. 리뷰 서브에이전트는 개발이 끝난 자리에서 돌리므로 따로 세지 않는다.
