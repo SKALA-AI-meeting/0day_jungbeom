@@ -13,8 +13,6 @@ node_modules/
 apps/web/.agents/
 apps/web/.claude/
 apps/web/skills-lock.json
-docs/handoff/reviews/uiux-shots/
-docs/handoff/reports/web-polish-shots/
 
 # stage-e2e 기록: 영상·trace·HTML 리포트는 커밋하지 않고 스크린샷·summary만 남긴다
 tests/e2e/records/stages/.artifacts/

@@ -40,6 +40,26 @@ MCP 서버 세 개의 도구 함수는 모두 `async def`다(FastMCP는 동기 �
 | 테이블·쓰기 주체·보관 | [data-model.md](data-model.md) |
 | compose 구성 | [deployment.md](deployment.md) |
 
+## 구성 요소별 금지 사항
+
+| 구성 요소 | 하지 않는 것 |
+|---|---|
+| web | 권한·상태 판단, MCP 직접 호출 |
+| agent 모듈(api 안) | DB 직접 쓰기(변경은 debate-mcp → 내부 API) |
+| debate-mcp | 토론 규칙(합의·마감·잠금) 복제. 판단은 api가 한다 |
+| rag-mcp | 자료 원문 변경(`material_chunks` 색인만) |
+| assessment-mcp | 페르소나 노드의 접근(토큰·허용 목록으로 차단) |
+| report-worker | 근거 고쳐 쓰기, 총점·순위 생성 |
+
+## 설계 선택과 대응
+
+| 흔한 구조 | Day Zero | 대응 |
+|---|---|---|
+| 변경 도구 앞에서 interrupt로 멈추고 승인 후 같은 thread 재개 | 리포트 그래프가 draft 뒤 interrupt로 멈추고, 담당자의 "검토 완료"가 큐로 같은 thread를 재개해 final을 저장 | 승인 대상은 "초안을 최종본으로 확정하는 저장"이다. 승인 전 final 저장은 api가 409로 막고, final은 승인한 draft와 해시가 같다 |
+| 질문을 202로 접수하고 SSE로 진행 이벤트 | WebSocket 양방향(동료가 먼저 말을 건다) | 접수 = `message.ack{run_id}`, 진행 = `typing{participant, start∣stop}`, 완료 = `message.new`. 재접속은 `/state` 스냅샷으로 복구 |
+| 화면·업무 서버·Agent 서버 분리 | Agent가 api 프로세스 안의 모듈 | 논리 계층은 나눈다(라우터 → SessionService → AgentRunner 인터페이스 → 그래프 → MCP 어댑터). 배포 단위만 합쳤고, 분리할 때의 경계는 `AgentRunner`다 |
+| Vue + Spring Boot | Next.js + FastAPI | FastAPI는 LangGraph와 같은 Python 프로세스에서 비동기 WS를 처리하고, Next.js는 관리자·지원자 화면을 한 앱의 경로로 둔다. 업무 규칙의 소유자는 FastAPI뿐이다 |
+
 ## 운영 목표 (시연 환경)
 
 | 항목 | 목표 | 확인 |
