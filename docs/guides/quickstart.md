@@ -68,5 +68,5 @@ make stage STAGE=keyword MIN=15        # 단계 시드 세션을 만들고 초�
 
 ## 다른 실행 방식
 
-- 8개 서비스를 모두 컨테이너로: `make up` / `make down`. 이 모드는 postgres·rag-mcp를 호스트에 열지 않으므로 호스트의 `make seed`가 닿지 않는다. 전체 compose용 시드 명령은 `Makefile`을 참고한다([configuration.md](configuration.md) "실행 모드").
+- 8개 서비스를 모두 컨테이너로: `make up` / `make down`. 이 모드는 postgres·rag-mcp를 호스트에 열지 않으므로 호스트의 `make seed`가 닿지 않는다. 전체 compose용 시드는 `make seed-compose [SEED_ARGS="--minutes 15"]`다([configuration.md](configuration.md) "실행 모드").
 - 단계별 화면 테스트용 격리 스택: `make e2e-stack-up` → `make e2e-stack-seed` → `make e2e-stages` → `make e2e-stack-down`([testing.md](testing.md)).

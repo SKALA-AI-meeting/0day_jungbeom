@@ -234,7 +234,7 @@ MVP는 5요소·카드 6장·페르소나 3명 고정이다(R2). 아래는 문�
 
 ## 6. 조립 (`positions.scenario`)
 
-채용 건 생성 시 api가 한 번 계산해 저장한다. 미션 폴더 전체 해시를 `catalog_version`으로, 페르소나·카드·키워드 내용·프롬프트 본문을 scenario JSON에 복사해 고정하고, 자료 원문은 같은 `catalog_version`으로 DB에 시드한다. 실행 시 그래프와 MCP는 이 복사본만 읽는다. rag-mcp 색인도 같은 `catalog_version`을 키로 둔다. 이후 카탈로그를 고쳐도 진행 중 채용 건은 바뀌지 않는다.
+채용 건 생성 시 api가 한 번 계산해 저장한다. 미션 폴더 전체 해시를 `catalog_version`으로, 페르소나·카드·키워드 내용·프롬프트 본문과 미션 YAML 4개 원본(`catalog`: mission·personas·cards·keywords)을 scenario JSON에 복사해 고정하고, 자료 원문은 같은 `catalog_version`으로 DB에 시드한다. 실행 시 그래프와 MCP는 이 복사본만 읽는다. rag-mcp 색인도 같은 `catalog_version`을 키로 둔다. 이후 카탈로그를 고쳐도 진행 중 채용 건은 바뀌지 않는다. `catalog`가 없는 옛 채용 건은 같은 복사본의 조립 결과(입장·후보·카드·자리)로 카탈로그를 재구성하고, 빠진 부분(프롬프트)만 현재 파일에서 채운다(기록 버전과 다르면 경고 로그).
 
 ```json
 {"mission_id": "debate", "catalog_version": "…", "session_minutes": 60,

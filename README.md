@@ -40,7 +40,7 @@ make seed                          # 자료 원문 → 관리자·채용 건 →
 make stage STAGE=keyword MIN=15    # 단계 시드 세션의 초대 링크 출력
 ```
 
-8개 서비스를 모두 컨테이너로 띄우려면 `make up`. 이 모드의 시드 명령은 `make help`를 참고한다. <!-- TODO seed-compose -->
+8개 서비스를 모두 컨테이너로 띄우려면 `make up`. 이 모드의 시드는 `make seed-compose`(compose 안의 일회성 seed 서비스, 포트를 열지 않음).
 
 ## 폴더
 

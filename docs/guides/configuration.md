@@ -18,7 +18,7 @@ env 이름과 기본값의 예시는 `infra/.env.example`, 코드의 기본값�
 | rag-mcp(호스트) | `127.0.0.1:9102` | 열지 않음 | `127.0.0.1:9112` |
 | debate·assessment MCP | 로컬 9101·9103 | 컨테이너 네트워크만 | 컨테이너 네트워크만 |
 | rag-mcp가 부르는 내부 API | `http://host.docker.internal:8001`(로컬 api) | `http://api:8001` | `http://api:8001` |
-| 시드 | `make seed` | 호스트의 `make seed`는 닿지 않음. 전체 compose용 시드 명령은 `Makefile` 참고 | `make e2e-stack-seed` |
+| 시드 | `make seed` | 호스트의 `make seed`는 닿지 않음. `make seed-compose`(compose 안 일회성 seed 서비스) | `make e2e-stack-seed` |
 | 테스트 API | `ENABLE_TEST_API=1`이면 `localhost:8001/internal/test/*` | 컨테이너 안에서만 | `127.0.0.1:8101/internal/test/*` |
 
 - **같은 DB·큐를 쓰는 api는 하나만 띄운다.** 세션 메일박스·WS 송신 큐·스케줄러가 api 프로세스 메모리에 있어 둘이면 같은 세션을 두 번 처리한다. 다른 DB·큐를 쓰는 격리 스택(위 e2e 스택)은 함께 띄워도 된다.

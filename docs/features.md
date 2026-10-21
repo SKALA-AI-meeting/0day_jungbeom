@@ -65,12 +65,9 @@ PRD 기능 ID([`PRD.md`](../PRD.md) 8장)별로 사용자 동작, 구현 위치,
 |---|---|---|
 | F-06 참고 자료 관리, F-07 면접 확인 질문 제안 | 만들지 않았다. 자료는 `scenarios/missions/<id>/`의 데이터와 `make seed`로 관리한다 | [`PRD.md`](../PRD.md) 8장·10장, [`decisions.md`](decisions.md) 2026-10-20 |
 | 기업별 요소 선택, 페르소나 풀 확장 | 요소 5개·페르소나 3명 고정 | [`PRD.md`](../PRD.md) 10장 |
-| 해결책 입력 예시 | 해결책 입력 칸의 예시가 부족하다는 playtest 지적 | playtest 재실행 요약 |
-| 확정 직전 생성된 동료 발언 | 확정 직전에 만들어진 발언이 확정 뒤에 도착할 수 있다 | playtest 재실행 요약 |
 | 채용 건 목록 검색·필터 | e2e 데이터가 쌓이면 불편하다 | playtest 재실행 요약 |
 | "리포트 전" 상태 자동 갱신 | 지금은 목록을 다시 열어야 한다 | playtest 재실행 요약 |
 | 확인 창 두 번 | 일부 흐름에서 확인 창이 두 번 나온다 | playtest 재실행 요약 |
-| 디브리핑 문구 위치 | "평가 결과는 보여 드리지 않습니다" 문구의 위치 조정 | playtest 재실행 요약 |
 
 출처 요약: [`tests/playtest/records/rerun-20261022/summary.md`](../tests/playtest/records/rerun-20261022/summary.md)의 "MVP 이후로 둔 것".
 
@@ -81,5 +78,5 @@ PRD 기능 ID([`PRD.md`](../PRD.md) 8장)별로 사용자 동작, 구현 위치,
 | 토론 그래프 체크포인트 | 토론 그래프는 PostgresSaver를 쓰지 않고 DB 기록(`agent_runs`·메시지·입장)으로 재처리한다. 리포트 그래프만 PostgresSaver를 쓴다 | [`decisions.md`](decisions.md) 2026-10-22 문서·구현 불일치 정리 |
 | 페르소나 자리 기억 | 최근 자기 발언 3개와 최근 대화 30개만 쓴다. 6k 토큰 요약은 구현하지 않았다 | 같은 결정 |
 | 카드 재전달 | `card_due`는 카드당 최대 3회, 30초 간격으로 다시 시도한다. 전원에게 전달될 때까지 다시 큐에 넣지 않는다 | 같은 결정 |
-| 어시스턴트 답의 마크다운 | AI 어시스턴트 답의 마크다운 강조(`**`)·목록 기호가 렌더링되지 않고 글자 그대로 보인다(web 렌더링 또는 프롬프트의 평문 지시가 필요) | 오케스트레이터 확인 |
+| 옛 채용 건 | 시나리오 원본 복사(`catalog`)가 없는 채용 건은 저장된 복사본으로 카탈로그를 재구성하고 프롬프트만 현재 파일에서 채운다(경고 로그). 새 세션 시작은 막지 않는다 | [`product/scenario.md`](product/scenario.md) 6장 |
 | 동료 응답 지연 | 15분 전체 세션(실제 LLM gpt-4o-mini)에서 첫 동료 응답 p95가 8.6초로 목표 8초를 근접 초과했다 | [`share/visual-report/index.html`](share/visual-report/index.html) |

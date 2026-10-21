@@ -28,7 +28,7 @@
 | line | #D2D2D7 | #38383A | 1px(또는 0.5px 레티나) 구분선. 그림자 대신 선 |
 | ink | #1D1D1F | #F5F5F7 | 본문·제목 |
 | muted | #6E6E73 | #A1A1A6 | 보조 글, 시스템 안내 |
-| subtle | #86868B | #8E8E93 | 메타(아이콘·자리표시). 본문 글자에는 쓰지 않음 |
+| subtle | #86868B | #8E8E93 | 메타(아이콘·자리표시)와 입력 테두리(1px, 비텍스트 3:1). 본문 글자에는 쓰지 않음 |
 | accent | #0066CC | #2997FF | **글자·아이콘**용 강조: 링크·선택 표시·포커스 링·현재 단계 글자. 강조색 계열은 이것 하나(시스템 블루) |
 | accent-strong | #004F9E | #6CB4FF | accent 글자의 눌림·hover |
 | accent-soft | #EEF5FE | #0A2A4D | 하이라이트(기록 화면·근거 메시지), 선택 배경, 결과 줄 강조 |
@@ -95,10 +95,10 @@ AI 동료 틴트는 **자리**(`p1`·`p2`·`p3`)에 붙고 페르소나 유형�
 | PhaseBar | 상단 4단계 진행 | 분절 표시, 현재 단계 accent 글자 semibold, 지난 단계는 결과 아이콘(✓ 합의 / 시계 시간 초과) + 글자. 시각 없음 |
 | Timer | "이 단계 12:40 남음" | tabular-nums, 2분 전 warning 색 전환 1회. 오피스 시각을 같은 줄에 붙이지 않는다(R7) |
 | SegmentedTabs | 우측 패널 탭(결정 사항·자료·AI 어시스턴트·기획안), 세션 길이 선택(60·15분) | 기존 tabs를 분절 컨트롤 모양으로. 배지는 작은 accent 점 + 숫자 |
-| ConsensusPanel / SlotResult / SlotInput | 화면 이름 "결정 사항": 결과 줄 목록과 현재 정할 항목 입력·[이걸로 정하기] | 결과 줄은 구분선 목록(카드 아님), 시각 없음. SlotInput은 field(keyword는 분절 버튼 4개) + 주 버튼(accent-fill + on-accent) |
+| ConsensusPanel / SlotResult / SlotInput | 화면 이름 "결정 사항": 결과 줄 목록과 현재 정할 항목 입력·[이걸로 정하기] | 결과 줄은 구분선 목록(카드 아님), 시각 없음. SlotInput은 field(keyword는 분절 버튼 4개, 고른 버튼은 accent-soft 면·accent 글자·체크 아이콘) + 주 버튼(accent-fill + on-accent). 현재 정할 항목은 callout semibold 라벨, "지금 정할 항목" accent 칩, 왼쪽 2px accent 막대로 표시. 주 버튼 비활성은 surface-sunken 면·muted 글자, 처리 중은 면을 유지하고 회전 아이콘 |
 | MaterialList / MarkdownViewer | 자료 목록·잠금 상태, 읽기 전용 Markdown | 본문 폭 최대 68자, 제목 위계는 타이포 표 |
 | AssistantPanel | 요청·응답·인용 칩·복사 | 말풍선 아님. 반짝이·로봇 아이콘 금지 |
-| ProposalEditor | 기획안 6칸·저장 시각·[제출] | 칸 제목 title3, 칸 설명 한 줄(footnote muted, 예: `idea_credit` "이 기획에 반영된 의견과 그 의견을 낸 사람"), textarea는 placeholder "여기에 적어요"와 굵은 테두리(`border-2`, 포커스 시 accent 테두리·링), 잠기면 sunken 바탕 |
+| ProposalEditor | 기획안 6칸·저장 시각·[제출] | 칸 제목 callout semibold, 칸 설명 한 줄(footnote muted, 예: `idea_credit` "이 기획에 반영된 의견과 그 의견을 낸 사람"), textarea는 placeholder "여기에 적어요"와 1px subtle 테두리(포커스 시 accent 테두리·링). 제출 확인·제출 중에는 readOnly로만 막고 모양을 유지하며, 제출 뒤에는 테두리 없는 sunken 바탕·ink 글자(빈 칸은 "비어 있음")와 [제출] 대신 "제출했어요" 표시 |
 | EvidenceItem | 리포트 근거(`msg:`·`slot:`·`proposal:`, 맥락용 `contribution:`·AI 동료 메시지) | 메시지 근거는 MessageBubble 축소판 재사용(같은 틴트·이름·아바타). 누르면 원문·앞 5·뒤 3 맥락 펼침, 근거 메시지 accent-soft 강조. 맥락 참조는 "맥락" 칩과 보조색 |
 | LevelChip | 요소·차원 수준 "수준 N (1~5)" / 목록용 "설득 3", 기록 없음은 사유 문장 | 숫자 tabular, 수준별 색 구분 없이 중립 톤(높고 낮음을 색으로 서열화하지 않음). 담당자 조정 값은 "담당자 조정됨" 글자 동반 |
 | ConfidenceTag | 차원 확신도 높음/보통/낮음 | 아이콘 + 글자. 낮음은 warning 톤 글자 "근거 약함, 원문 확인 권장" |
