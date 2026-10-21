@@ -27,7 +27,7 @@
 | | 실시간 의도 분류 (D16) | 평가 에이전트 (D18·D19 개정) |
 |---|---|---|
 | 시점 | 지원자 메시지마다 즉시 | **세션 종료 후 report-worker가 큐 작업으로** |
-| 모델 | 작은 모델(`MODEL_INTENT`) | 리포트 역할 모델(`MODEL_REPORT`) |
+| 모델 | 작은 모델(`MODEL_INTENT`) | 평가 역할 모델(`MODEL_EVALUATOR`) |
 | 입력 | 메시지 한 개와 짧은 앞 맥락 | 세션 대화 전체, 칸 기록, 기획안, 카드 발생 기록, 사실 지표, Contributions, 이 척도(창으로 자르지 않음) |
 | 출력 | `{intent: propose·agree·oppose·question·other, target_option, confidence: high·low}`(지지로 세는 것은 high인 propose·agree뿐) | 차원별 `{dimension_id, level∣null, no_record_reason?, evidence_refs[], rationale, confidence}` |
 | 쓰임 | 토론 진행: 안별 지지자 누적, 턴 매니저 판단, 칸 채움·시간 초과 안 선택, 침묵 초대 조건, 안 행 생성(최초 제안자) | 평가: 차원 수준과 근거 |

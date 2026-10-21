@@ -26,6 +26,7 @@ services/api/app/
     facts.py             사실 지표 계산(rubric.md 6장), record 타임라인
     budget.py            세션 LLM 비용 누적(`debate_cost_usd`·`cost_usd`)·하드 상한, DebateState `cost_left` 계산
     office_clock.py      t_min ↔ 오피스 시각(유지)
+    test_sessions.py     테스트 API: 단계 시드 재생·시간 당기기(`ENABLE_TEST_API=1`일 때만)
     runs.py              agent_runs 기록, run_agent
   agent/                 debate/ · assistant/ · intent/ · guard/ · llm/ · mcp_client/ · runner.py (docs/agent/design.md)
   routers/               admin.py · candidate.py · ws.py · internal.py
@@ -163,7 +164,15 @@ purge:     ended_at + 90일 지난 세션 삭제(completed·failed·cancelled �
 - `GET /evaluations`: 저장된 차원 행과 `evaluation_runs`의 `elements`를 함께 돌려준다(워커 재실행 시 요소 요약 복구).
 - `POST /report/final`: draft content를 그대로 받는다(해시 동일, R5-15). 담당자 조정은 저장 content에 섞지 않고 조회 때 병합한다.
 - `GET /facts`: `services/facts.py`가 `rubric.md` 6장 지표를 규칙으로 계산.
+- `GET /assistant_calls`: 행마다 요청·응답 원문(`request`·`response`)을 함께 준다(워커 `ai_usage` 인용). `GET /sessions/{id}`의 `position`에 `name`(`positions.name`)을 준다(Report `position.name`).
 - `GET /rubric`: `positions.scenario`의 척도 복사본(5요소 차원 19개·앵커·사유 코드·카드 창, `rubric_version`).
+- `GET /messages?tail=N`: 토론방 메시지 최근 N개를 오래된 순으로(debate-mcp `get_transcript`). limit·offset은 무시한다.
+
+## 테스트 API (`ENABLE_TEST_API=1`, `services/test_sessions.py`)
+
+e2e·단계별 테스트가 15분을 처음부터 기다리지 않게 하는 두 엔드포인트다(`contracts.md` 내부 REST). 꺼져 있으면 404.
+- `POST /internal/test/sessions {start_at?, stage?}`: 관리자·채용 건·초대를 만들고, `start_at`이 entry가 아니면 단계 시드 `scenarios/e2e/stages/<이름>.yaml`(e2e 대본과 같은 문법)의 지원자 행동과 고정 AI 발언을 **SessionService·debate·proposal 서비스 함수로 재생**해 그 단계가 막 시작된 상태를 만든다. 가짜 시계를 시드 안에서만 쓰고 LLM·그래프를 부르지 않는다. SQL을 직접 넣지 않으므로 generation·seq·칸·안·입장·누적 마감·`session_cards`가 실제 흐름과 같은 규칙으로 쌓인다. 재생이 끝나면 시작 시각을 "지금 − 경과 시간"으로 맞춰 이후는 실제 시계와 스케줄러가 평소대로 진행한다. `ended`는 제출까지 재생하고 `report.generate`를 평소대로 발행한다.
+- `POST /internal/test/sessions/{id}/advance {seconds | to}`: `sessions`의 `started_at`·`phase_started_at`·`phase_deadline_at`·`ends_at`을 같은 초만큼 앞당긴다(스키마 변경 없음). 카드 예정 시각은 시작 시각 기준 계산이라 함께 당겨진다. 시간 초과·카드·침묵 초대·자동 제출은 다음 스케줄러 틱이 평소 경로로 처리하므로 테스트 전용 분기가 없다. 메시지 `created_at`은 바꾸지 않는다.
 
 ## 관리자
 
@@ -197,4 +206,5 @@ purge:     ended_at + 90일 지난 세션 삭제(completed·failed·cancelled �
 - 시간(가짜 시계 단위 테스트 + 15분 실 스택 1~2개, R3): 단계 마감 → `phase.changed` 15초 안, 마감 임박 안내 1건, 침묵 초대 조건에서 `invite_delivered=false`인 동안 idle 재enqueue(대기 중이면 중복 없음), 카드 예정 시각에 card_due, 담당 전원 delivered 전까지 새 run_id로 재enqueue(큐·실행 중이면 중복 없음), `ends_at` 자동 제출과 큐 발행.
 - 자료·어시스턴트: 키워드 확정 전 목록 잠김·본문 423, 확정 뒤 그 키워드 자료만(채용 건 버전 원문), 열람 기록, 어시스턴트 60회 초과 429.
 - 비용: `debate_cost_usd` 하드 상한 $2 초과 주입 시 페르소나가 고정 안전 문구만 게시, 세션 진행은 계속. 리포트 비용은 `cost_usd`에만 더해지고 `cost_left`에 영향 없음.
+- 테스트 API: `start_at`마다(keyword·problem·solution·proposal·ended) 만든 세션의 `/state`가 그 단계 시작 상태이고 앞 단계 칸이 시드대로 confirmed, generation·seq가 연속, `advance{to: deadline}` 뒤 다음 틱에 시간 초과 채우기, `advance{to: "card:<id>"}` 뒤 card_due enqueue, `ENABLE_TEST_API` 없으면 404.
 - 관리자·내부: 엔드포인트가 계약 예시대로, 기업 간 격리, review `reviewer_name`·차원 단위 조정·메모 필수·검증 오류 422·409 우선, 리포트 응답에 총점·합계 필드 없음, final content 해시 = draft, record의 `ref`와 리포트 `record_ref` 일치, evaluations `(session_id, run_id)` 멱등·형식 422·`evaluation_runs` 1행, observations 멱등, `card_ids` 두 개 메시지가 두 카드의 `delivered_seats`를 함께 갱신, reissue 후 옛 토큰 무효, 재시작 후 미처리 마감·제출·미발행 재처리, purge가 `ended_at` 기준으로 failed·cancelled도 지움.

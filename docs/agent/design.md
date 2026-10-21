@@ -6,7 +6,7 @@
 
 ## AgentRunner 인터페이스와 SessionPorts
 
-api의 다른 부분은 이 인터페이스만 본다. `FakeAgentRunner`(자리별 고정 문장을 post)는 유지해 api·web이 에이전트 없이 흐름을 돌린다.
+api의 다른 부분은 이 인터페이스만 본다. 구현 선택은 env `AGENT_RUNNER` 하나이고 **기본값은 `session`(토론 그래프 실행)**이다. `config.py`와 runner 선택 코드가 같은 기본값을 쓴다. `fake`(`FakeAgentRunner`, 자리별 고정 문장을 post)는 api 단위 테스트가 주입하는 용도로만 남긴다. 실 스택에서 LLM 없이 결정적으로 돌릴 때는 runner를 바꾸지 않고 아래 `LLM_FAKE=1`을 쓴다.
 
 ```python
 class AgentRunner(Protocol):
@@ -217,6 +217,20 @@ D18·D19 개정과 R5-14. 세션 종료 후 report-worker의 `evaluate` 노드�
 
 비어 있으면 `OPENAI_MODEL`(기본 gpt-4o-mini). 키는 모델 id로 고른다(gpt-4o-mini → 제한 키, 그 외 gpt-* → 개인 키, gemini-* → Gemini 키). 규칙은 공용 LLM 래퍼(`app/agent/llm`, 워커는 같은 규칙의 사본) 한 곳이고, 래퍼가 호출마다 토큰과 환산 달러를 `usage.cost_usd`로 낸다(R5-11). 프롬프트·규칙 수정으로 안 되는 역할만 사용자 결정으로 올린다(`docs/decisions.md`). 이전 env(`MODEL_COLLEAGUE`·`MODEL_MANAGER`·`MODEL_OBSERVE`·`MODEL_REPORT`)는 폐기. env 이름 5개는 be-foundation이 `infra/.env.example`과 `roles.py`에 넣고 G-F에서 동결한다.
 
+### 결정적 LLM 모드 (`LLM_FAKE=1`)
+
+실 스택(compose·로컬)에서 그래프·의도 분류·어시스턴트·평가 에이전트를 **그대로 돌리고 LLM 호출만** 결정적 고정 응답으로 바꾸는 모드다. 단계별 화면 테스트(stage-e2e)·단계 시드·e2e mock 실행이 쓴다(`docs/common/testing.md` "단계별 테스트"). 공용 LLM 래퍼(`app/agent/llm`, 워커는 같은 규칙의 사본)가 env를 보고 `FakeLLM`을 돌려주므로 노드 코드는 모드를 모른다.
+
+| 역할 | 고정 응답 |
+|---|---|
+| 페르소나 | 그 자리·그 단계의 시나리오 고정 입장 문장(`personas.yaml` 단계별 입장 + 안 라벨 치환). 카드 발언은 카드 `content`. guard·stance_check를 통과하는 문장만 쓴다 |
+| 턴 LLM | 규칙 결과 0명일 때 우선순위 첫 자리 |
+| 의도 분류 | 키워드 규칙: 카탈로그 안 라벨·키워드 라벨이 문장에 있으면 그 안, "좋아요·동의·찬성"이면 agree, "아니·반대·글쎄"면 oppose, 물음표면 question, 그 밖 other. confidence는 규칙이 맞으면 high, 아니면 low |
+| 어시스턴트 | 도구 1회(`search_materials` 질문 그대로) 뒤 첫 결과 제목을 인용한 고정 문장 |
+| 평가 에이전트 | 요소마다 형식 검증을 통과하는 고정 출력(차원마다 지원자 메시지 근거가 있으면 수준 3·confidence medium, 없으면 `no_activity`) |
+
+사용량은 0으로 기록하고 LangSmith trace는 남기지 않는다. 운영 compose에서는 끈다. 실제 LLM 확인은 같은 실행을 `LLM_FAKE` 없이 다시 돌린다(`make stage … LLM=live`).
+
 ### 실측 기준선 (agent-spike, gpt-4o-mini)
 
 | 항목 | p50 | p95 |
@@ -261,4 +275,5 @@ D18·D19 개정과 R5-14. 세션 종료 후 report-worker의 `evaluate` 노드�
 - 복구: 강제 LLM 실패 3회 연속에 세션 failed, 같은 run_id 재실행에 중복 메시지·안·입장 없음.
 - 의도 분류: 픽스처 20문장에서 스키마 위반 0과 실 모델 정확도 기준선 기록, `confidence` 출력, 단계 전환 뒤 꺼낸 이전 단계 메시지가 그 메시지 단계의 카탈로그로 분류·저장됨, 카탈로그 안을 지원자가 먼저 말하면 `scenario_option_key`로 판정, 실패 주입 시 other·fallback=true.
 - LangSmith trace에 `agent_run_id`, `agent_runs.decision`에 턴 결정 저장.
+- 결정적 LLM 모드: `LLM_FAKE=1`에서 같은 단계 시드·같은 지원자 입력을 두 번 돌리면 게시 문장·안·입장·칸 결과가 같고 LLM 실제 호출 0회, `AGENT_RUNNER` 기본값이 config와 runner 선택에서 `session`으로 같다.
 - 평가 에이전트: 픽스처 세션에서 요소마다 호출 1회, 프롬프트 스냅샷에 대화 전체·그 요소 척도와 앵커만 있고 다른 요소 결과가 없음, 출력 스키마 위반 0, 근거 참조가 4종 문자열 형식, 모델이 요소 `level`을 내지 않음, 형식 오류 주입 시 요소 단위 재요청 1회, 확신도 상한 위반은 clamp. 같은 세션 3회 재평가의 차원 수준 변동 폭 기록(R7, `rubric.md` 9.2).

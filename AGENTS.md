@@ -30,6 +30,6 @@
 
 ## 개발 프로세스·작업 방식
 
-- 오케스트레이터는 조율만 하고, 코드·문서는 트랙별 Claude 서브에이전트(동시 최대 4, 트랙마다 worktree·`track/<이름>`)가 쓰며, 리뷰는 `codex exec`(읽기 전용)로 한다. TDD는 happy path 중심, LLM은 테스트에서 mock(실제 호출은 `live` 마커).
+- 오케스트레이터는 조율만 하고, 코드·문서는 트랙별 Claude 서브에이전트(동시 최대 4, 트랙마다 worktree·`track/<이름>`)가 쓰며, 리뷰도 작성과 다른 모델의 Claude 서브에이전트(읽기 전용)가 한다(api·agent는 Opus 개발 → Sonnet 리뷰, 나머지는 Sonnet 개발 → Opus 리뷰). TDD는 happy path 중심, LLM은 테스트에서 mock(실제 호출은 `live` 마커).
 - 정해지지 않은 사항은 사용자에게 하나씩 묻는다. 비밀값은 `.env`에만 두고 커밋하지 않는다(`infra/.env.example` 갱신). 커밋 메시지는 한국어 한 문장.
 - 상세(브리프·보고 위치, 단계 루프, 리뷰 명령, 로컬 실행, 주석 규칙)는 `docs/dev-process.md`.

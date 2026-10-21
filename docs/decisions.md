@@ -220,3 +220,25 @@
 | 지원자 호칭 | "지원자"(대화 속에서는 "OO님") | "주담당"(폐기) |
 
 키 선택 규칙(모델 id로 키 결정)과 역할별 상향 규칙은 위 "역할별 모델과 상향 규칙" 절을 그대로 따르고 역할 이름만 위 5개로 바꾼다.
+
+## 2026-10-21 저녁 개발 재계획: 7e64a02 폐기, 단계별 테스트 환경, 서브에이전트 개발·리뷰
+
+사용자 결정과 오케스트레이터 정리. 계획 정본은 `docs/plan.md` 1절(S1~S5).
+
+| 항목 | 결정 | 이유 | 대안 |
+|---|---|---|---|
+| `track/debate`의 `7e64a02`(api·agent·report-worker·gm-fix WIP 합본, 리뷰·보고서 없음) | 폐기. `track/debate`를 `e4b91f8`로 되돌리고 백업 태그 `backup/debate-7e64a02`만 남김. `work/finish-debate` 삭제 | 트랙 WIP 브랜치 대비 차이가 작고(+300줄 안팎), 리뷰·보고 없이 들어간 합본이라 트랙 단위 리뷰·병합 흐름으로 되돌림 | 합본을 리뷰해 이어가기(트랙 경계와 리뷰 근거가 흐려져 기각) |
+| 보고서 | 1차 과제 제출이 끝나 다시 고쳐도 됨. G-E 뒤 report-refresh를 되살린다 | 실제 스택 캡처로 바꿀 수 있게 됨 | 제출본 고정(이전 결정, 대체) |
+| 개발·리뷰 방식 | Codex 대신 개발·리뷰 모두 Claude 서브에이전트. api·agent는 Opus 개발 → Sonnet 리뷰, 나머지는 Sonnet 개발 → Opus 리뷰, 오케스트레이터 문서는 Sonnet 리뷰. 리뷰는 차단만, 재리뷰 1회 | Codex 한도 소진. 작성 모델 ≠ 리뷰 모델 원칙 유지 | 전부 Sonnet 개발·Opus 리뷰, 전부 Opus 개발·Sonnet 리뷰 |
+| 단계별 테스트 환경 | stage-kit(단계 시드 `make stage`, 시간 당기기 `make stage-advance`), stage-e2e(Playwright 단계별 화면 테스트, 영상·trace·스크린샷), playtest(블라인드 페르소나 4종이 Claude in Chrome으로 조작, GIF·불편 로그) | 처음부터 끝까지 돌려야만 뒤 단계를 볼 수 있는 문제를 없애고, 단계마다 동작·사용성을 시각 자료로 남김 | 15분 세션 반복 실행만으로 확인 |
+| D1 테스트 API | 새 dev API를 만들지 않고 기존 `POST /internal/test/sessions`(`ENABLE_TEST_API`)를 `start_at`·`stage`로 넓히고 `POST /internal/test/sessions/{id}/advance`를 더함 | 같은 일을 하는 테스트 API 중복 방지 | `/internal/dev/*` + `DEV_TOOLS` |
+| D2 단독 실행기 | 그래프·report-worker 단독 실행기는 두지 않음. 실 스택 세션 기록을 eval 픽스처로 저장하는 스크립트 1개만 | 단계 시드 + `LLM=live`, `tests/eval`·`make eval-live`와 겹침 | stage-kit ③ 유지 |
+| D3 e2e 역할 | Python 러너 = 세션 전체·리포트·인증·장애 주입·동시, Playwright = 단계별 화면. `silent`·`solo_confirm`은 Playwright로 이동 | 같은 단언 이중화 방지 | 둘 다 전체 대본 |
+| D4 web-integrate 완료 기준 | `NEXT_PUBLIC_MOCK=0` + stage-e2e(`LLM_FAKE`) 통과. 15분 실 스택은 W5-3 `all_five` 1회 | 15분 실 스택 중복 | web-integrate에서도 15분 실 스택 |
+| D5 playtest | 기존 playtest 행을 고쳐 씀(관리자 페르소나·GIF·단계 시드 추가, 게이트 아님) | 같은 트랙 | 새 트랙 추가 |
+| D6 캡처 경로 | report-refresh는 stage-e2e 스크린샷과 playtest GIF를 쓴다. 목업 캡처 스크립트는 mock 모드용으로 두고 손보지 않음 | 캡처 경로 셋 중복 | 목업 캡처 스크립트 유지보수 |
+| D7 gm-fix 범위 | 실제 화면 항목만(B4~B7, N1·N3·N4·N5·N11·N12·N13). 캡처·mock 전용(B1~B3, N6·N10)은 제외 | 실 스택 캡처로 바뀌면 의미 없음 | 리뷰 전체 반영 |
+| 시간 당기기 방식 | `sessions`의 `started_at`·`phase_started_at`·`phase_deadline_at`·`ends_at`을 같은 초만큼 앞당김. 스케줄러가 다음 틱에 평소 경로로 처리 | 카드 시각이 시작 시각 기준 계산이라 함께 당겨지고 스키마 변경·테스트 전용 분기가 없음 | 세션별 시계 오프셋 열 추가 |
+| 단계 시드 생성 | `scenarios/e2e/stages/<단계>.yaml`(e2e 대본 문법)을 SessionService·debate·proposal 함수로 재생. SQL 직접 삽입 금지 | generation·seq·누적 마감·칸·안·입장이 실제 흐름과 같은 규칙으로 쌓임 | DB 스냅샷·SQL 픽스처 |
+| 결정적 LLM 모드 | `LLM_FAKE=1`이면 그래프·의도 분류·어시스턴트·평가 에이전트는 그대로 돌고 LLM 호출만 고정 응답. `AGENT_RUNNER` 기본값은 `session`으로 통일하고 `fake` runner는 api 단위 테스트 주입 전용 | 실 스택 단계 테스트가 결정적이어야 하고, 기본값이 config(`fake`)와 runner 선택(`session`)에서 달랐음 | `AGENT_RUNNER=fake`로 실 스택 테스트(그래프를 안 거쳐 확인 범위가 좁음) |
+| 계약 보완 | State `keyword_options`, 내부 messages `tail`, `/rubric` `cards[].window`(카탈로그 `{start, end, label}` 그대로), 409 세부 코드 목록, Report `review = {reviewer_name, reviewed_at}`, 내부 `assistant_calls`에 `request`·`response` 원문, 내부 `GET /sessions/{id}`의 `position.name` | api WIP·report-worker 리뷰에서 나온 결정을 계약에 반영 | — |

@@ -7,7 +7,7 @@
 ## 공통
 
 - 공개 베이스: `http://api:8000` (web이 호출). 내부 베이스: `http://api:8001` (`/internal/*`만, compose 네트워크 안에서만 열림, 포트 미공개).
-- 응답 JSON. 오류는 `{"error": {"code": "...", "message": "..."}}`와 HTTP 4xx/5xx. **입력 검증 실패는 모두 422**이고 `code`는 `invalid_input` 또는 그 세부 코드(`invalid_keyword`·`invalid_dimension`·`memo_required`·`duplicate_dimension`·`invalid_previous_session`)다(400은 쓰지 않는다). 상태 충돌은 409, 권한 401·403, 없음 404, 만료·취소 410, 잠김 423.
+- 응답 JSON. 오류는 `{"error": {"code": "...", "message": "..."}}`와 HTTP 4xx/5xx. **입력 검증 실패는 모두 422**이고 `code`는 `invalid_input` 또는 그 세부 코드(`invalid_keyword`·`invalid_dimension`·`memo_required`·`duplicate_dimension`·`invalid_previous_session`)다(400은 쓰지 않는다). 상태 충돌은 409이고 `code`는 `conflict` 또는 세부 코드다: `phase_not_open`(현재 단계가 아님), `slot_confirmed`(칸이 이미 확정), `no_consensus`(합의 판정이 그 안이 아님), `stale_generation`(게시 시점 generation 불일치), `session_ending`(제출·종료 뒤 쓰기), `already_reviewed`(검토 뒤 다른 본문), `draft_mismatch`(final 해시가 draft와 다름). 그 밖의 상태 충돌은 `conflict`. 권한 401·403, 없음 404, 만료·취소 410, 잠김 423.
 - CORS: 공개 앱(8000)만 `WEB_ORIGIN`(쉼표 구분, 기본 `http://localhost:3000`)을 허용한다. 메서드 전부, 헤더 `Authorization`·`Content-Type`. 내부 앱(8001)에는 두지 않는다.
 - 인증 헤더: `Authorization: Bearer <jwt>`. 내부: `X-Internal-Token: <secret>`. assessment-mcp: `X-Assessment-Token: <secret>`.
 - 시각은 ISO 8601 UTC. 세션 상대 시각은 `t_min`(세션 시작 기준 분, 소수 허용)으로도 함께 준다.
@@ -211,7 +211,7 @@ empty ──지원자 확정 / AI 합의 채우기 / api 시간 초과 채우기
 
 ### Report
 
-예시는 발췌다(실제 본문은 `elements` 5행, `dimensions` 19행, 각 요소의 모든 차원).
+예시는 발췌다(실제 본문은 `elements` 5행, `dimensions` 19행, 각 요소의 모든 차원). `position.name`은 내부 `GET /internal/sessions/{id}`의 `position.name`(`positions.name`)이다.
 
 ```json
 {"session_id":"...","alias":"지원자A","stage":"draft",
@@ -244,7 +244,7 @@ empty ──지원자 확정 / AI 합의 채우기 / api 시간 초과 채우기
  "proposal":{"submitted_at":"...","auto_submitted":false,"sections":{"keyword":"...","problem":"...","solution":"...","rationale":"...","expected_effect":"...",
              "idea_credit":"문제 상황: 서지안 제안. 해결책: 강한결 아이디어에 알림 기능을 제가 보탬"}},
  "ai_usage":{"used":true,"events":[{"call_id":"...","t_min":31.0,"request_quote":"...","response_quote":"...","cited_material_ids":["water_stats"]}]},
- "review":null,"notes":[],"connection_gaps":[{"from_t_min":12.0,"to_t_min":13.5}],
+ "review":{"reviewer_name":"박담당","reviewed_at":"..."},"notes":[],"connection_gaps":[{"from_t_min":12.0,"to_t_min":13.5}],
  "generated_at":"...","reviewed_at":null,"purge_at":"..."}
 ```
 
@@ -318,6 +318,7 @@ empty ──지원자 확정 / AI 합의 채우기 / api 시간 초과 채우기
 {"session":{"id":"...","alias":"지원자A","status":"in_progress","phase":"problem","started_at":"...","ends_at":"...","session_minutes":60,
             "phase_started_at":"...","phase_deadline_at":"...","phase_remaining_seconds":840,"session_remaining_seconds":2700,
             "office_start":"09:00","office_end":"10:00","completed_at":null},
+ "keyword_options":[{"option_key":"water","label":"물"},{"option_key":"fire","label":"불"},{"option_key":"tree","label":"나무"},{"option_key":"wind","label":"바람"}],
  "phases":[{"phase":"keyword","budget_min":10,"deadline_t_min":10},{"phase":"problem","budget_min":18,"deadline_t_min":28},
            {"phase":"solution","budget_min":18,"deadline_t_min":46},{"phase":"proposal","budget_min":14,"deadline_t_min":60}],
  "participants":[{"id":"candidate","display_name":"김지원"},{"id":"p1","display_name":"강한결","avatar_url":"/assets/missions/debate/avatars/avatar-01.png"},
@@ -335,7 +336,7 @@ empty ──지원자 확정 / AI 합의 채우기 / api 시간 초과 채우기
  "ws_seq":143}
 ```
 
-스냅샷이 전체 상태이고 WS는 증분만 보낸다. `participants`의 지원자는 `display_name`만, AI 자리는 `display_name`·`avatar_url`(유형 없음). 칸의 `support`와 안·지지 현황은 지원자 화면에 내려가지 않는다(합의 패널은 고른 결과만). `typing`은 지금 입력 중 표시가 켜진 AI 자리. `ws_seq`는 스냅샷 시점까지 이 세션에 보낸 마지막 WS `seq`이고, 클라이언트는 이보다 큰 seq의 프레임만 적용한다.
+스냅샷이 전체 상태이고 WS는 증분만 보낸다. `participants`의 지원자는 `display_name`만, AI 자리는 `display_name`·`avatar_url`(유형 없음). 칸의 `support`와 안·지지 현황은 지원자 화면에 내려가지 않는다(합의 패널은 고른 결과만). `keyword_options`는 키워드 단계 후보 버튼(카탈로그 `keyword_order` 순, 시작 전 `/state`에도 있음)이고 칸 확정의 `option_key`는 이 값 중 하나다. `typing`은 지금 입력 중 표시가 켜진 AI 자리. `ws_seq`는 스냅샷 시점까지 이 세션에 보낸 마지막 WS `seq`이고, 클라이언트는 이보다 큰 seq의 프레임만 적용한다.
 
 ## WebSocket `/ws/sessions/{id}?token=<세션 JWT>`
 
@@ -369,9 +370,9 @@ close code: 4401(토큰 문제 → resume 후 재연결), 4403(다른 세션, �
 
 | 메서드 | 경로 | 요청 | 응답 | 호출자 |
 |---|---|---|---|---|
-| GET | /internal/sessions/{id} | | {id, status, phase, alias, display_name, position: {mission_id, session_minutes, scenario, catalog_version}, seats: [{seat: "candidate", display_name}, {seat, display_name, avatar_url, persona_type}], started_at, ends_at, phase_started_at, phase_deadline_at, completed_at, ended_at, t_min_now, generation, invite_delivered_phases, card_progress, connection_gaps} | debate-mcp, assessment-mcp, 워커 |
+| GET | /internal/sessions/{id} | | {id, status, phase, alias, display_name, position: {name, mission_id, session_minutes, scenario, catalog_version}, seats: [{seat: "candidate", display_name}, {seat, display_name, avatar_url, persona_type}], started_at, ends_at, phase_started_at, phase_deadline_at, completed_at, ended_at, t_min_now, generation, invite_delivered_phases, card_progress, connection_gaps} | debate-mcp, assessment-mcp, 워커 |
 | GET | /internal/sessions/{id}/debate_state | | DebateState(아래) | debate-mcp |
-| GET | /internal/sessions/{id}/messages?since_t_min=&phase=&limit=&offset= | | [Message + `meta`, `origin`, `intent`(message_intents 행 또는 null)]. 정렬 created_at·seq, limit 기본 200·최대 1000 | debate-mcp, assessment-mcp, 워커 |
+| GET | /internal/sessions/{id}/messages?since_t_min=&phase=&limit=&offset=&tail= | | [Message + `meta`, `origin`, `intent`(message_intents 행 또는 null)]. 토론방(room) 메시지만. 정렬 created_at·seq, limit 기본 200·최대 1000. `tail=N`(1~1000)이면 최근 N개를 오래된 순으로 주고 limit·offset은 무시한다(debate-mcp `get_transcript`의 `tail`) | debate-mcp, assessment-mcp, 워커 |
 | POST | /internal/sessions/{id}/messages | {sender: p1∣p2∣p3∣system, content, run_id, seq, expected_generation?: int, is_invite?: bool, card_ids?: [card_id], cited_material_ids?: [], meta?} | Message. (run_id, seq) 멱등(이미 있으면 generation 검사 없이 기존 행). `expected_generation`이 있고 현재 `sessions.generation`과 다르면 409 `stale_generation`(게시 안 함). is_invite=true면 그 단계를 `invite_delivered_phases`에 추가, 단계당 두 번째는 409 `conflict`. `card_ids`의 카드마다 그 `session_cards.delivered_seats`에 sender 자리를 더한다(같은 자리 중복 없음, 같은 트랜잭션). 메시지 행에는 `card_ids`로 저장 | debate-mcp |
 | POST | /internal/sessions/{id}/options | {phase, label, proposer: p1∣p2∣p3, scenario_option_key?, source_message_id, run_id} | Option {option_id, phase, label, proposer, scenario_option_key, created_at, existing: bool}. 멱등 키는 위 표. 같은 scenario_option_key 행이 이미 있으면(지원자가 먼저 말한 경우 포함) 새로 만들지 않고 기존 행(`existing: true`, proposer 그대로). 현재 단계가 아니면 409 `phase_not_open` | debate-mcp |
 | POST | /internal/sessions/{id}/stances | {participant: p1∣p2∣p3, option_id, stance: "support"∣"oppose", source_message_id, run_id} | {stance_id}. source_message_id는 그 입장을 말한 자기 메시지. 멱등 | debate-mcp |
@@ -383,18 +384,19 @@ close code: 4401(토큰 문제 → resume 후 재연결), 4403(다른 세션, �
 | GET | /internal/sessions/{id}/observations | | [{observation_id, card_id, element, phase, fired_at, t_min, trigger_message_id, delivered: bool}] (`delivered`는 `session_cards` 기준) | assessment-mcp, 워커 |
 | GET | /internal/sessions/{id}/transcript_span?message_id=&before=5&after=3 | | {target: Message, before: [Message], after: [Message]}. room 메시지만, meta·intent 포함. 기본 앞 5·뒤 3. 리포트 근거의 앞뒤 맥락 표시용(평가 입력을 자르는 용도가 아님) | assessment-mcp |
 | GET | /internal/sessions/{id}/contributions | | Contributions(아래) | assessment-mcp |
-| GET | /internal/sessions/{id}/rubric | | {rubric_version, elements: [{element, name, dimensions: [{dimension_id, name, definition, core_cards: [card_id], levels: [{level: 1~5, anchor, reviewer_hint}]}]}], no_record_reasons: [{code, label}], cards: [{card_id, element, window}]} (`positions.scenario`에 복사된 BARS 척도, 5요소·19차원, 형식은 `rubric.md`) | assessment-mcp |
+| GET | /internal/sessions/{id}/rubric | | {rubric_version, elements: [{element, name, dimensions: [{dimension_id, name, definition, core_cards: [card_id], levels: [{level: 1~5, anchor, reviewer_hint}]}]}], no_record_reasons: [{code, label}], cards: [{card_id, element, stage_id, window: {start: stage_start∣card_message, end: "stage_end:<phase>"∣submit, label}}]} (`positions.scenario`에 복사된 BARS 척도, 5요소·19차원, 형식은 `rubric.md`. `window`는 `cards.yaml` 값 그대로이며 관찰 창이지 평가 입력을 자르는 경계가 아니다) | assessment-mcp |
 | POST | /internal/sessions/{id}/evaluations | `save_evaluation` 입력에서 session_id를 뺀 본문(아래 EvaluationSave) | {run_id, existing: bool, saved: int}. `evaluation_runs` 1행 + `evaluations` 차원 행을 **한 트랜잭션**으로 저장. (session_id, run_id)에 행이 있으면 저장하지 않고 `existing: true`(재시도 이어하기). api 검증 실패 422 `invalid_input`(아래 "검증 경계") | assessment-mcp |
 | GET | /internal/sessions/{id}/evaluations?run_id= | | {run_id, rubric_version, prompt_versions, model, elements: [ElementSummary], dimensions: [DimensionEvaluation], has_failed: bool, created_at}. run_id 생략 시 최신 실행. 요소 요약이 함께 오므로 저장 직후 장애가 나도 재실행이 체크포인트 없이 복구한다 | 워커 |
 | GET | /internal/sessions/{id}/facts | | {<지표 id>: 값} (`rubric.md` 6장 사실 지표의 규칙 계산 값. 평가 결과를 쓰지 않음) | assessment-mcp, 워커 |
 | GET | /internal/sessions/{id}/slots | | [slot 전체 필드 + support] | assessment-mcp, 워커 |
-| GET | /internal/sessions/{id}/assistant_calls | | [{id, request_message_id, response_message_id, cited_material_ids, created_at}] | 워커 |
+| GET | /internal/sessions/{id}/assistant_calls | | [{id, request_message_id, response_message_id, request, response, cited_material_ids, created_at}]. `request`·`response`는 어시스턴트 대화 원문(text)이고 워커가 Report `ai_usage`의 `request_quote`·`response_quote`를 여기서 만든다(내부 messages는 토론방만 준다) | 워커 |
 | POST | /internal/sessions/{id}/report/draft | {content, usage?} | {status: "report_ready"} (멱등) | 워커 |
 | POST | /internal/sessions/{id}/report/final | {content} | {status: "reviewed", reviewed_at}. content는 승인된 draft content 그대로(조정 병합하지 않음). 해시가 draft와 다르면 409 `draft_mismatch` | 워커 |
 | POST | /internal/sessions/{id}/report_failed | {error} | {status: "failed"} | 워커 |
-| POST | /internal/test/sessions | {session_minutes: 60∣15, alias?, company_id?, admin_email?} | {session_id, token, invite_url} (`ENABLE_TEST_API=1`일 때만) | e2e |
+| POST | /internal/test/sessions | {session_minutes: 60∣15, alias?, company_id?, admin_email?, start_at?: entry∣keyword∣problem∣solution∣proposal∣ended, stage?} | {session_id, token, invite_url, phase, session_token?, debrief_token?, admin_report_url?}. `start_at` 기본 `entry`(초대만 만든 상태). 그 밖이면 단계 시드 `scenarios/e2e/stages/<stage∣start_at>.yaml`의 행동을 SessionService로 재생해(가짜 시계, LLM 없음) 그 단계가 막 시작된 in_progress 세션을 만들고 `session_token`을 준다. `ended`는 제출까지 재생한 completed 세션이고 `debrief_token`·`admin_report_url`을 준다(리포트는 워커가 평소대로 만든다). 단계 마감은 재생이 끝난 시각 기준으로 다시 잡는다 | e2e, stage-kit |
+| POST | /internal/test/sessions/{id}/advance | {seconds?: int, to?: deadline∣idle∣"card:<card_id>"} | {shifted_seconds, phase, phase_deadline_at, ends_at}. in_progress 세션의 `started_at`·`phase_started_at`·`phase_deadline_at`·`ends_at`을 같은 초만큼 앞당겨 시간이 흐른 것처럼 만든다(스키마 변경 없음, 카드 예정 시각은 시작 시각 기준이라 함께 당겨짐). `to`는 그 시점에 닿는 초를 api가 계산한다(`deadline` = 현재 단계 마감, `idle` = 침묵 초대 조건, `card:<id>` = 그 카드 예정 시각). 처리는 다음 스케줄러 틱이 평소대로 한다. 둘 다 없거나 둘 다 있으면 422 | e2e, stage-kit |
 
-내부 읽기는 상태 제한이 없다. 내부 쓰기는 세션이 in_progress일 때만 받고 아니면 409 `conflict`(이미 저장된 키의 재전달은 기존 결과). 단, `evaluations`·`report/*`는 completed 이후에만 받는다.
+`/internal/test/*`는 `ENABLE_TEST_API=1`일 때만 열리고 아니면 404다(운영 compose에서는 끈다). 내부 읽기는 상태 제한이 없다. 내부 쓰기는 세션이 in_progress일 때만 받고 아니면 409 `conflict`(이미 저장된 키의 재전달은 기존 결과). 단, `evaluations`·`report/*`는 completed 이후에만 받는다.
 
 ### DebateState
 
