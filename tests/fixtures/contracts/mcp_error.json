@@ -1,8 +1,8 @@
 {
   "ok": false,
   "error": {
-    "code": "not_found",
-    "message": "session not found",
+    "code": "conflict",
+    "message": "no_consensus",
     "retryable": false
   }
 }

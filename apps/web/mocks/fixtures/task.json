@@ -1,8 +1,0 @@
-{
-  "part_no": 1,
-  "assignee": "candidate",
-  "status": "doing",
-  "order": 1,
-  "due_min": 40,
-  "depends_on": []
-}

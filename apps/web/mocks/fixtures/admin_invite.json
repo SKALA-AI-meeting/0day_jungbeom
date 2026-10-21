@@ -1,6 +1,6 @@
 {
-  "session_id": "sess-1",
-  "invite_url": "http://localhost:3000/s/inv-tok-1",
-  "expires_at": "2026-10-19T01:00:00Z",
-  "notice_text": "안녕하세요 지원자A님, Day Zero 협업 시뮬레이션 안내입니다. 2시간 연속 진행되며 중간 휴식이 없습니다. PC를 권장하고 링크는 72시간 뒤 만료됩니다. 업무는 가상 회사 루프랩에서 진행됩니다. http://localhost:3000/s/inv-tok-1"
+  "session_id": "sess-7",
+  "invite_url": "http://localhost:3000/s/tok-sess-7",
+  "expires_at": "2026-10-24T00:50:00Z",
+  "notice_text": "한빛솔루션 채용 과정의 업무 시뮬레이션에 초대합니다. 아래 링크에서 72시간 안에 입장해 주세요: http://localhost:3000/s/tok-sess-7"
 }

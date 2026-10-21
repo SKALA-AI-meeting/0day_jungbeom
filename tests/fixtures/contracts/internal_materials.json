@@ -1,0 +1,23 @@
+{
+  "catalog_version": "cat-debate-20261021-a1b2c3",
+  "locked": false,
+  "keyword_key": "water",
+  "materials": [
+    {
+      "material_id": "water_stats",
+      "title": "지역별 물 부족 통계"
+    },
+    {
+      "material_id": "water_flood_cases",
+      "title": "도심 침수 사례"
+    },
+    {
+      "material_id": "water_tap_survey",
+      "title": "수돗물 음용률 조사"
+    },
+    {
+      "material_id": "water_rain_reuse",
+      "title": "빗물 재이용 사례"
+    }
+  ]
+}

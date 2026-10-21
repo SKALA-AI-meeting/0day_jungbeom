@@ -1,0 +1,99 @@
+{
+  "options": [
+    {
+      "option_id": "opt-kw-wind",
+      "phase": "keyword",
+      "label": "바람",
+      "first_proposer": "p3",
+      "source_message_id": "m-02",
+      "t_min": 0.8,
+      "adopted": false
+    },
+    {
+      "option_id": "opt-kw-fire",
+      "phase": "keyword",
+      "label": "불",
+      "first_proposer": "p1",
+      "source_message_id": "m-03",
+      "t_min": 1.5,
+      "adopted": false
+    },
+    {
+      "option_id": "opt-kw-water",
+      "phase": "keyword",
+      "label": "물",
+      "first_proposer": "candidate",
+      "source_message_id": "m-06",
+      "t_min": 3.6,
+      "adopted": true
+    },
+    {
+      "option_id": "opt-pb-p1",
+      "phase": "problem",
+      "label": "가뭄으로 생활용수 제한이 잦아짐",
+      "first_proposer": "candidate",
+      "source_message_id": "m-12",
+      "t_min": 10.5,
+      "adopted": false
+    },
+    {
+      "option_id": "opt-pb-p2",
+      "phase": "problem",
+      "label": "도심 폭우·침수 피해 증가",
+      "first_proposer": "p1",
+      "source_message_id": null,
+      "t_min": 11.2,
+      "adopted": true
+    },
+    {
+      "option_id": "opt-sl-s1",
+      "phase": "solution",
+      "label": "센서·데이터 기반 물 관리·경보",
+      "first_proposer": "candidate",
+      "source_message_id": "m-22",
+      "t_min": 29.0,
+      "adopted": true
+    },
+    {
+      "option_id": "opt-sl-s2",
+      "phase": "solution",
+      "label": "주민 절수·보상 캠페인",
+      "first_proposer": "p3",
+      "source_message_id": "m-23",
+      "t_min": 30.4,
+      "adopted": false
+    },
+    {
+      "option_id": "opt-sl-s3",
+      "phase": "solution",
+      "label": "빗물 저금통·투수 포장 같은 생활 인프라",
+      "first_proposer": "p2",
+      "source_message_id": "m-25",
+      "t_min": 31.5,
+      "adopted": false
+    }
+  ],
+  "slots": [
+    {
+      "phase": "keyword",
+      "option_id": "opt-kw-water",
+      "first_proposer": "candidate",
+      "filled_by": "candidate",
+      "resolution": "consensus"
+    },
+    {
+      "phase": "problem",
+      "option_id": "opt-pb-p2",
+      "first_proposer": "p1",
+      "filled_by": "p3",
+      "resolution": "consensus"
+    },
+    {
+      "phase": "solution",
+      "option_id": "opt-sl-s1",
+      "first_proposer": "candidate",
+      "filled_by": "p3",
+      "resolution": "timeout"
+    }
+  ]
+}

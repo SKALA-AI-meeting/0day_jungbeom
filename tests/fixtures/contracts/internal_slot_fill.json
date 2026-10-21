@@ -1,0 +1,32 @@
+{
+  "slot": {
+    "phase": "problem",
+    "status": "confirmed",
+    "value": "도심 폭우·침수 피해 증가",
+    "option_id": "opt-pb-p2",
+    "filled_by": "p3",
+    "resolution": "consensus",
+    "support": [
+      {
+        "option_id": "opt-pb-p2",
+        "supporters": ["candidate", "p1", "p3"]
+      },
+      {
+        "option_id": "opt-pb-p1",
+        "supporters": []
+      }
+    ],
+    "confirmed_at": "2026-10-21T01:25:24Z",
+    "t_min": 25.4
+  },
+  "message": {
+    "id": "m-19",
+    "sender": "p3",
+    "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+    "phase": "problem",
+    "is_invite": false,
+    "t_min": 25.4,
+    "created_at": "2026-10-21T01:25:24Z"
+  },
+  "phase": "solution"
+}

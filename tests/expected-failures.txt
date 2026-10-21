@@ -1,0 +1,20 @@
+# 기대 실패 목록 (G-C ~ G-E). 형식: <테스트 노드 id 또는 파일·디렉터리> | <담당 트랙> | <사유>
+# 경로는 저장소 루트 기준. 파일·디렉터리 줄은 그 아래 모든 테스트를 뜻한다. hang = 끝나지 않고 멈춤.
+# 병합하는 트랙은 자기 몫의 줄을 지우고, 줄을 늘리려면 오케스트레이터 승인이 필요하다. G-E에서 비어 있어야 한다.
+# G-C(contracts)가 옛 보드·문서·보고 픽스처를 토론형 한 세션 픽스처로 교체해 깨진 옛 테스트다.
+#
+# api: 옛 테스트는 디렉터리 단위로 둔다(하나씩 확인하지 않음). 확인된 실패: routers/test_admin.py 3건,
+# routers/test_api_fix.py 2건, routers/test_candidate.py 4건, routers/test_internal.py 3건,
+# routers/test_report_pipeline.py 2건, test_contract_check.py 1건. test_candidate_ws.py는 hang.
+services/api/tests/ | be-foundation/api | 옛 코드, be-foundation/api가 코드와 함께 삭제
+services/api/tests/test_candidate_ws.py | be-foundation/api | hang. 옛 코드, be-foundation/api가 코드와 함께 삭제
+services/business-mcp/tests/test_tools.py | be-foundation/mcp | 수집 오류(KeyError 'business'). 옛 코드, be-foundation(debate-mcp 이동)·mcp가 코드와 함께 삭제
+services/report-worker/tests/test_report.py::test_draft_follows_report_contract | report-worker | 옛 Report 형태. 옛 코드, report-worker가 코드와 함께 삭제
+apps/web/components/admin/candidates.test.tsx | mock-admin | 옛 픽스처 import 삭제됨. 옛 코드, mock-admin이 교체
+apps/web/components/admin/position-form.test.tsx | mock-admin | 옛 픽스처 import 삭제됨. 옛 코드, mock-admin이 교체
+apps/web/components/admin/report-view.test.tsx | mock-admin | 옛 픽스처 import 삭제됨. 옛 코드, mock-admin이 교체
+apps/web/components/office/board.test.tsx | mock-candidate | 옛 픽스처 import 삭제됨. 옛 코드, mock-candidate가 삭제
+apps/web/components/office/docs-flow.test.ts | mock-candidate | 옛 픽스처 import 삭제됨. 옛 코드, mock-candidate가 삭제
+apps/web/components/office/flow.test.tsx | mock-candidate | 옛 픽스처 import 삭제됨. 옛 코드, mock-candidate가 삭제
+apps/web/components/office/notices.test.tsx | mock-candidate | 옛 픽스처 import 삭제됨. 옛 코드, mock-candidate가 삭제
+apps/web/lib/ws.test.ts | mock-candidate | 옛 state.json·ws 형태. 옛 코드, mock-candidate가 교체

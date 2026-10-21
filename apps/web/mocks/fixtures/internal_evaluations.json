@@ -1,0 +1,188 @@
+{
+  "run_id": "run-eval-sess-1-r1",
+  "rubric_version": "rubric-v1-20261021",
+  "prompt_versions": {
+    "common": "sha256:3f1a9c",
+    "persuasion": "sha256:a41b07",
+    "listening": "sha256:c9d2e4",
+    "inclusion": "sha256:5e7f10",
+    "flexibility": "sha256:8b3c66",
+    "honesty": "sha256:d02a91"
+  },
+  "model": "gpt-4o-mini",
+  "elements": [
+    {
+      "element": "persuasion",
+      "level": 3,
+      "summary": "자기 안에 이유를 붙여 주장했고 확정 직전 결론을 모았으나 경쟁 안 비교는 단편적이었습니다.",
+      "dimension_count": 4,
+      "no_record_count": 0
+    },
+    {
+      "element": "listening",
+      "level": 4,
+      "summary": "반복 압박에도 상대 근거를 받아 차분히 답했습니다.",
+      "dimension_count": 4,
+      "no_record_count": 0
+    },
+    {
+      "element": "inclusion",
+      "level": 3,
+      "summary": "머뭇거린 동료를 불러 의견을 듣고 자기 안과 묶었으나 확정 전 전체 확인은 없었습니다.",
+      "dimension_count": 4,
+      "no_record_count": 0
+    },
+    {
+      "element": "flexibility",
+      "level": 4,
+      "summary": "자기 안과 다른 결론을 받아들이고 다음 단계에서 먼저 해결책을 냈습니다.",
+      "dimension_count": 4,
+      "no_record_count": 0
+    },
+    {
+      "element": "honesty",
+      "level": 4,
+      "summary": "채택된 아이디어의 제안자를 구분해 적었습니다. 토론 중 출처 장면은 해당 없음입니다.",
+      "dimension_count": 3,
+      "no_record_count": 1
+    }
+  ],
+  "dimensions": [
+    {
+      "dimension_id": "pers_reasoning",
+      "level": 3,
+      "evidence_refs": ["msg:m-06", "msg:m-12"],
+      "rationale": "키워드와 문제 상황에서 자기 안에 이유를 붙였으나 근거를 넓히지는 않음(앵커 3).",
+      "confidence": "medium"
+    },
+    {
+      "dimension_id": "pers_counter_handling",
+      "level": 3,
+      "evidence_refs": ["msg:m-15"],
+      "rationale": "강한결의 일축에 우선순위 이유로 답했으나 근거를 보강하지 않음(앵커 3).",
+      "confidence": "medium"
+    },
+    {
+      "dimension_id": "pers_comparison",
+      "level": 2,
+      "evidence_refs": ["msg:m-08"],
+      "rationale": "물과 바람을 자료 다양성 하나로만 비교함(앵커 2).",
+      "confidence": "low"
+    },
+    {
+      "dimension_id": "pers_convergence",
+      "level": 4,
+      "evidence_refs": ["msg:m-18", "slot:keyword"],
+      "rationale": "키워드를 직접 확정하고 문제 상황에서 조건을 붙여 결론으로 모음(앵커 4).",
+      "confidence": "high"
+    },
+    {
+      "dimension_id": "listen_engage",
+      "level": 4,
+      "evidence_refs": ["msg:m-15", "msg:m-17", "msg:m-13"],
+      "rationale": "두 번의 압박 모두에 상대 근거를 받아 답함(앵커 4).",
+      "confidence": "high"
+    },
+    {
+      "dimension_id": "listen_understand",
+      "level": 3,
+      "evidence_refs": ["msg:m-17"],
+      "rationale": "상대 기준(피해액)을 한 번 되짚어 확인함(앵커 3).",
+      "confidence": "medium"
+    },
+    {
+      "dimension_id": "listen_acknowledge",
+      "level": 4,
+      "evidence_refs": ["msg:m-17", "msg:m-18"],
+      "rationale": "반대 안의 타당점을 인정하고 자기 관심사를 해결책으로 연결함(앵커 4).",
+      "confidence": "high"
+    },
+    {
+      "dimension_id": "listen_civility",
+      "level": 4,
+      "evidence_refs": ["msg:m-15", "msg:m-16", "msg:m-17"],
+      "rationale": "반복 압박에도 안에만 초점을 두고 차분하게 말함(앵커 4).",
+      "confidence": "high"
+    },
+    {
+      "dimension_id": "incl_notice_invite",
+      "level": 3,
+      "evidence_refs": ["msg:m-24", "msg:m-21"],
+      "rationale": "머뭇거림 뒤 3분여 만에 이름을 불러 초대함(앵커 3).",
+      "confidence": "medium"
+    },
+    {
+      "dimension_id": "incl_follow_through",
+      "level": 4,
+      "evidence_refs": ["msg:m-27", "msg:m-24"],
+      "rationale": "초대해 들은 빗물 저금통 안을 자기 안과 묶어 논의에 올림(앵커 4).",
+      "confidence": "high"
+    },
+    {
+      "dimension_id": "incl_shared_decision",
+      "level": 2,
+      "evidence_refs": ["slot:keyword"],
+      "rationale": "키워드 확정 전 말하지 않은 동료의 의견을 따로 확인하지 않음(앵커 2).",
+      "confidence": "medium"
+    },
+    {
+      "dimension_id": "incl_safe_tone",
+      "level": 3,
+      "evidence_refs": ["msg:m-24"],
+      "rationale": "편하게 말해 달라며 부담을 낮춤(앵커 3).",
+      "confidence": "medium"
+    },
+    {
+      "dimension_id": "flex_openness",
+      "level": 3,
+      "evidence_refs": ["msg:m-17"],
+      "rationale": "상대 기준을 듣고 자기 안을 다시 검토함(앵커 3).",
+      "confidence": "medium"
+    },
+    {
+      "dimension_id": "flex_decision_respect",
+      "level": 3,
+      "evidence_refs": ["msg:m-18"],
+      "rationale": "동의 의사를 밝혀 합의로 정리되게 했으나 남은 이견은 확인하지 않음(앵커 3).",
+      "confidence": "medium"
+    },
+    {
+      "dimension_id": "flex_acceptance",
+      "level": 4,
+      "evidence_refs": ["msg:m-18", "msg:m-22"],
+      "rationale": "자기 안과 다른 결론을 받아들이고 관심사를 결정된 안에 연결함(앵커 4).",
+      "confidence": "high"
+    },
+    {
+      "dimension_id": "flex_forward",
+      "level": 4,
+      "evidence_refs": ["msg:m-22", "msg:m-24"],
+      "rationale": "결정된 문제 위에서 해결책을 먼저 내고 논의를 넓힘(앵커 4).",
+      "confidence": "high"
+    },
+    {
+      "dimension_id": "hon_credit_record",
+      "level": 4,
+      "evidence_refs": ["proposal:idea_credit", "contribution:opt-pb-p2"],
+      "rationale": "채택된 문제 상황의 제안자와 해결책의 보탬을 구분해 적음(앵커 4).",
+      "confidence": "high"
+    },
+    {
+      "dimension_id": "hon_source_in_talk",
+      "level": null,
+      "no_record_reason": "not_applicable",
+      "evidence_refs": [],
+      "rationale": "토론 중 동료 아이디어의 공이 지원자에게 잘못 돌아온 장면이 없음.",
+      "confidence": null
+    },
+    {
+      "dimension_id": "hon_process_truth",
+      "level": 3,
+      "evidence_refs": ["proposal:solution"],
+      "rationale": "해결책이 시간 초과로 정해졌다는 점을 기획안에 따로 적지 않았으나 내용은 사실과 맞음(앵커 3).",
+      "confidence": "medium"
+    }
+  ],
+  "has_failed": false,
+  "created_at": "2026-10-21T01:58:30Z"
+}

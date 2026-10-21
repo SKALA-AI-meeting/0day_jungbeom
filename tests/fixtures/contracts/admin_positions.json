@@ -1,16 +1,9 @@
 [
   {
     "id": "pos-1",
-    "name": "PM 인턴 2026 하반기",
-    "mission_id": "planning",
-    "elements": [
-      "responsibility",
-      "planning",
-      "adaptability",
-      "collaboration",
-      "honesty"
-    ],
-    "candidate_count": 7,
-    "created_at": "2026-10-17T01:00:00Z"
+    "name": "2026 하반기 서비스기획 신입",
+    "session_minutes": 60,
+    "candidate_count": 6,
+    "created_at": "2026-10-20T00:00:00Z"
   }
 ]

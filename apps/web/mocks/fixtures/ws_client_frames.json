@@ -2,21 +2,20 @@
   {
     "type": "message.send",
     "payload": {
-      "client_msg_id": "c-1",
-      "channel": "team",
-      "content": "네, 확인했습니다."
+      "client_msg_id": "c-03",
+      "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요."
     }
   },
   {
-    "type": "message.send",
+    "type": "typing",
     "payload": {
-      "client_msg_id": "c-24",
-      "channel": "team",
-      "content": "4번 사례 방향 좋아요. 두 번째 사례는 지표 문서의 재참여율과 연결해 주세요. 2번은 인터뷰 요약 나오면 바로 채울게요.",
-      "reply_to_doc": {
-        "doc_id": "doc-k4",
-        "version": 1
-      }
+      "state": "start"
+    }
+  },
+  {
+    "type": "typing",
+    "payload": {
+      "state": "stop"
     }
   }
 ]

@@ -1,0 +1,278 @@
+{
+  "session": {
+    "id": "sess-1",
+    "alias": "지원자A",
+    "status": "in_progress",
+    "phase": "problem",
+    "started_at": "2026-10-21T01:00:00Z",
+    "ends_at": "2026-10-21T02:00:00Z",
+    "session_minutes": 60,
+    "phase_started_at": "2026-10-21T01:08:12Z",
+    "phase_deadline_at": "2026-10-21T01:28:00Z",
+    "phase_remaining_seconds": 840,
+    "session_remaining_seconds": 2760,
+    "office_start": "09:00",
+    "office_end": "10:00",
+    "completed_at": null
+  },
+  "phases": [
+    {
+      "phase": "keyword",
+      "budget_min": 10,
+      "deadline_t_min": 10
+    },
+    {
+      "phase": "problem",
+      "budget_min": 18,
+      "deadline_t_min": 28
+    },
+    {
+      "phase": "solution",
+      "budget_min": 18,
+      "deadline_t_min": 46
+    },
+    {
+      "phase": "proposal",
+      "budget_min": 14,
+      "deadline_t_min": 60
+    }
+  ],
+  "participants": [
+    {
+      "id": "candidate",
+      "display_name": "김지원"
+    },
+    {
+      "id": "p1",
+      "display_name": "강한결",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-01.png"
+    },
+    {
+      "id": "p2",
+      "display_name": "윤하람",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-02.png"
+    },
+    {
+      "id": "p3",
+      "display_name": "서지안",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-03.png"
+    }
+  ],
+  "slots": [
+    {
+      "phase": "keyword",
+      "status": "confirmed",
+      "value": "물",
+      "filled_by": "candidate",
+      "resolution": "consensus",
+      "t_min": 8.2
+    },
+    {
+      "phase": "problem",
+      "status": "empty",
+      "value": null,
+      "filled_by": null,
+      "resolution": null,
+      "t_min": null
+    },
+    {
+      "phase": "solution",
+      "status": "empty",
+      "value": null,
+      "filled_by": null,
+      "resolution": null,
+      "t_min": null
+    }
+  ],
+  "messages": [
+    {
+      "id": "m-01",
+      "sender": "system",
+      "content": "키워드 단계예요. 물·불·나무·바람 중 하나를 함께 정해 주세요. 이 단계 10분 남았어요.",
+      "phase": "keyword",
+      "is_invite": false,
+      "t_min": 0.0,
+      "created_at": "2026-10-21T01:00:00Z"
+    },
+    {
+      "id": "m-02",
+      "sender": "p3",
+      "content": "바람은 어떨까요? 미세먼지 얘기는 누구나 공감할 것 같은데요.",
+      "phase": "keyword",
+      "is_invite": false,
+      "t_min": 0.8,
+      "created_at": "2026-10-21T01:00:48Z"
+    },
+    {
+      "id": "m-03",
+      "sender": "p1",
+      "content": "불이 맞아요. 화재는 피해가 바로 보이잖아요.",
+      "phase": "keyword",
+      "is_invite": false,
+      "t_min": 1.5,
+      "created_at": "2026-10-21T01:01:30Z"
+    },
+    {
+      "id": "m-04",
+      "sender": "p3",
+      "content": "저는 바람으로 가고 싶어요. 생활에 바로 닿는 문제라 근거 찾기도 쉬워요. 다른 키워드는 어떤 점이 더 낫다고 보세요?",
+      "phase": "keyword",
+      "is_invite": false,
+      "t_min": 3.0,
+      "created_at": "2026-10-21T01:03:00Z"
+    },
+    {
+      "id": "m-05",
+      "sender": "p3",
+      "content": "김지원님은 어떻게 생각하세요?",
+      "phase": "keyword",
+      "is_invite": true,
+      "t_min": 3.2,
+      "created_at": "2026-10-21T01:03:12Z"
+    },
+    {
+      "id": "m-06",
+      "sender": "candidate",
+      "content": "저는 물이 좋아요. 가뭄이랑 침수가 둘 다 매년 반복돼서 다룰 거리가 많아요.",
+      "phase": "keyword",
+      "is_invite": false,
+      "t_min": 3.6,
+      "created_at": "2026-10-21T01:03:36Z"
+    },
+    {
+      "id": "m-07",
+      "sender": "p2",
+      "content": "음… 저도 물 괜찮은 것 같아요.",
+      "phase": "keyword",
+      "is_invite": false,
+      "t_min": 4.4,
+      "created_at": "2026-10-21T01:04:24Z"
+    },
+    {
+      "id": "m-08",
+      "sender": "candidate",
+      "content": "서지안님, 바람도 좋지만 물은 가뭄·침수·수질까지 자료가 더 다양할 것 같아요. 물로 가면 어떨까요?",
+      "phase": "keyword",
+      "is_invite": false,
+      "t_min": 6.0,
+      "created_at": "2026-10-21T01:06:00Z"
+    },
+    {
+      "id": "m-09",
+      "sender": "p3",
+      "content": "듣고 보니 물이 근거가 더 많겠네요. 저도 물로 갈게요.",
+      "phase": "keyword",
+      "is_invite": false,
+      "t_min": 7.0,
+      "created_at": "2026-10-21T01:07:00Z"
+    },
+    {
+      "id": "m-10",
+      "sender": "system",
+      "content": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 19분 남았어요. 자료 탭이 열렸어요.",
+      "phase": "problem",
+      "is_invite": false,
+      "t_min": 8.2,
+      "created_at": "2026-10-21T01:08:12Z"
+    },
+    {
+      "id": "m-11",
+      "sender": "p1",
+      "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+      "phase": "problem",
+      "is_invite": false,
+      "t_min": 9.0,
+      "created_at": "2026-10-21T01:09:00Z"
+    },
+    {
+      "id": "m-12",
+      "sender": "candidate",
+      "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+      "phase": "problem",
+      "is_invite": false,
+      "t_min": 10.5,
+      "created_at": "2026-10-21T01:10:30Z"
+    },
+    {
+      "id": "m-13",
+      "sender": "p1",
+      "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+      "phase": "problem",
+      "is_invite": false,
+      "t_min": 11.2,
+      "created_at": "2026-10-21T01:11:12Z"
+    },
+    {
+      "id": "m-14",
+      "sender": "p3",
+      "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+      "phase": "problem",
+      "is_invite": false,
+      "t_min": 11.6,
+      "created_at": "2026-10-21T01:11:36Z"
+    },
+    {
+      "id": "m-15",
+      "sender": "candidate",
+      "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+      "phase": "problem",
+      "is_invite": false,
+      "t_min": 13.0,
+      "created_at": "2026-10-21T01:13:00Z"
+    },
+    {
+      "id": "m-16",
+      "sender": "p1",
+      "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+      "phase": "problem",
+      "is_invite": false,
+      "t_min": 13.8,
+      "created_at": "2026-10-21T01:13:48Z"
+    }
+  ],
+  "materials": {
+    "locked": false,
+    "keyword": "물",
+    "materials": [
+      {
+        "material_id": "water_stats",
+        "title": "지역별 물 부족 통계"
+      },
+      {
+        "material_id": "water_flood_cases",
+        "title": "도심 침수 사례"
+      },
+      {
+        "material_id": "water_tap_survey",
+        "title": "수돗물 음용률 조사"
+      },
+      {
+        "material_id": "water_rain_reuse",
+        "title": "빗물 재이용 사례"
+      }
+    ]
+  },
+  "proposal": {
+    "sections": {
+      "keyword": "",
+      "problem": "",
+      "solution": "",
+      "rationale": "",
+      "expected_effect": "",
+      "idea_credit": ""
+    },
+    "revision": 0,
+    "updated_at": "2026-10-21T01:00:00Z",
+    "submitted_at": null
+  },
+  "assistant": [],
+  "typing": [],
+  "active_runs": [
+    {
+      "run_id": "run-msg-15",
+      "stimulus": "message"
+    }
+  ],
+  "connection_gaps": [],
+  "ws_seq": 30
+}

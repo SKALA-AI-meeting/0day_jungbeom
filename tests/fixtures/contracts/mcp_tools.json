@@ -1,404 +1,334 @@
 {
-  "business": {
-    "get_session": {
-      "input": {
-        "session_id": "sess-1"
-      },
-      "output": "internal_session.json"
-    },
-    "list_messages": {
-      "input": {
-        "session_id": "sess-1",
-        "since_t_min": 60.0,
-        "channel": "team",
-        "limit": 50
-      },
-      "output": [
-        {
-          "id": "m-31",
-          "channel": "team",
-          "sender": "candidate",
-          "content": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
-          "event_id": null,
-          "run_id": null,
-          "t_min": 62.0,
-          "created_at": "2026-10-20T02:02:00Z",
-          "reply_to_doc": null,
-          "shared_doc": null
-        }
-      ]
-    },
-    "get_board": {
+  "debate": {
+    "get_debate_state": {
       "input": {
         "session_id": "sess-1"
       },
       "output": {
-        "tasks": [
+        "phase": "problem",
+        "generation": 6,
+        "phase_deadline_at": "2026-10-21T01:28:00Z",
+        "phase_remaining_seconds": 840,
+        "slot": {
+          "phase": "problem",
+          "status": "empty",
+          "value": null
+        },
+        "options": [
           {
-            "part_no": 1,
-            "assignee": "candidate",
-            "status": "done",
-            "order": 1,
-            "due_min": 40,
-            "depends_on": []
+            "option_id": "opt-pb-p1",
+            "label": "가뭄으로 생활용수 제한이 잦아짐",
+            "proposer": "candidate",
+            "scenario_option_key": "water_p1",
+            "created_at": "2026-10-21T01:10:30Z",
+            "supporters": [],
+            "opposers": []
           },
           {
-            "part_no": 2,
-            "assignee": "candidate",
-            "status": "done",
-            "order": 2,
-            "due_min": null,
-            "depends_on": []
+            "option_id": "opt-pb-p2",
+            "label": "도심 폭우·침수 피해 증가",
+            "proposer": "p1",
+            "scenario_option_key": "water_p2",
+            "created_at": "2026-10-21T01:11:12Z",
+            "supporters": ["p1", "p3"],
+            "opposers": ["candidate"]
+          }
+        ],
+        "catalog_options": [
+          {
+            "scenario_option_key": "water_p1",
+            "label": "가뭄으로 생활용수 제한이 잦아짐",
+            "spoken": true
           },
           {
-            "part_no": 3,
-            "assignee": "both",
-            "status": "done",
-            "order": 3,
-            "due_min": null,
-            "depends_on": [
-              2
-            ]
+            "scenario_option_key": "water_p2",
+            "label": "도심 폭우·침수 피해 증가",
+            "spoken": true
           },
           {
-            "part_no": 4,
-            "assignee": "colleague",
-            "status": "done",
-            "order": 4,
-            "due_min": null,
-            "depends_on": []
+            "scenario_option_key": "water_p3",
+            "label": "수돗물 불신으로 생수 플라스틱 증가",
+            "spoken": false
+          }
+        ],
+        "current_support": {
+          "candidate": null,
+          "p1": "opt-pb-p2",
+          "p2": null,
+          "p3": "opt-pb-p2"
+        },
+        "consensus_option_id": null,
+        "timeout_option_id": "opt-pb-p2",
+        "candidate": {
+          "spoke_in_phase": true,
+          "last_message_t_min": 13.0,
+          "typing": false
+        },
+        "invite_delivered": false,
+        "last_room_message_t_min": 13.8,
+        "confirmed": [
+          {
+            "phase": "keyword",
+            "value": "물",
+            "option_id": "opt-kw-water",
+            "resolution": "consensus",
+            "filled_by": "candidate"
+          }
+        ],
+        "card_progress": [
+          {
+            "card_id": "flexibility_majority",
+            "locked_option_id": "opt-pb-p2",
+            "delivered": ["p1", "p3"]
           },
           {
-            "part_no": 5,
-            "assignee": "colleague",
-            "status": "doing",
-            "order": 5,
-            "due_min": null,
-            "depends_on": []
+            "card_id": "listening_pressure",
+            "locked_option_id": "opt-pb-p2",
+            "delivered": ["p1"]
+          }
+        ],
+        "cost_left": 1.97,
+        "seats": [
+          {
+            "seat": "candidate",
+            "display_name": "김지원"
+          },
+          {
+            "seat": "p1",
+            "display_name": "강한결",
+            "avatar_url": "/assets/missions/debate/avatars/avatar-01.png"
+          },
+          {
+            "seat": "p2",
+            "display_name": "윤하람",
+            "avatar_url": "/assets/missions/debate/avatars/avatar-02.png"
+          },
+          {
+            "seat": "p3",
+            "display_name": "서지안",
+            "avatar_url": "/assets/missions/debate/avatars/avatar-03.png"
           }
         ]
       }
     },
-    "get_shared_documents": {
+    "get_transcript": {
+      "input": {
+        "session_id": "sess-1",
+        "phase": "problem",
+        "limit": 30
+      },
+      "output": [
+        {
+          "id": "m-10",
+          "sender": "system",
+          "content": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 19분 남았어요. 자료 탭이 열렸어요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 8.2
+        },
+        {
+          "id": "m-11",
+          "sender": "p1",
+          "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 9.0
+        },
+        {
+          "id": "m-12",
+          "sender": "candidate",
+          "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 10.5
+        },
+        {
+          "id": "m-13",
+          "sender": "p1",
+          "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 11.2
+        },
+        {
+          "id": "m-14",
+          "sender": "p3",
+          "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 11.6
+        },
+        {
+          "id": "m-15",
+          "sender": "candidate",
+          "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 13.0
+        },
+        {
+          "id": "m-16",
+          "sender": "p1",
+          "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 13.8
+        }
+      ]
+    },
+    "get_draft": {
       "input": {
         "session_id": "sess-1"
       },
-      "output": "internal_docs_shared.json"
+      "output": {
+        "sections": {
+          "keyword": "물",
+          "problem": "도심 폭우·침수 피해 증가",
+          "solution": "하수관 수위 센서로 침수 위험을 미리 알리는 데이터 기반 경보에 빗물 저금통·투수 포장을 함께 설치",
+          "rationale": "최근 3년 침수 신고와 피해액이 함께 늘었고, 센서 경보와 빗물 인프라를 함께 쓴 지역에서 피해가 줄었다.",
+          "expected_effect": "",
+          "idea_credit": "문제 상황: 강한결 님 제안"
+        },
+        "revision": 5,
+        "updated_at": "2026-10-21T01:51:48Z"
+      }
     },
     "post_message": {
       "input": {
         "session_id": "sess-1",
-        "channel": "team",
-        "sender": "colleague",
-        "content": "지표 문서 보니까 재참여율이 22%라서, 그 숫자부터 잡아 볼게요.",
-        "event_id": null,
-        "run_id": "r-2",
-        "seq": 1,
+        "sender": "p1",
+        "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+        "run_id": "run-card-pb",
+        "seq": 0,
+        "expected_generation": 5,
+        "is_invite": false,
+        "card_ids": ["flexibility_majority", "listening_pressure"],
+        "cited_material_ids": ["water_flood_cases"],
         "meta": {
-          "tokens": 212,
-          "latency_ms": 1840,
-          "model": "gpt-4o-mini"
+          "stance_check": "pass",
+          "model": "gpt-4o-mini",
+          "latency_ms": 1240,
+          "cost_usd": 0.0004
         }
       },
-      "output": {
-        "id": "m-3",
-        "channel": "team",
-        "sender": "colleague",
-        "content": "지표 문서 보니까 재참여율이 22%라서, 그 숫자부터 잡아 볼게요.",
-        "event_id": null,
-        "run_id": "r-2",
-        "t_min": 1.3,
-        "created_at": "2026-10-20T01:01:18Z",
-        "reply_to_doc": null,
-        "shared_doc": null
-      }
+      "output": "internal_message_post.json"
     },
-    "set_division": {
+    "propose_option": {
       "input": {
         "session_id": "sess-1",
-        "parts": {
-          "1": "candidate",
-          "2": "candidate",
-          "3": "both",
-          "4": "colleague",
-          "5": "colleague"
-        },
-        "decided_by": "candidate",
-        "run_id": "r-11"
+        "phase": "solution",
+        "label": "주민 절수·보상 캠페인",
+        "proposer": "p3",
+        "scenario_option_key": "water_s2",
+        "source_message_id": "m-23",
+        "run_id": "run-card-ps"
       },
-      "output": {
-        "division": {
-          "parts": {
-            "1": "candidate",
-            "2": "candidate",
-            "3": "both",
-            "4": "colleague",
-            "5": "colleague"
-          },
-          "decided_by": "candidate",
-          "decided_at": "2026-10-20T01:12:12Z"
-        }
-      }
+      "output": "internal_option.json"
     },
-    "update_task": {
+    "set_stance": {
       "input": {
         "session_id": "sess-1",
-        "part_no": 4,
-        "status": "done",
-        "run_id": "r-50"
+        "participant": "p3",
+        "option_id": "opt-sl-s2",
+        "stance": "support",
+        "source_message_id": "m-23",
+        "run_id": "run-card-ps"
       },
-      "output": {
-        "part_no": 4,
-        "assignee": "colleague",
-        "status": "done",
-        "order": 4,
-        "due_min": null,
-        "depends_on": []
-      }
+      "output": "internal_stance.json"
     },
-    "send_document": {
+    "fill_slot": {
       "input": {
         "session_id": "sess-1",
-        "part_no": 4,
-        "content": "사례 1: 독서 모임 앱 A의 후속 모임 알림. 사례 2: 러닝 크루 B의 첫 참여자 전용 채널.",
-        "channel": "team",
-        "run_id": "r-20",
-        "event_id": "ev-4",
-        "seq": 40
+        "option_id": "opt-pb-p2",
+        "seat": "p3",
+        "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+        "run_id": "run-msg-18"
       },
-      "output": {
-        "doc_id": "doc-k4",
-        "version": 1,
-        "message_id": "m-21"
-      }
-    },
-    "release_document": {
-      "input": {
-        "session_id": "sess-1",
-        "doc_id": "interview_summary"
-      },
-      "output": {
-        "released_at": "2026-10-20T02:10:00Z"
-      }
-    },
-    "record_observation": {
-      "input": {
-        "session_id": "sess-1",
-        "card_id": "responsibility_delay",
-        "element": "responsibility",
-        "window_start": 60.0,
-        "window_end": 75.0,
-        "metrics": {
-          "response_minutes": {
-            "value": 2.0,
-            "evidence_ids": [
-              "m-31"
-            ]
-          },
-          "first_recipient": {
-            "value": "colleague",
-            "evidence_ids": [
-              "m-31"
-            ]
-          },
-          "responded_to_request": {
-            "value": true,
-            "evidence_ids": [
-              "m-31"
-            ]
-          },
-          "notified_before_release": {
-            "value": true,
-            "evidence_ids": [
-              "m-31"
-            ]
-          },
-          "notified_where_manager_sees": {
-            "value": true,
-            "evidence_ids": [
-              "m-31"
-            ]
-          },
-          "impact_possible": {
-            "value": true,
-            "evidence_ids": []
-          },
-          "mentions_colleague_impact": {
-            "value": true,
-            "evidence_ids": [
-              "m-31"
-            ]
-          },
-          "proposes_alternative": {
-            "value": false,
-            "evidence_ids": []
-          },
-          "doc_opened_after_release": {
-            "value": true,
-            "evidence_ids": [
-              "dv-2"
-            ]
-          }
-        },
-        "label": "notify_only",
-        "aux": {
-          "related_message_ids": [
-            "m-31"
-          ],
-          "mentions_impact": true,
-          "has_alternative": false
-        },
-        "evidence": [
-          {
-            "type": "message",
-            "id": "m-31"
-          },
-          {
-            "type": "doc_view",
-            "id": "dv-2"
-          }
-        ],
-        "run_id": "r-35"
-      },
-      "output": {
-        "id": "ob-5"
-      }
-    },
-    "update_observation": {
-      "input": {
-        "session_id": "sess-1",
-        "card_id": "collab_help",
-        "window_start": 30.0,
-        "metrics_patch": {
-          "promise_kept": {
-            "value": null,
-            "evidence_ids": []
-          }
-        },
-        "run_id": "r-62"
-      },
-      "output": {
-        "id": "ob-3",
-        "card_id": "collab_help",
-        "element": "collaboration",
-        "window_start": 30.0,
-        "window_end": 45.0,
-        "metrics": {
-          "response_minutes": {
-            "value": null,
-            "evidence_ids": []
-          },
-          "first_recipient": {
-            "value": null,
-            "evidence_ids": []
-          },
-          "responded_to_request": {
-            "value": false,
-            "evidence_ids": []
-          },
-          "promise_kept": {
-            "value": null,
-            "evidence_ids": []
-          }
-        },
-        "label": "no_evidence",
-        "aux": {
-          "related_message_ids": [],
-          "promised_t_min": null,
-          "is_specific": false
-        },
-        "evidence": [],
-        "run_id": "r-20",
-        "created_at": "2026-10-20T01:45:00Z"
-      }
+      "output": "internal_slot_fill.json"
     }
   },
   "rag": {
-    "search_documents": {
+    "search_materials": {
       "input": {
-        "query": "재참여율",
         "session_id": "sess-1",
+        "query": "침수 센서 경보 효과",
         "top_k": 3
       },
       "output": [
         {
-          "doc_id": "metrics",
-          "title": "지표 현황",
-          "chunk": "첫 모임 후 2회차 참여율(재참여율): 22%",
+          "material_id": "water_flood_cases",
+          "title": "도심 침수 사례",
+          "chunk": "하수관 수위 센서로 침수 30분 전 경보를 보낸 구는 차량 침수 피해가 줄었다.",
           "score": 0.82
         },
         {
-          "doc_id": "meeting_notes",
-          "title": "지난주 회의록",
-          "chunk": "재참여율 개선을 이번 분기 최우선 과제로 정함",
-          "score": 0.71
+          "material_id": "water_rain_reuse",
+          "title": "빗물 재이용 사례",
+          "chunk": "빗물 저금통과 투수 포장을 함께 설치한 마을은 첫 30분 유출량이 줄었다.",
+          "score": 0.64
         }
       ]
     },
-    "get_document": {
+    "get_material": {
       "input": {
-        "doc_id": "metrics",
-        "session_id": "sess-1"
+        "session_id": "sess-1",
+        "material_id": "water_flood_cases"
+      },
+      "output": "internal_material.json"
+    },
+    "reindex_materials": {
+      "input": {
+        "mission_id": "debate"
       },
       "output": {
-        "doc_id": "metrics",
-        "title": "지표 현황",
-        "content": "# 지표 현황\n\n- 첫 모임 후 2회차 참여율(재참여율): 22%\n- 첫 모임 참여자 수(지난 분기): 412명\n"
-      }
-    },
-    "get_document_not_released": {
-      "input": {
-        "doc_id": "interview_summary",
-        "session_id": "sess-1"
-      },
-      "error": {
-        "code": "not_released",
-        "message": "document not released yet",
-        "retryable": false
-      }
-    },
-    "list_documents": {
-      "input": {
-        "session_id": "sess-1"
-      },
-      "output": [
-        {
-          "doc_id": "company_intro",
-          "title": "회사·서비스 소개",
-          "released": true
-        },
-        {
-          "doc_id": "metrics",
-          "title": "지표 현황",
-          "released": true
-        },
-        {
-          "doc_id": "interview_summary",
-          "title": "사용자 인터뷰 요약",
-          "released": false
-        },
-        {
-          "doc_id": "policy",
-          "title": "운영 정책",
-          "released": true
-        },
-        {
-          "doc_id": "meeting_notes",
-          "title": "지난주 회의록",
-          "released": true
-        }
-      ]
-    },
-    "reindex_documents": {
-      "input": {
-        "mission_id": "planning"
-      },
-      "output": {
-        "indexed": 42,
+        "indexed": 64,
         "model": "text-embedding-3-small",
-        "dim": 1536,
-        "catalog_version": "a3f9c2e1d4b5"
+        "dim": 1024,
+        "catalog_version": "cat-debate-20261021-a1b2c3"
       }
+    }
+  },
+  "assessment": {
+    "record_observation": {
+      "input": {
+        "session_id": "sess-1",
+        "card_id": "listening_pressure",
+        "phase": "problem",
+        "trigger_message_id": "m-13",
+        "run_id": "run-card-pb"
+      },
+      "output": "internal_observation_created.json"
+    },
+    "get_rubric": {
+      "input": {
+        "session_id": "sess-1"
+      },
+      "output": "internal_rubric.json"
+    },
+    "get_session_record": {
+      "input": {
+        "session_id": "sess-1"
+      },
+      "output": "session_record.json"
+    },
+    "get_transcript_span": {
+      "input": {
+        "session_id": "sess-1",
+        "message_id": "m-15",
+        "before": 5,
+        "after": 3
+      },
+      "output": "internal_transcript_span.json"
+    },
+    "get_contributions": {
+      "input": {
+        "session_id": "sess-1"
+      },
+      "output": "internal_contributions.json"
+    },
+    "save_evaluation": {
+      "input": "evaluation_save.json",
+      "output": "internal_evaluations_saved.json"
     }
   }
 }

@@ -1,0 +1,11 @@
+{
+  "slot": {
+    "phase": "keyword",
+    "status": "confirmed",
+    "value": "물",
+    "filled_by": "candidate",
+    "resolution": "consensus",
+    "t_min": 8.2
+  },
+  "phase": "problem"
+}

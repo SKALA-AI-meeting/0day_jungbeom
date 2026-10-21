@@ -1,0 +1,140 @@
+{
+  "message_count": {
+    "total": 10,
+    "keyword": 2,
+    "problem": 4,
+    "solution": 3,
+    "proposal": 1
+  },
+  "spontaneous_count": 9,
+  "invited_count": 1,
+  "spontaneous_ratio": 0.9,
+  "silence_invites_received": {
+    "keyword": 1,
+    "problem": 0,
+    "solution": 0
+  },
+  "first_message_sec": {
+    "keyword": 216,
+    "problem": 138,
+    "solution": 216,
+    "proposal": 180
+  },
+  "response_latency_median_sec": 93,
+  "avg_message_chars": 50,
+  "intent_counts": {
+    "propose": 3,
+    "agree": 3,
+    "oppose": 1,
+    "question": 2,
+    "other": 1
+  },
+  "name_mentions": {
+    "p1": 1,
+    "p2": 2,
+    "p3": 1
+  },
+  "slot_records": [
+    {
+      "phase": "keyword",
+      "option_id": "opt-kw-water",
+      "filled_by": "candidate",
+      "resolution": "consensus",
+      "support": [
+        {
+          "option_id": "opt-kw-water",
+          "supporters": ["candidate", "p2", "p3"]
+        },
+        {
+          "option_id": "opt-kw-fire",
+          "supporters": ["p1"]
+        },
+        {
+          "option_id": "opt-kw-wind",
+          "supporters": []
+        }
+      ],
+      "t_min": 8.2
+    },
+    {
+      "phase": "problem",
+      "option_id": "opt-pb-p2",
+      "filled_by": "p3",
+      "resolution": "consensus",
+      "support": [
+        {
+          "option_id": "opt-pb-p2",
+          "supporters": ["candidate", "p1", "p3"]
+        },
+        {
+          "option_id": "opt-pb-p1",
+          "supporters": []
+        }
+      ],
+      "t_min": 25.4
+    },
+    {
+      "phase": "solution",
+      "option_id": "opt-sl-s1",
+      "filled_by": "p3",
+      "resolution": "timeout",
+      "support": [
+        {
+          "option_id": "opt-sl-s1",
+          "supporters": ["candidate", "p1"]
+        },
+        {
+          "option_id": "opt-sl-s2",
+          "supporters": ["p3"]
+        },
+        {
+          "option_id": "opt-sl-s3",
+          "supporters": ["p2"]
+        }
+      ],
+      "t_min": 46.0
+    }
+  ],
+  "own_options_proposed": 3,
+  "own_options_adopted": 2,
+  "pressure_responded": true,
+  "invite_latency_sec": 216,
+  "quiet_spoke": true,
+  "own_option_rejected": true,
+  "messages_after_rejection": 3,
+  "ai_adopted_units": [
+    {
+      "phase": "problem",
+      "option_id": "opt-pb-p2",
+      "proposer": "p1"
+    }
+  ],
+  "credit_field_filled": true,
+  "assistant_calls": [
+    {
+      "call_id": "ac-1",
+      "t_min": 38.0,
+      "cited_material_ids": ["water_flood_cases"]
+    }
+  ],
+  "material_views": [
+    {
+      "material_id": "water_stats",
+      "t_min": 10.0
+    },
+    {
+      "material_id": "water_flood_cases",
+      "t_min": 16.0
+    },
+    {
+      "material_id": "water_rain_reuse",
+      "t_min": 32.5
+    }
+  ],
+  "connection_gaps": [
+    {
+      "from_t_min": 51.0,
+      "to_t_min": 51.6
+    }
+  ]
+}

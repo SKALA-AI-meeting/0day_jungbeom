@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "error": {
+    "code": "conflict",
+    "message": "no_consensus",
+    "retryable": false
+  }
+}

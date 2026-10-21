@@ -1,0 +1,62 @@
+[
+  {
+    "observation_id": "ob-1",
+    "card_id": "persuasion_keyword",
+    "element": "persuasion",
+    "phase": "keyword",
+    "fired_at": "2026-10-21T01:03:00Z",
+    "t_min": 3.0,
+    "trigger_message_id": "m-04",
+    "delivered": true
+  },
+  {
+    "observation_id": "ob-2",
+    "card_id": "flexibility_majority",
+    "element": "flexibility",
+    "phase": "problem",
+    "fired_at": "2026-10-21T01:11:12Z",
+    "t_min": 11.2,
+    "trigger_message_id": "m-13",
+    "delivered": true
+  },
+  {
+    "observation_id": "ob-3",
+    "card_id": "listening_pressure",
+    "element": "listening",
+    "phase": "problem",
+    "fired_at": "2026-10-21T01:11:12Z",
+    "t_min": 11.2,
+    "trigger_message_id": "m-13",
+    "delivered": true
+  },
+  {
+    "observation_id": "ob-4",
+    "card_id": "inclusion_silence",
+    "element": "inclusion",
+    "phase": "solution",
+    "fired_at": "2026-10-21T01:27:24Z",
+    "t_min": 27.4,
+    "trigger_message_id": "m-21",
+    "delivered": true
+  },
+  {
+    "observation_id": "ob-5",
+    "card_id": "persuasion_solution",
+    "element": "persuasion",
+    "phase": "solution",
+    "fired_at": "2026-10-21T01:30:24Z",
+    "t_min": 30.4,
+    "trigger_message_id": "m-23",
+    "delivered": true
+  },
+  {
+    "observation_id": "ob-6",
+    "card_id": "honesty_credit",
+    "element": "honesty",
+    "phase": "proposal",
+    "fired_at": "2026-10-21T01:46:00Z",
+    "t_min": 46.0,
+    "trigger_message_id": "m-30",
+    "delivered": true
+  }
+]
