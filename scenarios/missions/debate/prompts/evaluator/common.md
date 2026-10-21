@@ -25,6 +25,7 @@
 
 - 근거 단위: 지원자 메시지 `msg:<message_id>`, 지원자가 확정한 칸 `slot:<phase>`(`filled_by = candidate`), 제출 기획안 필드 `proposal:<field>`.
 - 맥락 참조: AI 동료·시스템 메시지 `msg:<id>`, Contributions 대조표 행 `contribution:<option_id>`. 함께 달 수 있으나 개수에 넣지 않는다(정직 `hon_credit_record`만 예외, 요소 지침 참고).
+- 세션 기록의 메시지마다 `ref` 필드(예: `"ref": "msg:m-15"`)가 있다. `evidence_refs`에는 이 `ref` 문자열을 **그대로** 복사한다. `msg:15`처럼 `m-` 같은 접두를 빼거나 id만 쓰면 무효다.
 - 최소 개수: 수준 1~3은 근거 단위 1개 이상, 수준 4·5는 서로 다른 근거 단위 2개 이상. 근거 단위가 1개뿐이면 수준은 최대 3.
 - "하지 않음"으로 낮게 판단할 때(초대 없음, 응답 없음 등): 창 안에서 지원자가 활동했지만 그 행동을 하지 않았음을 보이는 지원자 메시지를 근거로 들고, 장면을 만든 AI 동료 메시지를 맥락 참조로 함께 단다.
 - 창 밖 단위는 보조 장면 근거로만 쓰고 `rationale`에 "보조 장면"이라고 적는다.
@@ -86,7 +87,7 @@ JSON 하나만 낸다. 차원마다 정확히 한 행, 척도에 있는 `dimensi
  "summary": "1~2줄 서술. 기록 없음 차원이 있으면 함께 밝힌다",
  "dimensions": [
    {"dimension_id": "listen_engage", "level": 4, "no_record_reason": null,
-    "evidence_refs": ["msg:<id>", "msg:<id>"], "rationale": "1~3문장", "confidence": "high"}
+    "evidence_refs": ["msg:m-12", "msg:m-15"], "rationale": "1~3문장", "confidence": "high"}
  ]}
 ```
 

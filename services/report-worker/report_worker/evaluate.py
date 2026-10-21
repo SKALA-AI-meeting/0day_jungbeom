@@ -114,6 +114,26 @@ class RefIndex:
         return len({r for r in refs if self.exists(r) and self.counted(r, dimension_id)})
 
 
+def fix_refs(output: Any, refs: RefIndex) -> Any:
+    """모델이 `msg:15`로 낸 숫자 id를 세션에 `m-15`가 있을 때만 `msg:m-15`로 고친다."""
+    if not isinstance(output, dict) or not isinstance(output.get("dimensions"), list):
+        return output
+    for row in output["dimensions"]:
+        evidence = row.get("evidence_refs") if isinstance(row, dict) else None
+        if not isinstance(evidence, list):
+            continue
+        row["evidence_refs"] = [
+            f"msg:m-{ref[4:]}"
+            if isinstance(ref, str)
+            and re.fullmatch(r"msg:\d+", ref)
+            and f"m-{ref[4:]}" in refs.message_sender
+            and ref[4:] not in refs.message_sender
+            else ref
+            for ref in evidence
+        ]
+    return output
+
+
 # ---- 검증 (rubric.md 7.3) ---------------------------------------------------------------------
 
 
@@ -290,9 +310,15 @@ def user_prompt(
             f"[요소] {element_rubric['element']}",
             "[요소 척도]\n" + json.dumps(rubric_block, ensure_ascii=False),
             "[요소 지침]\n" + guide,
-            "[세션 기록]\n" + json.dumps(record, ensure_ascii=False),
+            "[세션 기록]\n" + json.dumps(with_refs(record), ensure_ascii=False),
         ]
     )
+
+
+def with_refs(record: dict[str, Any]) -> dict[str, Any]:
+    """메시지마다 `ref`("msg:<id>")를 붙여 모델이 근거 문자열을 그대로 베끼게 한다."""
+    messages = [{**m, "ref": f"msg:{m['id']}"} for m in record.get("messages", [])]
+    return {**record, "messages": messages}
 
 
 def retry_block(errors: dict[str, str]) -> str:
@@ -344,13 +370,17 @@ async def evaluate_element(
         ctx.record,
     )
     text = await complete_tracked(llm, ctx.prompts.common, user, usage)
-    checked = validate_output(parse_json(text), dimension_ids, ctx.refs, ctx.forbidden)
+    checked = validate_output(
+        fix_refs(parse_json(text), ctx.refs), dimension_ids, ctx.refs, ctx.forbidden
+    )
     if checked.errors:
         usage["element_retries"] += 1
         text = await complete_tracked(
             llm, ctx.prompts.common, user + retry_block(checked.errors), usage
         )
-        checked = validate_output(parse_json(text), dimension_ids, ctx.refs, ctx.forbidden)
+        checked = validate_output(
+            fix_refs(parse_json(text), ctx.refs), dimension_ids, ctx.refs, ctx.forbidden
+        )
     rows = []
     for dimension in dimensions:
         dimension_id = dimension["dimension_id"]

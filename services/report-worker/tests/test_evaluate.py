@@ -11,8 +11,6 @@ from report_worker.evaluate import (
     evaluate_element,
     load_forbidden,
     load_prompts,
-    parse_json,
-    user_prompt,
     validate_output,
 )
 from report_worker.llm import empty_usage
@@ -206,23 +204,28 @@ def test_element_level_rounds_half_up_and_null_when_no_record():
     assert element_level(rows(None, None)) is None
 
 
+async def test_numeric_msg_refs_are_fixed_when_session_has_m_prefixed_id():
+    candidate = next(m["id"] for m in RECORD["messages"] if m["sender"] == "candidate")
+    assert candidate.startswith("m-")
+    output = copy.deepcopy(element_outputs()["listening"])
+    row = output["dimensions"][0]
+    row.update(level=3, no_record_reason=None, confidence="medium")
+    row["evidence_refs"] = [f"msg:{candidate[2:]}"]
+    rows, _, llm, _ = await run("listening", output)
+    assert len(llm.calls) == 1  # 재요청 없이 통과
+    assert rows[row["dimension_id"]]["evidence_refs"] == [f"msg:{candidate}"]
+
+
 @pytest.mark.live
-async def test_live_evaluator_one_element():
-    """실 모델(MODEL_EVALUATOR) 평가 1요소 1회: 요청이 받아들여지고 출력이 요소 스키마로 읽힌다."""
+async def test_live_one_element_has_no_evaluate_failed():
     import os
 
-    from report_worker.config import load_settings
+    from report_worker.config import _load_env_files, evaluator_model
     from report_worker.llm import OpenAILLM
 
-    settings = load_settings()
-    llm = OpenAILLM(settings.model_evaluator, os.environ)
-    rubric = element_rubric("listening")
-    c = ctx()
-    user = user_prompt(
-        rubric, c.rubric.get("no_record_reasons", []), c.prompts.elements["listening"], c.record
-    )
-    out = parse_json((await llm.complete(c.prompts.common, user)).text)
-    assert out["element"] == "listening"
-    assert {d["dimension_id"] for d in out["dimensions"]} == {
-        d["dimension_id"] for d in rubric["dimensions"]
-    }
+    _load_env_files()
+    llm = OpenAILLM(evaluator_model(os.environ), os.environ)
+    usage = empty_usage(llm.model)
+    rows, _ = await evaluate_element(llm, ctx(), element_rubric("listening"), usage)
+    assert not any(r["no_record_reason"] == "evaluate_failed" for r in rows)
+    print("live llm_calls", usage["llm_calls"], "retries", usage["element_retries"])
