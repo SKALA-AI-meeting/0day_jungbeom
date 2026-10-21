@@ -21,7 +21,7 @@
 | 개선 · S4.5 | G-E 뒤 | web-ux ∥ api 빈칸 이벤트 ∥ persona 튜닝 | `track/debate` → main | G-E 재확인 | 대기 |
 | 후속 · S5 | S4.5 뒤 | report-refresh ∥ arch-refresh | main | — | 대기 |
 | 산출물 · S6 | S5 뒤 | visual-report(HTML + 압축 미디어) | main | — | 대기 |
-| 협업 정리 · S7 | S6 뒤 | docs-audit → docs-restructure ∥ service-readme → agents-readme | main | `make docs-check` 통과 | 대기 |
+| 협업 정리 · S7 | S6 뒤 | docs-audit → docs-restructure ∥ service-readme → agents-readme | `track/collab` → **PR(사용자 리뷰 뒤 병합)** | `make docs-check` 통과 | 대기 |
 
 **남은 순서** (기준 `track/debate` e4b91f8, 동시 개발 최대 4, 작성 모델 ≠ 리뷰 모델):
 
