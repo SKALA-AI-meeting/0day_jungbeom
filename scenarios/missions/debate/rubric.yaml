@@ -1,0 +1,623 @@
+# BARS 척도(5요소·19차원). 정본은 docs/common/rubric.md 3장·5장이고 이 파일은 그 표를 데이터로 옮긴 것이다.
+# [초안] 차원 구성·정의·앵커·예시 발언은 사용자 검토 대상이다(rubric.md 머리말). 내용을 바꾸려면 rubric.md를 먼저 고친다.
+# api가 채용 건 생성 때 positions.scenario.rubric으로 복사하고 assessment-mcp get_rubric이 그 복사본을 내준다.
+# get_rubric의 cards[{card_id, element, window}]는 cards.yaml에서 만든다. no_record_reasons.priority는 겹칠 때 앞선 순서(1이 먼저).
+rubric_version: debate-bars-2026-10-21-draft1
+draft: true
+source: docs/common/rubric.md (정본). 이 파일의 문장은 정본 표와 글자 그대로 같아야 한다(tests/test_catalog.py가 검사).
+elements:
+- element: persuasion
+  name: 설득/논리력
+  definition: 내 안과 다른 안이 경쟁할 때, 이유를 붙여 주장하고, 상대 논점에 실제로 답하며, 안들을 비교해 결론 쪽으로 논의를 모으는 논증 행동.
+  reviewer_notice: 설득 성공 여부(AI 동료의 지지 변화, 안 채택)는 시나리오 규칙으로 정해지므로 참고하지 마세요.
+  dimensions:
+  - dimension_id: pers_reasoning
+    name: 근거 제시
+    definition: 자기 안·의견에 이유·사례·수치·자료를 붙이고 그 이유가 주장과 실제로 연결되는가
+    positive_signals: '"~라서", 사례·수치·자료 언급, 이유가 해당 키워드·문제에 맞음, 두 창 모두에서 이유를 붙임'
+    negative_signals: 이유 없는 선호, 같은 주장 반복, 주장과 무관한 이유
+    core_cards:
+    - persuasion_keyword
+    - persuasion_solution
+    core_scene: persuasion_keyword 창(키워드 단계 전체)과 persuasion_solution 창(반론 메시지 ~ 해결책 단계 끝)
+    levels:
+    - level: 5
+      anchor: 두 창 모두에서 주장마다 이유를 붙이고, 이유가 둘 이상이거나 자료·사례로 구체화되어 주장과 분명히 연결된다
+      example: '"S1이 나아요. 자료에 침수 피해가 5년 새 두 배라 경보가 시급하고, 센서는 이미 설치된 사례도 있어서 실현도 빨라요."'
+      reviewer_hint: 두 장면 모두에서 주장마다 구체적인 이유를 붙였습니다
+    - level: 4
+      anchor: 대부분의 주장에 관련 있는 이유를 하나씩 붙인다. 근거 없는 주장은 드물다
+      example: '"물로 하죠. 가뭄은 해마다 반복돼서 다룰 거리가 많아요."'
+      reviewer_hint: 대부분의 주장에 관련 있는 이유를 붙였습니다
+    - level: 3
+      anchor: 이유를 붙이기도 하지만 근거 없는 주장과 섞여 있거나 이유가 일반적·막연하다
+      example: '"불이 좋을 것 같아요. 다들 위험하다고 느끼잖아요. 아무튼 불로 가요."'
+      reviewer_hint: 이유를 붙인 주장과 그렇지 않은 주장이 섞여 있습니다
+    - level: 2
+      anchor: 주장은 하지만 이유가 거의 없고, 요청받았을 때 한 번 짧게 덧붙이는 정도다
+      example: (서지안 "근거가 있어요?" 뒤) "음… 그냥 더 와닿아서요."
+      reviewer_hint: 이유를 묻는 질문을 받았을 때만 짧게 답했습니다
+    - level: 1
+      anchor: 이유 없이 선호만 말하거나 같은 말을 반복한다
+      example: '"그냥 바람이요. 바람으로 해요. 바람이 좋아요."'
+      reviewer_hint: 이유 없이 선호를 말하거나 같은 주장을 되풀이했습니다
+    no_record: 두 창 안 지원자 메시지 0 → `no_activity`. 메시지는 있으나 어떤 안도 주장하지 않음(동의·질문·호응만) → `not_applicable`(다른 차원으로 판단).
+  - dimension_id: pers_counter_handling
+    name: 반론 대응
+    definition: 자기 안에 반론·약점 질문이 왔을 때 그 논점에 직접 답하고 근거를 보강하거나 안을 조건부로 조정하는가
+    positive_signals: 질문받은 약점을 그대로 짚어 답함, 새 근거 추가, "그 점은 ~로 보완하면"
+    negative_signals: 반론을 건너뛰고 같은 주장 반복, 논점 바꾸기, 반론 직후 이유 없는 철회
+    core_cards:
+    - persuasion_keyword
+    - persuasion_solution
+    core_scene: persuasion_keyword 창(키워드 단계 전체)과 persuasion_solution 창(반론 메시지 ~ 해결책 단계 끝)
+    levels:
+    - level: 5
+      anchor: 반론의 핵심 논점을 정확히 짚어 답하고 새 근거나 보완책으로 안을 강화한다. 두 창 또는 여러 반론에서 일관된다
+      example: '"지안님 말대로 센서 설치비가 걸리죠. 그래서 첫해는 침수 잦은 지역 몇 곳만 시범으로 하면 비용이 줄고 효과도 먼저 확인할 수 있어요."'
+      reviewer_hint: 반론의 핵심에 답하고 보완책으로 안을 강화했습니다
+    - level: 4
+      anchor: 반론 논점에 답하고 근거를 하나 보탠다. 보완은 부분적이다
+      example: '"비용은 들지만, 침수 피해 복구비보다는 적을 거예요."'
+      reviewer_hint: 반론에 답하며 근거를 하나 더했습니다
+    - level: 3
+      anchor: 반론을 인지하고 답하려 하지만 논점과 답이 어긋나거나 기존 근거를 되풀이한다
+      example: '"비용 문제는… 그래도 경보는 중요하니까요."'
+      reviewer_hint: 반론에 답하려 했지만 논점이 어긋나거나 같은 근거를 반복했습니다
+    - level: 2
+      anchor: 반론에 거의 답하지 않고 주장을 되풀이하거나 다른 이야기로 넘어간다
+      example: (서지안 "산불 대응을 시민이 할 수 있어요?") "불이 제일 위험한 건 맞잖아요."
+      reviewer_hint: 반론에 거의 답하지 않고 주장을 되풀이했습니다
+    - level: 1
+      anchor: 반론을 무시하고 같은 말만 하거나, 이유 없이 바로 주장을 거둔다
+      example: (반론 직후) "아 그럼 그냥 지안님 걸로 해요." / "아무튼 S1이요."
+      reviewer_hint: 반론을 건너뛰거나 이유 없이 바로 주장을 거뒀습니다
+    no_record: 창 안에 지원자 안을 겨냥한 반론이 없음(지원자가 안을 내지 않아 카드가 전체 대상 발언이 된 경우 등) → `not_applicable`. 반론 뒤 지원자 메시지 0 → `no_activity`.
+  - dimension_id: pers_comparison
+    name: 경쟁 안 비교
+    definition: 상대 안의 논점을 정확히 되짚고 장점을 인정하면서 기준을 세워 안들을 비교하는가
+    positive_signals: 상대 안 요약·인용, 타당한 점 인정, 비교 기준 제시(시급성·실현 가능성·범위)
+    negative_signals: 상대 안 언급 없음, 내용 검토 없는 일축, 상대 논점을 왜곡해 반박
+    core_cards:
+    - persuasion_keyword
+    - persuasion_solution
+    core_scene: persuasion_keyword 창(키워드 단계 전체)과 persuasion_solution 창(반론 메시지 ~ 해결책 단계 끝)
+    levels:
+    - level: 5
+      anchor: 경쟁 안의 논점을 정확히 요약·인정하고, 명시한 기준으로 자기 안과 비교해 차이를 설명한다
+      example: '"한결님 불은 체감 위험이 크다는 장점이 있어요. 다만 해결책까지 구체적으로 갈 수 있느냐로 보면, 물은 통계와 사례가 많아서 더 유리해요."'
+      reviewer_hint: 상대 안의 장점을 인정하고 기준을 세워 비교했습니다
+    - level: 4
+      anchor: 경쟁 안을 인정하거나 요약한 뒤 자기 안의 차이를 이유와 함께 말한다. 기준은 암묵적이다
+      example: '"바람길 얘기도 일리 있어요. 그래도 나무가 열섬이랑 바로 연결돼서 더 직접적인 것 같아요."'
+      reviewer_hint: 상대 안을 짚은 뒤 차이를 이유와 함께 말했습니다
+    - level: 3
+      anchor: 경쟁 안을 언급하지만 인정·요약이 피상적이고 비교가 한쪽 주장에 머문다
+      example: '"S2도 괜찮긴 한데 S1이 더 좋아요."'
+      reviewer_hint: 상대 안을 언급했지만 비교가 피상적입니다
+    - level: 2
+      anchor: 경쟁 안을 거의 다루지 않고 자기 안 장점만 말한다
+      example: '"제 안은 앱이라 편하잖아요." (S2 언급 없음)'
+      reviewer_hint: 상대 안을 거의 다루지 않고 자기 안만 설명했습니다
+    - level: 1
+      anchor: 경쟁 안을 근거 없이 일축하거나 논점을 왜곡해 반박한다
+      example: '"캠페인 같은 건 아무 효과 없어요." / "지안님은 그냥 반대만 하시는 거잖아요."'
+      reviewer_hint: 상대 안을 근거 없이 일축하거나 논점을 왜곡했습니다
+    no_record: 창 안 지원자 메시지 0 → `no_activity`. 자기 안도 없고 다른 안에 대한 의견도 없음 → `not_applicable`.
+  - dimension_id: pers_convergence
+    name: 논의 수렴
+    definition: 흩어진 의견을 정리하고 절충안이나 비교 결론을 제시해 근거를 바탕으로 결정 쪽으로 논의를 모으는가
+    positive_signals: 나온 안·논점 정리, 두 안 결합·조건부 절충, "이 이유로 X로 할까요?" 같은 근거 있는 결론 제안
+    negative_signals: 정리 없이 결론만 선언, 근거 없는 다수·시간 호소
+    core_cards:
+    - persuasion_keyword
+    - persuasion_solution
+    core_scene: persuasion_keyword 창(키워드 단계 전체)과 persuasion_solution 창(반론 메시지 ~ 해결책 단계 끝)
+    levels:
+    - level: 5
+      anchor: 나온 안과 논점을 정리하고, 절충이나 비교 결론을 이유와 함께 제안해 다른 참여자의 생각을 묻는다
+      example: '"정리하면 S1은 빠르고 S2는 주민 참여가 강해요. 센서 경보에 절수 보상을 붙이면 둘 다 살릴 수 있는데, 이렇게 가면 어떨까요?"'
+      reviewer_hint: 논점을 정리하고 근거 있는 절충·결론을 제안했습니다
+    - level: 4
+      anchor: 절충 또는 결론을 이유와 함께 제안한다. 정리는 부분적이다
+      example: '"하람님 빗물 저금통 아이디어 붙여서 S1에 실천 항목으로 넣으면 어때요? 실현도 쉬우니까요."'
+      reviewer_hint: 이유를 갖춘 절충이나 결론을 제안했습니다
+    - level: 3
+      anchor: 결론을 제안하지만 이유나 정리가 얕다
+      example: '"시간도 없으니 물로 할까요?"'
+      reviewer_hint: 결론을 제안했지만 이유나 정리가 얕습니다
+    - level: 2
+      anchor: 수렴 시도가 거의 없거나 근거 없이 결론만 선언한다
+      example: '"그냥 이걸로 정하죠."'
+      reviewer_hint: 정리 없이 결론만 선언했습니다
+    - level: 1
+      anchor: 근거 대신 다수·시간을 내세워 자기 안을 결론으로 민다
+      example: '"하람님도 제 편이니까 S1이요, 끝."'
+      reviewer_hint: 다수나 시간을 내세워 자기 안을 밀었습니다
+    no_record: 창 안 지원자 메시지 0 → `no_activity`. 논의가 결론 국면까지 가지 않았거나(AI 동료 합의 채움으로 일찍 끝남) 결론 국면에 지원자 메시지가 없음 → `not_applicable`. 다른 차원보다 기록 없음이 흔하며 그 자체로 낮게 보지 않는다.
+- element: listening
+  name: 경청/존중
+  definition: 자기 생각과 다른 의견, 특히 같은 주장을 강하게 반복하는 상대 앞에서 상대의 말을 실제로 듣고(응답·이해 확인·타당한 점 인정) 사람을 존중하는 말로 반대하는가.
+  reviewer_notice: 강한결은 의도적으로 같은 주장을 반복하도록 설정되어 있습니다. 동의 여부나 채택 결과가 아니라 반대하는 방식을 보십시오.
+  dimensions:
+  - dimension_id: listen_engage
+    name: 응답성
+    definition: 상대가 한 말(특히 지원자 안을 일축·반대한 말)에 실제로 응답하며 대화를 잇는가
+    positive_signals: 상대 발언의 내용을 받아 답함, 이름을 불러 응답, 반복 압박에도 매번 내용으로 대응
+    negative_signals: 직접 반박에 응답 없이 자기 안만 재진술, 반대 의견 건너뛰고 동조 의견에만 반응, "아무튼"으로 화제 차단
+    core_cards:
+    - listening_pressure
+    core_scene: 첫 압박 메시지 ~ 문제 상황 단계 끝
+    levels:
+    - level: 5
+      anchor: 압박이 반복돼도 매번 상대 발언의 내용에 직접 답하고, 다른 참여자 의견까지 이어받아 대화를 넓힌다
+      example: '"한결님은 가뭄이 매년 반복된다는 거고, 지안님은 데이터가 있냐는 거죠. 두 분 말 다 받아서 보면 침수도 최근 5년 추세가 있어서…"'
+      reviewer_hint: 반복 압박에도 매번 상대 말에 직접 답하며 대화를 넓혔습니다
+    - level: 4
+      anchor: 상대 발언에 대부분 내용으로 응답한다. 반복 압박 중 한두 번은 짧게 넘기지만 무시하지는 않는다
+      example: '"가뭄이 반복된다는 건 알겠어요. 그래도 저는 침수가 피해 규모가 더 크다고 봐요."'
+      reviewer_hint: 상대 발언에 대체로 내용으로 응답했습니다
+    - level: 3
+      anchor: 응답은 하지만 상대 말의 내용과 느슨하게만 연결되고 자기 주장 재진술 비중이 크다
+      example: '"네, 근데 저는 침수가 낫다고 생각해요."'
+      reviewer_hint: 응답은 했으나 자기 주장 재진술 비중이 컸습니다
+    - level: 2
+      anchor: 직접 반박·일축에 응답하지 않고 다른 사람에게만 말하거나 자기 안만 반복한다
+      example: (강한결 "침수는 핵심이 아니에요") → "하람님, 침수 괜찮지 않아요? 침수로 가요."
+      reviewer_hint: 반대 의견에 응답하지 않고 넘어간 장면이 있습니다
+    - level: 1
+      anchor: 상대 발언을 명시적으로 차단하거나 듣지 않겠다는 태도를 보인다
+      example: '"그 얘기는 됐고요, 아무튼 침수로 가죠."'
+      reviewer_hint: 상대 발언을 명시적으로 차단했습니다
+    no_record: 핵심 창 안 지원자 메시지 0 → `no_activity`. 카드 미발생이고 보조 장면에도 지원자에게 직접 향한 반대 발언이 없음 → `event_not_fired`.
+  - dimension_id: listen_understand
+    name: 이해 확인
+    definition: 상대의 주장·근거를 정확히 이해하려 하는가(요약·되짚기·의도와 근거 질문). 동의 여부와 무관
+    positive_signals: 상대 주장을 정확히 요약, 근거·의도 질문, 오해했을 때 바로잡음
+    negative_signals: 상대 주장을 왜곡·과장해서 받음, 비꼬는 반문, 묻지 않고 단정
+    core_cards:
+    - listening_pressure
+    core_scene: 첫 압박 메시지 ~ 문제 상황 단계 끝
+    levels:
+    - level: 5
+      anchor: 상대 주장의 핵심과 근거를 정확히 되짚고, 확인 질문으로 이해를 검증한 뒤 자기 의견을 잇는다
+      example: '"한결님 말씀은 가뭄이 매년 반복되니까 생활 체감이 크다는 거죠? 그 ''반복''을 자료 어디서 보셨는지 궁금해요."'
+      reviewer_hint: 상대 주장을 정확히 요약하고 질문으로 확인했습니다
+    - level: 4
+      anchor: 상대 주장을 대체로 정확히 요약하거나 근거를 묻는 질문을 한다
+      example: '"한결님은 왜 가뭄이 더 핵심이라고 보세요?"'
+      reviewer_hint: 상대 근거를 묻거나 대체로 정확히 되짚었습니다
+    - level: 3
+      anchor: 상대 입장을 언급은 하지만 피상적이거나, 동의만 하고 무엇에 동의하는지 드러나지 않는다
+      example: '"한결님 생각도 있으시겠지만, 저는 침수요."'
+      reviewer_hint: 상대 입장을 피상적으로만 언급했습니다
+    - level: 2
+      anchor: 상대 주장을 부정확하게 받아 반박하거나 확인 없이 의도를 단정한다
+      example: '"한결님은 그냥 침수는 별거 아니라는 거잖아요."'
+      reviewer_hint: 상대 주장을 부정확하게 받거나 의도를 단정했습니다
+    - level: 1
+      anchor: 비꼬는 반문이나 왜곡으로 상대 말을 조롱하듯 받는다
+      example: '"가뭄이요? 그게 말이 돼요? 요즘 비가 얼마나 오는데."'
+      reviewer_hint: 비꼬는 반문·왜곡으로 상대 말을 받았습니다
+    no_record: 창 안 지원자 메시지 0 → `no_activity`. 메시지가 모두 다른 참여자·주제를 향해 판단할 장면이 없음 → `not_applicable`(응답 여부는 `listen_engage`에서 본다).
+  - dimension_id: listen_acknowledge
+    name: 타당성 인정
+    definition: 반대하는 상대 안·의견에서도 타당한 점을 인정하는가. 인정 후 반대를 이어가도 된다
+    positive_signals: '"그 점은 맞아요, 다만…", 상대 근거 일부를 받아 자기 생각에 반영'
+    negative_signals: 상대 안을 전부 부정, "그건 상관없고요"식 일축, 상대 근거를 검토 없이 무가치로 취급
+    core_cards:
+    - listening_pressure
+    core_scene: 첫 압박 메시지 ~ 문제 상황 단계 끝
+    levels:
+    - level: 5
+      anchor: 상대 의견의 구체적 타당점을 인정하고 그것을 자기 생각이나 절충에 실제로 반영한다
+      example: '"가뭄이 반복된다는 한결님 지적은 맞아요. 그럼 ''물 부족과 침수가 번갈아 오는 극단 기후''로 잡으면 둘 다 담기지 않을까요?"'
+      reviewer_hint: 반대하는 의견의 타당점을 인정하고 자기 생각에 반영했습니다
+    - level: 4
+      anchor: 반대하면서도 상대 의견의 타당한 점을 구체적으로 인정한다
+      example: '"한결님 말처럼 가뭄도 생활에 바로 닿는 문제인 건 맞아요. 다만 저는 피해 규모 때문에 침수를 골랐어요."'
+      reviewer_hint: 반대하면서도 상대의 타당한 점을 구체적으로 인정했습니다
+    - level: 3
+      anchor: 형식적·일반적 인정만 있거나("좋은 의견이에요") 인정 없이 정중하게 반대만 한다
+      example: '"좋은 의견인데요, 저는 침수가 나은 것 같아요."'
+      reviewer_hint: 인정이 형식적이거나 인정 없이 정중하게만 반대했습니다
+    - level: 2
+      anchor: 상대 의견의 가치를 검토 없이 낮춘다
+      example: '"가뭄은 너무 흔한 주제라 별로예요."'
+      reviewer_hint: 상대 의견의 가치를 검토 없이 낮췄습니다
+    - level: 1
+      anchor: 상대 의견을 전면 부정·무가치하게 일축한다
+      example: '"그건 상관없고요. 가뭄 얘기는 의미 없어요."'
+      reviewer_hint: 상대 의견을 전면 부정했습니다
+    no_record: 창 안 지원자 메시지 0 → `no_activity`. 지원자와 의견이 갈린 장면이 없음(처음부터 같은 안 지지 등) → `not_applicable`.
+  - dimension_id: listen_civility
+    name: 존중하는 반대
+    definition: 반대를 사람이 아니라 안에 향하게 하고, 반복 압박에도 비난·조롱·짜증 없이 말하는가
+    positive_signals: 안의 내용만 반박, 반복 압박에 차분한 경계 설정("같은 얘기가 반복되니 다른 분 의견도 들어 볼까요")
+    negative_signals: 인신공격·성격 지적, 조롱·비꼼, 짜증 표현, 상대를 대화에서 배제하는 말
+    core_cards:
+    - listening_pressure
+    core_scene: 첫 압박 메시지 ~ 문제 상황 단계 끝
+    levels:
+    - level: 5
+      anchor: 세 번째 재반박에도 안에만 초점을 두고 차분하며, 교착을 상대를 존중하는 말로 다룬다(경계 설정, 다른 의견 듣기 제안)
+      example: '"한결님 입장은 충분히 이해했어요. 저희 둘이 계속 갈리니까 다른 분들 생각도 들어 보면 어떨까요?"'
+      reviewer_hint: 반복 압박에도 안에만 초점을 두고 차분하게 말했습니다
+    - level: 4
+      anchor: 반대 표현이 일관되게 안을 향하고 정중하다. 압박이 이어질 때 약간의 단호함은 있으나 사람을 향하지 않는다
+      example: '"그 부분은 저는 동의하기 어려워요. 침수 피해 기록을 보면 규모가 더 커서요."'
+      reviewer_hint: 반대가 일관되게 안을 향하고 정중했습니다
+    - level: 3
+      anchor: 대체로 정중하나 짜증·답답함이 한 번 드러나고 곧 회복한다. 또는 사실 지적 수준의 가벼운 불만
+      example: '"같은 말씀을 계속 하시니까 좀 답답하네요. 아무튼 제 근거는 이거예요."'
+      reviewer_hint: 답답함이 한 번 드러났으나 곧 회복했습니다
+    - level: 2
+      anchor: 사람을 향한 가벼운 비꼼·성격 지적이 있다
+      example: '"한결님은 남 얘기 안 들으시는 스타일이네요."'
+      reviewer_hint: 사람을 향한 비꼼이나 성격 지적이 있었습니다
+    - level: 1
+      anchor: 인신공격·조롱·비하, 또는 상대를 대화에서 배제하는 말을 한다
+      example: '"왜 자꾸 고집만 부리세요? 한결님 얘기는 그만 들을게요."'
+      reviewer_hint: 인신공격·조롱이나 상대를 배제하는 말이 있었습니다
+    no_record: 창 안 지원자 메시지 0 → `no_activity`. 메시지는 있으나 반대 장면이 전혀 없으면(모두 동의) 기록 없음이 아니라 근거 메시지를 들어 3 이상으로 판단하되 확신도 `low`.
+- element: inclusion
+  name: 배려/포용
+  definition: 말을 덜 하거나 머뭇거리는 참여자가 있을 때 그 사람이 의견을 낼 자리를 만들고, 나온 의견을 실제 논의와 결정에 이어 주는 행동. 중심 장면은 소극형 동료의 머뭇거림이고, 결정 전에 아직 말하지 않은 사람을 확인하는지처럼 세션 전체의 참여 분배도 본다.
+  reviewer_notice: 윤하람은 초대받기 전에는 말하지 않도록 설계되어 있습니다. 윤하람의 침묵이 아니라 지원자가 무엇을 했는지를 보십시오.
+  dimensions:
+  - dimension_id: incl_notice_invite
+    name: 머뭇거림 알아차리고 초대하기
+    definition: 머뭇거림·짧은 맞장구 같은 약한 신호를 알아차리고 이름을 부르거나 열린 질문으로 말할 자리를 만드는가
+    positive_signals: 지명 초대, 머뭇거림을 직접 받아 주기, 전체에게 열린 질문, 빠른 반응, 대답을 기다려 주기
+    negative_signals: 머뭇거림 뒤에도 다른 동료와만 대화, "아니에요"를 그대로 넘김, 확인만 구하는 질문, 초대 직후 대답 전에 확정
+    core_cards:
+    - inclusion_silence
+    core_scene: 머뭇거림 메시지 ~ 해결책 단계 끝(칸 확정 기록 포함)
+    levels:
+    - level: 5
+      anchor: 머뭇거림 직후 소극형 동료를 지명해 구체적으로 초대하고, 대답할 여유를 주며 다른 대화를 잠시 멈춘다
+      example: '"하람님, 아까 생각한 거 있다고 하셨죠? 저희 기다릴 테니 편하게 말해 주세요."'
+      reviewer_hint: 머뭇거림을 바로 알아차리고 이름을 불러 말할 자리를 만들었습니다
+    - level: 4
+      anchor: 창 안에서 소극형 동료를 지명해 의견을 묻는다(시점이 다소 늦거나 짧은 한 줄)
+      example: '"하람님은 해결책 뭐가 좋다고 보세요?"'
+      reviewer_hint: 조용한 동료를 지명해 의견을 물었습니다
+    - level: 3
+      anchor: 지명은 없지만 전체에게 열린 질문을 해 말할 자리를 만든다
+      example: '"물 관리 앱 말고 다른 아이디어 있는 분 계세요?"'
+      reviewer_hint: 전체에게 열린 질문으로 말할 기회를 만들었습니다
+    - level: 2
+      anchor: '형식적 질문만 한다: 동의 확인형이거나 묻고 나서 대답을 기다리지 않고 진행한다'
+      example: '"다들 S1으로 괜찮죠? 그럼 확정할게요."'
+      reviewer_hint: 질문은 있었으나 동의 확인이나 즉시 진행에 그쳤습니다
+    - level: 1
+      anchor: 머뭇거림 뒤 창 안에서 활동하지만 초대가 전혀 없거나 머뭇거림을 끊고 넘어간다
+      example: '"네, 그럼 한결님 말대로 센서 앱으로 가죠."'
+      reviewer_hint: 머뭇거림 뒤에도 초대 없이 논의를 이어 갔습니다
+    no_record: 카드 미발생(해결책 단계가 `L/30` 전에 끝남) → `event_not_fired`. 창 안 지원자 메시지·확정 모두 0 → `no_activity`.
+  - dimension_id: incl_follow_through
+    name: 들은 의견 이어받기
+    definition: 덜 말한 동료가 의견을 말한 뒤 그 내용을 되짚고, 묻고, 덧붙이거나 근거를 들어 검토해 논의에 올리는가
+    positive_signals: 요약·인용, 근거·세부 질문, 아이디어 확장, 반대하더라도 타당한 점 인정 후 반박
+    negative_signals: 응답 없이 원래 논의로 복귀, 내용 검토 없는 일축, 형식적 칭찬 후 무시
+    core_cards:
+    - inclusion_silence
+    core_scene: 머뭇거림 메시지 ~ 해결책 단계 끝(칸 확정 기록 포함)
+    levels:
+    - level: 5
+      anchor: 소극형 동료의 안을 정확히 되짚고 질문하거나 확장해 다른 동료까지 그 안을 검토하게 만든다
+      example: '"하람님 빗물 저금통 아이디어, 침수 사례랑도 맞네요. 지안님은 비용 면에서 어떻게 보세요?"'
+      reviewer_hint: 나온 의견을 되짚고 확장해 팀 논의에 올렸습니다
+    - level: 4
+      anchor: 안의 내용에 구체적으로 반응한다(요약·질문·덧붙임 중 하나 이상). 반대라면 타당한 점을 인정하고 근거를 든다
+      example: '"빗물 저금통 좋은데, 설치 기간이 길지 않을까요? 하람님은 어떻게 보세요?"'
+      reviewer_hint: 나온 의견의 내용에 구체적으로 반응했습니다
+    - level: 3
+      anchor: 짧게 받아 주지만 내용으로 이어지지 않는다
+      example: '"오 그것도 좋네요." (이후 다시 S1 논의)'
+      reviewer_hint: 짧게 받아 주었지만 논의로 이어지지 않았습니다
+    - level: 2
+      anchor: 반응이 형식적이고 곧바로 다른 안으로 돌린다. 내용을 오해한 채 넘어가도 확인하지 않는다
+      example: '"네네, 근데 시간 없으니까 센서 앱으로 하죠."'
+      reviewer_hint: 형식적으로 받고 곧 다른 안으로 돌렸습니다
+    - level: 1
+      anchor: 의견을 무시하거나 내용 검토 없이 일축한다
+      example: '"그건 좀 약한 것 같고요, 아무튼 S1으로 가요."'
+      reviewer_hint: 나온 의견을 검토 없이 넘기거나 일축했습니다
+    no_record: 소극형 동료가 창 안에서 의견을 말하지 않았고(`quiet_spoke = false`) 보조 장면에서도 덜 말한 동료의 의견 표명이 없음 → `not_applicable`. 소극형이 말하지 않은 이유가 지원자의 무초대여도 여기서는 기록 없음이고 그 사실은 `incl_notice_invite`에서만 본다(이중 감점 금지).
+  - dimension_id: incl_shared_decision
+    name: 결정 전 모두의 목소리 확인
+    definition: 칸을 확정하거나 방향을 정할 때 아직 의견을 내지 않은 참여자가 있는지 확인하고, 특정인이 대화를 독점하지 않게 하는가(세 단계 전체)
+    positive_signals: 확정 전 "아직 말 안 하신 분" 확인, 독점 상황에서 발언 돌리기, 지지 현황에 없는 사람 의견 묻기
+    negative_signals: 미표명자 확인 없이 일부와만 결정, 미표명자의 발언을 막거나 끊음
+    core_cards: []
+    core_scene: 세션 전체(세 토론 단계의 확정 국면)
+    levels:
+    - level: 5
+      anchor: 두 단계 이상에서 확정 전에 의견을 안 낸 사람을 이름으로 확인하고 대답을 들은 뒤 진행한다
+      example: '"정하기 전에 하람님, 지안님 의견도 듣고 정해요. 바람 괜찮으세요?"'
+      reviewer_hint: 여러 단계에서 확정 전 말하지 않은 사람까지 확인했습니다
+    - level: 4
+      anchor: 한 단계 이상에서 확정 전 전체 확인을 구체적으로 하고 미응답을 기다린다
+      example: '"불로 정하기 전에 다른 생각 있는 분 있으면 말해 주세요. 잠깐 기다릴게요."'
+      reviewer_hint: 확정 전 전체 의견을 구체적으로 확인했습니다
+    - level: 3
+      anchor: 확정 전 확인이 있으나 형식적이거나 일부 단계에만 있다
+      example: '"이걸로 할까요?" (동의 1~2명 확인 후 진행)'
+      reviewer_hint: 확정 전 확인이 있었으나 형식적이거나 일부였습니다
+    - level: 2
+      anchor: 대부분 일부 참여자와만 결정하고 말하지 않은 사람 확인 없이 진행한다
+      example: '"한결님이랑 저랑 불이니까 불로 할게요."'
+      reviewer_hint: 일부 참여자와만 결정하는 경우가 많았습니다
+    - level: 1
+      anchor: 의견을 내지 않은 사람의 발언을 막거나 끊고 결정을 진행한다
+      example: '"하람님 얘기는 나중에 하고 일단 정할게요."'
+      reviewer_hint: 의견을 내지 않은 사람의 발언을 막고 결정했습니다
+    no_record: 세션 전체에서 지원자 활동 0 → `no_activity`. 지원자의 칸 확정·확정 제안·결정 관련 발언이 없고 모든 칸이 AI 동료 또는 시간 초과로 채워짐 → `not_applicable`. 확정을 안 한 것 자체는 감점이 아니다.
+  - dimension_id: incl_safe_tone
+    name: 말하기 편한 분위기
+    definition: 덜 말한 사람에게 압박·평가·재촉 없이 말을 걸고, 짧은 대답도 받아들여 다시 말할 수 있게 하는가
+    positive_signals: 부담 줄이는 표현, 대답에 감사·인정, 대답 재촉 없음
+    negative_signals: 재촉·질책, 놀림, 대답 끊기, 유도형 질문, 공개적 소극성 지적
+    core_cards: []
+    core_scene: 세션 전체
+    levels:
+    - level: 5
+      anchor: 부담을 낮추는 말로 초대하고, 대답 뒤 인정하며 다시 말할 여지를 남긴다
+      example: '"덜 정리돼도 괜찮아요. 하람님 얘기 덕분에 방향이 넓어졌어요, 더 생각나면 언제든요."'
+      reviewer_hint: 부담을 낮추고 대답을 인정해 다시 말하기 쉬운 분위기를 만들었습니다
+    - level: 4
+      anchor: 말투가 존중적이고 대답에 고마움이나 인정을 표현한다
+      example: '"말해 주셔서 고마워요, 그 근거 좋네요."'
+      reviewer_hint: 존중하는 말투로 묻고 대답을 인정했습니다
+    - level: 3
+      anchor: 중립적이다. 압박도 배려 표현도 특별히 없다
+      example: '"하람님 의견은요?"'
+      reviewer_hint: 말투는 중립적이었습니다
+    - level: 2
+      anchor: 유도형 질문이나 가벼운 재촉으로 자유로운 대답을 어렵게 한다
+      example: '"하람님도 센서 앱 찬성이죠? 빨리 정해야 해서요."'
+      reviewer_hint: 유도형 질문이나 재촉이 있었습니다
+    - level: 1
+      anchor: 덜 말한 사람을 질책·조롱하거나 대답을 끊는다
+      example: '"하람님은 왜 계속 가만히 계세요? 의견 좀 내 주세요."'
+      reviewer_hint: 조용한 동료를 질책하거나 대답을 끊었습니다
+    no_record: 세션 전체 지원자 활동 0 → `no_activity`. 덜 말한 동료에게 직접 건넨 지원자 메시지가 없음 → `not_applicable`(초대 부재는 `incl_notice_invite`에서 본다).
+- element: flexibility
+  name: 수용/유연성
+  definition: 내 안이 다수에게 지지받지 못하거나 채택되지 않는 상황에서, 다른 안의 근거를 실제로 검토하고, 결정 절차를 존중하며, 결과를 받아들이고, 정해진 결과 위에서 다음 단계에 계속 기여하는가. 시간 순으로 **결정 전(재검토) → 결정 시점(절차 존중) → 결정 후(승복) → 다음 단계(기여)**를 본다.
+  reviewer_notice: 문제 상황 단계는 **설계된 장면**입니다. 강한결은 확정 전까지 다른 안을 고수하고, 서지안은 반대 의견을 두 번 들으면 바꿀 수 있습니다. 설득 성공 여부가 아니라 결과를 다루는 방식을 보십시오. 근거 있는 이의 제기도 높은 수준일 수 있습니다. 지원자 안이 채택된 세션은 이 요소가 "해당 없음"입니다.
+  dimensions:
+  - dimension_id: flex_openness
+    name: 다른 안 재검토
+    definition: 결정 전, 다른 안의 근거를 실제로 다루고 타당하면 입장을 조정·통합하는가. 입장을 바꿨는지가 아니라 상대 근거에 반응했는지를 본다
+    positive_signals: 다수안 장점 인정, 조건부 수용, 두 안 통합 제안, 입장 수정 이유 밝힘, 상대 근거 확인 질문, 상대 근거를 짚은 뒤 근거 있는 이의 제기
+    negative_signals: 상대 근거 무응답 반복 주장, 검토 없는 배제, 근거를 다루지 않은 즉시 포기(동조)
+    core_cards:
+    - flexibility_majority
+    core_scene: flexibility_majority 카드 시각 ~ 해결책 단계 끝
+    levels:
+    - level: 5
+      anchor: 다수안의 근거를 구체적으로 짚어 인정하고, 자기 안과 비교한 뒤 통합안 또는 근거 있는 입장 조정을 스스로 내놓는다
+      example: '"한결님·지안님 말대로 가뭄은 해마다 반복돼서 범위가 넓죠. 침수도 결국 물 관리 문제니까, ''물 부족과 침수를 같이 겪는 도시''로 묶으면 어떨까요?"'
+      reviewer_hint: 다른 안의 근거를 인정하고 통합·조정안을 스스로 냈습니다
+    - level: 4
+      anchor: 다수안의 타당한 점을 인정하고 자기 안의 한계를 받아들이되 통합·조정까지는 가지 않는다. 또는 다수안의 근거를 정확히 짚은 뒤 근거를 들어 이의를 제기하고 결정 절차는 따른다(**근거 있는 이의 제기도 높은 수준**)
+      example: '"가뭄 쪽이 통계가 더 많다는 건 맞는 것 같아요. 침수는 지역이 좁긴 하네요." / "가뭄이 반복된다는 건 맞아요. 그래도 피해 규모는 침수가 더 커서 저는 침수가 낫다고 봐요. 정해지면 따를게요."'
+      reviewer_hint: 다른 안의 타당한 점을 인정했습니다
+    - level: 3
+      anchor: 자기 안을 유지하며 상대 근거를 일부 언급하거나 질문하지만 입장 검토는 드러나지 않는다. 또는 이유 언급 없이 다수안으로 바로 옮긴다
+      example: '"가뭄도 중요하긴 한데, 저는 침수가 더 와닿아요." / "아 그럼 가뭄으로 해요."'
+      reviewer_hint: 다른 안을 일부 언급했으나 입장 검토는 드러나지 않았습니다(또는 이유 없이 바로 따랐습니다)
+    - level: 2
+      anchor: 상대 근거에 거의 응답하지 않고 자기 안을 반복한다. 상대 안은 짧게 배제한다
+      example: '"가뭄은 너무 흔한 주제고요, 침수로 가는 게 맞아요."'
+      reviewer_hint: 다른 안의 근거에 거의 응답하지 않고 같은 주장을 반복했습니다
+    - level: 1
+      anchor: 상대 근거를 다루지 않고 같은 주장만 되풀이하며 다른 안의 검토 자체를 거부한다
+      example: '"다른 건 볼 필요 없어요. 침수 말고는 의미 없어요."'
+      reviewer_hint: 다른 안의 검토 자체를 거부했습니다
+    no_record: 결정 전 창 안 지원자 메시지 0 → `no_activity`. 지원자가 자기 안을 내지 않았고 보조 장면에도 경쟁 상황이 없음 → `not_applicable`.
+  - dimension_id: flex_decision_respect
+    name: 결정 절차 존중
+    definition: 의견이 갈린 상태에서 결정이 내려지는 방식을 존중하는가. 단독 확정·강행 없이 동의를 확인하는가
+    positive_signals: 확정 전 반대 여부 확인, 결정 방법 제안, 다수안을 직접 확정, 설득 성공 시에도 명시적 동의 후 확정
+    negative_signals: 반대가 남은 상태의 단독 확정, "시간 없으니 제가 정할게요", 시간 압박을 이용한 일방 결론, 침묵을 동의로 간주
+    core_cards:
+    - flexibility_majority
+    core_scene: flexibility_majority 카드 시각 ~ 해결책 단계 끝
+    levels:
+    - level: 5
+      anchor: 결정 방법을 제안하거나 반대 의견을 명시적으로 확인한 뒤, 자기 안이 아니어도 합의된 안으로 확정·정리한다
+      example: '"의견이 둘로 나뉘었는데, 지지가 많은 가뭄으로 가고 침수는 근거에 참고로 넣으면 어떨까요? 반대 없으시면 제가 확정할게요."'
+      reviewer_hint: 결정 방법을 제안하거나 반대를 확인한 뒤 합의안으로 정리했습니다
+    - level: 4
+      anchor: 확정 전에 동의를 확인하거나, 다수 결정·AI 동료의 합의 채움을 이의 없이 따른다
+      example: '"다들 가뭄으로 괜찮으신 거죠? 그럼 그걸로 가요."'
+      reviewer_hint: 동의를 확인하거나 다수 결정을 이의 없이 따랐습니다
+    - level: 3
+      anchor: 결정 국면에 소극적으로 참여한다. 결과를 따르지만 절차에 대한 고려는 드러나지 않는다. 시간 초과 결정도 별말 없이 따른다
+      example: '"네, 정해진 대로 해요."'
+      reviewer_hint: 결과를 따랐으나 결정 과정 참여는 소극적이었습니다
+    - level: 2
+      anchor: 반대가 남은 상태에서 자기 안으로 결론을 몰아가는 발언을 하나 실제 단독 확정은 하지 않는다. 또는 형식적 확인 뒤 반대를 무시하고 진행한다
+      example: '"시간 없으니까 그냥 침수로 정하죠. 괜찮죠?" (서지안 반대 직후)'
+      reviewer_hint: 반대가 남은 상태에서 결론을 몰아갔습니다
+    - level: 1
+      anchor: 다수가 반대 중인데 자기 안으로 단독 확정하거나 반대를 무시하고 결론을 선언한다
+      example: '"제가 그냥 침수로 확정할게요." (강한결·서지안 반대 유지, 스냅샷상 지지 1명)'
+      reviewer_hint: 다수가 반대하는 중에 자기 안으로 단독 확정했습니다
+    no_record: 문제 상황 칸이 AI 동료 합의 채움 또는 시간 초과로 기준안으로 정해졌고 결정 직전·직후 지원자의 결정 관련 메시지가 없음 → `not_applicable`. 창 안 지원자 활동 0 → `no_activity`. 카드 미발생이고 보조 장면에도 갈린 결정이 없음 → `event_not_fired`.
+  - dimension_id: flex_acceptance
+    name: 결과 승복
+    definition: 자기 안이 채택되지 않은 결정을 재론·이탈·비난 없이 받아들이는가
+    positive_signals: 명시적 승복, 결정을 다음 논의의 전제로 사용, "의견은 남기되 따를게요"
+    negative_signals: 확정된 칸 재론, "알아서들 하세요", 결정을 향한 비꼼, 기획안 `problem` 필드를 설명 없이 자기 안으로 바꿈
+    core_cards:
+    - flexibility_majority
+    core_scene: flexibility_majority 카드 시각 ~ 해결책 단계 끝
+    levels:
+    - level: 5
+      anchor: 결과를 분명히 받아들이고 자기 안의 쓸 만한 요소를 결정된 안에 연결해 팀이 쓸 수 있게 넘긴다. 재론 없음
+      example: '"가뭄으로 정해졌으니 그걸로 가요. 제가 말한 침수 자료는 ''물 관리 전반''의 근거로 써도 될 것 같아요."'
+      reviewer_hint: 결과를 받아들이고 자기 안의 요소를 결정된 안에 연결했습니다
+    - level: 4
+      anchor: 결과를 명확히 받아들이고 이후 결정을 전제로 말한다. 재론·불만 표현 없음
+      example: '"네, 가뭄으로 해요. 그럼 해결책 얘기해 볼까요?"'
+      reviewer_hint: 결과를 명확히 받아들이고 결정을 전제로 진행했습니다
+    - level: 3
+      anchor: 결과를 따르지만 체념·미련이 섞인다. 재론하지는 않는다
+      example: '"음… 저는 침수가 더 나았던 것 같긴 한데, 다수니까 따를게요."'
+      reviewer_hint: 아쉬움을 보였으나 결과를 따랐습니다
+    - level: 2
+      anchor: 결정 후에도 아쉬움을 반복하거나 해결책 논의 중 결정을 은근히 문제 삼는다. 진행을 막지는 않는다
+      example: '"가뭄으로 정하긴 했는데, 솔직히 해결책 붙이기 애매하네요. 침수였으면 쉬웠을 텐데."'
+      reviewer_hint: 결정 후에도 아쉬움을 반복하거나 은근히 문제 삼았습니다
+    - level: 1
+      anchor: 확정된 결정을 다시 정하자고 하거나 참여를 거두거나 결정을 비난한다
+      example: '"아까 문제 상황 다시 정해요. 가뭄은 아닌 것 같아요." / "그럼 알아서들 하세요."'
+      reviewer_hint: 결정을 되돌리려 하거나 참여를 거두거나 결정을 비난했습니다
+    no_record: 지원자가 문제 상황에서 자기 안을 내지 않았고(`own_option_rejected = null`) 보조 장면에도 채택되지 않은 자기 안이 없음 → `not_applicable`. 확정 후 해결책 단계 끝까지 지원자 메시지 0(`messages_after_rejection = 0`) → `no_activity`(침묵만으로 승복 실패로 보지 않는다).
+  - dimension_id: flex_forward
+    name: 다음 단계 기여
+    definition: 자기 안이 채택되지 않은 뒤 다음 단계에서 결정된 결과를 바탕으로 실질적으로 기여하는가. 양이 아니라 기여의 내용을 본다
+    positive_signals: 결정된 문제에 맞는 해결책 제안·근거, 다른 참여자 아이디어 확장, 논의 정리
+    negative_signals: 단순 호응만, 앞 결정과 무관한 자기 안 고수, 떠넘김
+    core_cards:
+    - flexibility_majority
+    core_scene: flexibility_majority 카드 시각 ~ 해결책 단계 끝
+    levels:
+    - level: 5
+      anchor: 결정된 문제를 전제로 해결책을 근거와 함께 내고, 다른 참여자 안과 연결하거나 논의를 정리해 결론으로 이끈다
+      example: '"가뭄이 문제니까 S1 경보가 맞을 것 같고, 지안님 말한 절수 보상을 붙이면 주민 참여도 생길 것 같아요. 하람님 빗물 저금통은 실천 항목으로 넣으면 어때요?"'
+      reviewer_hint: 결정된 문제 위에서 해결책을 내고 논의를 연결·정리했습니다
+    - level: 4
+      anchor: 결정된 문제에 맞는 해결책을 근거와 함께 제안하거나 다른 안을 의미 있게 확장한다
+      example: '"가뭄 문제면 센서로 사용량을 보여 주는 S1이 좋겠어요. 제한 공지가 늦는 게 문제였으니까요."'
+      reviewer_hint: 결정된 문제에 맞는 해결책을 근거와 함께 제안했습니다
+    - level: 3
+      anchor: 해결책 논의에 참여하지만 근거나 연결이 적은 짧은 의견·질문에 그친다
+      example: '"S1 괜찮은 것 같아요. 비용은 얼마나 들까요?"'
+      reviewer_hint: 짧은 의견·질문으로 참여했습니다
+    - level: 2
+      anchor: 단순 호응만 하거나 결정된 문제와 맞지 않는 방향(채택 안 된 자기 문제 기준)으로만 말한다
+      example: '"네 좋아요." / "침수 대비하려면 투수 포장이 제일이죠." (가뭄 결정 무시)'
+      reviewer_hint: 단순 호응에 그치거나 결정과 맞지 않는 방향만 고수했습니다
+    - level: 1
+      anchor: 해결책 단계 참여를 거부하거나 앞 결정을 이유로 논의를 방해한다
+      example: '"문제가 마음에 안 드니까 해결책은 다른 분들이 정하세요."'
+      reviewer_hint: 다음 단계 참여를 거부하거나 방해했습니다
+    no_record: 해결책 단계 지원자 메시지 0 → `no_activity`. 지원자 안이 채택되어 "채택되지 않은 뒤"가 없고 보조 장면에도 없음 → `not_applicable`. 세션이 해결책 단계 전에 끝남 → `event_not_fired`.
+- element: honesty
+  name: 정직/공정
+  definition: 함께 만든 결과에서 **누가 무엇을 냈는지와 어떻게 결정됐는지를 사실대로 드러내는가**. 핵심 장면은 최종 기획안의 `idea_credit` 칸이고, 토론 중 남의 아이디어를 다루는 말과 합의 상태를 전달하는 말도 함께 본다. 사실 기준은 `get_contributions`(실제 최초 제안자)와 칸 기록(`resolution`·지지 현황 스냅샷)이다.
+  dimensions:
+  - dimension_id: hon_credit_record
+    name: 기여 기록의 정확성
+    definition: 최종 기획안 `idea_credit` 칸(과 본문의 기여 서술)에 채택된 아이디어의 실제 제안자를 맞게 적고 자기 원안·보완·동의를 구분하는가
+    positive_signals: 'AI 동료가 처음 낸 채택안을 그 사람 이름으로 적음, 본문에 쓴 부가 아이디어까지 적음, "원안: 윤하람, 보완: 본인" 구분'
+    negative_signals: AI 동료 안을 "본인 제안"으로 적음, 동의만 한 안을 "공동"으로 적음, 전부 "팀이 같이"로 뭉뚱그림, 칸 비움
+    core_cards:
+    - honesty_credit
+    core_scene: 기획안 단계 시작 ~ 제출(자동 제출 포함)
+    levels:
+    - level: 5
+      anchor: 채택된 AI 동료 안 전원과 본문에 쓴 부가 아이디어까지 제안자 이름과 아이디어를 짝지어 적고, 자기 원안·보완·공동을 사실대로 구분한다. 대조표와 모두 일치
+      example: '"키워드 바람: 서지안 제안 / 문제 상황 미세먼지 정체: 강한결 제안 / 해결책 방풍 숲 조성: 윤하람 제안, 주민 참여 결합은 본인 보완 / 대기 데이터 알림 아이디어: 서지안"'
+      reviewer_hint: 채택된 아이디어의 제안자와 본인 보완을 모두 사실대로 구분해 적었습니다
+    - level: 4
+      anchor: 채택된 AI 동료 안의 제안자를 모두 이름으로 맞게 적는다. 보완 구분이 없거나 부가 아이디어 하나가 빠진다
+      example: '"키워드: 서지안, 문제 상황: 강한결, 해결책: 윤하람"'
+      reviewer_hint: 채택된 동료 아이디어의 제안자를 모두 맞게 적었습니다. 세부 구분은 일부 생략됐습니다
+    - level: 3
+      anchor: 일부 제안자는 맞게 적지만 나머지를 빠뜨리거나 "팀"으로 뭉뚱그린다. 또는 AI 동료 사이에 제안자를 바꿔 적는다(자기 귀속은 없음)
+      example: '"해결책은 하람님 아이디어. 나머지는 팀원들과 함께 정함"'
+      reviewer_hint: 일부 제안자만 적었거나 일부를 뭉뚱그렸습니다. 본인 것으로 적은 내용은 없습니다
+    - level: 2
+      anchor: 칸을 비우거나("없음") 전부 "팀 전체"로만 적어 개별 제안자를 알 수 없다. 또는 동의만 한 안을 "공동 제안"으로 적는다. 자기 것으로 적지는 않는다
+      example: '"모두가 함께 아이디어를 냈습니다."'
+      reviewer_hint: 기여 칸이 비었거나 "팀 전체"로만 적혀 개별 기여를 알 수 없습니다
+    - level: 1
+      anchor: AI 동료가 먼저 낸 채택안을 본인 제안으로 적는다(대조표 최초 제안자가 `p1`~`p3`인데 "본인")
+      example: '"해결책(빗물 저금통): 본인 제안" (실제 최초 제안자 윤하람)'
+      reviewer_hint: 동료가 먼저 낸 아이디어를 본인 제안으로 적었습니다. 대조표를 확인하세요
+    no_record: '`ai_adopted_units`가 비어 있고 본문에 쓴 AI 부가 아이디어도 없음 → `not_applicable`(공을 돌릴 대상이 없음). 자동 제출(`proposals.auto_submitted = true`)이면서 칸이 비어 있음 → `auto_submitted_blank`. 기획안 단계가 접속 끊김으로 대부분 사라짐 → `no_activity`.'
+  - dimension_id: hon_source_in_talk
+    name: 토론 중 출처 존중
+    definition: 토론 채팅에서 다른 참여자의 아이디어를 언급·지지·확장할 때 그 사람의 것으로 다루고 자기 것처럼 다시 내놓지 않는가
+    positive_signals: '"지안님 말처럼", "하람님 안에 덧붙이면", 잘못 돌아온 공 정정, 자기 보완 부분 구분'
+    negative_signals: 남의 안을 직후에 자기 새 제안처럼 재진술, "제가 아까 말한 빗물 저금통"(실제 윤하람), 정정받고도 주장 유지
+    core_cards: []
+    core_scene: 세션 전체(AI 동료 아이디어가 나오는 순간)
+    levels:
+    - level: 5
+      anchor: 남의 아이디어를 다룰 때 일관되게 원 제안자를 밝히고, 자기에게 잘못 돌아온 공을 스스로 정정하거나 보완 부분을 구분해 말한다
+      example: '"지안님, 빗물 저금통은 제가 아니라 하람님이 먼저 꺼낸 거예요. 저는 지원금 붙이자는 것만 보탰어요."'
+      reviewer_hint: 동료 아이디어의 출처를 일관되게 밝히고 잘못 돌아온 공을 스스로 바로잡았습니다
+    - level: 4
+      anchor: 남의 안을 지지·확장할 때 대체로 이름이나 내용으로 출처를 붙인다
+      example: '"지안님이 말한 절수 보상에 알림 기능을 더하면 좋겠어요."'
+      reviewer_hint: 동료 아이디어를 이어받을 때 대체로 누구 안인지 밝혔습니다
+    - level: 3
+      anchor: 출처 표시 없이 남의 안을 지지하거나 다시 말하지만 자기 것이라 주장하거나 새 제안처럼 포장하지는 않는다(중립 기준선)
+      example: '"그럼 빗물 저금통으로 가죠."'
+      reviewer_hint: 출처 표시 없이 동료 안을 지지했지만 자기 것으로 말하지는 않았습니다
+    - level: 2
+      anchor: 남의 안을 직후에 자기 새 제안처럼 들리게 다시 내놓는 일이 1회 있다. 의도가 분명하지 않다
+      example: (윤하람이 S3를 말한 직후) "제 생각엔 빗물 저금통 같은 생활 인프라가 좋을 것 같아요."
+      reviewer_hint: 동료 안을 자기 새 제안처럼 다시 말한 장면이 한 번 있습니다. 의도는 원문으로 확인하세요
+    - level: 1
+      anchor: 남의 아이디어를 명시적으로 자기 것이라 말하거나, 정정받고도 유지하거나, 재진술 포장을 반복한다
+      example: '"처음에 바람길 얘기한 거 저잖아요." (실제 최초 제안자 서지안)'
+      reviewer_hint: 동료 아이디어를 자기 것이라고 말했습니다
+    no_record: 다른 참여자의 아이디어를 언급·지지·재진술한 지원자 메시지가 없음 → `not_applicable`(출처를 밝힐 기회 없음). 세션 전체 지원자 메시지 0 → `no_activity`.
+  - dimension_id: hon_process_truth
+    name: 결정 과정의 사실 표현
+    definition: 칸 확정과 기획안에서 합의 여부·지지 상황·시간 초과 같은 결정 과정을 사실대로 말하고 적는가
+    positive_signals: 합의 상태를 스냅샷과 맞게 말함, 남은 이견을 드러냄, 기획안에 시간 초과·다수 결정 사실을 그대로 적음
+    negative_signals: 반대가 남았는데 "다 동의하셨죠"라고 단정, 타인의 반대를 동의로 요약, `timeout` 결과를 "전원 합의"로 기재
+    core_cards: []
+    core_scene: 각 단계 칸 확정·시간 초과 ~ 제출
+    levels:
+    - level: 5
+      anchor: 합의 상태를 정확히 요약하고 남은 이견까지 드러낸다. 기획안에도 시간 초과나 소수 의견을 사실대로 적는다
+      example: '"지안님은 아직 S2가 낫다고 하셨으니 그 우려는 근거 칸에 같이 적을게요." / 기획안: "문제 상황은 시간 안에 합의하지 못해 지지가 가장 많았던 가뭄으로 정함"'
+      reviewer_hint: 합의 상태와 남은 이견, 시간 초과 같은 결정 과정을 사실대로 말하고 적었습니다
+    - level: 4
+      anchor: 합의 상태를 말할 때 누가 동의했고 누가 아직인지가 지지 현황 스냅샷과 맞는다
+      example: '"한결님, 지안님은 물 쪽이고 하람님은 아직 말씀 안 하셨죠?"'
+      reviewer_hint: 말한 합의 상태가 실제 지지 현황과 맞습니다
+    - level: 3
+      anchor: 합의 상태를 대략적으로 말한다. 스냅샷과 크게 어긋나지 않는다
+      example: '"대부분 물 쪽인 것 같은데요." (실제 다수 지지)'
+      reviewer_hint: 합의 상태를 대략적으로 말했고 실제와 크게 어긋나지 않습니다
+    - level: 2
+      anchor: 합의 상태를 과장하는 표현이 1회 있다
+      example: '"거의 다 찬성하신 것 같으니 불로 정할게요." (스냅샷상 반대 2명)'
+      reviewer_hint: 합의 상태를 과장한 표현이 한 번 있습니다. 지지 현황 스냅샷과 비교해 보세요
+    - level: 1
+      anchor: 반대가 남았는데 "모두 동의했다"고 단정하거나, 남의 반대를 지지로 바꿔 말하거나, 시간 초과 결과를 기획안에 "팀 전원 합의"로 적는다
+      example: '"다들 동의하셨으니 확정합니다." (스냅샷상 강한결·서지안 반대) / 기획안: "전원 합의로 바람 선정" (`resolution: timeout`)'
+      reviewer_hint: 반대가 남았는데 모두 동의했다고 말했거나 시간 초과 결과를 전원 합의로 적었습니다
+    no_record: 지원자가 합의 상태를 말한 메시지, 기획안 본문의 결정 과정 서술이 모두 없음 → `not_applicable`. 말없이 확정만 한 것은 이 차원의 장면이 아니다(확정 행위는 `flex_decision_respect`).
+no_record_reasons:
+- code: no_activity
+  label: 지원자 활동 없음
+  priority: 5
+  worker_only: false
+- code: evaluate_failed
+  label: '시스템: 판단 실패'
+  priority: 1
+  worker_only: true
+- code: not_applicable
+  label: 해당 없음
+  priority: 4
+  worker_only: false
+- code: event_not_fired
+  label: 이벤트 미발생
+  priority: 2
+  worker_only: false
+- code: auto_submitted_blank
+  label: 자동 제출로 기여 칸 미작성
+  priority: 3
+  worker_only: false

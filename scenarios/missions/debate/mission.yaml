@@ -1,0 +1,193 @@
+# 미션: 토론형 기획 회의. 코드는 이 폴더를 해석만 한다. 구조 정본은 docs/common/scenario-model.md.
+# 채용 건 생성 때 api가 이 폴더 전체의 해시(scenarios/version.py catalog_version)를 고정하고
+# 페르소나·카드·키워드·평가표·프롬프트 본문을 positions.scenario에 복사한다. 자료 원문은 같은 catalog_version으로 DB에 시드한다.
+#
+# 표기: draft: true 또는 "[초안]" 주석이 붙은 값은 문서가 사용자 검토 대상으로 표시한 초안이다(scenario-model.md 머리말).
+#
+# 폴더 구성
+#   mission.yaml   이 파일. 미션 이름·설정·단계·시간 규칙·칸 채우기·시간 초과·침묵 초대 규칙·기획안 템플릿·관리자/디브리핑 안내 문구
+#   keywords.yaml  키워드 4개와 키워드별 문제 상황 안(P1~P3)·해결 방향 안(S1~S3)·자료 목록
+#   materials/<keyword>/*.md  키워드별 참고 자료 본문
+#   personas.yaml  세션 페르소나 3명(고정)과 확장용 페르소나(조립에 쓰지 않음)
+#   cards.yaml     카드 6장과 흐름 이벤트
+#   rubric.yaml    BARS 척도(정본 docs/common/rubric.md)
+#   prompts/       페르소나·턴 매니저·의도 분류·어시스턴트·평가 에이전트 프롬프트, 고정 문장, 금지 패턴, 프롬프트 픽스처
+#   assets/avatars/ 임시 프로필 이미지(파일 이름은 중립 번호, 유형 이름 금지)
+#   tests/         카탈로그 정합성 검사(pytest). 조립·실행 코드는 이 폴더를 읽지 않는다
+
+id: debate                       # [초안: id 이름] scenario-model.md 1.1
+name: 지역 생활 문제 해결 기획 회의
+setting: 새 프로젝트 팀이 지역 생활 문제 해결 공모에 낼 기획안을 정하는 첫 회의
+participants:
+  candidate_label: 지원자        # 대화 속 호칭은 표시 이름 + "님"
+  ai_seats: [p1, p2, p3]         # 자리 → 페르소나는 personas.yaml(고정 순서)
+  facilitator: null              # 진행자·팀장 없음. 시스템 안내가 "지금 할 일"과 남은 시간만 알린다
+channels: [room]                 # 토론방 하나, DM 없음
+
+# 평가 요소 5개(MVP 고정, 요소 선택 없음, R2). 이름은 rubric.md 3장과 같다.
+# meaning·how_we_see는 GET /admin/catalog 요소 카드와 디브리핑 "이렇게 봅니다" 한 줄에 같은 문구로 쓴다. [초안: 문구]
+elements:
+  - id: persuasion
+    name: 설득/논리력
+    meaning: 서로 다른 안이 경쟁할 때 이유를 들어 주장하고 상대 논점에 답하는 힘
+    how_we_see: 자기 안에 이유를 붙이는지, 반론에 그 논점으로 답하는지, 안들을 비교해 결론 쪽으로 논의를 모으는지 봅니다. 설득에 성공했는지는 보지 않습니다.
+  - id: listening
+    name: 경청/존중
+    meaning: 다른 의견, 특히 강하게 반복되는 반대 앞에서 상대의 말을 실제로 듣는 태도
+    how_we_see: 반대 의견에 내용으로 응답하는지, 상대 주장을 정확히 이해하려 하는지, 타당한 점을 인정하고 사람이 아닌 안을 향해 반대하는지 봅니다.
+  - id: inclusion
+    name: 배려/포용
+    meaning: 덜 말하는 참여자가 의견을 낼 자리를 만들고 그 의견을 논의에 이어 주는 행동
+    how_we_see: 머뭇거리는 동료를 알아차리고 초대하는지, 나온 의견을 이어받는지, 결정 전에 아직 말하지 않은 사람을 확인하는지 봅니다.
+  - id: flexibility
+    name: 수용/유연성
+    meaning: 내 안이 채택되지 않는 상황에서 다른 안을 검토하고 결정을 받아들이는 태도
+    how_we_see: 다른 안의 근거를 검토하는지, 결정 절차를 존중하는지, 결과를 받아들이고 다음 단계에 계속 기여하는지 봅니다. 근거 있는 이의 제기는 감점하지 않습니다.
+  - id: honesty
+    name: 정직/공정
+    meaning: 함께 만든 결과에서 누가 무엇을 냈는지와 어떻게 결정됐는지를 사실대로 드러내는 태도
+    how_we_see: 기획안의 아이디어 기여 칸과 토론 중 말에서 동료의 아이디어를 그 사람의 것으로 다루는지, 합의 상태를 사실대로 말하는지 봅니다.
+
+# 단계 4개(scenario-model.md 1.2·1.3). budget_min은 60분 기준, 비율 10:18:18:14.
+# 마감은 누적 고정: deadline_fraction × L (키워드 L/6, 문제 상황 7L/15, 해결책 23L/30, 기획안 L).
+stages:
+  - stage_id: keyword
+    name: 키워드
+    budget_min: 10
+    deadline_fraction: "1/6"
+    deadline_min: 10
+    slot: keyword
+    task: 키워드 후보 4개 중 하나를 정한다
+  - stage_id: problem
+    name: 문제 상황
+    budget_min: 18
+    deadline_fraction: "7/15"
+    deadline_min: 28
+    slot: problem
+    task: 확정 키워드와 관련된 문제 상황 하나를 정한다
+  - stage_id: solution
+    name: 해결책
+    budget_min: 18
+    deadline_fraction: "23/30"
+    deadline_min: 46
+    slot: solution
+    task: 그 문제의 해결 방향 하나를 정한다
+  - stage_id: proposal
+    name: 기획안 작성
+    budget_min: 14
+    deadline_fraction: "1"
+    deadline_min: 60
+    slot: null
+    task: 지원자가 혼자 최종 기획안을 쓰고 제출한다
+
+session_minutes_options: [60, 15]   # 15는 데모·e2e 압축(같은 비율)
+default_session_minutes: 60
+offset_round_min: 0.01              # 비율 환산 오프셋은 0.01분 단위 반올림
+card_offset_floor_min: 0.34         # 카드 offset_min 환산 후 최소 20초
+office_clock: { start: "09:00", end: "10:00" }   # 오피스 시각 = 09:00 + 경과 분 × 60/L (15분 데모도 09:00~10:00)
+
+slot_states: [empty, confirmed]
+default_keyword: water              # [초안] 시간 초과에 제안된 안이 없을 때 키워드 기준안
+keyword_slot_only_candidates: true  # [초안] 키워드 칸은 후보 4개 중에서만 확정(밖이면 api 422 invalid_keyword)
+
+# 기준안(문제 상황): flexibility_majority 카드의 card_due 시점에 계산해 잠근다(R1·R5-4).
+# 지원자가 그 순간 지지하는 안이 아닌 첫 시나리오 안(P1 → P2 → P3). 지원자 지지가 없으면 P1.
+lead_option:
+  stage_id: problem
+  lock_card: flexibility_majority
+  order: [p1, p2, p3]
+  skip_candidate_supported: true
+  default: p1
+
+# AI 동료가 칸을 채우는 조건(scenario-model.md 1.4). [초안: 우선순위]
+consensus_fill:
+  min_supporters: 3                 # 4명 중 3명 이상
+  candidate_must_support: true      # 지원자의 현재 지지(confidence=high인 propose·agree)가 그 안
+  wait_min: 0                       # 대기 없음, 즉시(R4)
+  filler_priority: [critic, quiet, stubborn]   # 그 안의 지지자 중 첫 번째
+  phrase: consensus_fill            # prompts/fixed_phrases.yaml 키
+
+# 시간 초과(scenario-model.md 1.4). api가 결정적으로 직접 채운다(그래프 자극 아님). [초안: 경고 시점과 순위 규칙]
+timeout:
+  warning_before_fraction: "1/30"   # 마감 L/30 전 시스템 안내(60분 2분, 15분 30초)
+  warning_phrase: time_warning
+  selection: [most_supporters, candidate_supported, first_proposed, stage_default]
+  stage_default:
+    keyword: default_keyword        # water
+    problem: locked_lead_or_p1      # 잠긴 기준안, 없으면 P1
+    solution: s1
+  announcer_priority: [critic, quiet, stubborn]   # 지지자가 아니어도 된다
+  phrase: timeout_fill
+  proposal_auto_submit: true        # 기획안 단계 시간 초과면 그 시점 초안을 자동 제출(session.ended{reason: timeout})
+
+# 침묵 초대(scenario-model.md 3.1). [초안: 수치]
+silence_invite:
+  stages: [keyword, problem, solution]
+  idle_fraction: "1/20"             # 지원자 마지막 메시지(또는 단계 시작) 후 L/20 무발언 (60분 3분, 15분 45초)
+  no_opinion_after_budget_ratio: 0.5   # 또는 단계 기본 시간의 절반이 지났는데 이 단계 의견(propose·agree·oppose)이 없음
+  opinion_intents: [propose, agree, oppose]
+  max_per_stage: 1                  # 세션 최대 3회
+  inviter: critic                   # 서지안. stubborn·quiet는 묻지 않는다
+  defer_while_typing: true
+  phrase: silence_invite
+
+# 최종 기획안(scenario-model.md 1.5). 칸 안내는 무엇을 적는 칸인지만 중립적으로 알린다(예시·추천 문구 없음, R7).
+proposal_template:
+  - field: keyword
+    name: 키워드
+    initial: slot:keyword            # [초안] 칸 결과로 채워 둠(수정 가능)
+    hint: null
+  - field: problem
+    name: 문제 상황
+    initial: slot:problem            # [초안]
+    hint: null
+  - field: solution
+    name: 해결책
+    initial: slot:solution           # [초안]
+    hint: null
+  - field: rationale
+    name: 근거
+    initial: blank
+    hint: null
+  - field: expected_effect
+    name: 기대효과
+    initial: blank
+    hint: null
+  - field: idea_credit
+    name: 아이디어 기여
+    initial: blank                   # 정직/공정 판정 입력
+    hint: 이 기획에 반영된 의견과 그 의견을 낸 사람
+
+assistant:
+  limit_per_session: 60             # 초과는 api 429 assistant_limit
+  max_tool_calls: 3
+  tools: [search_materials, get_material]
+
+# 관리자 화면 문구(GET /admin/catalog). 페르소나 유형·카드·척도 세부는 넣지 않는다. [초안: 문구]
+admin_catalog:
+  draft: true
+  candidate_notice_template: "안녕하세요 {alias}님, Day Zero 토론 시뮬레이션 안내입니다. AI 동료 3명과 채팅으로 지역 생활 문제 해결 기획안을 함께 정하고, 마지막에 기획안을 직접 써서 제출합니다. {session_minutes}분 동안 이어서 진행되며 PC를 권장합니다. {invite_url}"
+  candidate_faq:
+    - { q: "AI가 평가하나요?", a: "세션이 끝난 뒤 AI 평가 에이전트가 공개된 행동 기준 척도로 지원자 행동 근거를 들어 수준을 판단하고, 담당자가 그 근거를 확인해 차원 단위로 조정하며 최종 평가합니다." }
+    - { q: "무엇을 보나요?", a: "토론에서 다른 참여자를 대하는 태도와 결정에 참여하는 방식(설득/논리력·경청/존중·배려/포용·수용/유연성·정직/공정)만 봅니다. 안의 질이나 기획안 완성도는 보지 않습니다." }
+    - { q: "기록은 어디에 남나요?", a: "대화·어시스턴트 요청·제출 기획안과 리포트는 Day Zero에 저장되고 세션 종료 후 90일 뒤 삭제됩니다." }
+    - { q: "결과를 지원자에게 알려 주나요?", a: "평가 결과는 지원자에게 보여 주지 않습니다. 지원자는 종료 직후 장면 설명과 요소 안내가 담긴 디브리핑을 봅니다." }
+    - { q: "이의 제기는 어떻게 하나요?", a: "지원자는 디브리핑의 문의 창구로 연락합니다. 담당자는 리포트의 근거와 전체 기록을 확인해 답합니다." }
+    - { q: "중간에 끊기면 어떻게 되나요?", a: "같은 링크로 다시 들어오면 이어집니다. 시간은 계속 흐르고 끊긴 구간은 기록에 표시됩니다." }
+
+# 디브리핑 문구(GET /sessions/{id}/debrief). 카드별 문장은 cards.yaml debrief, 자리별 성향 설명은 personas.yaml persona_description.
+debrief:
+  intro_notice: 같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 각자의 반응을 봅니다.   # 첫 문장 고정(R1, scenario-model.md 7)
+  draft: true                       # 아래 문구는 [초안]
+  persona_note: 함께 토론한 세 동료는 각자 정해진 성향을 가진 AI였습니다. 성향은 아래 소개에서 처음 공개합니다.
+  scoring_notice: 평가 결과는 보여 드리지 않습니다. 담당자가 근거를 확인해 조정하기 전의 판단이라 그대로 보면 오해를 낳을 수 있고, 합격 여부를 정하는 값도 아니기 때문입니다. 기업은 토론 대화와 어시스턴트 요청 원문, 제출한 기획안을 봅니다.
+  appeal_notice: 장면이 불공정했거나 연결이 끊긴 구간이 있었다면 담당자 또는 문의 창구로 알려 주세요. 담당자가 전체 기록을 확인해 답합니다.
+  retention_notice: 기록은 종료 후 {days}일 보관 뒤 삭제됩니다. 제출한 기획안 열람과 설문은 7일 동안 가능합니다.
+  retention_days: 90
+  proposal_view_days: 7
+  failed_notice: 세션이 시스템 문제로 중단됐습니다. 담당자가 새 초대를 보내면 다시 응시할 수 있습니다.
+  my_messages: { per_stage: 1, max: 3, pick: longest }   # 토론 단계마다 가장 긴 지원자 메시지(결정적)
+  survey:
+    - { q: natural, text: "토론이 자연스러웠나요?", kind: scale }
+    - { q: fair, text: "장면이 공정하다고 느꼈나요?", kind: scale }
+    - { q: comment, text: "자유롭게 의견을 남겨 주세요.", kind: text }
