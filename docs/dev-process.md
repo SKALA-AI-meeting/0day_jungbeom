@@ -39,7 +39,7 @@
 | 프론트 린트 | Next 기본 eslint + prettier | `pnpm lint` |
 | 테스트 | pytest(+ pytest-asyncio), vitest. 연결·e2e는 `tests/` | 서비스 폴더에서 `make test` |
 | 인프라 | Docker Compose. 개발 중에는 **인프라만** docker, 앱은 로컬 | `make infra-up`, `make infra-down` |
-| Makefile | 루트 `Makefile`에 공통 타깃: `infra-up`, `infra-down`, `up`, `seed`, `test`, `lint`, `e2e`, `stage`, `stage-advance`, `e2e-stages`. 검사는 실패 코드를 그대로 돌려주고, 아직 없는 서비스 폴더만 건너뛴다 | |
+| Makefile | 루트 `Makefile`에 공통 타깃: `infra-up`, `infra-down`, `up`, `seed`, `test`, `lint`, `e2e`, `stage`, `stage-advance`, `e2e-stages`, `e2e-stack-up`·`e2e-stack-seed`·`e2e-stack-down`(단계 테스트용 격리 스택). 검사는 실패 코드를 그대로 돌려주고, 아직 없는 서비스 폴더만 건너뛴다 | |
 | seed | 루트 `scripts/seed.py`(httpx만 사용, 관리자 가입·채용 건 생성·rag 재색인 호출). be-foundation 소유 | `make seed` |
 
 ## 로컬 실행 (개발 중)
@@ -61,7 +61,7 @@ cd apps/web && pnpm dev                                   # 3000
 2. 전체 compose(8개 서비스: web·api·debate-mcp·rag-mcp·assessment-mcp·report-worker·postgres·rabbitmq)는 `make up`, 앱을 로컬에서 고치며 볼 때는 `make infra-up` 뒤 위 명령으로 앱을 띄운다.
 3. `make seed`(자료 원문 시드 → 관리자·채용 건 → rag 재색인). rag-mcp 첫 기동은 BGE-M3를 받는다.
 4. `make stage STAGE=<keyword|problem|solution|proposal|ended> [MIN=15] [LLM=fake|live]` → 출력된 초대 링크를 브라우저로 연다. 시간을 당길 때는 `make stage-advance SID=<id> TO=deadline|idle|card:<id>|<초>`.
-5. 단계별 화면 테스트는 `make e2e-stages [STAGE=<단계>]`. 기록은 `tests/e2e/records/stages/<단계>/`.
+5. 단계별 화면 테스트는 `make e2e-stack-up`(compose 프로젝트 `dayzero-debate`, `infra/docker-compose.e2e.yml` 오버라이드: web 3100·api 8100·내부 127.0.0.1:8101, `ENABLE_TEST_API=1`·`LLM_FAKE=1`, env는 gitignore된 `infra/.env.e2e`) → `make e2e-stack-seed` → `make e2e-stages [STAGE=<단계>]` → `make e2e-stack-down`. 같은 머신의 다른 compose 프로젝트(제출 스택 등)는 건드리지 않는다. 기록은 `docs/common/testing.md` "단계별 화면 테스트".
 
 `LLM=fake`와 `live`는 스택 env(`LLM_FAKE`)로 갈리므로 바꿀 때는 api·report-worker를 다시 띄운다. 통합 스택 사용권 규칙(아래)은 그대로다.
 
