@@ -1,11 +1,12 @@
 // 세션 WebSocket 연결과 재연결. 프레임 봉투와 close code는 docs/common/contracts.md의 WebSocket 절.
 // 끊기면 3초 뒤 다시 붙고, 열릴 때마다 onOpen으로 알려 화면이 /state를 다시 받게 한다(WS는 증분만 보낸다).
+// 프레임의 seq 공백 검사는 화면 reducer(components/debate/reducer.ts)가 한다.
 // 4401(토큰 없음·만료)은 /s/{token}/resume으로 새 토큰을 받아 바로 다시 붙는다. 재발급이 일시 장애로 실패하면
 // (refreshToken이 throw) 3초 뒤 재발급부터 다시 시도하고, 세션이 끝나 더 이을 수 없을 때(null)만 closed로 멈춘다.
 // 4000(session.replaced)·4403(다른 세션)은 다시 붙지 않는다.
-import type { SendFrame, ServerFrame } from "@/components/office/types";
+import type { SendFrame, ServerFrame } from "@/components/debate/types";
 import { MOCK, sessionSocketUrl } from "@/lib/api";
-import { createMockSocket } from "@/mocks/office";
+import { createMockSocket } from "@/mocks/debate";
 
 export const RECONNECT_DELAY_MS = 3000;
 export const CLOSE_REPLACED = 4000;

@@ -1,4 +1,4 @@
-// break-ui 점검용 최악의 데이터(개발 mock 전용). 주소에 ?data=worst가 있으면 admin.ts·office.ts가 픽스처에 덮어쓴다.
+// break-ui 점검용 최악의 데이터(개발 mock 전용). 주소에 ?data=worst가 있으면 admin.ts·debate.ts가 픽스처에 덮어쓴다.
 // 값은 실제로 나올 법한 것만 쓴다: 긴 외국 이름·긴 이메일, 한 글자 별칭, 공백 없는 URL, 긴 문서, 빈 목록.
 export const WORST =
   typeof window !== "undefined" &&
@@ -11,7 +11,7 @@ export const LONG_POSITION =
 export const LONG_URL =
   "https://docs.example.com/moarun/research/2026-q4/first-meetup-retention-interview-summary-final-v3-revised.pdf";
 
-/** 문단이 여러 개인 긴 문서(최종본 섹션 최대 분량의 두 배쯤) */
+/** 문단이 여러 개인 긴 글(기획안 칸·자료 본문 break-ui용) */
 export const LONG_DOC = Array.from(
   { length: 14 },
   (_, i) =>

@@ -31,7 +31,17 @@ export type RequestOptions = {
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = options.method ?? "GET";
-  if (MOCK) return mockRequest<T>(method, path, options.body);
+  if (MOCK) {
+    try {
+      return await mockRequest<T>(method, path, options.body);
+    } catch (error) {
+      // mock 서버의 오류({status, code})도 실제 응답과 같은 ApiError로 바꾼다
+      const e = error as { status?: number; code?: string; message?: string };
+      if (typeof e.status === "number")
+        throw new ApiError(e.status, e.code ?? "http_error", e.message ?? "");
+      throw error;
+    }
+  }
 
   const headers: Record<string, string> = { Accept: "application/json" };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";

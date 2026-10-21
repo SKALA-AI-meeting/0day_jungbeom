@@ -1,11 +1,12 @@
-// NEXT_PUBLIC_MOCK=1일 때 lib/api.ts가 부르는 mock 라우터(foundation 소유).
-// 경로 표는 화면 트랙이 각자 소유한 admin.ts(web-admin)·office.ts(web-office)에 있고, 여기서는 합치기만 한다.
-// 없는 경로는 404 오류로 알린다.
-import { ROUTES as ADMIN_ROUTES } from "./admin";
-import { ROUTES as OFFICE_ROUTES } from "./office";
+// NEXT_PUBLIC_MOCK=1일 때 lib/api.ts가 부르는 mock 라우터.
+// 경로 표는 화면 트랙이 각자 소유한 admin.ts(mock-admin, /admin/*)·debate.ts(mock-candidate, 지원자 경로)에 있다.
+// 표는 경로 앞부분으로 골라 필요할 때 불러온다: 한쪽 표가 깨져도 다른 쪽 화면은 돈다. 없는 경로는 404 오류로 알린다.
 import type { MockRoute } from "./types";
 
-const ROUTES: MockRoute[] = [...ADMIN_ROUTES, ...OFFICE_ROUTES];
+async function routesFor(path: string): Promise<MockRoute[]> {
+  if (path.startsWith("/admin")) return (await import("./admin")).ROUTES;
+  return (await import("./debate")).ROUTES;
+}
 
 function match(pattern: string, path: string): Record<string, string> | null {
   const want = pattern.split("/");
@@ -25,7 +26,7 @@ export class MockMissingError extends Error {
 }
 
 export async function mockRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
-  for (const [m, pattern, handler] of ROUTES) {
+  for (const [m, pattern, handler] of await routesFor(path)) {
     const params = m === method ? match(pattern, path) : null;
     if (params) return structuredClone(handler(params, body)) as T;
   }
