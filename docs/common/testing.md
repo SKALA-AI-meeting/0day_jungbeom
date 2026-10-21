@@ -79,7 +79,7 @@ python scripts/make_session.py --minutes 15 [--start-at keyword|problem|solution
 7. `timeout_all`: 세 칸 모두 `timeout`이고 `filled_by`가 자리 id, 기획안 앞 3칸이 확정 값으로 채워진 채 자동 제출, 리포트 생성.
 8. 인증 경계(`records/.../auth.md`): 타 기업 관리자의 채용 건·리포트·기록 조회 404, 타 세션 JWT로 /state 403, 동의 전 /state 401, 만료 JWT 401, X-Internal-Token 없이 /internal 401, 공개 포트 8000에서 /internal 404, assessment-mcp 토큰 없이 `forbidden`, 진행 중 세션 previous_session_id 재초대 422, 재발급 뒤 옛 링크 404.
 9. 비용·지연: summary에 세션 비용(`sessions.cost_usd`, 목표 $0.5)과 지원자 메시지 → 첫 페르소나 게시 p95(목표 8초), 의도 분류 p95(목표 3초). 비교 기준은 `harness.md` "실측 기준선".
-10. 장애 주입(2종, 각 1건): (a) 큐 DLQ — 리포트 3회 실패 → failed → regenerate로 report_ready(평가 실행에 `evaluate_failed`가 없으면 같은 run_id 재사용·평가 LLM 미호출), (b) LLM timeout — 페르소나 LLM 타임아웃 주입 시 그 발언 생략·세션 계속, 평가 LLM 타임아웃 주입 시 저장 없이 큐 재시도 뒤 성공.
+10. 장애 주입(2종, 각 1건): (a) 큐 DLQ — 리포트 3회 실패 → failed → regenerate로 report_ready(평가 실행에 `evaluate_failed`가 없으면 같은 run_id 재사용·평가 LLM 미호출), (b) LLM timeout(`LLM_FAULT=persona:timeout:3`로 api 재기동, `LLM_FAULT=evaluator:timeout:1`로 워커 재기동) — 페르소나 LLM 타임아웃 주입 시 그 발언 생략·세션 계속, 평가 LLM 타임아웃 주입 시 저장 없이 큐 재시도 뒤 성공.
 
 P1 대본 단언: `restart`(재시작 후 90초 안에 WS 재연결·`/state` 복원, 미처리 마감 재처리, `agent_runs` 재큐, 중복 메시지·안·입장 없음). 침묵 초대(`silent`)와 혼자 확정(`solo_confirm`)은 Playwright 단계 테스트가 맡는다(아래). P2: `no_assistant`(`ai_usage.used=false`), 동시 실행(단언 1·5 통과).
 
