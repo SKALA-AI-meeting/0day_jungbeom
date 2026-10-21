@@ -221,6 +221,8 @@ async def test_intent_live(live_report):
 
     data = evaluate.load_intent()
     llm = make_llm("intent")
+    # 운영 메일박스와 같은 입력: 채용 건에 복사된 카탈로그 prompts/intent.md를 지시로 넘긴다
+    instructions = (MISSION / "prompts" / "intent.md").read_text("utf-8")
     outputs = []
     for case in data["cases"]:
         existing = [
@@ -243,6 +245,7 @@ async def test_intent_live(live_report):
             options=existing,
             recent=[],
             seats=data["seats"],
+            instructions=instructions,
         )
         outputs.append(result)
     score = evaluate.score_intent(data["cases"], outputs)

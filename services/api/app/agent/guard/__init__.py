@@ -5,9 +5,10 @@ Guardrails).
 - 적용 단위는 메시지 전체다. 어느 그룹 패턴이든 걸리면 hit.
 - `allow_exact`: 메시지 전체(앞뒤 공백 제거)가 목록의 문장과 글자 그대로 같으면 어느 그룹도 검사하지
   않는다(정해진 평가 안내문 보존). 부분 포함·변형 문장은 예외가 아니다.
+- 그룹의 `phases`가 있으면 그 단계 발언에만 적용한다(예: credit은 기획안 단계만). 호출한 노드가
+  단계를 넘기고, 단계를 모르는 호출(어시스턴트)은 단계 범위 그룹을 건너뛴다.
 - 처리 정책(재생성 1회 → 페르소나는 자리별 안전 문구, 어시스턴트는 그룹 notice)은 호출한 노드가
-  정하고,
-  이 모듈은 판정·자르기·교체 문장만 준다. max_chars 초과는 자른다.
+  정하고, 이 모듈은 판정·자르기·교체 문장만 준다. max_chars 초과는 자른다.
 """
 
 import re
@@ -25,6 +26,10 @@ class Group:
     id: str
     notice: str  # fixed_phrases.yaml notices의 키
     patterns: tuple[re.Pattern[str], ...]
+    phases: frozenset[str] = frozenset()  # 비어 있으면 모든 단계, 아니면 그 단계 발언에만 적용
+
+    def applies(self, phase: str | None) -> bool:
+        return not self.phases or phase in self.phases
 
     def hits(self, text: str) -> bool:
         return any(p.search(text) for p in self.patterns)
@@ -51,6 +56,7 @@ class Guard:
                 id=g["id"],
                 notice=g.get("notice", ""),
                 patterns=tuple(re.compile(p, re.IGNORECASE) for p in g.get("patterns") or ()),
+                phases=frozenset(g.get("phases") or ()),
             )
             for g in spec.get("groups") or ()
         )
@@ -59,16 +65,17 @@ class Guard:
     def from_yaml(cls, text: str) -> "Guard":
         return cls(yaml.safe_load(text) or {})
 
-    def groups_hit(self, text: str) -> list[str]:
+    def groups_hit(self, text: str, phase: str | None = None) -> list[str]:
+        """phase는 발언 단계. 단계 범위가 있는 그룹은 단계가 맞을 때만 본다(None이면 건너뜀)."""
         body = text.strip()
         if body in self.allow_exact:
             return []
-        return [g.id for g in self.groups if g.hits(body)]
+        return [g.id for g in self.groups if g.applies(phase) and g.hits(body)]
 
-    def check(self, text: str) -> GuardResult:
+    def check(self, text: str, phase: str | None = None) -> GuardResult:
         """판정 + 자르기. 문장은 바꾸지 않는다(교체는 노드가 정한다)."""
         body = text.strip()
-        hits = tuple(self.groups_hit(body))
+        hits = tuple(self.groups_hit(body, phase))
         truncated = len(body) > self.max_chars
         if truncated:
             body = body[: self.max_chars].rstrip()

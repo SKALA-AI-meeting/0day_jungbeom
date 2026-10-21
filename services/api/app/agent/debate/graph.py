@@ -492,7 +492,7 @@ async def guard(state: DebateState, runtime: Runtime[DebateDeps]) -> dict[str, A
     deps = runtime.context
     draft, plan = _restore(state)
     checker = guard_from_prompts(deps.catalog.prompts)
-    result = checker.check(draft.content)
+    result = checker.check(draft.content, state["phase"])
     if result.ok or draft.fixed:
         draft.content = result.text
         return {"draft": asdict(draft)}
@@ -502,7 +502,7 @@ async def guard(state: DebateState, runtime: Runtime[DebateDeps]) -> dict[str, A
         again = await _generate(state, deps, spk, plan, f"금지 표현({', '.join(result.hits)})")
     except LLMUnavailable:
         again = None
-    second = checker.check(again.content) if again else None
+    second = checker.check(again.content, state["phase"]) if again else None
     if again is None or second is None or not second.ok or not again.content:
         safe = persona.safe_draft(deps.catalog, spk["seat"])
         safe.meta = {**meta, "guard": "safe"}
@@ -572,12 +572,12 @@ async def stance_check(state: DebateState, runtime: Runtime[DebateDeps]) -> dict
         again = await _generate(state, deps, spk, plan, f"계획 밖 입장({found})")
     except LLMUnavailable:
         again = None
-    if again is not None and checker.check(again.content).ok and again.content:
+    if again is not None and checker.check(again.content, state["phase"]).ok and again.content:
         second, judged = await _violation(state, deps, again, plan)
         if not second:
             if again.stance is None and persona.sentence_supports_plan(judged, plan):
                 again.stance = {"option_id": plan.option_id or plan.key, "stance": "support"}
-            again.content = checker.check(again.content).text
+            again.content = checker.check(again.content, state["phase"]).text
             again.meta = meta
             return {"draft": asdict(again)}
     fixed = persona.stance_fallback(deps.catalog, spk["seat"], plan)

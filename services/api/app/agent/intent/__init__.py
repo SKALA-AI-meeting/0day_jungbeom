@@ -125,12 +125,23 @@ def build_user(
     return json.dumps(body, ensure_ascii=False)
 
 
+TARGET_FIELDS = ("target_option_id", "scenario_option_key", "new_option_label")
+
+
 def _normalize(out: dict[str, Any], options: list[ExistingOption]) -> dict[str, Any]:
+    """대상 필드를 계약대로 하나만 남긴다(나온 안 id > 카탈로그 키 > 새 라벨).
+
+    카탈로그 키가 이미 행이 있는 안이면 그 option_id로 바꾼다(최초 제안자 보존).
+    """
+    out = dict(out)
     key = out.get("scenario_option_key")
-    if key:
-        for option in options:
-            if option.get("scenario_option_key") == key:
-                return {**out, "target_option_id": option["option_id"], "scenario_option_key": None}
+    for option in options:
+        if key and option.get("scenario_option_key") == key:
+            out["target_option_id"], out["scenario_option_key"] = option["option_id"], None
+    kept = next((f for f in TARGET_FIELDS if out.get(f)), None)
+    for field in TARGET_FIELDS:
+        if field != kept and field in out:
+            out[field] = None
     return out
 
 

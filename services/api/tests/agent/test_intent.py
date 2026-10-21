@@ -154,3 +154,19 @@ async def test_live_accuracy_baseline(catalog):
         )
         hits += out["intent"] == row["intent"] and target == row["target"]
     print(f"intent accuracy {hits}/{len(rows)} = {hits / len(rows):.2f}")
+
+
+async def test_only_one_target_field_is_kept(catalog):
+    both = {
+        "intent": "propose",
+        "target_option_id": "opt-fire",
+        "scenario_option_key": "fire",
+        "new_option_label": "불 축제",
+        "confidence": "high",
+        "addressed_to": [],
+    }
+    result, used = await _classify(
+        FakeLLM([both]), "불이요", catalog.catalog_options("keyword", None)
+    )
+    assert not used and result["target_option_id"] == "opt-fire"
+    assert result["scenario_option_key"] is None and result["new_option_label"] is None

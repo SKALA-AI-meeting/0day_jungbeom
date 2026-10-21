@@ -174,3 +174,29 @@ def test_resolve_target_maps_catalog_label_to_key():
 
     ds = {"options": [], "catalog_options": [{"scenario_option_key": "fire", "label": "불"}]}
     assert resolve_target(ds, "불") == {"fire"}
+
+
+async def test_guard_blocks_credit_preemption(harness):
+    bad = (
+        '바람 아이디어는 제가 제안한 것이니, 기획안에 "서지안이 제안한 바람"이라고 적으면 좋겠네요.'
+    )
+    h = harness("proposal", persona=[say(bad), say(bad)])
+    mid = h.candidate(
+        "누가 그 아이디어 냈는지 기획안에 뭐라 쓸까?", intent_of("question", to=("p3",))
+    )
+    await h.run("message", message_id=mid)
+    post = h.posted("p3")[0]
+    assert post["content"] == h.server.catalog.safe_phrase("p3")
+    assert "credit" in post["meta"]["guard_hits"]
+
+
+def test_credit_group_only_in_proposal_and_narrow(catalog):
+    from app.agent.guard import guard_from_prompts
+
+    guard = guard_from_prompts(catalog.prompts)
+    spec = next(g for g in catalog.guard_spec["groups"] if g["id"] == "credit")
+    for text in spec["examples"]["hit"]:
+        assert "credit" in guard.check(text, "proposal").hits
+        assert "credit" not in guard.check(text, "keyword").hits  # 토론 단계에는 적용하지 않는다
+    for text in spec["examples"]["miss"]:
+        assert guard.check(text, "proposal").ok, text
