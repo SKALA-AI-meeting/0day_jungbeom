@@ -257,3 +257,11 @@ async def test_error_mapping_and_retry(mcp_client, api):
     out = await call(mcp_client, "get_rubric", {"session_id": "sess-1"})
     assert out["error"]["code"] == "upstream_unavailable" and out["error"]["retryable"] is True
     assert len(api.requests) == 2
+
+
+async def test_session_record_failed_session_is_conflict(mcp_client, api):
+    """실패 세션은 리포트를 만들지 않으므로 completed_at이 있어도 conflict."""
+    api.handler = fake_api(record_routes(session={**completed_session(), "status": "failed"}))
+    out = await call(mcp_client, "get_session_record", {"session_id": "sess-1"})
+    assert out["ok"] is False and out["error"]["code"] == "conflict"
+    assert len(api.requests) == 1

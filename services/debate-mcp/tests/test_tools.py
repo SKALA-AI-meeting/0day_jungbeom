@@ -89,7 +89,8 @@ async def test_get_transcript_passes_filters_and_strips_internal_fields(mcp_clie
         mcp_client, "get_transcript", {"session_id": "sess-1", "phase": "problem", "since_t_min": 9}
     )
     params = api.requests[-1].url.params
-    assert (params["phase"], params["since_t_min"], params["limit"]) == ("problem", "9.0", "30")
+    assert (params["phase"], params["since_t_min"], params["tail"]) == ("problem", "9.0", "30")
+    assert "limit" not in params
     assert set(out["data"][0]) == {"id", "sender", "content", "phase", "is_invite", "t_min"}
 
 

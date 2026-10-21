@@ -72,12 +72,13 @@ async def get_transcript(
     phase: Annotated[Phase | None, Field(description="이 단계의 메시지만. 생략하면 전체")] = None,
     limit: Annotated[int, Field(ge=1, le=200, description="최대 개수(기본 30)")] = 30,
 ) -> dict[str, Any]:
-    """토론방 메시지를 시간순으로 조회한다.
+    """토론방 최근 메시지(기본 30개)를 시간순으로 조회한다.
 
     각 메시지는 id·보낸 자리(sender)·본문·단계·침묵 초대 여부·세션 시각(t_min)만 담는다
     (의도 분류·메타·발언 경위는 없다). 시각과 단계로 거를 수 있다.
     """
-    params = {"since_t_min": since_t_min, "phase": phase, "limit": limit}
+    # tail=N: api가 조건에 맞는 최근 N개를 오래된 순으로 준다
+    params = {"since_t_min": since_t_min, "phase": phase, "tail": limit}
     result = await client.call("GET", f"{_base(session_id)}/messages", params=params)
     if not result["ok"]:
         return result

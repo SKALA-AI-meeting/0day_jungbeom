@@ -19,8 +19,8 @@ RunId = Annotated[str, Field(min_length=1, description="실행 run ID(멱등 키
 Phase = Literal["keyword", "problem", "solution", "proposal"]
 SLOT_PHASES = ("keyword", "problem", "solution")
 PHASES = (*SLOT_PHASES, "proposal")
-# completed 이후 상태. 이 밖이면 평가 입력을 만들지 않는다(conflict)
-AFTER_COMPLETED = {"completed", "report_ready", "approving", "reviewed", "failed"}
+# completed 이후 상태. 이 밖이면(실패 세션 포함) 평가 입력을 만들지 않는다(conflict)
+AFTER_COMPLETED = {"completed", "report_ready", "approving", "reviewed"}
 MESSAGE_PAGE = 1000
 
 
