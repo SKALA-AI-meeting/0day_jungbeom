@@ -4,22 +4,15 @@ import Link from "next/link";
 
 import { adminApi, useLoad } from "@/components/admin/client";
 import { PositionList } from "@/components/admin/position-list";
-import type { Catalog, Position } from "@/components/admin/types";
 import { Button } from "@/components/ui";
 
 export default function PositionsPage() {
-  const { data, error } = useLoad<{ positions: Position[]; catalog: Catalog }>(async (token) => {
-    const [positions, catalog] = await Promise.all([
-      adminApi.positions(token),
-      adminApi.catalog(token),
-    ]);
-    return { positions, catalog };
-  });
+  const { data, error } = useLoad(adminApi.positions);
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">채용 건</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-title1 font-bold">채용 건</h1>
         <div className="flex items-center gap-3">
           <Link
             href="/admin/sample-report"
@@ -37,7 +30,7 @@ export default function PositionsPage() {
           {error}
         </p>
       )}
-      {data && <PositionList positions={data.positions} catalog={data.catalog} />}
+      {data && <PositionList positions={data} />}
     </>
   );
 }

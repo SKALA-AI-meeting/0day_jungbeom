@@ -1,43 +1,43 @@
-// 관리자 화면이 쓰는 계약 형태. 정본은 docs/common/contracts.md "관리자 REST"와 Report.
+// 관리자 화면이 쓰는 계약 형태. 정본은 docs/common/contracts.md "관리자 REST"·Report·근거 참조.
+// 요소·차원·카드·유형 id는 문자열로만 받는다(실제 목록은 rubric.md·scenario-model.md).
+import type { Confidence, Level } from "@/components/ui";
 
-export type ElementId =
-  "responsibility" | "planning" | "adaptability" | "collaboration" | "honesty";
+export type { Confidence, Level };
 
-export type CatalogElement = {
-  id: ElementId;
-  name: string;
-  meaning: string;
-  how_we_see: string;
-  if_unselected: string;
-};
+export type ElementId = string;
+export type Seat = "candidate" | "p1" | "p2" | "p3";
+export type Sender = Seat | "system";
+export type PhaseId = "keyword" | "problem" | "solution" | "proposal";
+export type SessionMinutes = 60 | 15;
+
+export type CatalogElement = { id: ElementId; name: string; meaning: string; how_we_see: string };
 
 export type Catalog = {
-  missions: {
-    id: string;
-    name: string;
-    company_name: string;
-    deliverable: string;
-    /** 이 미션의 회사 문서(리포트의 인용 문서 이름도 여기서 읽는다) */
-    documents: { doc_id: string; title: string }[];
-  }[];
   elements: CatalogElement[];
+  session_minutes_options: SessionMinutes[];
+  default_session_minutes: SessionMinutes;
   candidate_notice_template: string;
   candidate_faq: { q: string; a: string }[];
-  session_minutes: number;
 };
 
 export type Position = {
   id: string;
   name: string;
-  mission_id: string;
-  elements: ElementId[];
+  session_minutes: SessionMinutes;
   candidate_count: number;
   created_at: string;
 };
 
-export type DisplayGroup = "waiting" | "in_progress" | "needs_review" | "done" | "problem";
+export type PositionCreated = {
+  id: string;
+  name: string;
+  session_minutes: SessionMinutes;
+  seats: { seat: Seat; name: string; persona_type: string; avatar_url: string }[];
+  keywords: string[];
+  catalog_version: string;
+};
 
-export type Counts = { met: number; unmet: number; no_record: number };
+export type DisplayGroup = "waiting" | "in_progress" | "needs_review" | "done" | "problem";
 
 export type Candidate = {
   session_id: string;
@@ -46,9 +46,11 @@ export type Candidate = {
   status: string;
   display_status: string;
   display_group: DisplayGroup;
+  phase?: string | null;
   invited_at: string;
   started_at?: string | null;
   ends_at?: string | null;
+  ended_at?: string | null;
   last_activity_at?: string | null;
   message_count: number;
   report_ready_at?: string | null;
@@ -57,12 +59,10 @@ export type Candidate = {
   failed_reason?: string | null;
   next_action?: string | null;
   previous_session_id?: string | null;
-  previous_relation?: "retry" | "reissue" | null;
-  met: number | null;
-  unmet: number | null;
-  no_record: number | null;
-  score_source: "auto" | "reviewer" | null;
-  by_element: ({ element: ElementId } & Counts)[] | null;
+  reissued_at?: string | null;
+  elements?: { element: ElementId; level: Level | null; adjusted: boolean }[] | null;
+  low_confidence_count?: number | null;
+  level_source?: "auto" | "reviewer" | null;
 };
 
 export type InviteResult = {
@@ -72,102 +72,98 @@ export type InviteResult = {
   notice_text: string;
 };
 
+export type NoRecordReason =
+  "no_activity" | "evaluate_failed" | "not_applicable" | "event_not_fired" | "auto_submitted_blank";
+
 export type RecordRef = { type: string; id: string; t_min: number };
 
-export type Evidence = {
-  type: "message" | "document" | "share" | "open" | "task_event" | "doc_view" | "assistant_call";
-  id: string;
-  t_min: number;
-  channel?: string;
-  quote?: string;
-  summary?: string;
-  doc_id?: string;
-  part_no?: number | "final";
-  version?: number;
-  flag?: "aux_fact" | "out_of_window";
-  reply_to_doc?: { doc_id: string; version: number } | null;
-  context?: { prev_persona_message: string | null; card_at_t_min: number | null };
-  record_ref: RecordRef | null;
+export type ContextMessage = { id: string; sender: Sender; content: string; t_min: number };
+
+type EvidenceBase = { ref: string; counted: boolean; t_min: number; record_ref: RecordRef };
+
+export type SupportEntry = { option_id: string; label?: string; supporters: Seat[] };
+
+export type MessageEvidence = EvidenceBase & {
+  kind: "message";
+  speaker: Sender;
+  phase: PhaseId;
+  origin: "spontaneous" | "invited" | null;
+  quote: string;
+  context?: { before: ContextMessage[]; after: ContextMessage[] };
 };
 
-export type NoRecordReason =
-  | "no_activity"
-  | "classify_failed"
-  | "window_missed"
-  | "document_missing"
-  | "not_applicable"
-  | "event_not_fired";
+export type Evidence =
+  | MessageEvidence
+  | (EvidenceBase & {
+      kind: "slot";
+      phase: PhaseId;
+      value: string;
+      resolution: "consensus" | "timeout";
+      filled_by: Seat;
+      support: SupportEntry[];
+    })
+  | (EvidenceBase & { kind: "proposal"; field: string; quote: string })
+  | (EvidenceBase & {
+      kind: "contribution";
+      option_id: string;
+      phase: PhaseId;
+      label: string;
+      first_proposer: Seat | null;
+      adopted?: boolean;
+    });
 
-export type RubricItem = {
-  id: string;
-  text: string;
-  basis: "metric" | "label";
-  auto: 1 | 0 | null;
-  reviewer: 1 | 0 | null;
-  memo: string | null;
-  adjusted: boolean;
+export type ReportElement = {
+  element: ElementId;
+  name: string;
+  level: Level | null;
+  summary: string;
+  dimension_count: number;
+  no_record_count: number;
+  low_confidence_count: number;
+  adjusted_level: Level | null;
+};
+
+export type Dimension = {
+  element: ElementId;
+  dimension_id: string;
+  name: string;
+  level: Level | null;
   no_record_reason: NoRecordReason | null;
-  minutes?: number | null;
+  rationale: string;
+  confidence: Confidence | null;
+  reviewer_hint?: string | null;
+  adjusted_level: Level | null;
+  adjusted_no_record_reason: NoRecordReason | null;
+  adjust_memo: string | null;
+  evidence_refs: string[];
   evidence: Evidence[];
 };
 
-export type HonestyFacts = {
-  shares: {
-    doc_id: string;
-    owner: "candidate" | "colleague";
-    part_no: number;
-    versions: { version: number; channel: string; t_min: number }[];
-  }[];
-  final_sections: {
-    part_no: number;
-    source_doc_id: string | null;
-    source_version: number | null;
-    edited: boolean;
-  }[];
-  tasks: { part_no: number; assignee: string | null; status: string }[];
-  empty_sections: number[];
-  tasks_not_done: number[];
-  changed_after_adaptability: boolean | null;
+export type ReportSeat = {
+  seat: Seat;
+  display_name: string;
+  avatar_url?: string;
+  persona_type?: string;
+};
+
+export type ReportSlot = {
+  phase: PhaseId;
+  value: string;
+  option_id: string | null;
+  filled_by: Seat;
+  resolution: "consensus" | "timeout";
+  t_min: number;
+  first_proposer: Seat | null;
+  support: SupportEntry[];
 };
 
 export type ReportCard = {
   card_id: string;
-  name: string;
-  /** 관찰 창(세션 분). 끊김 겹침·"판정 창에 메시지 없음" 표시에 쓴다 */
-  window?: { start_min: number; end_min: number };
-  situation: string;
-  event_fired: boolean;
-  card_at_t_min: number | null;
-  observed: string | null;
-  no_record_reason: NoRecordReason | null;
-  note: string | null;
-  evidence: Evidence[];
-  facts?: HonestyFacts;
+  element: ElementId;
+  fired_at: number | null;
+  delivered: boolean;
+  scene: string;
 };
-
-export type FinalSectionReport = {
-  part_no: number;
-  title: string;
-  content: string;
-  source_doc_id: string | null;
-  source_owner: "candidate" | "colleague" | null;
-  source_version: number | null;
-  edited: boolean;
-  source_content: string | null;
-};
-
-export type ReportDocument = {
-  doc_id: string;
-  owner: "candidate" | "colleague";
-  part_no: number;
-  title: string;
-  versions: number;
-  shares: { version: number; channel: string; t_min: number }[];
-  empty?: boolean;
-  opened_by_candidate?: number[];
-};
-
-export type ReviewInfo = { memo: string | null; reviewer_name: string; reviewed_at: string | null };
 
 export type Note = { id: string; text: string; reviewer_name: string; created_at: string };
 
@@ -175,26 +171,38 @@ export type Report = {
   session_id: string;
   alias: string;
   stage: "draft" | "final";
-  position: { name: string; mission_id: string; elements: ElementId[] };
-  summary: ({ element: ElementId; name: string; line: string | null } & Counts)[];
-  deliverable: {
-    final: { sections: FinalSectionReport[]; submitted_version: number };
-    documents: ReportDocument[];
-    division_decided_by: "candidate" | "colleague_default" | null;
-    final_report_message: { id: string; t_min: number; content: string } | null;
-  };
-  rubric: {
-    elements: {
+  position: { name: string; session_minutes: SessionMinutes };
+  seats: ReportSeat[];
+  evaluation: { run_id: string; rubric_version: string; model: string };
+  elements: ReportElement[];
+  dimensions: Dimension[];
+  facts: Record<string, unknown>;
+  contribution_check: {
+    phase: PhaseId;
+    option_id: string;
+    label: string;
+    first_proposer: Seat;
+    credited_in_proposal: Seat[];
+    credit_quote: string | null;
+  }[];
+  slots: ReportSlot[];
+  cards: ReportCard[];
+  debrief: {
+    cards: {
+      card_id: string;
       element: ElementId;
-      name: string;
-      auto: Counts;
-      cards: { card_id: string; name: string; items: RubricItem[] }[];
+      phase: PhaseId;
+      fired: boolean;
+      fired_t_min: number | null;
+      window: { start_min: number; end_min: number } | null;
     }[];
-    auto_total: Counts;
-    reviewer_total: Counts | null;
-    review: ReviewInfo | null;
+    survey: { natural: number | null; fair: number | null; free_comment: string | null } | null;
   };
-  sections: { element: ElementId; name: string; cards: ReportCard[] }[];
+  proposal: {
+    submitted_at: string | null;
+    auto_submitted: boolean;
+    sections: Record<string, string>;
+  } | null;
   ai_usage: {
     used: boolean;
     events: {
@@ -202,25 +210,38 @@ export type Report = {
       t_min: number;
       request_quote: string;
       response_quote: string;
-      cited_doc_ids: string[];
-      applied_part: number | "final" | null;
+      cited_material_ids: string[];
     }[];
   };
+  /** 계약 예시는 null만 보인다. 검토 제출 뒤에는 검토자·검토 시각으로 읽는다 */
+  review: { reviewer_name: string; reviewed_at: string | null } | null;
   notes: Note[];
   connection_gaps: { from_t_min: number; to_t_min: number }[];
   generated_at: string;
   reviewed_at: string | null;
-  purge_at: string;
+  purge_at: string | null;
 };
 
-export type Adjustment = { item_id: string; value: 1 | 0 | null; memo: string };
+export type Adjustment = {
+  dimension_id: string;
+  level: Level | null;
+  no_record_reason?: NoRecordReason;
+  memo: string;
+};
+
+export type ReviewBody = { adjustments: Adjustment[]; reviewer_name: string };
 
 export type RecordEntry = {
   t_min: number;
   type:
-    "message" | "share" | "open" | "task_event" | "assistant_call" | "notice" | "connection_gap";
-  channel?: string;
-  by: string;
+    | "message"
+    | "slot"
+    | "phase"
+    | "assistant_call"
+    | "material_view"
+    | "proposal_submit"
+    | "connection_gap";
+  by: Sender;
   summary: string;
   ref: RecordRef;
 };
