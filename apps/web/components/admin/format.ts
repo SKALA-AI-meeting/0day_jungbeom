@@ -42,7 +42,7 @@ export function officeClock(tMin: number, sessionMinutes: number) {
 /** 기록 없음 사유 → 화면 문장(rubric.md 5장, design.md 표) */
 export const NO_RECORD_TEXT: Record<NoRecordReason, string> = {
   no_activity: "지원자 활동 없음",
-  evaluate_failed: "시스템: 판단 실패",
+  evaluate_failed: "판단 보류 · 근거 부족 — 원문 기록 확인 권장",
   not_applicable: "해당 없음",
   event_not_fired: "이벤트 미발생",
   auto_submitted_blank: "자동 제출로 기여 칸 미작성",

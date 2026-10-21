@@ -78,7 +78,7 @@
       "element": "flexibility",
       "name": "수용/유연성",
       "level": 4,
-      "summary": "자기 안과 다른 결론을 받아들이고 다음 단계에서 먼저 해결책을 냈습니다. 다른 안 재검토는 판단 실패로 기록 없음입니다.",
+      "summary": "자기 안과 다른 결론을 받아들이고 다음 단계에서 먼저 해결책을 냈습니다. 다른 안 재검토는 판단 보류로 기록 없음입니다.",
       "dimension_count": 4,
       "no_record_count": 1,
       "low_confidence_count": 0,

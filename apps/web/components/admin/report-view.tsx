@@ -481,6 +481,18 @@ function DimensionRow({
         ) : (
           <p className="text-sm text-muted">
             근거 없음 · {final.reason ? NO_RECORD_TEXT[final.reason] : "기록 없음"}
+            {final.reason === "evaluate_failed" && (
+              <>
+                {" "}
+                <Link
+                  href={ctx.recordHref({ type: "", id: "", t_min: 0 }).split("#")[0]}
+                  className="no-print inline-flex items-center gap-1 text-xs text-accent underline-offset-4 hover:underline"
+                >
+                  기록에서 보기
+                  <ExternalLink aria-hidden className="size-3" />
+                </Link>
+              </>
+            )}
           </p>
         )}
         <AdjustPanel

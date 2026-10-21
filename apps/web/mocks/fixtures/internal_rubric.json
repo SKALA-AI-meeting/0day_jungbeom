@@ -666,7 +666,7 @@
     },
     {
       "code": "evaluate_failed",
-      "label": "시스템: 판단 실패"
+      "label": "판단 보류 · 근거 부족 — 원문 기록 확인 권장"
     },
     {
       "code": "not_applicable",
