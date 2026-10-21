@@ -140,3 +140,56 @@ test("링크 상태: 만료·취소 410, 모르는 토큰 404, 진행 중 스냅
   expect(state.session.phase).toBe("solution");
   expect(state.typing).toEqual(["p1"]);
 });
+
+test("WS error 프레임: ack 못 받은 내 메시지는 실패로 표시하고, session_ending이면 입력을 잠근다", async () => {
+  const { initialView, reduce } = await import("./reducer");
+  const snap = JSON.parse(
+    JSON.stringify((await import("@/mocks/fixtures/state_keyword.json")).default),
+  );
+  let view = initialView(snap, 0);
+  view = reduce(view, { type: "send", pending: { clientMsgId: "c1", content: "안녕", tMin: 1 } });
+  view = reduce(view, {
+    type: "frame",
+    now: 1,
+    frame: { type: "error", seq: snap.ws_seq, payload: { code: "invalid_input", message: "x" } },
+  });
+  expect(view.pending[0].failed).toBe(true);
+  expect(view.ended).toBeNull();
+  view = reduce(view, {
+    type: "frame",
+    now: 2,
+    frame: { type: "error", seq: snap.ws_seq, payload: { code: "session_ending", message: "x" } },
+  });
+  expect(view.ended).toBe("submitted");
+});
+
+test("WS error 프레임이 seq를 쓰면 마지막 seq를 올려 다음 프레임이 재조회 없이 적용된다", async () => {
+  const { initialView, reduce } = await import("./reducer");
+  const snap = JSON.parse(
+    JSON.stringify((await import("@/mocks/fixtures/state_keyword.json")).default),
+  );
+  let view = initialView(snap, 0);
+  const seq = snap.ws_seq;
+  view = reduce(view, {
+    type: "frame",
+    now: 1,
+    frame: { type: "error", seq: seq + 1, payload: { code: "invalid_input", message: "x" } },
+  });
+  expect(view.snap.ws_seq).toBe(seq + 1);
+  view = reduce(view, {
+    type: "frame",
+    now: 2,
+    frame: {
+      type: "timer",
+      seq: seq + 2,
+      payload: {
+        phase: "keyword",
+        phase_deadline_at: "2026-01-01T00:00:00Z",
+        phase_remaining_seconds: 5,
+        session_remaining_seconds: 50,
+      },
+    },
+  });
+  expect(view.needsResync).toBe(false);
+  expect(view.snap.ws_seq).toBe(seq + 2);
+});

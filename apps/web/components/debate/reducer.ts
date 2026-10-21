@@ -6,7 +6,13 @@ import type { EndReason, Seat, ServerFrame, SlotPhase, StateSnapshot } from "./t
 export type PanelTab = "decisions" | "materials" | "assistant" | "proposal";
 
 /** ack 전(sent=false)·ack 뒤 message.new 전(messageId 있음) 내 메시지 */
-export type Pending = { clientMsgId: string; content: string; tMin: number; messageId?: string };
+export type Pending = {
+  clientMsgId: string;
+  content: string;
+  tMin: number;
+  messageId?: string;
+  failed?: boolean;
+};
 
 export type View = {
   snap: StateSnapshot;
@@ -59,6 +65,17 @@ export function initialView(snap: StateSnapshot, now = 0): View {
 function onFrame(view: View, frame: ServerFrame, now: number): View {
   if (view.replaced) return view;
   if (frame.type === "session.replaced") return { ...view, replaced: true };
+  // error는 스냅샷을 바꾸지 않으니 seq 검사 없이 받는다: ack 못 받은 내 메시지는 실패로 표시한다
+  if (frame.type === "error") {
+    // 실 api는 error도 세션 seq를 쓴다. 앞 번호가 빠졌으면 /state로 맞추고, 아니면 마지막 seq만 올린다
+    if (frame.seq > view.snap.ws_seq + 1) return { ...view, needsResync: true };
+    return {
+      ...view,
+      snap: { ...view.snap, ws_seq: Math.max(view.snap.ws_seq, frame.seq) },
+      pending: view.pending.map((p) => (p.messageId ? p : { ...p, failed: true })),
+      ended: frame.payload.code === "session_ending" ? (view.ended ?? "submitted") : view.ended,
+    };
+  }
   if (view.needsResync) return view;
   // 이미 반영한 프레임(스냅샷 ws_seq 이하)은 버린다. 앞 번호가 빠졌으면 /state로 다시 맞춘다
   if (frame.seq <= view.snap.ws_seq) return view;

@@ -35,6 +35,7 @@ const ERROR_TEXT: Record<string, string> = {
   invalid_keyword: "후보 4개 중에서 골라 주세요",
   invalid_input: "내용을 입력해 주세요",
   session_ending: "세션이 끝났어요",
+  conflict: "지금은 처리할 수 없어요. 잠시 뒤 다시 시도해 주세요",
   assistant_limit: "이 세션의 요청 한도를 다 썼어요",
 };
 
@@ -69,7 +70,10 @@ export function useDebateSession(auth: SessionAuth, initial: StateSnapshot) {
       sessionId: authRef.current.sessionId,
       getToken: () => authRef.current.getToken(),
       refreshToken: () => authRef.current.refreshToken(),
-      onFrame: (frame) => dispatch({ type: "frame", frame, now: Date.now() }),
+      onFrame: (frame) => {
+        if (frame.type === "error") toast(ERROR_TEXT[frame.payload.code] ?? errorText(null));
+        dispatch({ type: "frame", frame, now: Date.now() });
+      },
       onStatus: setConnection,
       onOpen: () => void reload(),
     });

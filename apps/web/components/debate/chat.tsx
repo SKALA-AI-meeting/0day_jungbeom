@@ -20,7 +20,7 @@ const BUBBLE: Record<Seat, string> = {
 export const TYPING_REFRESH_MS = 5000;
 
 type Line =
-  | { kind: "message"; message: Message; pending?: "sending" | "acked" }
+  | { kind: "message"; message: Message; pending?: "sending" | "acked" | "failed" }
   | { kind: "notice"; id: string; text: string; tMin: number }
   | { kind: "time"; id: string; text: string };
 
@@ -46,7 +46,7 @@ export function buildLines(snap: StateSnapshot, pending: Pending[]): Line[] {
   for (const p of pending) {
     items.push({
       kind: "message",
-      pending: p.messageId ? "acked" : "sending",
+      pending: p.failed ? "failed" : p.messageId ? "acked" : "sending",
       message: {
         id: p.clientMsgId,
         sender: "candidate",
@@ -158,10 +158,14 @@ function MessageGroup({
                       !lastLine && "rounded-bl-bubble-tail",
                     ),
                 line.pending === "sending" && "opacity-60",
+                line.pending === "failed" && "opacity-60 ring-1 ring-danger",
                 fresh.has(m.id) && "arrive",
               )}
             >
               {m.content}
+              {line.pending === "failed" && (
+                <span className="mt-1 block text-caption text-danger">보내지 못했어요</span>
+              )}
             </div>
           );
         })}
