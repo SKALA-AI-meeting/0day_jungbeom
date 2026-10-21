@@ -12,7 +12,6 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
-from pathlib import Path
 from typing import Any
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -63,7 +62,6 @@ class DebateGraphRunner:
         scenario: ScenarioLoader,
         ports_for: PortsFor,
         checkpointer: BaseCheckpointSaver | None = None,
-        scenarios_dir: Path | None = None,
         sleep: Sleep = asyncio.sleep,
         typing_wait: float = 10.0,
         typing_poll: float = 0.5,
@@ -73,7 +71,6 @@ class DebateGraphRunner:
         self.tools = tools
         self.scenario = scenario
         self.ports_for = ports_for
-        self.scenarios_dir = scenarios_dir
         self.sleep = sleep
         self.typing_wait = typing_wait
         self.typing_poll = typing_poll
@@ -87,7 +84,7 @@ class DebateGraphRunner:
     async def catalog(self, session_id: uuid.UUID) -> Catalog:
         if session_id not in self._catalogs:
             scenario = await self.scenario(session_id)
-            self._catalogs[session_id] = Catalog.from_scenario(scenario, self.scenarios_dir)
+            self._catalogs[session_id] = Catalog.from_scenario(scenario)
         return self._catalogs[session_id]
 
     async def run(self, session_id: uuid.UUID, stimulus: Stimulus, run_id: uuid.UUID) -> RunResult:

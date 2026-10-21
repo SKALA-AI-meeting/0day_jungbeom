@@ -9,7 +9,7 @@
 | 역할 | 큐 소비자 3개(`report.generate`·`report.approve`·`report.dlq`)와 리포트 그래프 `collect → aggregate → evaluate → draft → approval[interrupt] → finalize`(thread `report:{session_id}:{eval_round}`, PostgresSaver) |
 | 사용 기술 | Python 3.12, LangGraph(PostgresSaver), langchain-openai, aio-pika, mcp 클라이언트, httpx, psycopg |
 | 포트 | 없음(헬스는 30초마다 갱신하는 heartbeat 파일 `HEARTBEAT_PATH`, 기본 `/tmp/heartbeat`) |
-| 필요한 env | `DATABASE_URL` `RABBITMQ_URL` `API_INTERNAL_URL` `INTERNAL_TOKEN` `ASSESSMENT_MCP_URL` `ASSESSMENT_MCP_TOKEN` `SCENARIOS_DIR` `OPENAI_API_KEY` `OPENAI_MODEL` `MODEL_EVALUATOR` `LLM_FAKE` `LLM_FAULT` `HEARTBEAT_PATH` |
+| 필요한 env | `DATABASE_URL` `RABBITMQ_URL` `API_INTERNAL_URL` `INTERNAL_TOKEN` `ASSESSMENT_MCP_URL` `ASSESSMENT_MCP_TOKEN` `OPENAI_API_KEY` `OPENAI_MODEL` `MODEL_EVALUATOR` `LLM_FAKE` `LLM_FAULT` `HEARTBEAT_PATH` |
 | 의존 서비스 | rabbitmq(작업 수신), postgres(체크포인트), api 내부 앱(8001), assessment-mcp(9103) |
 
 env 이름은 `report_worker/config.py`·`llm.py`·`heartbeat.py`와 `infra/.env.example`을 대조한 것이다. `LLM_FAKE=1`이면 평가 호출이 결정적 고정 응답이 되고, `LLM_FAULT`는 e2e 장애 주입 전용이다.
@@ -39,7 +39,7 @@ env 이름은 `report_worker/config.py`·`llm.py`·`heartbeat.py`와 `infra/.env
 | `consumer.py` | 메시지 처리 규칙(같은 eval_round만 체크포인트 재개, 재시도 백오프 5·15·45초, attempt≥3 → DLQ, dlq는 api 복구까지 60초 간격)과 aio-pika 연결 |
 | `llm.py` | `MODEL_EVALUATOR`(비면 `OPENAI_MODEL`), temperature 0.1, JSON 출력, 전송 실패 재시도 2회 뒤 예외(저장 없이 큐 재시도) |
 
-평가 프롬프트(`prompts/evaluator/{common,<element>}.md`)와 금지어(`guard_patterns.yaml`의 `evaluator_forbidden`)는 채용 건에 복사된 것을 읽는다. 복사본이 없는 옛 채용 건만 `SCENARIOS_DIR/missions/<mission_id>/prompts/`의 현재 파일을 쓴다. 컨테이너는 `scenarios`를 `/scenarios`로 읽기 전용 마운트해야 한다.
+평가 프롬프트(`prompts/evaluator/{common,<element>}.md`)와 금지어(`guard_patterns.yaml`의 `evaluator_forbidden`)는 채용 건에 복사된 것을 읽는다. 복사본에 하나라도 없으면 현재 파일로 채우지 않고 재시도 없이 리포트 실패로 둔다. 카탈로그 파일을 읽지 않으므로 `scenarios` 마운트가 필요 없다.
 
 ## 실행
 
@@ -66,7 +66,7 @@ make test                                               # 전체
 <!-- gen:tests -->
 > 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
 
-총 53개(live 2개 포함, `make test`는 live를 뺀다).
+총 55개(live 2개 포함, `make test`는 live를 뺀다).
 
 <details><summary><code>tests/test_evaluate.py</code> (31)</summary>
 
@@ -96,7 +96,7 @@ make test                                               # 전체
 
 </details>
 
-<details><summary><code>tests/test_graph.py</code> (21)</summary>
+<details><summary><code>tests/test_graph.py</code> (23)</summary>
 
 - `test_generate_evaluates_each_element_once_and_saves_draft`
 - `test_draft_shape_matches_report_contract`
@@ -117,8 +117,7 @@ make test                                               # 전체
 - `test_position_keeps_evaluator_prompts_after_catalog_change`
 - `test_pinned_prompts_cover_retry_rewrite_and_rerun`
 - `test_new_position_gets_changed_evaluator_prompts`
-- `test_old_position_without_prompts_falls_back_to_files`
-- `test_partial_snapshot_falls_back_to_files_entirely`
+- `test_position_without_pinned_prompts_fails_without_retry` ×4
 
 </details>
 

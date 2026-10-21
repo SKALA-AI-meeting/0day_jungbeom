@@ -54,3 +54,28 @@ async def test_entry_consent_prestart_state_start_resume_and_debrief(api, ctx, c
     assert body["intro_notice"].startswith("같은 채용 건의 모든 지원자가 같은 장면을 겪었고")
     assert 1 <= len(body["my_messages"]) <= 3 and body["appeal_contact"]
     assert body["seats"][0] == {"seat": "candidate", "display_name": "김 지원"}
+
+
+async def test_start_refused_when_position_scenario_copy_lacks_catalog(api, ctx):
+    """복사본(catalog)이 없는 채용 건은 현재 파일로 채우지 않고 시작을 409로 막는다."""
+    from app.models import Position
+    from app.services.session import POSITION_OUTDATED
+
+    admin = await api.admin()
+    position_id = await api.position(admin, 15)
+    async with ctx.session_factory() as db:
+        position = await db.get(Position, uuid.UUID(position_id))
+        position.scenario = {k: v for k, v in position.scenario.items() if k != "catalog"}
+        await db.commit()
+    invite = await api.invite(admin, position_id)
+    token = invite["invite_url"].rsplit("/", 1)[1]
+    consent = (await api.public.post(f"/s/{token}/consent", json={})).json()
+    headers = {"Authorization": f"Bearer {consent['session_token']}"}
+
+    started = await api.public.post(f"/s/{token}/start", headers=headers)
+
+    assert started.status_code == 409
+    assert started.json()["error"]["code"] == "position_outdated"
+    assert started.json()["error"]["message"] == POSITION_OUTDATED
+    entry = (await api.public.get(f"/s/{token}")).json()
+    assert entry["status"] == "invited"

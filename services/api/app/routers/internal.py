@@ -70,6 +70,7 @@ async def get_session(session_id: uuid.UUID, ctx: Ctx) -> dict[str, Any]:
             "alias": invite.alias,
             "display_name": session.display_name,
             "position": {
+                "id": str(position.id),
                 "name": position.name,
                 "mission_id": position.mission_id,
                 "session_minutes": position.session_minutes,

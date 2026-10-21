@@ -235,3 +235,29 @@ async def test_three_persona_llm_failures_fail_the_session(api, ctx, runner):
     assert session["status"] == "failed" and session["ended_at"]
     ended = [f["payload"] for f in api.frames_since(sess, mark) if f["type"] == "session.ended"]
     assert ended == [{"reason": "failed"}]
+
+
+async def test_missing_scenario_copy_fails_session_without_running(api, ctx, runner):
+    """진행 중 세션의 채용 건 복사본이 없으면 실행하지 않고 즉시 failed(session)로 끝낸다."""
+    from app.models import Position
+
+    sess = await api.new_session()
+    calls = []
+
+    async def hook(ctx_, session_id, stimulus, run_id):
+        calls.append(stimulus.type)
+
+    runner.hook = hook
+    async with ctx.session_factory() as db:
+        position = await db.get(Position, uuid.UUID(sess.position_id))
+        position.scenario = {k: v for k, v in position.scenario.items() if k != "catalog"}
+        await db.commit()
+    mark = api.mark(sess)
+    await api.say(sess, "물이 좋겠어요.")
+
+    session = (await api.internal.get(f"/internal/sessions/{sess.id}")).json()
+    assert session["status"] == "failed" and session["ended_at"]
+    ended = [f["payload"] for f in api.frames_since(sess, mark) if f["type"] == "session.ended"]
+    assert ended == [{"reason": "failed"}] and calls == []
+    runs = await _runs(ctx, sess, "message")
+    assert runs[-1].status == "failed"

@@ -40,7 +40,6 @@ class Settings:
     database_url: str
     rabbitmq_url: str
     model_evaluator: str
-    scenarios_dir: Path
 
 
 def checkpoint_url(database_url: str) -> str:
@@ -71,9 +70,6 @@ def key_for(model: str, env: Mapping[str, str]) -> tuple[str, str | None]:
 def load_settings() -> Settings:
     _load_env_files()
     env = os.environ
-    scenarios = env.get("SCENARIOS_DIR") or str(REPO_ROOT / "scenarios")
-    if not Path(scenarios).is_dir():  # 로컬 실행에서 .env의 컨테이너 경로(/scenarios)가 없을 때
-        scenarios = str(REPO_ROOT / "scenarios")
     return Settings(
         api_internal_url=env.get("API_INTERNAL_URL", "http://api:8001").rstrip("/"),
         internal_token=env.get("INTERNAL_TOKEN", "change-me-internal"),
@@ -82,5 +78,4 @@ def load_settings() -> Settings:
         database_url=checkpoint_url(env.get("DATABASE_URL", "")),
         rabbitmq_url=env.get("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/"),
         model_evaluator=evaluator_model(env),
-        scenarios_dir=Path(scenarios),
     )

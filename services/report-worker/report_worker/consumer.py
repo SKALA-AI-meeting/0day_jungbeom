@@ -11,7 +11,8 @@
   (draft content 그대로 POST /report/final) → ack.
   이미 끝났으면 ack만(중복 approve 멱등). 체크포인트가 없으면 nack 없이 15초 뒤 재발행.
 - 실패: attempt+1로 재발행(백오프 5·15·45초 대기 후, 브로커 확인) → 원본 ack.
-  attempt ≥ 3이면 report.dlq로 보낸다(최초 포함 총 3회).
+  attempt ≥ 3이면 report.dlq로 보낸다(최초 포함 총 3회). 채용 건 복사본에 평가 프롬프트가 없으면
+  (`PinnedCopyMissing`) 재시도해도 같으므로 대기·재발행 없이 바로 report.dlq로 보낸다.
 - dlq: POST /report_failed 후 ack. api가 내려가 있으면 ack하지 않고 60초 뒤 다시 부른다.
 """
 
@@ -27,6 +28,7 @@ from langgraph.types import Command
 from pamqp.commands import Basic
 
 from report_worker.api import ApiError, InternalApi, api_down
+from report_worker.evaluate import PinnedCopyMissing
 from report_worker.graph import has_checkpoint, is_done, is_paused, thread_config
 
 log = logging.getLogger("report_worker.consumer")
@@ -139,8 +141,10 @@ class ReportWorker:
             attempt = int(body.get("attempt", 1))
             error = f"{queue} attempt {attempt}: {type(exc).__name__}: {exc}"
             log.warning("report %s failed: %s", body.get("session_id"), error)
-            await self.sleep(self.backoff[min(attempt, len(self.backoff)) - 1])
-            if attempt >= MAX_ATTEMPTS:
+            permanent = isinstance(exc, PinnedCopyMissing)
+            if not permanent:
+                await self.sleep(self.backoff[min(attempt, len(self.backoff)) - 1])
+            if attempt >= MAX_ATTEMPTS or permanent:
                 log.error("report %s → dlq: %s", body.get("session_id"), error)
                 await self.publish(self.topology.dlq, {**body, "error": error})
             else:

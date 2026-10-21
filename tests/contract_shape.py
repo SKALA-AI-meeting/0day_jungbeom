@@ -1035,6 +1035,7 @@ SHAPES: dict[str, Any] = {
         "alias": str,
         "display_name": Opt(str),
         "position": {
+            "id": str,
             "name": str,
             "mission_id": str,
             "session_minutes": MINUTES,

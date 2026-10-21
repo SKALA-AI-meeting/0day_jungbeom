@@ -146,7 +146,7 @@ make test-live                                         # live 테스트(OPENAI_A
 <!-- gen:tests -->
 > 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
 
-총 201개(live 3개 포함, `make test`는 live를 뺀다).
+총 204개(live 3개 포함, `make test`는 live를 뺀다).
 
 <details><summary><code>tests/agent/test_assistant.py</code> (22)</summary>
 
@@ -334,19 +334,21 @@ make test-live                                         # live 테스트(OPENAI_A
 
 </details>
 
-<details><summary><code>tests/test_c09_entry.py</code> (1)</summary>
+<details><summary><code>tests/test_c09_entry.py</code> (2)</summary>
 
 - `test_entry_consent_prestart_state_start_resume_and_debrief`
+- `test_start_refused_when_position_scenario_copy_lacks_catalog`
 
 </details>
 
-<details><summary><code>tests/test_c10_review.py</code> (5)</summary>
+<details><summary><code>tests/test_c10_review.py</code> (6)</summary>
 
 - `test_review_adjusts_one_dimension_and_final_keeps_draft_hash`
 - `test_candidate_list_chips_merge_adjustments_without_total`
 - `test_report_get_separates_missing_generating_and_failed`
 - `test_finalize_failure_regenerates_by_resuming_same_round_approve`
 - `test_regenerate_hides_previous_draft_until_new_draft`
+- `test_regenerate_refused_when_report_failed_for_missing_scenario_copy`
 
 </details>
 
@@ -396,7 +398,7 @@ make test-live                                         # live 테스트(OPENAI_A
 
 </details>
 
-<details><summary><code>tests/test_mailbox.py</code> (10)</summary>
+<details><summary><code>tests/test_mailbox.py</code> (11)</summary>
 
 - `test_messages_run_serially_and_every_message_is_classified`
 - `test_older_message_is_skipped_when_newer_saved`
@@ -408,6 +410,7 @@ make test-live                                         # live 테스트(OPENAI_A
 - `test_candidate_typing_expires_after_six_seconds`
 - `test_classifier_failure_is_other_and_low_confidence_adds_no_stance`
 - `test_three_persona_llm_failures_fail_the_session`
+- `test_missing_scenario_copy_fails_session_without_running`
 
 </details>
 

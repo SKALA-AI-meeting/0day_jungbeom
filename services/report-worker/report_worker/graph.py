@@ -11,7 +11,6 @@ draft 저장(POST /report/draft)은 그래프 밖에서 소비자가 한다(체�
 
 import uuid
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -27,8 +26,6 @@ from report_worker.evaluate import (
 )
 from report_worker.llm import LLM, empty_usage
 from report_worker.report import aggregate, ai_usage, build_draft
-
-DEFAULT_MISSION = "debate"
 
 
 class ReportState(TypedDict, total=False):
@@ -51,7 +48,6 @@ class Deps:
     api: InternalApi
     assessment: Assessment
     llm: LLM
-    scenarios_dir: Path
 
 
 def thread_config(session_id: str, eval_round: int) -> dict[str, Any]:
@@ -67,14 +63,10 @@ def evaluation_run_id(session_id: str, eval_round: int) -> str:
     return str(uuid.uuid5(namespace, f"evaluate:{eval_round}"))
 
 
-def mission_of(session: dict[str, Any]) -> str:
+def pinned(session: dict[str, Any]):
+    """세션이 속한 채용 건 복사본의 (평가 프롬프트, 금지 패턴)."""
     position = session.get("position") or {}
-    scenario = position.get("scenario") or {}
-    return position.get("mission_id") or scenario.get("mission_id") or DEFAULT_MISSION
-
-
-def scenario_of(session: dict[str, Any]) -> dict[str, Any]:
-    return (session.get("position") or {}).get("scenario") or {}
+    return pinned_catalog(position.get("scenario") or {}, position.get("id"))
 
 
 def _evaluation_view(saved: dict[str, Any]) -> dict[str, Any]:
@@ -112,10 +104,7 @@ def build_graph(deps: Deps, checkpointer: Any):
         saved = await api.get_evaluation(session_id, run_id)
         if saved is not None:
             return {"evaluation": _evaluation_view(saved), "usage": {**usage, "reused": True}}
-        mission = mission_of(state["session"])
-        prompts, forbidden = pinned_catalog(
-            scenario_of(state["session"]), deps.scenarios_dir, mission
-        )
+        prompts, forbidden = pinned(state["session"])
         ctx = EvalContext(
             record=state["record"],
             rubric=state["rubric"],
@@ -149,9 +138,7 @@ def build_graph(deps: Deps, checkpointer: Any):
             evaluation=state["evaluation"],
             usage_ai=state["ai_usage"],
             span=span,
-            forbidden=pinned_catalog(
-                scenario_of(state["session"]), deps.scenarios_dir, mission_of(state["session"])
-            )[1],
+            forbidden=pinned(state["session"])[1],
         )
         return {"draft": content}
 

@@ -26,6 +26,15 @@ CONTRACTS = REPO_ROOT / "tests" / "fixtures" / "contracts"
 SCENARIOS = REPO_ROOT / "scenarios"
 
 
+def prompts_copy(folder) -> dict[str, str]:
+    """api `scenario.assemble`의 `prompts`와 같은 모양(prompts/ 상대 경로 → 본문, fixtures 제외)."""
+    return {
+        p.relative_to(folder).as_posix(): p.read_text(encoding="utf-8")
+        for p in sorted(folder.rglob("*"))
+        if p.is_file() and "fixtures" not in p.parts
+    }
+
+
 def load(name: str) -> Any:
     return json.loads((CONTRACTS / f"{name}.json").read_text(encoding="utf-8"))
 
@@ -143,6 +152,10 @@ class FakeApi:
         self.session = load("internal_session")
         self.session["status"] = "completed"
         self.session["position"]["name"] = "재난 대응 기획자"
+        # 채용 건 생성 때 복사되는 평가 프롬프트(계약 픽스처는 생략해 둔다)
+        self.session["position"]["scenario"]["prompts"] = prompts_copy(
+            SCENARIOS / "missions" / "debate" / "prompts"
+        )
         self.drafts: list[tuple[dict[str, Any], dict[str, Any] | None]] = []
         self.finals: list[dict[str, Any]] = []
         self.failed: list[str] = []
@@ -201,12 +214,11 @@ class Harness:
         self.api = FakeApi(self.store)
         self.published: list[tuple[str, dict[str, Any]]] = []
         self.sleeps: list[float] = []
-        self.scenarios_dir = SCENARIOS
         self.new_graph()
 
     def new_graph(self) -> None:
         """새 체크포인터로 그래프를 다시 만든다(프로세스 재시작·체크포인트 유실 흉내)."""
-        deps = Deps(self.api, self.assessment, self.llm, self.scenarios_dir)
+        deps = Deps(self.api, self.assessment, self.llm)
         self.graph = build_graph(deps, InMemorySaver())
 
         async def publish(queue: str, body: dict[str, Any]) -> None:

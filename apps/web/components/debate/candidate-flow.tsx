@@ -204,7 +204,11 @@ export function CandidateFlow({ token }: { token: string }) {
                 setStage({
                   ...stage,
                   pending: false,
-                  error: "시작하지 못했어요. 다시 시도해 주세요.",
+                  // position_outdated: 다시 눌러도 안 되므로 api의 담당자 문의 안내를 그대로 보인다
+                  error:
+                    error instanceof ApiError && error.code === "position_outdated"
+                      ? error.message
+                      : "시작하지 못했어요. 다시 시도해 주세요.",
                 });
             }
           }}
