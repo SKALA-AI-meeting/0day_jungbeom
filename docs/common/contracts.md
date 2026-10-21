@@ -477,6 +477,8 @@ close code: 4401(토큰 문제 → resume 후 재연결), 4403(다른 세션, �
 | LLM 출력 형식 오류(파싱·스키마, 위 api 항목과 같은 규칙을 저장 전에 미리 봄), level이 있는데 지원자 근거 단위 0개(`rubric.md` 2.2) | 워커(저장 전) | 그 **요소**를 차원별 거부 사유와 함께 1회 다시 요청 → 그래도 실패한 차원만 `evaluate_failed`(`rationale`에 사유 코드) |
 | level 4·5인데 서로 다른 지원자 근거 단위 1개(`rubric.md` 2.2) | 워커 | 거부하지 않고 level 3·confidence 최대 medium으로 깎는다, `rationale` 끝에 상한 적용 표시 |
 | 확신도 상한(`rubric.md` 2.4) | 워커 | 거부하지 않고 상한으로 깎는다(clamp), `rationale`은 그대로 |
+| 핵심 카드가 하나도 발동하지 않았는데 `rationale`에 "보조 장면" 표시 없이 낸 수준(`rubric.md` 2.4) | 워커 | 거부하지 않고 `event_not_fired`(level·confidence null)로 바꾼다, `rationale` 끝에 변환 표시 |
+| 위 검증으로 차원 행이 바뀐 요소의 `summary` | 워커 | 최종 차원 행만 입력으로 1회 다시 쓴다(실패하면 고정 문장, 재요청 없음). 이 호출도 `usage.llm_calls`에 든다 |
 | 요소 level = 차원 평균 반올림(.5 올림) | 워커가 계산해 채움 | — (모델 값을 쓰지 않음) |
 | `rationale`·`summary` 금지어(합격·불합격·순위·추천·점수) | 워커 | 그 요소 1회 재요청 → 실패 차원 `evaluate_failed`, 실패한 summary는 고정 문장 |
 
