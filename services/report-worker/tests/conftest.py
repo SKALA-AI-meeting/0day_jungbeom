@@ -201,11 +201,12 @@ class Harness:
         self.api = FakeApi(self.store)
         self.published: list[tuple[str, dict[str, Any]]] = []
         self.sleeps: list[float] = []
+        self.scenarios_dir = SCENARIOS
         self.new_graph()
 
     def new_graph(self) -> None:
         """새 체크포인터로 그래프를 다시 만든다(프로세스 재시작·체크포인트 유실 흉내)."""
-        deps = Deps(self.api, self.assessment, self.llm, SCENARIOS)
+        deps = Deps(self.api, self.assessment, self.llm, self.scenarios_dir)
         self.graph = build_graph(deps, InMemorySaver())
 
         async def publish(queue: str, body: dict[str, Any]) -> None:

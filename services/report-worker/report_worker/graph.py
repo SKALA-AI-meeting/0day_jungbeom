@@ -22,8 +22,7 @@ from report_worker.assessment import Assessment
 from report_worker.evaluate import (
     EvalContext,
     RefIndex,
-    load_forbidden,
-    load_prompts,
+    pinned_catalog,
     run_evaluation,
 )
 from report_worker.llm import LLM, empty_usage
@@ -74,6 +73,10 @@ def mission_of(session: dict[str, Any]) -> str:
     return position.get("mission_id") or scenario.get("mission_id") or DEFAULT_MISSION
 
 
+def scenario_of(session: dict[str, Any]) -> dict[str, Any]:
+    return (session.get("position") or {}).get("scenario") or {}
+
+
 def _evaluation_view(saved: dict[str, Any]) -> dict[str, Any]:
     keys = ("run_id", "rubric_version", "prompt_versions", "model", "elements", "dimensions")
     return {k: saved[k] for k in keys}
@@ -110,12 +113,15 @@ def build_graph(deps: Deps, checkpointer: Any):
         if saved is not None:
             return {"evaluation": _evaluation_view(saved), "usage": {**usage, "reused": True}}
         mission = mission_of(state["session"])
+        prompts, forbidden = pinned_catalog(
+            scenario_of(state["session"]), deps.scenarios_dir, mission
+        )
         ctx = EvalContext(
             record=state["record"],
             rubric=state["rubric"],
             refs=RefIndex(state["record"], state["contributions"]),
-            prompts=load_prompts(deps.scenarios_dir, mission),
-            forbidden=load_forbidden(deps.scenarios_dir, mission),
+            prompts=prompts,
+            forbidden=forbidden,
         )
         body = await run_evaluation(llm, ctx, usage)
         result = await assessment.save_evaluation(
@@ -143,7 +149,9 @@ def build_graph(deps: Deps, checkpointer: Any):
             evaluation=state["evaluation"],
             usage_ai=state["ai_usage"],
             span=span,
-            forbidden=load_forbidden(deps.scenarios_dir, mission_of(state["session"])),
+            forbidden=pinned_catalog(
+                scenario_of(state["session"]), deps.scenarios_dir, mission_of(state["session"])
+            )[1],
         )
         return {"draft": content}
 
