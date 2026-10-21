@@ -2188,7 +2188,9 @@ api의 내부 엔드포인트를 호출합니다. <strong>rag-mcp</strong>는 �
 <td>pressure_dm</td>
 <td>10:50(L×11/12)에 제출 전이면 한서윤이 개인 DM으로 고정 문구의 진행
 확인을 보냄(LLM 없음). 이미 제출했으면 실행하지 않음</td>
-<td>review</td>
+<td>보낸 뒤 review 단계의 대기 상태로 돌아감. review 노드(문서
+보내기·반대 의견)를 다시 실행하지 않고, 이후 팀장 DM에 온 답에는 확인만
+함</td>
 </tr>
 <tr>
 <td>close</td>
