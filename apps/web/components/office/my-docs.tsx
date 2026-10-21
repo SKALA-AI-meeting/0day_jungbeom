@@ -1,6 +1,6 @@
 "use client";
 
-// 오른쪽 "내 문서" 탭: 파트별 내 문서 목록 → 편집(DocEditor) → 보내기, 그리고 최종본(FinalDoc) 가져오기·편집·제출.
+// 메인 "내 문서" 탭: 파트별 내 문서 목록 → 편집(DocEditor) → 보내기, 그리고 최종본(FinalDoc) 가져오기·편집·제출.
 import { Popover } from "@base-ui/react/popover";
 import { useState } from "react";
 
@@ -105,11 +105,19 @@ export function DocList({
   );
 }
 
-function Back({ onBack }: { onBack: () => void }) {
+/** 편집 화면 맨 위 줄: 목록으로 돌아가기와 자료 탭으로 건너가기(CX-06, 편집 내용·자리는 그대로) */
+function Back({ onBack, onToLibrary }: { onBack: () => void; onToLibrary?: () => void }) {
   return (
-    <button type="button" onClick={onBack} className="self-start text-sm text-muted hover:text-ink">
-      ← 내 문서
-    </button>
+    <div className="flex items-center justify-between gap-2">
+      <button type="button" onClick={onBack} className="text-sm text-muted hover:text-ink">
+        ← 내 문서
+      </button>
+      {onToLibrary && (
+        <button type="button" onClick={onToLibrary} className="text-sm text-muted hover:text-ink">
+          자료 보기 →
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -190,6 +198,7 @@ export function DocEditor({
   onBack,
   onEdit,
   onShare,
+  onToLibrary,
 }: {
   doc: MyDocument;
   save: SaveState | undefined;
@@ -197,6 +206,7 @@ export function DocEditor({
   onBack: () => void;
   onEdit: (content: string) => void;
   onShare: (channel: "team" | "dm", note: string) => void;
+  onToLibrary?: () => void;
 }) {
   const last = doc.versions.at(-1);
   const next = (last?.version ?? 0) + 1;
@@ -206,7 +216,7 @@ export function DocEditor({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 flex-col gap-3 border-b border-line px-5 py-3">
-        <Back onBack={onBack} />
+        <Back onBack={onBack} onToLibrary={onToLibrary} />
         <div className="flex items-center gap-2">
           <Chip tone={partTone(doc.part_no)}>{doc.part_no}</Chip>
           <h3 className="min-w-0 flex-1 truncate font-semibold">{doc.title}</h3>
@@ -280,6 +290,7 @@ export function FinalDoc({
   onEdit,
   onImport,
   onSubmit,
+  onToLibrary,
 }: {
   snap: StateSnapshot;
   save: SaveState | undefined;
@@ -289,6 +300,7 @@ export function FinalDoc({
   onEdit: (partNo: number, content: string) => void;
   onImport: (partNo: number, source: { source_doc_id: string; version: number | null }) => void;
   onSubmit: () => void;
+  onToLibrary?: () => void;
 }) {
   const colleague = givenName(snap.persona.colleague);
   const empty = snap.final.sections.filter((s) => !s.content.trim()).length;
@@ -296,7 +308,7 @@ export function FinalDoc({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 flex-col gap-1 border-b border-line px-5 py-3">
-        <Back onBack={onBack} />
+        <Back onBack={onBack} onToLibrary={onToLibrary} />
         <div className="flex items-baseline gap-2">
           <h3 className="font-semibold">★ 최종본</h3>
           <span className="text-xs text-subtle">킥오프 템플릿 · {snap.final.template.length}</span>

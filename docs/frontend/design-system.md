@@ -73,6 +73,7 @@
 | 토스트 | Sonner |
 | 전환 애니메이션(문서 열기·카드 이동·레이아웃) | motion. 단순 hover·fade는 CSS |
 | 변형 스타일 | cva + clsx (clsx 설치됨) |
+| 읽기 전용 Markdown(자료·받은 문서) | react-markdown + remark-gfm(표·목록), 받은 문서만 remark-breaks(평문 줄바꿈). `skipHtml`로 원문 HTML은 그리지 않음 |
 
 ## 모션 (`animate`·`review-animations` 기준)
 

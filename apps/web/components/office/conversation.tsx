@@ -1,6 +1,6 @@
 "use client";
 
-// 가운데 "대화" 상태: 채널 머리(누가 보는가), 메시지 줄, 시스템 줄, 문서 카드, 입력창.
+// 메인 "대화" 탭: 채널 머리(누가 보는가), 메시지 줄, 시스템 줄, 문서 카드, 입력창.
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { Avatar, AvatarGroup, Button, Chip, cn, initial, partTone } from "@/components/ui";
@@ -45,7 +45,8 @@ export function ChannelHeader({
   channel: Channel;
   snap: StateSnapshot;
   alias: string;
-  onHelp: () => void;
+  /** 없으면 "?" 버튼을 그리지 않는다(메인 탭 줄에 둔다) */
+  onHelp?: () => void;
 }) {
   const members = snap.channels[channel]?.members ?? [];
   return (
@@ -62,15 +63,24 @@ export function ChannelHeader({
         className="shrink-0"
         people={members.map((m) => ({ ...senderAvatar(m, snap.persona, alias), online: true }))}
       />
-      <button
-        type="button"
-        onClick={onHelp}
-        aria-label="화면 설명 다시 보기"
-        className="press ml-auto flex size-8 shrink-0 items-center justify-center rounded-full border border-line text-sm font-semibold text-muted hover:bg-surface-sunken"
-      >
-        ?
-      </button>
+      {onHelp && <HelpButton onClick={onHelp} className="ml-auto" />}
     </header>
+  );
+}
+
+export function HelpButton({ onClick, className }: { onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="화면 설명 다시 보기"
+      className={cn(
+        "press flex size-8 shrink-0 items-center justify-center rounded-full border border-line text-sm font-semibold text-muted hover:bg-surface-sunken",
+        className,
+      )}
+    >
+      ?
+    </button>
   );
 }
 

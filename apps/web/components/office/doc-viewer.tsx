@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { Button, Chip, DropMenu, partTone } from "@/components/ui";
 
+import { Markdown } from "./markdown";
 import type { FinalSection, ReceivedDocument } from "./types";
 
 export type OpenDoc = {
@@ -110,7 +111,7 @@ export function DocViewer({
               </button>
             </div>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8">
             {open.error ? (
               <p role="alert" className="text-danger">
                 {open.error}
@@ -118,8 +119,8 @@ export function DocViewer({
             ) : open.content == null ? (
               <p className="text-muted">여는 중…</p>
             ) : open.content ? (
-              <article className="mx-auto max-w-2xl rounded-lg border border-line bg-surface px-8 py-7 text-base leading-7 break-words whitespace-pre-wrap">
-                {open.content}
+              <article className="mx-auto max-w-[44rem] rounded-lg border border-line bg-surface px-6 py-7 text-base leading-7 sm:px-8">
+                <Markdown breaks>{open.content}</Markdown>
               </article>
             ) : (
               <p className="text-muted">빈 문서</p>

@@ -1,6 +1,6 @@
 "use client";
 
-// 오른쪽 "어시스턴트" 탭: 요청·응답 목록과 인용 문서. 어시스턴트는 내 문서에 직접 쓰지 않으므로 복사가 기본 동선이다.
+// 메인 "어시스턴트" 탭: 요청·응답 목록과 인용 문서. 어시스턴트는 내 문서에 직접 쓰지 않으므로 복사가 기본 동선이다.
 import { useState, type FormEvent } from "react";
 
 import { Button, Chip, toast } from "@/components/ui";

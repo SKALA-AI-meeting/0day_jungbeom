@@ -1,7 +1,8 @@
 "use client";
 
-// 오른쪽 "보드" 탭: 카드 5장을 상태별 칸(할 일·진행 중·완료)에 두고 담당·순서·언제까지를 정한다.
-// 담당 5장이 다 차면 서버가 분업을 확정한다(division.confirmed). 오른쪽 패널 폭(약 440px)에 맞춰 칸을 세로로 쌓는다.
+// 메인 "보드" 탭: 카드 5장을 상태별 칸(할 일·진행 중·완료)에 두고 담당·순서·언제까지를 정한다.
+// 담당 5장이 다 차면 서버가 분업을 확정한다(division.confirmed). 칸 영역이 680px 이상이면 칸 3개를 가로로,
+// 좁으면 세로로 쌓는다. 쌓였을 때도 맨 위 상태별 수로 현황을 한 줄에 본다(CX-13).
 import {
   closestCorners,
   DndContext,
@@ -39,6 +40,9 @@ import { assigneeWord, clock, divisionLine, givenName } from "./lines";
 import type { Assignee, StateSnapshot, Task, TaskStatus } from "./types";
 
 export const COLUMNS: TaskStatus[] = ["todo", "doing", "done"];
+
+/** 카드 버튼의 aria-controls가 가리키는 상세 패널 */
+const DETAIL_ID = "board-card-detail";
 
 export type MovePatch = { part_no: number; status?: TaskStatus; order?: number };
 
@@ -196,11 +200,13 @@ function BoardCard({
       <button
         type="button"
         onClick={onSelect}
+        aria-expanded={selected}
+        aria-controls={selected ? DETAIL_ID : undefined}
         className="flex min-w-0 flex-1 flex-col items-start gap-1 text-left"
       >
         <span className="flex w-full min-w-0 items-center gap-1.5">
           <Chip tone={partTone(task.part_no)}>{task.part_no}</Chip>
-          <span className="min-w-0 truncate text-sm font-medium @min-[680px]:line-clamp-2 @min-[680px]:whitespace-normal">
+          <span className="min-w-0 truncate text-sm font-medium break-keep @min-[680px]:line-clamp-2 @min-[680px]:whitespace-normal">
             {title}
           </span>
         </span>
@@ -253,8 +259,8 @@ function Column({
     >
       <h4 className={cn("flex items-center gap-2 px-1", !folded && "mb-2")}>
         <StatusPill status={status} />
-        <span className="text-xs text-subtle tabular-nums">{count}</span>
-        {folded && <span className="text-xs text-subtle">끝난 카드를 여기로</span>}
+        <span className="text-xs text-muted tabular-nums">{count}</span>
+        {folded && <span className="text-xs text-muted">끝난 카드를 여기로</span>}
       </h4>
       {!folded && children}
     </section>
@@ -305,7 +311,10 @@ function CardDetail({
         : "border-line bg-surface hover:bg-surface-sunken",
     );
   return (
-    <div className="rounded-lg border border-line bg-surface p-4 shadow-[var(--shadow-float)]">
+    <div
+      id={DETAIL_ID}
+      className="rounded-lg border border-line bg-surface p-4 shadow-[var(--shadow-float)]"
+    >
       <div className="mb-2 flex items-center gap-2">
         <Chip tone={partTone(task.part_no)}>{task.part_no}</Chip>
         <h4 className="min-w-0 flex-1 truncate font-semibold">{title}</h4>
@@ -393,26 +402,40 @@ function CardDetail({
           </button>
         )}
       </PropertyRow>
-      <PropertyRow label="의존">
-        {waiting.length > 0 && <Chip tone="warning">{waiting.join("·")}번이 이 카드를 기다림</Chip>}
-        {task.depends_on.length
-          ? task.depends_on.map((d) => (
-              <Chip key={d} tone="warning">
-                {d}번 필요
-              </Chip>
-            ))
-          : waiting.length === 0 && <span className="pt-1 text-sm text-subtle">없음</span>}
-        {task.depends_on.length > 0 && (
-          <span className="w-full text-xs text-subtle">
-            {task.depends_on.join("·")}번 자료를 받아 이어 쓰기
+      {/* 의존·순서는 카드에도 배지로 보이므로 접어 둔다. 상세가 길어져 칸을 밀어내지 않게 */}
+      <details className="group mt-1 border-t border-line pt-1">
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 py-1.5 text-sm text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+          <span aria-hidden className="inline-block transition-transform group-open:rotate-90">
+            ›
           </span>
-        )}
-      </PropertyRow>
-      <PropertyRow label="순서">
-        <span className="pt-1 text-sm tabular-nums">
-          {PILL_LABELS[task.status]} 칸 {task.order}번째 · 끌어서 변경
-        </span>
-      </PropertyRow>
+          의존 · 순서
+          {(waiting.length > 0 || task.depends_on.length > 0) && (
+            <Chip tone="warning">{waiting.length + task.depends_on.length}</Chip>
+          )}
+        </summary>
+        <PropertyRow label="의존">
+          {waiting.length > 0 && (
+            <Chip tone="warning">{waiting.join("·")}번이 이 카드를 기다림</Chip>
+          )}
+          {task.depends_on.length
+            ? task.depends_on.map((d) => (
+                <Chip key={d} tone="warning">
+                  {d}번 필요
+                </Chip>
+              ))
+            : waiting.length === 0 && <span className="pt-1 text-sm text-subtle">없음</span>}
+          {task.depends_on.length > 0 && (
+            <span className="w-full text-xs text-subtle">
+              {task.depends_on.join("·")}번 자료를 받아 이어 쓰기
+            </span>
+          )}
+        </PropertyRow>
+        <PropertyRow label="순서">
+          <span className="pt-1 text-sm tabular-nums">
+            {PILL_LABELS[task.status]} 칸 {task.order}번째 · 끌어서 변경
+          </span>
+        </PropertyRow>
+      </details>
     </div>
   );
 }
@@ -440,7 +463,8 @@ export function Board({
   const [selected, setSelected] = useState<number | null>(null);
   // 끄는 동안의 칸 배치(놓으면 서버 값으로 돌아간다)
   const [dragging, setDragging] = useState<Record<TaskStatus, Task[]> | null>(null);
-  const columns = dragging ?? columnsOf(snap.tasks);
+  const serverColumns = columnsOf(snap.tasks);
+  const columns = dragging ?? serverColumns;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -489,17 +513,30 @@ export function Board({
   const selectedTask = snap.tasks.find((t) => t.part_no === selected);
 
   return (
-    // 패널이 넓으면(≥1440 분할 배치의 넓은 쪽) 칸 3개를 가로로 놓는다
+    // 넓으면 카드 상세를 칸 옆에 둔다(상세를 열어도 칸이 아래로 밀리지 않게)
     <div className="@container flex flex-col gap-3 p-5">
-      {snap.division ? (
-        <p className="rounded-md bg-success-soft px-3 py-2 text-sm text-ink">
-          {divisionLine(snap.division.parts, snap.division.decided_by, snap.persona)} · 재배정 가능
-        </p>
-      ) : (
-        <p className="rounded-md bg-surface-sunken px-3 py-2 text-sm text-muted">
-          담당 {filled}/5 · 5장을 모두 채우면 분업 확정
-        </p>
-      )}
+      <div className="flex flex-wrap items-center gap-2">
+        {snap.division ? (
+          <p className="min-w-0 flex-1 rounded-md bg-success-soft px-3 py-2 text-sm text-ink">
+            {divisionLine(snap.division.parts, snap.division.decided_by, snap.persona)} · 재배정
+            가능
+          </p>
+        ) : (
+          <p className="min-w-0 flex-1 rounded-md bg-surface-sunken px-3 py-2 text-sm text-muted">
+            담당 {filled}/5 · 5장을 모두 채우면 분업 확정
+          </p>
+        )}
+        <ul aria-label="상태별 카드 수" className="flex shrink-0 items-center gap-1.5">
+          {COLUMNS.map((status) => (
+            <li key={status} className="flex items-center gap-1">
+              <StatusPill status={status} />
+              <span className="text-sm font-semibold tabular-nums">
+                {serverColumns[status].length}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -507,50 +544,64 @@ export function Board({
         onDragEnd={onDragEnd}
         onDragCancel={() => setDragging(null)}
       >
-        <div className="flex flex-col gap-3 @min-[680px]:grid @min-[680px]:grid-cols-3 @min-[680px]:items-start">
-          {COLUMNS.map((status) => (
-            <Column key={status} status={status} count={columns[status].length}>
-              <SortableContext
-                items={columns[status].map((t) => t.part_no)}
-                strategy={verticalListSortingStrategy}
-              >
-                <ul className="flex min-h-10 flex-col gap-1.5">
-                  {columns[status].map((task) => (
-                    <BoardCard
-                      key={task.part_no}
-                      task={task}
-                      title={titles[task.part_no] ?? ""}
-                      snap={snap}
-                      locked={locked}
-                      selected={selected === task.part_no}
-                      onSelect={() => setSelected(selected === task.part_no ? null : task.part_no)}
-                      onAssign={(assignee) => onPatch(task.part_no, { assignee })}
-                    />
-                  ))}
-                  {columns[status].length === 0 && (
-                    <li className="rounded-md border border-dashed border-line px-3 py-2 text-xs text-subtle">
-                      여기로 끌어 놓기
-                    </li>
-                  )}
-                </ul>
-              </SortableContext>
-            </Column>
-          ))}
+        <div
+          className={cn(
+            "flex flex-col gap-3",
+            selectedTask &&
+              "@min-[1040px]:grid @min-[1040px]:grid-cols-[minmax(0,1fr)_340px] @min-[1040px]:items-start",
+          )}
+        >
+          <div className="@container/cols">
+            <div className="flex flex-col gap-3 @min-[680px]/cols:grid @min-[680px]/cols:grid-cols-3 @min-[680px]/cols:items-start">
+              {COLUMNS.map((status) => (
+                <Column key={status} status={status} count={columns[status].length}>
+                  <SortableContext
+                    items={columns[status].map((t) => t.part_no)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <ul className="flex min-h-10 flex-col gap-1.5">
+                      {columns[status].map((task) => (
+                        <BoardCard
+                          key={task.part_no}
+                          task={task}
+                          title={titles[task.part_no] ?? ""}
+                          snap={snap}
+                          locked={locked}
+                          selected={selected === task.part_no}
+                          onSelect={() =>
+                            setSelected(selected === task.part_no ? null : task.part_no)
+                          }
+                          onAssign={(assignee) => onPatch(task.part_no, { assignee })}
+                        />
+                      ))}
+                      {columns[status].length === 0 && (
+                        <li className="rounded-md border border-dashed border-line px-3 py-2 text-xs text-muted">
+                          여기로 끌어 놓기
+                        </li>
+                      )}
+                    </ul>
+                  </SortableContext>
+                </Column>
+              ))}
+            </div>
+          </div>
+          {selectedTask && (
+            <div className="@min-[1040px]:sticky @min-[1040px]:top-0">
+              <CardDetail
+                task={selectedTask}
+                title={titles[selectedTask.part_no] ?? ""}
+                snap={snap}
+                nowMin={nowMin}
+                sessionMinutes={sessionMinutes}
+                locked={locked}
+                error={errors[selectedTask.part_no] ?? null}
+                onPatch={(patch) => onPatch(selectedTask.part_no, patch)}
+                onClose={() => setSelected(null)}
+              />
+            </div>
+          )}
         </div>
       </DndContext>
-      {selectedTask && (
-        <CardDetail
-          task={selectedTask}
-          title={titles[selectedTask.part_no] ?? ""}
-          snap={snap}
-          nowMin={nowMin}
-          sessionMinutes={sessionMinutes}
-          locked={locked}
-          error={errors[selectedTask.part_no] ?? null}
-          onPatch={(patch) => onPatch(selectedTask.part_no, patch)}
-          onClose={() => setSelected(null)}
-        />
-      )}
     </div>
   );
 }

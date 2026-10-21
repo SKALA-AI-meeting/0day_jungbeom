@@ -1,20 +1,29 @@
 "use client";
 
-// 가상 오피스 화면: 레일 / 가운데(대화 ↔ 열린 문서) / 오른쪽 탭(내 문서·보드·자료·어시스턴트).
+// 가상 오피스 화면: 레일(채널·남은 시간) / 메인 탭(대화·내 문서·보드·자료·어시스턴트, CX-08).
+// 대화 탭 안에서 받은 문서를 대화 위로 열고 닫는다. 작은 화면에서는 레일이 위쪽 가로 줄이 된다.
 // 상태는 reducer(OfficeState)가 들고, 서버 호출은 candidate-flow의 OfficeContainer가 한다. 여기는 화면 상태만 가진다.
 import { Dialog } from "@base-ui/react/dialog";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useImperativeHandle, useState, type ReactNode, type Ref } from "react";
 
-import { Button, ConfirmDialog, Tabs, cn } from "@/components/ui";
+import { Button, ConfirmDialog, cn } from "@/components/ui";
 
 import { AssistantPanel } from "./assistant-panel";
 import { Board, type MovePatch } from "./board";
-import { ChannelHeader, channelName, Composer, Timeline, type DocCardInfo } from "./conversation";
+import {
+  ChannelHeader,
+  channelName,
+  Composer,
+  HelpButton,
+  Timeline,
+  type DocCardInfo,
+} from "./conversation";
 import { DocViewer, type OpenDoc } from "./doc-viewer";
 import { HelpContent } from "./link-screens";
 import { countdown, givenName, partLabel, remainText } from "./lines";
 import { DocEditor, DocList, FinalDoc, type DocTarget, type SaveState } from "./my-docs";
 import { Library } from "./library";
+import { MainTabBar, TabPanel, type MainTab } from "./main-tabs";
 import {
   locked as isLocked,
   nowMin,
@@ -23,9 +32,8 @@ import {
   timeline,
   type OfficeState,
 } from "./reducer";
+import { chatBadge, othersCount, showChannel } from "./screen";
 import type { Channel, DocRef, Task } from "./types";
-
-export type RightTab = "docs" | "board" | "library" | "assistant";
 
 export const SESSION_MINUTES = 120;
 
@@ -47,11 +55,15 @@ export type OfficeHandlers = {
   onMove: (patches: MovePatch[]) => void;
   onReadCompany: (docId: string) => Promise<string>;
   onAsk: (prompt: string) => void;
-  /** 오른쪽 편집 중인지·가운데에 문서가 열렸는지(새 메시지 토스트 판정) */
+  /** 대화 밖 작업 탭을 보는 중인지·대화 위에 문서가 열렸는지(새 메시지 토스트 판정) */
   onEditingChange: (value: { editing: boolean; docOpen: boolean }) => void;
 };
 
+/** 화면 밖(토스트 "보기")에서 채널 대화로 옮길 때 쓰는 손잡이 */
+export type OfficeHandle = { showChannel: (channel: Channel) => void };
+
 export type OfficeViewProps = OfficeHandlers & {
+  ref?: Ref<OfficeHandle>;
   state: OfficeState;
   alias: string;
   now: number;
@@ -82,18 +94,24 @@ function RailItem({
     <button
       type="button"
       onClick={onClick}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-base transition-colors",
+        "flex shrink-0 items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-base whitespace-nowrap transition-colors md:w-full md:shrink",
         active
           ? "bg-surface font-semibold text-ink"
           : "text-muted hover:bg-surface/60 hover:text-ink",
       )}
     >
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {online && <span aria-label="온라인" className="size-2 shrink-0 rounded-full bg-success" />}
+      {online && (
+        <span className="size-2 shrink-0 rounded-full bg-success">
+          <span className="sr-only">온라인</span>
+        </span>
+      )}
       {!!count && (
         <span className="shrink-0 rounded-sm bg-accent px-1.5 text-xs font-semibold text-white tabular-nums">
-          {count}
+          <span aria-hidden>{count}</span>
+          <span className="sr-only">새 메시지 {count}개</span>
         </span>
       )}
     </button>
@@ -106,20 +124,20 @@ function Timer({ seconds }: { seconds: number | null }) {
   return (
     <div
       className={cn(
-        "rounded-md px-2.5 py-2 transition-colors duration-300",
+        "flex shrink-0 items-baseline gap-2 rounded-md px-2.5 py-1.5 transition-colors duration-300 md:block md:py-2",
         warn ? "bg-warning-soft text-warning" : "text-muted",
       )}
     >
       <p className="text-xs">마감까지</p>
-      <p className="text-xl font-semibold tabular-nums">{countdown(seconds)}</p>
+      <p className="font-semibold tabular-nums md:text-xl">{countdown(seconds)}</p>
     </div>
   );
 }
 
-export function OfficeView(props: OfficeViewProps) {
+export function OfficeView({ ref, ...props }: OfficeViewProps) {
   const { state, alias, now } = props;
   const { snap } = state;
-  const [tab, setTab] = useState<RightTab>("docs");
+  const [tab, setTab] = useState<MainTab>("chat");
   const [target, setTarget] = useState<DocTarget>(null);
   const [open, setOpen] = useState<OpenDoc | null>(null);
   const [replyTo, setReplyTo] = useState<DocRef | null>(null);
@@ -142,15 +160,43 @@ export function OfficeView(props: OfficeViewProps) {
     : null;
   const colleague = givenName(snap.persona.colleague);
 
-  const editing = tab === "docs" && target != null;
+  const channel = state.channel;
+  // 채널이 바뀌면(레일·토스트의 "보기"·답글) 대화 탭으로 돌아온다
+  const [shownChannel, setShownChannel] = useState(channel);
+  if (channel !== shownChannel) {
+    setShownChannel(channel);
+    setTab("chat");
+    setOpen(null);
+  }
+  // 작업 탭에 있는 동안 지금 채널에 온 메시지는 reducer의 안 읽음에 잡히지 않으므로 여기서 센다
+  const others = othersCount(snap.messages, channel);
+  const [seen, setSeen] = useState({ channel, count: others });
+  if (tab === "chat" && (seen.channel !== channel || seen.count !== others)) {
+    setSeen({ channel, count: others });
+  }
+  const hiddenNew =
+    tab === "chat" || seen.channel !== channel ? 0 : Math.max(0, others - seen.count);
+  const unreadOf = (ch: Channel) => state.unread[ch] + (ch === channel ? hiddenNew : 0);
+
+  // [대화] 탭 배지: 작업 탭에 있는 동안 도착한 새 메시지(채널 구분 없음). 대화 탭으로 돌아오면 0
+  const total = othersCount(snap.messages);
+  const [seenTotal, setSeenTotal] = useState(total);
+  if (tab === "chat" && seenTotal !== total) setSeenTotal(total);
+  const chatCount = chatBadge(total, seenTotal, tab);
+
+  // 대화가 안 보이는 동안(작업 탭) 새 메시지는 토스트로도 알린다
+  const editing = tab !== "chat";
   const docOpen = open != null;
   const { onEditingChange } = props;
   useEffect(() => onEditingChange({ editing, docOpen }), [editing, docOpen, onEditingChange]);
 
-  const view = (channel: Channel) => {
-    setOpen(null);
-    props.onView(channel);
+  const view = (next: Channel) => {
+    const screen = showChannel({ tab, open });
+    setTab(screen.tab);
+    setOpen(screen.open);
+    props.onView(next);
   };
+  useImperativeHandle(ref, () => ({ showChannel: view }));
 
   const docLabel = (ref: DocRef) => {
     const part =
@@ -209,8 +255,7 @@ export function OfficeView(props: OfficeViewProps) {
     if (!open) return;
     const version = open.doc.versions.find((v) => v.version === open.version);
     setReplyTo({ doc_id: open.doc.doc_id, version: open.version });
-    setOpen(null);
-    props.onView(version?.channel ?? "team");
+    view(version?.channel ?? "team");
     setFocusKey((k) => k + 1);
   };
 
@@ -221,7 +266,6 @@ export function OfficeView(props: OfficeViewProps) {
     else void props.onImport(part, source);
   };
 
-  const channel = state.channel;
   const items = timeline(state, channel);
   const progress = progressLabels(state);
   const stopped =
@@ -237,55 +281,61 @@ export function OfficeView(props: OfficeViewProps) {
     typeof target === "number" ? snap.my_documents.find((d) => d.part_no === target) : null;
 
   return (
-    // ≥1440은 가운데와 작업 패널을 반씩 나눈다: 받은 문서를 가운데에 연 채 오른쪽에서 내 문서를 고치는 분할 보기, 넓은 보드
-    <div className="grid h-dvh grid-cols-[232px_minmax(0,1fr)_440px] overflow-hidden min-[1440px]:grid-cols-[232px_minmax(0,1fr)_minmax(0,1fr)]">
-      <nav aria-label="채널" className="flex min-h-0 flex-col gap-4 bg-surface-sunken px-3 py-4">
-        <div className="px-2.5">
+    // md 이상: 레일 232px + 메인. 그보다 좁으면 레일이 위쪽 가로 줄(가로 스크롤)이 되고 메인이 나머지를 쓴다
+    <div className="grid h-dvh grid-rows-[auto_minmax(0,1fr)] overflow-hidden md:grid-cols-[232px_minmax(0,1fr)] md:grid-rows-1">
+      <nav
+        aria-label="채널"
+        className="flex min-h-0 items-center gap-1 overflow-x-auto border-b border-line bg-surface-sunken px-2 py-2 md:flex-col md:items-stretch md:gap-4 md:overflow-x-visible md:border-b-0 md:px-3 md:py-4"
+      >
+        <div className="hidden px-2.5 md:block">
           <p className="text-lg font-semibold">루프랩</p>
           <p className="text-xs text-subtle">모아런 재참여 기획 · {alias}</p>
         </div>
-        <div className="flex flex-col gap-0.5">
-          <p className="px-2.5 pb-1 text-xs text-subtle">채널</p>
+        <div className="flex shrink-0 gap-0.5 md:flex-col">
+          <p className="hidden px-2.5 pb-1 text-xs text-subtle md:block">채널</p>
           <RailItem
-            active={channel === "team"}
+            active={tab === "chat" && channel === "team"}
             label="# 재참여-기획"
-            count={state.unread.team}
+            count={unreadOf("team")}
             onClick={() => view("team")}
           />
         </div>
-        <div className="flex flex-col gap-0.5">
-          <p className="px-2.5 pb-1 text-xs text-subtle">다이렉트 메시지</p>
+        <div className="flex shrink-0 gap-0.5 md:flex-col">
+          <p className="hidden px-2.5 pb-1 text-xs text-subtle md:block">다이렉트 메시지</p>
           <RailItem
-            active={channel === "dm"}
+            active={tab === "chat" && channel === "dm"}
             label={snap.persona.colleague}
             online
-            count={state.unread.dm}
+            count={unreadOf("dm")}
             onClick={() => view("dm")}
           />
           <RailItem
-            active={channel === "manager_dm"}
+            active={tab === "chat" && channel === "manager_dm"}
             label={snap.persona.manager}
             online
-            count={state.unread.manager_dm}
+            count={unreadOf("manager_dm")}
             onClick={() => view("manager_dm")}
           />
         </div>
-        <div className="flex flex-col gap-0.5">
-          <p className="px-2.5 pb-1 text-xs text-subtle">나에게만</p>
+        <div className="flex shrink-0 gap-0.5 md:flex-col">
+          <p className="hidden px-2.5 pb-1 text-xs text-subtle md:block">나에게만</p>
           <RailItem
-            active={channel === "notice"}
+            active={tab === "chat" && channel === "notice"}
             label="알림"
-            count={state.unread.notice}
+            count={unreadOf("notice")}
             onClick={() => view("notice")}
           />
         </div>
-        <div className="mt-auto flex flex-col gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2 md:mt-auto md:ml-0 md:flex-col md:items-stretch">
           {props.devSlot}
+        </div>
+        {/* 좁은 화면에서는 가로 레일 맨 앞에 고정해 스크롤해도 남은 시간이 보이게 한다 */}
+        <div className="sticky left-0 z-[1] order-first shrink-0 bg-surface-sunken md:static md:order-none">
           <Timer seconds={snap.session.status === "in_progress" ? remaining : null} />
         </div>
       </nav>
 
-      <main className="relative flex min-h-0 flex-col bg-canvas">
+      <main className="flex min-h-0 min-w-0 flex-col bg-canvas">
         {offline && (
           <div
             role="status"
@@ -307,7 +357,7 @@ export function OfficeView(props: OfficeViewProps) {
         {reporting && !ended && (
           <div
             role="status"
-            className="flex shrink-0 items-center gap-3 border-b border-warning/30 bg-warning-soft px-5 py-2.5 text-sm"
+            className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-warning/30 bg-warning-soft px-5 py-2.5 text-sm"
           >
             <b className="font-semibold">보고 대기</b>
             <span className="tabular-nums">
@@ -324,131 +374,133 @@ export function OfficeView(props: OfficeViewProps) {
             보고 완료 · 곧 마무리 안내로 이동
           </div>
         )}
-        <ChannelHeader channel={channel} snap={snap} alias={alias} onHelp={() => setHelp(true)} />
-        <Timeline
-          key={channel}
-          items={items}
-          snap={snap}
-          alias={alias}
-          docInfo={docInfo}
-          docLabel={docLabel}
-          onOpenDoc={(ref) => void openDoc(ref)}
-          offline={offline}
-        />
-        <p aria-live="polite" className="h-5 shrink-0 px-5 text-xs text-muted">
-          {progress[0] ?? ""}
-        </p>
-        {canWrite ? (
-          <Composer
-            channel={writeChannel}
-            placeholder={`${channelName(writeChannel, snap.persona)}에 메시지 보내기`}
-            offline={offline}
-            replyTo={replyTo}
-            replyLabel={replyTo ? docLabel(replyTo) : ""}
-            onClearReply={() => setReplyTo(null)}
-            focusKey={focusKey}
-            onSend={(text) => {
-              props.onSend(writeChannel, text, replyTo ?? undefined);
-              setReplyTo(null);
-            }}
-          />
-        ) : (
-          <p className="shrink-0 px-5 pb-5 text-sm text-subtle">
-            {channel === "notice" ? "받기 전용 채널" : "세션 종료 · 메시지 전송 불가"}
-          </p>
-        )}
-        <DocViewer
-          open={open}
-          owner={colleague}
-          sections={snap.final.sections}
-          locked={locked}
-          onVersion={(version) => open && void openDoc({ doc_id: open.doc.doc_id, version })}
-          onReply={reply}
-          onImport={(part) =>
-            open && importInto(part, { source_doc_id: open.doc.doc_id, version: open.version })
-          }
-          onClose={() => setOpen(null)}
-        />
-      </main>
-
-      <aside aria-label="작업" className="flex min-h-0 flex-col border-l border-line bg-surface">
-        <Tabs
-          className="h-full"
+        <MainTabBar
           value={tab}
-          onValueChange={(value) => setTab(value as RightTab)}
-          items={[
-            {
-              value: "docs",
-              label: "내 문서",
-              content:
-                target === "final" ? (
-                  <FinalDoc
-                    snap={snap}
-                    save={props.saves.final}
-                    locked={locked}
-                    remainingSeconds={remaining}
-                    onBack={() => setTarget(null)}
-                    onEdit={props.onEditFinal}
-                    onImport={importInto}
-                    onSubmit={() => setConfirm(true)}
-                  />
-                ) : myDoc ? (
-                  <DocEditor
-                    doc={myDoc}
-                    save={props.saves[String(myDoc.part_no)]}
-                    locked={locked}
-                    onBack={() => setTarget(null)}
-                    onEdit={(content) => props.onEditDoc(myDoc.part_no, content)}
-                    onShare={(ch, note) => props.onShare(myDoc.part_no, ch, note)}
-                  />
-                ) : (
-                  <DocList snap={snap} onPick={setTarget} onBoard={() => setTab("board")} />
-                ),
-            },
-            {
-              value: "board",
-              label: "보드",
-              content: (
-                <Board
-                  snap={snap}
-                  titles={titles}
-                  nowMin={nowMin(snap, now)}
-                  sessionMinutes={SESSION_MINUTES}
-                  locked={locked}
-                  errors={props.taskErrors}
-                  onPatch={props.onTask}
-                  onMove={props.onMove}
-                />
-              ),
-            },
-            {
-              value: "library",
-              label: "자료",
-              content: (
-                <Library
-                  documents={snap.documents}
-                  releasedLater={state.releasedLater}
-                  onRead={props.onReadCompany}
-                />
-              ),
-            },
-            {
-              value: "assistant",
-              label: "어시스턴트",
-              content: (
-                <AssistantPanel
-                  calls={snap.assistant}
-                  documents={snap.documents}
-                  locked={locked}
-                  pending={props.assistantPending}
-                  error={props.assistantError}
-                  onAsk={props.onAsk}
-                />
-              ),
-            },
-          ]}
+          counts={{ chat: chatCount }}
+          onChange={setTab}
+          end={<HelpButton onClick={() => setHelp(true)} />}
         />
-      </aside>
+        <div className="relative min-h-0 flex-1">
+          <TabPanel value="chat" active={tab === "chat"}>
+            {/* 받은 문서가 대화를 덮는 동안 뒤의 대화·입력창은 포커스·입력을 막는다 */}
+            <div inert={docOpen} className="flex min-h-0 flex-1 flex-col">
+              <ChannelHeader channel={channel} snap={snap} alias={alias} />
+              <Timeline
+                key={channel}
+                items={items}
+                snap={snap}
+                alias={alias}
+                docInfo={docInfo}
+                docLabel={docLabel}
+                onOpenDoc={(ref) => void openDoc(ref)}
+                offline={offline}
+              />
+              <p aria-live="polite" className="h-5 shrink-0 px-5 text-xs text-muted">
+                {progress[0] ?? ""}
+              </p>
+              {canWrite ? (
+                <Composer
+                  channel={writeChannel}
+                  placeholder={`${channelName(writeChannel, snap.persona)}에 메시지 보내기`}
+                  offline={offline}
+                  replyTo={replyTo}
+                  replyLabel={replyTo ? docLabel(replyTo) : ""}
+                  onClearReply={() => setReplyTo(null)}
+                  focusKey={focusKey}
+                  onSend={(text) => {
+                    props.onSend(writeChannel, text, replyTo ?? undefined);
+                    setReplyTo(null);
+                  }}
+                />
+              ) : (
+                <p className="shrink-0 px-5 pb-5 text-sm text-subtle">
+                  {channel === "notice" ? "받기 전용 채널" : "세션 종료 · 메시지 전송 불가"}
+                </p>
+              )}
+            </div>
+            <DocViewer
+              open={open}
+              owner={colleague}
+              sections={snap.final.sections}
+              locked={locked}
+              onVersion={(version) => open && void openDoc({ doc_id: open.doc.doc_id, version })}
+              onReply={reply}
+              onImport={(part) =>
+                open && importInto(part, { source_doc_id: open.doc.doc_id, version: open.version })
+              }
+              onClose={() => setOpen(null)}
+            />
+          </TabPanel>
+
+          {/* 문서 편집은 읽기 좋은 폭의 가운데 열로 둔다. 넓은 메인에서 줄이 지나치게 길어지지 않게 */}
+          <TabPanel value="docs" active={tab === "docs"}>
+            <div className="mx-auto flex h-full min-h-0 w-full max-w-[56rem] flex-col bg-surface md:border-x md:border-line">
+              {target === "final" ? (
+                <FinalDoc
+                  snap={snap}
+                  save={props.saves.final}
+                  locked={locked}
+                  remainingSeconds={remaining}
+                  onBack={() => setTarget(null)}
+                  onEdit={props.onEditFinal}
+                  onImport={importInto}
+                  onSubmit={() => setConfirm(true)}
+                  onToLibrary={() => setTab("library")}
+                />
+              ) : myDoc ? (
+                <DocEditor
+                  doc={myDoc}
+                  save={props.saves[String(myDoc.part_no)]}
+                  locked={locked}
+                  onBack={() => setTarget(null)}
+                  onEdit={(content) => props.onEditDoc(myDoc.part_no, content)}
+                  onShare={(ch, note) => props.onShare(myDoc.part_no, ch, note)}
+                  onToLibrary={() => setTab("library")}
+                />
+              ) : (
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <DocList snap={snap} onPick={setTarget} onBoard={() => setTab("board")} />
+                </div>
+              )}
+            </div>
+          </TabPanel>
+
+          <TabPanel value="board" active={tab === "board"} className="overflow-y-auto">
+            <Board
+              snap={snap}
+              titles={titles}
+              nowMin={nowMin(snap, now)}
+              sessionMinutes={SESSION_MINUTES}
+              locked={locked}
+              errors={props.taskErrors}
+              onPatch={props.onTask}
+              onMove={props.onMove}
+            />
+          </TabPanel>
+
+          <TabPanel value="library" active={tab === "library"} className="overflow-y-auto">
+            <Library
+              documents={snap.documents}
+              releasedLater={state.releasedLater}
+              onRead={props.onReadCompany}
+              onToDocs={() => setTab("docs")}
+            />
+          </TabPanel>
+
+          <TabPanel value="assistant" active={tab === "assistant"}>
+            <div className="mx-auto flex h-full min-h-0 w-full max-w-[56rem] flex-col bg-surface md:border-x md:border-line">
+              <AssistantPanel
+                calls={snap.assistant}
+                documents={snap.documents}
+                locked={locked}
+                pending={props.assistantPending}
+                error={props.assistantError}
+                onAsk={props.onAsk}
+              />
+            </div>
+          </TabPanel>
+        </div>
+      </main>
 
       <ConfirmDialog
         open={confirm}

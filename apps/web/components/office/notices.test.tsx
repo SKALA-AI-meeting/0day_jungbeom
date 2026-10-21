@@ -67,8 +67,11 @@ test("알림 채널·공개됨·토스트·복사·끊김·마감 경고, System
   const incoming = state.snap.messages.find((m) => m.sender === "colleague")!;
   expect(shouldToast(incoming, { editing: true, channel: "dm", docOpen: false })).toBe(true);
   expect(shouldToast(incoming, { editing: false, channel: "dm", docOpen: false })).toBe(false);
-  // 지금 가운데에 보이는 채널이면 띄우지 않는다
-  expect(shouldToast(incoming, { editing: true, channel: "team", docOpen: false })).toBe(false);
+  // 대화 탭에 지금 보이는 채널이면 띄우지 않는다
+  expect(shouldToast(incoming, { editing: false, channel: "team", docOpen: false })).toBe(false);
+  // 보드 탭(대화가 아닌 탭)이면 같은 채널의 팀장 메시지도 띄운다
+  const manager = state.snap.messages.find((m) => m.sender === "manager" && m.channel === "team")!;
+  expect(shouldToast(manager, { editing: true, channel: "team", docOpen: false })).toBe(true);
   // 개인 알림은 편집 중이 아니어도 띄운다
   const delayMessage = delay.kind === "message" ? delay.message : (null as never);
   expect(shouldToast(delayMessage, { editing: false, channel: "team", docOpen: false })).toBe(true);

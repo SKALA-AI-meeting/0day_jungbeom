@@ -25,7 +25,7 @@ import {
 import { DEADLINE_10, DEADLINE_2, personName } from "./lines";
 import { ConsentScreen, EntryScreen, LinkNotice, WaitingScreen } from "./link-screens";
 import { MockControls } from "./mock-controls";
-import { OfficeView } from "./office-view";
+import { OfficeView, type OfficeHandle } from "./office-view";
 import type { SaveState } from "./my-docs";
 import { boardLineFor, firstLine, initialState, nowMin, reduce, shouldToast } from "./reducer";
 import type { Channel, Debrief, Entry, ServerFrame, StateSnapshot, Task } from "./types";
@@ -249,6 +249,7 @@ function OfficeContainer({
   const socket = useRef<SessionSocket | null>(null);
   const stateRef = useRef(state);
   const editing = useRef({ editing: false, docOpen: false });
+  const office = useRef<OfficeHandle>(null);
   const [saver] = useState(() => createSaver(SAVE_DELAY_MS));
   const msgSeq = useRef(0);
   const alias = aliasOf(initial);
@@ -355,7 +356,11 @@ function OfficeContainer({
               description: firstLine(m.content),
               action: {
                 label: "보기",
-                onClick: () => dispatch({ type: "view", channel: m.channel }),
+                // 대화 탭 전환·뷰어 닫기까지 화면이 맡는다(채널 값이 같아도 대화로 이동)
+                onClick: () =>
+                  office.current
+                    ? office.current.showChannel(m.channel)
+                    : dispatch({ type: "view", channel: m.channel }),
               },
             });
           }
@@ -490,6 +495,7 @@ function OfficeContainer({
   return (
     <>
       <OfficeView
+        ref={office}
         state={state}
         alias={alias}
         now={now}

@@ -694,15 +694,15 @@ export function progressLabels(state: OfficeState) {
 }
 
 /**
- * 새 메시지 토스트(보낸 사람·첫 줄). 내 메시지·시스템 줄과 지금 가운데에 보이는 채널은 띄우지 않는다.
- * 개인 알림은 놓치면 안 되므로 편집 여부와 상관없이, 그 밖은 오른쪽에서 편집 중일 때만 띄운다.
+ * 새 메시지 토스트(보낸 사람·첫 줄). 내 메시지·시스템 줄과 대화 탭에 지금 보이는 채널은 띄우지 않는다.
+ * 개인 알림은 놓치면 안 되므로 탭과 상관없이, 그 밖은 대화가 아닌 탭(editing)을 보는 중일 때만 띄운다.
  */
 export function shouldToast(
   message: Message,
   ctx: { editing: boolean; channel: Channel; docOpen: boolean },
 ) {
   if (message.sender === "candidate" || isSystemLine(message)) return false;
-  if (message.channel === ctx.channel && !ctx.docOpen) return false;
+  if (message.channel === ctx.channel && !ctx.docOpen && !ctx.editing) return false;
   return message.channel === "notice" || ctx.editing;
 }
 

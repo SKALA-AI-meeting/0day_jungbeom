@@ -131,7 +131,7 @@ export function gapLine(from: number, to: number) {
 export const PRESENCE_LINE = (persona: Persona) =>
   `${persona.manager.split(" ")[0]}님과 ${persona.colleague}님이 들어왔어요`;
 
-export const REPORT_GUIDE = "최종본은 오른쪽 탭에서 제출합니다. 제출하면 세션이 끝납니다";
+export const REPORT_GUIDE = "최종본은 내 문서 탭에서 제출합니다. 제출하면 세션이 끝납니다";
 export const SUBMITTED_LINE = "최종본을 보냈어요";
 export const WAITING_LINE = "보고를 기다리는 중 (5분 안에 안 써도 제출은 유효합니다)";
 export const AUTO_SUBMITTED_LINE =

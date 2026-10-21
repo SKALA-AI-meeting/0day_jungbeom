@@ -192,15 +192,15 @@ export function ConsentScreen({
   );
 }
 
-/** 레일 / 가운데 / 오른쪽 탭 세 영역 그림(design-direction.md ④) */
+/** 왼쪽 레일 / 메인 탭 두 영역 그림(design-direction.md ④) */
 export function LayoutSketch() {
   const bar = "h-1.5 rounded-full bg-line";
   return (
     <figure className="flex flex-col gap-3">
       <div
-        aria-label="오피스 화면 구성: 왼쪽 채널 목록, 가운데 대화, 오른쪽 작업 탭"
+        aria-label="오피스 화면 구성: 왼쪽 채널 목록, 메인 영역의 대화·내 문서·보드·자료·어시스턴트 탭"
         role="img"
-        className="grid h-44 grid-cols-[22%_1fr_32%] overflow-hidden rounded-lg border border-line bg-surface text-[10px]"
+        className="grid h-44 grid-cols-[22%_1fr] overflow-hidden rounded-lg border border-line bg-surface text-[10px]"
       >
         <div className="flex flex-col gap-1.5 bg-surface-sunken p-2.5">
           <span className="font-semibold text-ink">루프랩</span>
@@ -210,39 +210,34 @@ export function LayoutSketch() {
           <span className="text-muted">알림</span>
           <span className="mt-auto text-warning">마감 01:23:40</span>
         </div>
-        <div className="flex flex-col gap-2 p-2.5">
-          <span className="font-semibold text-ink"># 재참여-기획</span>
-          <div className={`${bar} w-3/4`} />
-          <div className="rounded-md border border-line p-1.5">
-            <span className="rounded-sm bg-part4 px-1 text-part4-ink">4</span>{" "}
-            <span className="text-ink">비슷한 서비스 사례 · v1</span>
-          </div>
-          <div className={`${bar} w-1/2`} />
-          <div className="mt-auto h-5 rounded-md border border-line" />
-        </div>
-        <div className="flex flex-col gap-1.5 border-l border-line p-2.5">
-          <div className="flex gap-1.5 text-muted">
-            <span className="text-ink underline underline-offset-4">내 문서</span>
+        <div className="flex min-w-0 flex-col">
+          <div className="flex gap-2.5 border-b border-line px-2.5 py-1.5 text-muted">
+            <span className="text-ink underline underline-offset-4">대화</span>
+            <span>내 문서</span>
             <span>보드</span>
             <span>자료</span>
-            <span>AI</span>
+            <span>어시스턴트</span>
           </div>
-          <div className={`${bar} w-full`} />
-          <div className={`${bar} w-5/6`} />
-          <div className={`${bar} w-2/3`} />
-          <span className="mt-auto text-ink">★ 최종본</span>
+          <div className="flex flex-1 flex-col gap-2 p-2.5">
+            <span className="font-semibold text-ink"># 재참여-기획</span>
+            <div className={`${bar} w-3/4`} />
+            <div className="w-2/3 rounded-md border border-line p-1.5">
+              <span className="rounded-sm bg-part4 px-1 text-part4-ink">4</span>{" "}
+              <span className="text-ink">비슷한 서비스 사례 · v1</span>
+            </div>
+            <div className={`${bar} w-1/2`} />
+            <div className="mt-auto h-5 rounded-md border border-line" />
+          </div>
         </div>
       </div>
-      <figcaption className="grid grid-cols-3 gap-3 text-sm text-muted">
+      <figcaption className="grid grid-cols-2 gap-3 text-sm text-muted">
         <span>
           <b className="font-semibold text-ink">왼쪽</b> 팀 채널·동료 DM·팀장 DM·개인 알림(나만
-          받음)
+          받음), 남은 시간
         </span>
         <span>
-          <b className="font-semibold text-ink">가운데</b> 대화, 받은 문서 열기
-        </span>
-        <span>
-          <b className="font-semibold text-ink">오른쪽</b> 내 문서·보드·자료·어시스턴트
+          <b className="font-semibold text-ink">메인</b> 대화·내 문서·보드·자료·어시스턴트 탭, 받은
+          문서는 대화 탭에서 열기
         </span>
       </figcaption>
     </figure>
