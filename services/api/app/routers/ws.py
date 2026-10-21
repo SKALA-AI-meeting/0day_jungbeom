@@ -57,19 +57,13 @@ async def handle_send(ctx: AppContext, session_id: uuid.UUID, payload: dict[str,
 @router.websocket("/ws/sessions/{session_id}")
 async def socket(websocket: WebSocket, session_id: uuid.UUID) -> None:
     ctx: AppContext = websocket.app.state.ctx
-    token = websocket.query_params.get("token", "")
-    try:
-        principal = decode_token(token)
-    except Exception:
-        await websocket.close(code=4401)
-        return
-    if principal.role != "candidate":
-        await websocket.close(code=4401)
-        return
-    if principal.subject != session_id:
-        await websocket.close(code=4403)
-        return
+    # 거부도 accept 뒤에 close한다. accept 전 close는 uvicorn이 HTTP 403으로 바꿔 브라우저가
+    # 1006만 받으므로 web의 4401(→resume)·4403(정지) 분기가 동작하지 않는다
+    reject = _reject_code(websocket.query_params.get("token", ""), session_id)
     await websocket.accept()
+    if reject is not None:
+        await websocket.close(code=reject)
+        return
     await ctx.hub.connect(session_id, websocket)
     await _mark_reconnected(ctx, session_id)
     try:
@@ -85,6 +79,19 @@ async def socket(websocket: WebSocket, session_id: uuid.UUID) -> None:
     finally:
         if ctx.hub.disconnect(session_id, websocket):
             await _mark_disconnected(ctx, session_id)
+
+
+def _reject_code(token: str, session_id: uuid.UUID) -> int | None:
+    """토큰 문제 4401(resume 후 재연결), 다른 세션 4403(재연결 안 함), 통과면 None."""
+    try:
+        principal = decode_token(token)
+    except Exception:
+        return 4401
+    if principal.role != "candidate":
+        return 4401
+    if principal.subject != session_id:
+        return 4403
+    return None
 
 
 async def _mark_reconnected(ctx: AppContext, session_id: uuid.UUID) -> None:
