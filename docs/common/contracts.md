@@ -484,7 +484,7 @@ close code: 4401(토큰 문제 → resume 후 재연결), 4403(다른 세션, �
 
 차원 행은 `evaluations`, 실행 메타와 요소 요약(`elements`)은 `evaluation_runs`에 한 트랜잭션으로 저장한다. draft는 `GET /evaluations`에서 둘을 함께 읽어 만든다(체크포인트에 의존하지 않음).
 
-**평가 호출 규칙**: 요소마다 별도 LLM 호출(`MODEL_EVALUATOR`, temperature 0~0.2), 다른 요소의 결과는 입력에 넣지 않는다. 재요청은 **요소 단위 1회**(형식 오류·근거 부재일 때)이고, 그래도 실패한 차원은 `level: null, no_record_reason: "evaluate_failed"`(화면 문구는 `rubric.md` 5장)로 저장한다. **LLM 전송 실패·타임아웃은 저장하지 않고** 예외로 올려 큐 재시도(`attempt+1`)에 맡긴다. 워커는 근거를 고쳐 쓰지 않는다. 예외는 근거 1개인 수준 4·5의 상한(수준 3·확신도 최대 medium)과 확신도 clamp뿐이다.
+**평가 호출 규칙**: 요소마다 별도 LLM 호출(`MODEL_EVALUATOR`, temperature 0~0.2), 다른 요소의 결과는 입력에 넣지 않는다. 재요청은 **요소 단위 1회**(형식 오류·근거 부재일 때)이고, 그래도 실패한 차원은 `level: null, no_record_reason: "evaluate_failed"`(화면 문구는 `rubric.md` 5장)로 저장한다. **LLM 전송 실패·타임아웃은 저장하지 않고** 예외로 올려 큐 재시도(`attempt+1`)에 맡긴다. 워커는 근거를 고쳐 쓰지 않는다. 차원 판단을 바꾸는 예외는 근거 1개인 수준 4·5의 상한(수준 3·확신도 최대 medium), 확신도 clamp, 핵심 카드 미발생 변환(`event_not_fired`)뿐이고, 그로 바뀐 요소의 `summary`만 위 표대로 다시 쓴다.
 
 ## MCP 도구
 
