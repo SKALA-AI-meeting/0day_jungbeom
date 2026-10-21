@@ -77,7 +77,7 @@ mock 모드의 데이터 구성은 `mocks/README.md`에 있다. `?data=worst`를
 <!-- gen:tests -->
 > 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
 
-**단위·컴포넌트 테스트(vitest, `pnpm test`)**: 테스트 제목 54개(정적 파싱)
+**단위·컴포넌트 테스트(vitest, `pnpm test`)**: 테스트 제목 61개(정적 파싱)
 
 <details><summary><code>app/api/health/route.test.ts</code> (1)</summary>
 
@@ -112,6 +112,19 @@ mock 모드의 데이터 구성은 `mocks/README.md`에 있다. `?data=worst`를
 
 </details>
 
+<details><summary><code>components/admin/report-failed.test.tsx</code> (1)</summary>
+
+- 실패 화면은 안내 문장과 [다시 만들기] 버튼을 보이고, 요청 중에는 버튼이 잠긴다
+
+</details>
+
+<details><summary><code>components/admin/report-states.test.ts</code> (2)</summary>
+
+- 조회 응답을 리포트·없음·실패로 나누고 실패 지점을 읽는다
+- 다시 만들기가 성공하면 생성 중 409를 거쳐 리포트가 열린다
+
+</details>
+
 <details><summary><code>components/admin/report-view.test.tsx</code> (6)</summary>
 
 - 샘플 리포트 픽스처: 5요소·19차원, 사유 5종, 미발생 카드 1장, 조정 1개, 확신도 3종, 근거 4종
@@ -123,9 +136,12 @@ mock 모드의 데이터 구성은 `mocks/README.md`에 있다. `?data=worst`를
 
 </details>
 
-<details><summary><code>components/admin/review.pending.test.ts</code> (1)</summary>
+<details><summary><code>components/admin/review.pending.test.ts</code> (4)</summary>
 
-- 리포트 404 not_found는 만드는 중으로 보고 5초마다 다시 읽는다
+- 리포트 409 report_not_ready는 만드는 중으로 보고 5초마다 다시 읽는다
+- 리포트 조회 오류 코드를 생성 중·실패·없음으로 나눈다
+- 확정 중 report_failed·report_not_ready가 와도 이전 리포트에 가려지지 않는다
+- 생성 중 폴링은 일시 오류(503·네트워크)에서 이어지고 성공·실패·없음에서 끝난다
 
 </details>
 
@@ -144,9 +160,10 @@ mock 모드의 데이터 구성은 `mocks/README.md`에 있다. `?data=worst`를
 
 </details>
 
-<details><summary><code>components/debate/markdown.test.tsx</code> (1)</summary>
+<details><summary><code>components/debate/markdown.test.tsx</code> (2)</summary>
 
 - 자료 Markdown을 제목·목록·표·강조로 그리고 원문 HTML은 버린다
+- 어시스턴트 답은 굵게·목록·코드만 서식으로 그리고 링크·이미지·HTML·제목은 글자로 둔다
 
 </details>
 

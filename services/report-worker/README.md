@@ -66,7 +66,7 @@ make test                                               # 전체
 <!-- gen:tests -->
 > 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
 
-총 50개(live 2개 포함, `make test`는 live를 뺀다).
+총 51개(live 2개 포함, `make test`는 live를 뺀다).
 
 <details><summary><code>tests/test_evaluate.py</code> (29)</summary>
 
@@ -94,7 +94,7 @@ make test                                               # 전체
 
 </details>
 
-<details><summary><code>tests/test_graph.py</code> (20)</summary>
+<details><summary><code>tests/test_graph.py</code> (21)</summary>
 
 - `test_generate_evaluates_each_element_once_and_saves_draft`
 - `test_draft_shape_matches_report_contract`
@@ -103,6 +103,7 @@ make test                                               # 전체
 - `test_crash_after_save_recovers_elements_without_llm`
 - `test_new_eval_round_starts_new_thread_from_collect`
 - `test_approve_resumes_and_final_equals_draft`
+- `test_finalize_failure_resumes_same_round_finalize_on_reapprove`
 - `test_approve_before_draft_republishes`
 - `test_llm_timeout_saves_nothing_and_requeues`
 - `test_three_failures_go_to_dlq_and_dlq_marks_failed`

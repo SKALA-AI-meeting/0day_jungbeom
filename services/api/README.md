@@ -145,7 +145,7 @@ make test-live                                         # live 테스트(OPENAI_A
 <!-- gen:tests -->
 > 생성 블록이다. 코드를 바꾸면 `make docs-gen`으로 갱신한다.
 
-총 191개(live 3개 포함, `make test`는 live를 뺀다).
+총 201개(live 3개 포함, `make test`는 live를 뺀다).
 
 <details><summary><code>tests/agent/test_assistant.py</code> (22)</summary>
 
@@ -277,7 +277,7 @@ make test-live                                         # live 테스트(OPENAI_A
 
 </details>
 
-<details><summary><code>tests/test_c01_confirm.py</code> (6)</summary>
+<details><summary><code>tests/test_c01_confirm.py</code> (10)</summary>
 
 - `test_keyword_confirm_frames_support_and_cumulative_deadline`
 - `test_confirm_rejects_unknown_keyword_and_other_phase`
@@ -285,6 +285,10 @@ make test-live                                         # live 테스트(OPENAI_A
 - `test_concurrent_confirms_only_one_wins`
 - `test_confirm_with_three_supporters_is_consensus`
 - `test_outcome_is_candidate_decision_below_three_supporters_of_confirmed`
+- `test_ai_message_committed_before_confirm_is_sent_before_confirm_frames`
+- `test_start_committed_before_confirm_keeps_frame_and_generation_order`
+- `test_slow_socket_does_not_block_writes_or_other_sessions`
+- `test_hub_drop_on_send_timeout_records_connection_gap`
 
 </details>
 
@@ -335,10 +339,13 @@ make test-live                                         # live 테스트(OPENAI_A
 
 </details>
 
-<details><summary><code>tests/test_c10_review.py</code> (2)</summary>
+<details><summary><code>tests/test_c10_review.py</code> (5)</summary>
 
 - `test_review_adjusts_one_dimension_and_final_keeps_draft_hash`
 - `test_candidate_list_chips_merge_adjustments_without_total`
+- `test_report_get_separates_missing_generating_and_failed`
+- `test_finalize_failure_regenerates_by_resuming_same_round_approve`
+- `test_regenerate_hides_previous_draft_until_new_draft`
 
 </details>
 
@@ -403,12 +410,13 @@ make test-live                                         # live 테스트(OPENAI_A
 
 </details>
 
-<details><summary><code>tests/test_scenario.py</code> (5)</summary>
+<details><summary><code>tests/test_scenario.py</code> (6)</summary>
 
 - `test_fixed_seats_cards_dimensions_and_neutral_avatars`
 - `test_scenario_copies_evaluator_prompts_and_forbidden_patterns`
 - `test_fifteen_minute_offsets_scale_with_20_second_floor`
 - `test_cumulative_phase_deadlines` ×2
+- `test_catalog_reads_position_snapshot_not_current_files`
 
 </details>
 
@@ -448,9 +456,11 @@ make test-live                                         # live 테스트(OPENAI_A
 
 </details>
 
-<details><summary><code>tests/test_ws_close.py</code> (2)</summary>
+<details><summary><code>tests/test_ws_close.py</code> (4)</summary>
 
 - `test_rejected_socket_gets_close_code_after_accept` ×2
+- `test_replacing_stuck_socket_lets_new_socket_receive_frames`
+- `test_disconnect_and_send_timeout_clear_writer_queue_and_socket`
 
 </details>
 <!-- /gen:tests -->
