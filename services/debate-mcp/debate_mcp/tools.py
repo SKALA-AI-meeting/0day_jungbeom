@@ -1,4 +1,4 @@
-"""business-mcp 도구 11개(조회 4, 변경 7). 모두 api 내부 REST로 전달만 하고 판단은 api가 한다.
+"""debate-mcp 도구 11개(조회 4, 변경 7). 모두 api 내부 REST로 전달만 하고 판단은 api가 한다.
 
 반환은 `{ok, data}` 또는 `{ok:false, error:{code, message, retryable}}`. 목록·입출력 정본은
 docs/common/contracts.md "MCP 도구". 멱등 키(run_id·seq, doc_id·run_id, card_id·window_start)는 가공
@@ -9,8 +9,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
-from business_mcp import client
-from business_mcp.server import mcp
+from debate_mcp import client
+from debate_mcp.server import mcp
 
 SessionId = Annotated[str, Field(description="세션 ID. 그래프가 주입하며 모델이 바꾸지 않는다.")]
 RunId = Annotated[

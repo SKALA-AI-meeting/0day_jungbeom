@@ -20,9 +20,9 @@ from typing import Any
 
 import httpx
 
-from business_mcp.config import TIMEOUT_SECONDS, Settings, load_settings
+from debate_mcp.config import TIMEOUT_SECONDS, Settings, load_settings
 
-logger = logging.getLogger("business_mcp")
+logger = logging.getLogger("debate_mcp")
 
 # api 4xx → 계약 오류 코드(표는 모듈 docstring). 표에 없는 4xx는 invalid_input.
 STATUS_CODES = {

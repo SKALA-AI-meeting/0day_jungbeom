@@ -1,4 +1,4 @@
-"""business-mcp 서버: FastMCP(Streamable HTTP `/mcp`)와 `/health`. 도구는 `tools.py`."""
+"""debate-mcp 서버: FastMCP(Streamable HTTP `/mcp`)와 `/health`. 도구는 `tools.py`."""
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ValidationError
@@ -21,7 +21,7 @@ class InvalidInputAsResult(Middleware):
             return ToolResult(structured_content={"ok": False, "error": error})
 
 
-mcp = FastMCP("business-mcp", middleware=[InvalidInputAsResult()])
+mcp = FastMCP("debate-mcp", middleware=[InvalidInputAsResult()])
 
 
 @mcp.custom_route("/health", methods=["GET"])
@@ -30,6 +30,6 @@ async def health(_: Request) -> JSONResponse:
 
 
 def create_app():
-    from business_mcp import tools  # noqa: F401  (도구 등록)
+    from debate_mcp import tools  # noqa: F401  (도구 등록)
 
     return mcp.http_app(path="/mcp", transport="streamable-http")

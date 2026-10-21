@@ -6,7 +6,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# 로컬은 <repo>/services/business-mcp/business_mcp/config.py. 컨테이너에는 저장소 루트가 없다.
+# 로컬은 <repo>/services/debate-mcp/debate_mcp/config.py. 컨테이너에는 저장소 루트가 없다.
 _parents = Path(__file__).resolve().parents
 REPO_ROOT = _parents[3] if len(_parents) > 3 else _parents[-1]
 

@@ -1,8 +1,8 @@
 import httpx
 import pytest
-from business_mcp import client, tools  # noqa: F401  (도구 등록)
-from business_mcp.config import Settings
-from business_mcp.server import mcp
+from debate_mcp import client, tools  # noqa: F401  (도구 등록)
+from debate_mcp.config import Settings
+from debate_mcp.server import mcp
 from fastmcp import Client
 
 

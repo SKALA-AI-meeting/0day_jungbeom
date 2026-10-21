@@ -1,7 +1,7 @@
 """완료 기준: /health 응답(compose healthcheck와 같은 경로)."""
 
 import httpx
-from business_mcp.server import create_app
+from debate_mcp.server import create_app
 
 
 async def test_health():
