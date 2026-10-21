@@ -1,6 +1,6 @@
 {
   "type": "error",
-  "seq": 59,
+  "seq": 61,
   "payload": {
     "code": "session_ending",
     "message": "제출된 세션이에요."

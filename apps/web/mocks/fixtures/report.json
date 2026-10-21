@@ -168,7 +168,7 @@
               {
                 "id": "m-09",
                 "sender": "p3",
-                "content": "듣고 보니 물이 근거가 더 많겠네요. 저도 물로 갈게요.",
+                "content": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
                 "t_min": 7.0
               }
             ]
@@ -205,7 +205,7 @@
               {
                 "id": "m-09",
                 "sender": "p3",
-                "content": "듣고 보니 물이 근거가 더 많겠네요. 저도 물로 갈게요.",
+                "content": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
                 "t_min": 7.0
               },
               {
@@ -395,7 +395,7 @@
               {
                 "id": "m-09",
                 "sender": "p3",
-                "content": "듣고 보니 물이 근거가 더 많겠네요. 저도 물로 갈게요.",
+                "content": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
                 "t_min": 7.0
               },
               {
@@ -514,7 +514,7 @@
           "support": [
             {
               "option_id": "opt-kw-water",
-              "supporters": ["candidate", "p2", "p3"]
+              "supporters": ["candidate", "p2"]
             },
             {
               "option_id": "opt-kw-fire",
@@ -522,7 +522,7 @@
             },
             {
               "option_id": "opt-kw-wind",
-              "supporters": []
+              "supporters": ["p3"]
             }
           ],
           "t_min": 8.2,
@@ -706,7 +706,7 @@
               {
                 "id": "m-09",
                 "sender": "p3",
-                "content": "듣고 보니 물이 근거가 더 많겠네요. 저도 물로 갈게요.",
+                "content": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
                 "t_min": 7.0
               },
               {
@@ -1552,7 +1552,7 @@
           "support": [
             {
               "option_id": "opt-kw-water",
-              "supporters": ["candidate", "p2", "p3"]
+              "supporters": ["candidate", "p2"]
             },
             {
               "option_id": "opt-kw-fire",
@@ -1560,7 +1560,7 @@
             },
             {
               "option_id": "opt-kw-wind",
-              "supporters": []
+              "supporters": ["p3"]
             }
           ],
           "t_min": 8.2,
@@ -2270,7 +2270,7 @@
         "support": [
           {
             "option_id": "opt-kw-water",
-            "supporters": ["candidate", "p2", "p3"]
+            "supporters": ["candidate", "p2"]
           },
           {
             "option_id": "opt-kw-fire",
@@ -2278,7 +2278,7 @@
           },
           {
             "option_id": "opt-kw-wind",
-            "supporters": []
+            "supporters": ["p3"]
           }
         ],
         "t_min": 8.2
@@ -2388,7 +2388,7 @@
         {
           "option_id": "opt-kw-water",
           "label": "물",
-          "supporters": ["candidate", "p2", "p3"]
+          "supporters": ["candidate", "p2"]
         },
         {
           "option_id": "opt-kw-fire",
@@ -2398,7 +2398,7 @@
         {
           "option_id": "opt-kw-wind",
           "label": "바람",
-          "supporters": []
+          "supporters": ["p3"]
         }
       ]
     },

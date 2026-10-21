@@ -43,7 +43,7 @@
       "support": [
         {
           "option_id": "opt-kw-water",
-          "supporters": ["candidate", "p2", "p3"]
+          "supporters": ["candidate", "p2"]
         },
         {
           "option_id": "opt-kw-fire",
@@ -51,7 +51,7 @@
         },
         {
           "option_id": "opt-kw-wind",
-          "supporters": []
+          "supporters": ["p3"]
         }
       ],
       "t_min": 8.2
