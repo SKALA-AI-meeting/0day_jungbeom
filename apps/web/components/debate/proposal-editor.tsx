@@ -2,9 +2,10 @@
 
 // 기획안(ProposalEditor): 우측 탭 안 6칸 세로 폼(UX 결정 6). 예시 문장 없이 칸이 무엇인지만 한 줄로 쓴다.
 // idea_credit 안내는 R7 고정 문구. 제출은 기획안 작성 단계에서만, 확인 창 하나를 거친다.
+import { CircleCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { Button, ConfirmDialog } from "@/components/ui";
+import { Button, ConfirmDialog, cn } from "@/components/ui";
 
 import { SECTION_IDS, type SectionId, type Sections } from "./types";
 
@@ -107,22 +108,30 @@ export function ProposalEditor({
       <div className="flex flex-col gap-6 px-6 py-5">
         {SECTION_IDS.map((id) => (
           <label key={id} className="flex flex-col gap-1">
-            <span className="text-title3 font-semibold">{SECTION_META[id].title}</span>
+            <span className="text-callout font-semibold">{SECTION_META[id].title}</span>
             <span className="text-footnote text-muted">{SECTION_META[id].hint}</span>
             <textarea
               value={sections[id]}
-              disabled={locked || busy}
+              disabled={locked}
+              readOnly={busy}
               rows={id === "keyword" ? 1 : 2}
               data-section={id}
-              placeholder="여기에 적어요"
+              placeholder={locked ? "비어 있음" : "여기에 적어요"}
               onChange={(event) => onChange(id, event.target.value)}
-              className="mt-1 resize-none rounded-md border-2 border-muted bg-surface px-3 py-2 text-body outline-none field-sizing-content placeholder:text-muted focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:bg-surface-sunken disabled:text-muted"
+              className="mt-1 resize-none rounded-md border border-subtle bg-surface px-3 py-2 text-body outline-none field-sizing-content placeholder:text-muted focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 disabled:border-transparent disabled:bg-surface-sunken disabled:text-ink"
             />
           </label>
         ))}
       </div>
       <div className="sticky bottom-0 flex bg-surface items-center gap-3 border-t border-line px-6 py-3">
-        <span className="text-footnote text-muted tabular-nums" aria-live="polite">
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 text-footnote tabular-nums",
+            locked ? "text-ink" : "text-muted",
+          )}
+          aria-live="polite"
+        >
+          {locked && <CircleCheck size={14} className="text-success" aria-hidden />}
           {locked
             ? "제출했어요"
             : submitting
@@ -136,34 +145,36 @@ export function ProposalEditor({
         {!canSubmit && !locked && (
           <span className="text-footnote text-muted">기획안 작성 단계에서 제출할 수 있어요</span>
         )}
-        <Button
-          className="ml-auto"
-          size="sm"
-          disabled={!canSubmit || locked || busy}
-          loading={submitting}
-          onClick={async () => {
-            setBusy(true);
-            try {
-              await submitFlow({
-                prepare: prepareSubmit,
-                askBlank: blankAsk.ask,
-                askConfirm: confirmAsk.ask,
-                submit: async (blankWarningShown) => {
-                  setSubmitting(true);
-                  try {
-                    await onSubmit(blankWarningShown);
-                  } finally {
-                    setSubmitting(false);
-                  }
-                },
-              });
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          제출
-        </Button>
+        {!locked && (
+          <Button
+            className="ml-auto"
+            size="sm"
+            disabled={!canSubmit || busy}
+            loading={submitting}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await submitFlow({
+                  prepare: prepareSubmit,
+                  askBlank: blankAsk.ask,
+                  askConfirm: confirmAsk.ask,
+                  submit: async (blankWarningShown) => {
+                    setSubmitting(true);
+                    try {
+                      await onSubmit(blankWarningShown);
+                    } finally {
+                      setSubmitting(false);
+                    }
+                  },
+                });
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            제출
+          </Button>
+        )}
       </div>
       <ConfirmDialog
         open={blankAsk.open}

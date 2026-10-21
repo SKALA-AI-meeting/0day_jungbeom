@@ -23,7 +23,7 @@ export function LevelChip(props: LevelChipProps) {
   if (props.level === null) {
     return (
       <span className={cn("inline-flex items-center gap-1.5 text-sm text-muted", className)}>
-        <span className="rounded-sm border border-line px-1.5 py-px text-xs font-medium">
+        <span className="rounded-sm border border-line bg-surface px-1.5 py-px text-xs font-medium">
           {label ? `${label} · 기록 없음` : "기록 없음"}
         </span>
         <span>{props.reason}</span>
@@ -33,7 +33,7 @@ export function LevelChip(props: LevelChipProps) {
   }
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
-      <span className="inline-flex items-center rounded-sm bg-surface-sunken px-1.5 py-px text-xs font-medium whitespace-nowrap text-ink tabular-nums">
+      <span className="inline-flex items-center rounded-sm border border-line bg-surface px-1.5 py-px text-xs font-medium whitespace-nowrap text-ink tabular-nums">
         {label ? `${label} ${level}` : `수준 ${level} (1~5)`}
       </span>
       {adjusted && <AdjustedMark />}

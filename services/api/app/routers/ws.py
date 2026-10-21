@@ -28,30 +28,31 @@ async def handle_send(ctx: AppContext, session_id: uuid.UUID, payload: dict[str,
     if not client_msg_id or not content.strip():
         await ctx.hub.send(session_id, "error", {"code": "invalid_input", "message": "empty"})
         return
-    try:
-        async with ctx.session_factory() as db:
-            session = await load_session(db, session_id, lock=True)
-            message, run_id, stimulus = await debate.save_candidate_message(
-                db, session, client_msg_id, content, ctx.clock
-            )
-            await db.commit()
-            serialized = serialize_message(session, message)
-            generation = session.generation
-    except ServiceError as exc:
-        code = exc.code if exc.code in ("session_ending", "invalid_input") else "conflict"
-        await ctx.hub.send(session_id, "error", {"code": code, "message": exc.message})
-        return
-    ack = {
-        "client_msg_id": client_msg_id,
-        "message_id": serialized["id"],
-        "run_id": str(run_id) if run_id else None,
-    }
-    await ctx.hub.send(session_id, "message.ack", ack)
-    if stimulus is None:
-        return
-    ctx.generations[session_id] = generation
-    await ctx.hub.send(session_id, "message.new", serialized)
-    ctx.mailboxes.put(session_id, stimulus, run_id)
+    async with ctx.ordered(session_id):
+        try:
+            async with ctx.session_factory() as db:
+                session = await load_session(db, session_id, lock=True)
+                message, run_id, stimulus = await debate.save_candidate_message(
+                    db, session, client_msg_id, content, ctx.clock
+                )
+                await db.commit()
+                serialized = serialize_message(session, message)
+                generation = session.generation
+        except ServiceError as exc:
+            code = exc.code if exc.code in ("session_ending", "invalid_input") else "conflict"
+            await ctx.hub.send(session_id, "error", {"code": code, "message": exc.message})
+            return
+        ack = {
+            "client_msg_id": client_msg_id,
+            "message_id": serialized["id"],
+            "run_id": str(run_id) if run_id else None,
+        }
+        await ctx.hub.send(session_id, "message.ack", ack)
+        if stimulus is None:
+            return
+        ctx.set_generation(session_id, generation)
+        await ctx.hub.send(session_id, "message.new", serialized)
+        ctx.mailboxes.put(session_id, stimulus, run_id)
 
 
 @router.websocket("/ws/sessions/{session_id}")
@@ -78,7 +79,7 @@ async def socket(websocket: WebSocket, session_id: uuid.UUID) -> None:
         pass
     finally:
         if ctx.hub.disconnect(session_id, websocket):
-            await _mark_disconnected(ctx, session_id)
+            await ctx.mark_disconnected(session_id)
 
 
 def _reject_code(token: str, session_id: uuid.UUID) -> int | None:
@@ -103,12 +104,4 @@ async def _mark_reconnected(ctx: AppContext, session_id: uuid.UUID) -> None:
         )
         if gap is not None:
             gap.reconnected_at = ctx.clock.now()
-            await db.commit()
-
-
-async def _mark_disconnected(ctx: AppContext, session_id: uuid.UUID) -> None:
-    async with ctx.session_factory() as db:
-        session = await load_session(db, session_id)
-        if session.status == "in_progress":
-            db.add(ConnectionGap(session_id=session_id, disconnected_at=ctx.clock.now()))
             await db.commit()

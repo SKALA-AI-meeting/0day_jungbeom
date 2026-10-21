@@ -71,6 +71,12 @@ export function errorCode(error: unknown): string | null {
   return typeof code === "string" ? code : null;
 }
 
+/** 오류의 추가 필드(ApiError·mock 오류 공통). 리포트 실패의 failed_step 등 */
+export function errorExtra(error: unknown): Record<string, unknown> {
+  const extra = (error as { extra?: unknown } | null)?.extra;
+  return extra && typeof extra === "object" ? (extra as Record<string, unknown>) : {};
+}
+
 export function errorMessage(error: unknown): string {
   const code = errorCode(error);
   if (code && ERROR_TEXT[code]) return ERROR_TEXT[code];
@@ -98,7 +104,7 @@ export const adminApi = {
   cancel: (token: string, sessionId: string) =>
     api<{ status: string }>(`/admin/sessions/${sessionId}/cancel`, { method: "POST", token }),
   regenerate: (token: string, sessionId: string) =>
-    api<{ status: string }>(`/admin/sessions/${sessionId}/report/regenerate`, {
+    api<{ status: "completed" | "approving" }>(`/admin/sessions/${sessionId}/report/regenerate`, {
       method: "POST",
       token,
     }),
@@ -125,6 +131,8 @@ export type Loaded<T> = {
   error: string | null;
   /** 마지막 실패의 api 오류 코드(없으면 null) */
   code: string | null;
+  /** 마지막 실패 오류의 추가 필드(없으면 빈 객체) */
+  extra: Record<string, unknown>;
   /** 연속 실패 횟수(성공하면 0) */
   failures: number;
   reload: () => void;
@@ -141,11 +149,13 @@ export function useLoad<T>(load: (token: string) => Promise<T>, key = ""): Loade
     data: T | null;
     error: string | null;
     code: string | null;
+    extra: Record<string, unknown>;
     failures: number;
   }>({
     data: null,
     error: null,
     code: null,
+    extra: {},
     failures: 0,
   });
   const [tick, setTick] = useState(0);
@@ -158,13 +168,14 @@ export function useLoad<T>(load: (token: string) => Promise<T>, key = ""): Loade
     if (!token) return;
     let live = true;
     loadRef.current(token).then(
-      (data) => live && setState({ data, error: null, code: null, failures: 0 }),
+      (data) => live && setState({ data, error: null, code: null, extra: {}, failures: 0 }),
       (error) =>
         live &&
         setState((prev) => ({
           data: prev.data,
           error: errorMessage(error),
           code: errorCode(error),
+          extra: errorExtra(error),
           failures: prev.failures + 1,
         })),
     );

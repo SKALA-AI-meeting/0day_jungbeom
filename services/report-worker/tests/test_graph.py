@@ -180,6 +180,25 @@ async def test_approve_resumes_and_final_equals_draft(h):
     assert len(h.api.finals) == 1 and h.published == []
 
 
+async def test_finalize_failure_resumes_same_round_finalize_on_reapprove(h):
+    """확정 단계 실패(DLQ) 뒤 api 재생성은 같은 회차 approve를 다시 보낸다 → finalize만 재개."""
+    await h.generate()
+    h.api.down = True
+    for attempt in (1, 2, 3):
+        await h.approve(attempt=attempt)
+    assert [q for q, _ in h.published][-1] == "report.dlq" and h.api.finals == []
+    snapshot = await h.graph.aget_state(thread_config("sess-1", 1))
+    assert snapshot.next == ("finalize",)
+
+    h.api.down = False
+    llm_calls = len(h.llm.calls)
+    await h.generate()  # 재생성 전 남은 generate는 승인된 thread를 건드리지 않는다
+    assert len(h.api.drafts) == 1
+    await h.approve()
+    assert len(h.api.finals) == 1 and len(h.llm.calls) == llm_calls
+    assert content_hash(h.api.finals[0]) == content_hash(h.api.drafts[-1][0])
+
+
 async def test_approve_before_draft_republishes(h):
     await h.approve()
     assert h.published == [

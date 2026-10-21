@@ -397,8 +397,20 @@ class FakeStack:
                 },
             )
         if path == "/report" and method == "GET":
+            if s.failed_stage == "report":
+                failed = {"failed_stage": "report", "failed_step": "draft"}
+                return response(
+                    409,
+                    {
+                        "error": {
+                            "code": "report_failed",
+                            "message": "report generation failed",
+                            **failed,
+                        }
+                    },
+                )
             if s.report is None:
-                return error(404, "not_found")
+                return error(409, "report_not_ready")
             return response(200, self.merged_report(s))
         if path == "/report/regenerate" and method == "POST":
             if s.failed_stage != "report":

@@ -743,67 +743,79 @@ export function ReportView({
 
       {/* 요약표 */}
       <Section id="summary" title="요소 요약">
-        <table className="w-full border-y border-line text-left text-sm">
-          <thead className="text-xs text-muted">
-            <tr className="border-b border-line">
-              <th className="py-2 pr-3 font-medium">요소</th>
-              <th className="w-48 py-2 pr-3 font-medium">수준</th>
-              <th className="py-2 pr-3 font-medium">서술</th>
-              <th className="py-2 font-medium whitespace-nowrap">기록 없음 · 근거 약함</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {report.elements.map((el) => {
-              const adjusted = elementAdjusted(el.element);
-              const level = adjusted ? elementLevel(dims, el.element) : el.level;
-              const noRecord = dims.filter(
-                (d) => d.element === el.element && finalOf(d).level == null,
-              ).length;
-              return (
-                <tr key={el.element} className="align-top">
-                  <td className="py-3 pr-3 font-medium whitespace-nowrap">
-                    <a
-                      href={`#element-${el.element}`}
-                      className="underline-offset-4 hover:underline"
-                    >
-                      {el.name}
-                    </a>
-                  </td>
-                  <td className="py-3 pr-3">
-                    <div className="flex flex-col gap-1">
-                      {level != null ? (
-                        <LevelChip level={level} adjusted={adjusted} />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] border-y border-line text-left text-sm">
+            <thead className="text-xs text-muted">
+              <tr className="border-b border-line">
+                <th className="py-2 pr-3 font-medium">요소</th>
+                <th className="w-48 py-2 pr-3 font-medium">수준</th>
+                <th className="min-w-48 py-2 pr-3 font-medium">서술</th>
+                <th className="py-2 pr-3 text-right font-medium whitespace-nowrap">기록 없음</th>
+                <th className="py-2 text-right font-medium whitespace-nowrap">근거 약함</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {report.elements.map((el) => {
+                const adjusted = elementAdjusted(el.element);
+                const level = adjusted ? elementLevel(dims, el.element) : el.level;
+                const noRecord = dims.filter(
+                  (d) => d.element === el.element && finalOf(d).level == null,
+                ).length;
+                return (
+                  <tr key={el.element} className="align-top">
+                    <td className="py-3 pr-3 font-medium whitespace-nowrap">
+                      <a
+                        href={`#element-${el.element}`}
+                        className="underline-offset-4 hover:underline"
+                      >
+                        {el.name}
+                      </a>
+                    </td>
+                    <td className="py-3 pr-3">
+                      <div className="flex flex-col gap-1">
+                        {level != null ? (
+                          <LevelChip level={level} adjusted={adjusted} />
+                        ) : (
+                          <LevelChip
+                            level={null}
+                            reason="모든 차원 기록 없음"
+                            adjusted={adjusted}
+                          />
+                        )}
+                        {adjusted && (
+                          <span className="text-xs text-muted">
+                            AI 판단 {el.level ?? "기록 없음"}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 pr-3">{el.summary}</td>
+                    <td className="py-3 pr-3 text-right text-muted tabular-nums whitespace-nowrap">
+                      {noRecord}/{el.dimension_count} 차원
+                    </td>
+                    <td className="py-3 text-right tabular-nums whitespace-nowrap">
+                      {lowCount(el.element) > 0 ? (
+                        <span className="text-warning" title="확신도 low로 판단한 차원 수">
+                          {lowCount(el.element)}
+                        </span>
                       ) : (
-                        <LevelChip level={null} reason="모든 차원 기록 없음" adjusted={adjusted} />
+                        <span className="text-muted">—</span>
                       )}
-                      {adjusted && (
-                        <span className="text-xs text-muted">
-                          AI 판단 {el.level ?? "기록 없음"}
+                      {heldCount(el.element) > 0 && (
+                        <span
+                          className="block text-muted"
+                          title="AI 평가가 실패해 판단을 보류한 차원 수"
+                        >
+                          판단 보류 {heldCount(el.element)}
                         </span>
                       )}
-                    </div>
-                  </td>
-                  <td className="py-3 pr-3">{el.summary}</td>
-                  <td className="py-3 text-muted tabular-nums whitespace-nowrap">
-                    {noRecord}/{el.dimension_count}
-                    {lowCount(el.element) > 0 && (
-                      <span className="text-warning" title="확신도 low로 판단한 차원 수">
-                        {" "}
-                        · 근거 약함 {lowCount(el.element)}
-                      </span>
-                    )}
-                    {heldCount(el.element) > 0 && (
-                      <span title="AI 평가가 실패해 판단을 보류한 차원 수">
-                        {" "}
-                        · 판단 보류 {heldCount(el.element)}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
         <p className="mt-2 text-xs text-muted">
           근거 약함은 확신도 low로 판단한 차원 수, 판단 보류는 AI 평가가 실패해 수준을 정하지 못한
           차원 수예요. 둘 다 원문 기록을 확인해 주세요.

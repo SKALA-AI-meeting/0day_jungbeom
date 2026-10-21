@@ -146,27 +146,30 @@ async def resume(token: str, ctx: Ctx) -> dict[str, str]:
 async def start_session(token: str, ctx: Ctx, creds: Bearer) -> dict[str, Any]:
     principal = _principal(creds)
     fx = Effects()
-    async with ctx.session_factory() as db:
-        session, invite, position = await _by_token(db, token)
-        if principal.role != "candidate" or principal.subject != session.id:
-            raise ServiceError(403, "forbidden", "other session")
-        session = await db.get(Session, session.id, with_for_update=True)
-        if session.status == "invited":
-            _check_open(ctx, session, invite)
-            if session.consented_at is None:
-                raise conflict("conflict", "consent first")
-            await session_service.start(db, session, position, ctx.clock, fx)
-            invite.used_at = ctx.clock.now()
-            await db.commit()
-        elif session.status != "in_progress":
-            raise conflict("conflict", f"cannot start from {session.status}")
-        result = {
-            "session_id": str(session.id),
-            "started_at": _iso(session.started_at),
-            "ends_at": _iso(session.ends_at),
-            "phase": "keyword",
-        }
-    await ctx.apply(session.id, fx)
+    # 세션 id는 후보자 토큰의 subject(아니면 아래에서 403)
+    async with ctx.ordered(principal.subject):
+        async with ctx.session_factory() as db:
+            session, invite, position = await _by_token(db, token)
+            if principal.role != "candidate" or principal.subject != session.id:
+                raise ServiceError(403, "forbidden", "other session")
+            session = await db.get(Session, session.id, with_for_update=True)
+            if session.status == "invited":
+                _check_open(ctx, session, invite)
+                if session.consented_at is None:
+                    raise conflict("conflict", "consent first")
+                await session_service.start(db, session, position, ctx.clock, fx)
+                invite.used_at = ctx.clock.now()
+                await db.commit()
+            elif session.status != "in_progress":
+                raise conflict("conflict", f"cannot start from {session.status}")
+            result = {
+                "session_id": str(session.id),
+                "started_at": _iso(session.started_at),
+                "ends_at": _iso(session.ends_at),
+                "phase": "keyword",
+            }
+        ctx.emit(session.id, fx)
+    await ctx.publish(session.id, fx)
     return result
 
 
@@ -203,15 +206,17 @@ async def confirm(
     session_id: uuid.UUID, phase: str, body: ConfirmIn, ctx: Ctx, _: Candidate
 ) -> dict[str, Any]:
     fx = Effects()
-    async with ctx.session_factory() as db:
-        session, position, _invite = await load_context(db, session_id, lock=True)
-        if phase not in ("keyword", "problem", "solution"):
-            raise conflict("phase_not_open", "unknown phase")
-        result = await debate.confirm_slot(
-            db, session, position, phase, body.value, body.option_key, ctx.clock, fx
-        )
-        await db.commit()
-    await ctx.apply(session_id, fx)
+    async with ctx.ordered(session_id):
+        async with ctx.session_factory() as db:
+            session, position, _invite = await load_context(db, session_id, lock=True)
+            if phase not in ("keyword", "problem", "solution"):
+                raise conflict("phase_not_open", "unknown phase")
+            result = await debate.confirm_slot(
+                db, session, position, phase, body.value, body.option_key, ctx.clock, fx
+            )
+            await db.commit()
+        ctx.emit(session_id, fx)
+    await ctx.publish(session_id, fx)
     return result
 
 
@@ -344,18 +349,20 @@ async def submit(
     session_id: uuid.UUID, ctx: Ctx, _: Candidate, body: SubmitIn | None = None
 ) -> dict[str, Any]:
     fx = Effects()
-    async with ctx.session_factory() as db:
-        session, position, _i = await load_context(db, session_id, lock=True)
-        result = await proposal_service.submit(
-            db,
-            session,
-            position.scenario["proposal_template"],
-            ctx.clock,
-            fx,
-            body.blank_warning_shown if body else None,
-        )
-        await db.commit()
-    await ctx.apply(session_id, fx)
+    async with ctx.ordered(session_id):
+        async with ctx.session_factory() as db:
+            session, position, _i = await load_context(db, session_id, lock=True)
+            result = await proposal_service.submit(
+                db,
+                session,
+                position.scenario["proposal_template"],
+                ctx.clock,
+                fx,
+                body.blank_warning_shown if body else None,
+            )
+            await db.commit()
+        ctx.emit(session_id, fx)
+    await ctx.publish(session_id, fx)
     return result
 
 

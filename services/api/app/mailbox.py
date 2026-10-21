@@ -153,7 +153,7 @@ class Mailboxes:
                     db, session, position, message, ctx.classify, ctx.clock
                 )
                 await db.commit()
-            ctx.generations[session_id] = session.generation
+            ctx.set_generation(session_id, session.generation)
             stale = (
                 session.status != "in_progress"
                 or session.phase != stimulus.phase
@@ -184,17 +184,19 @@ class Mailboxes:
         if not failed and not result.ok:
             return
         fx = Effects()
-        async with self.ctx.session_factory() as db:
-            session = await db.get(Session, session_id, with_for_update=True)
-            if session is None or session.status != "in_progress":
-                return
-            session.llm_failures = session.llm_failures + 1 if failed else 0
-            if session.llm_failures >= MAX_LLM_FAILURES:
-                session_service.fail(
-                    session, "session", "persona llm failed 3 times", self.ctx.clock.now(), fx
-                )
-            await db.commit()
-        await self.ctx.apply(session_id, fx)
+        async with self.ctx.ordered(session_id):
+            async with self.ctx.session_factory() as db:
+                session = await db.get(Session, session_id, with_for_update=True)
+                if session is None or session.status != "in_progress":
+                    return
+                session.llm_failures = session.llm_failures + 1 if failed else 0
+                if session.llm_failures >= MAX_LLM_FAILURES:
+                    session_service.fail(
+                        session, "session", "persona llm failed 3 times", self.ctx.clock.now(), fx
+                    )
+                await db.commit()
+            self.ctx.emit(session_id, fx)
+        await self.ctx.publish(session_id, fx)
 
     async def _finish(self, run_id: uuid.UUID, result: RunResult) -> None:
         values: dict[str, Any] = {

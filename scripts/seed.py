@@ -6,6 +6,7 @@
 3. rag-mcp(9102) `reindex_materials`로 같은 버전 청크 색인. `--skip-reindex`로 건너뜀.
 
     make seed
+    make seed-compose       # 전체 compose(make up): compose 안 일회성 seed 서비스(포트 공개 없음)
     uv run --project services/api python scripts/seed.py --minutes 15
     uv run --project services/api python scripts/seed.py --skip-position --skip-reindex   # 자료만
 """

@@ -59,31 +59,33 @@ async def tick(ctx: AppContext) -> None:
 
 async def tick_session(ctx: AppContext, session_id: uuid.UUID) -> None:
     fx = Effects()
-    async with ctx.session_factory() as db:
-        session = await db.get(Session, session_id, with_for_update=True)
-        if session is None or session.status != "in_progress":
-            return
-        invite = await db.get(Invite, session.invite_id)
-        position = await db.get(Position, invite.position_id)
-        now = ctx.clock.now()
-        if now >= session.ends_at:
-            await session_service.submit(
-                db, session, "timeout", now, fx, position.scenario["proposal_template"]
-            )
-        elif session.phase in sc.DEBATE_PHASES and now >= session.phase_deadline_at:
-            await timeout.fill(db, session, position, ctx.clock, fx)
-        elif session.phase in sc.DEBATE_PHASES:
-            await _warning(db, session, position, now, fx)
-        await db.commit()
-        candidates: list[Stimulus] = []
-        if (
-            session.status == "in_progress"
-            and session.phase in sc.DEBATE_PHASES
-            and fx.generation is None
-        ):
-            if not ctx.hub.is_candidate_typing(session_id):
-                candidates = await _due_stimuli(db, ctx, session, position, now)
-    await ctx.apply(session_id, fx)
+    async with ctx.ordered(session_id):
+        async with ctx.session_factory() as db:
+            session = await db.get(Session, session_id, with_for_update=True)
+            if session is None or session.status != "in_progress":
+                return
+            invite = await db.get(Invite, session.invite_id)
+            position = await db.get(Position, invite.position_id)
+            now = ctx.clock.now()
+            if now >= session.ends_at:
+                await session_service.submit(
+                    db, session, "timeout", now, fx, position.scenario["proposal_template"]
+                )
+            elif session.phase in sc.DEBATE_PHASES and now >= session.phase_deadline_at:
+                await timeout.fill(db, session, position, ctx.clock, fx)
+            elif session.phase in sc.DEBATE_PHASES:
+                await _warning(db, session, position, now, fx)
+            await db.commit()
+            candidates: list[Stimulus] = []
+            if (
+                session.status == "in_progress"
+                and session.phase in sc.DEBATE_PHASES
+                and fx.generation is None
+            ):
+                if not ctx.hub.is_candidate_typing(session_id):
+                    candidates = await _due_stimuli(db, ctx, session, position, now)
+        ctx.emit(session_id, fx)
+    await ctx.publish(session_id, fx)
     for stimulus in candidates:
         await ctx.mailboxes.enqueue(session_id, stimulus)
 

@@ -4,8 +4,12 @@
 - `scenario["seats"]`: 자리 → 페르소나 유형·이름(고정 p1·p2·p3).
 - `scenario["prompts"]`: `prompts/` 상대 경로 → 본문(guard_patterns.yaml·fixed_phrases.yaml 포함).
 - `scenario["catalog"]`: `{mission, personas, cards, keywords}` = 미션 폴더 YAML 4개를 읽은 dict.
-복사본에 없는 부분은 미션 폴더(`<SCENARIOS_DIR>/missions/<mission_id>/`)에서 읽는다(G-F 직후 조립이
-아직 그 키를 넣지 않는 동안의 대체 경로).
+`catalog` 키가 생기기 전에 만든 옛 채용 건은 같은 복사본의 조립 결과(personas·cards·keywords·
+lead_option·fill_priority)로 4개를 재구성한다. 스케줄러·합의·시간 초과가 읽는 기준과 같게
+하기 위해서다.
+그래도 없는 부분만 미션 폴더(`<SCENARIOS_DIR>/missions/<mission_id>/`)에서 채우고(info 로그), 현재
+catalog_version이 채용 건 기록과 다르면 경고한다. 파일 읽기는 (폴더, 기록 버전)마다 프로세스에서
+한 번이라 같은 채용 건의 세션·토론·어시스턴트가 같은 내용을 받는다.
 """
 
 import logging
@@ -82,6 +86,30 @@ def render(template: str, **values: str) -> str:
     return _VAR.sub(sub, template)
 
 
+_FILE_BASES: dict[tuple[Path, str | None], "Catalog"] = {}
+
+
+def _rebuilt(scenario: dict[str, Any]) -> dict[str, Any]:
+    """옛 채용 건: 조립 결과 키에서 Catalog가 읽는 4개를 되살린다(없는 키는 빠진다)."""
+    parts: dict[str, Any] = {}
+    if scenario.get("personas"):
+        parts["personas"] = {"session": scenario["personas"]}
+    if scenario.get("cards"):
+        parts["cards"] = {"cards": scenario["cards"]}
+    if scenario.get("keywords") and scenario.get("keyword_order"):
+        parts["keywords"] = {
+            "keywords": [
+                {"key": key, **scenario["keywords"][key]} for key in scenario["keyword_order"]
+            ]
+        }
+    if scenario.get("lead_option") and scenario.get("fill_priority"):
+        parts["mission"] = {
+            "lead_option": scenario["lead_option"],
+            "consensus_fill": {"filler_priority": scenario["fill_priority"]},
+        }
+    return parts
+
+
 def _default_scenarios_dir() -> Path:
     from app.config import get_settings
 
@@ -115,14 +143,12 @@ class Catalog:
     def from_scenario(
         cls, scenario: dict[str, Any], scenarios_dir: Path | None = None
     ) -> "Catalog":
-        raw = dict(scenario.get("catalog") or {})
+        raw = dict(scenario.get("catalog") or {}) or _rebuilt(scenario)
         prompts = dict(scenario.get("prompts") or {})
         missing = [k for k in _FILES if not raw.get(k)]
         if missing or not prompts:
-            mission_id = scenario.get("mission_id", "debate")
-            root = (scenarios_dir or _default_scenarios_dir()) / "missions" / mission_id
-            log.info("scenario copy lacks %s; reading %s", missing or ["prompts"], root)
-            base = cls.from_dir(root)
+            base = cls._file_base(scenario, scenarios_dir or _default_scenarios_dir())
+            log.info("scenario copy lacks %s; filled from mission files", missing or ["prompts"])
             for key in missing:
                 raw[key] = getattr(base, key)
             if not prompts:
@@ -130,6 +156,26 @@ class Catalog:
         catalog = cls(prompts=prompts, **{k: raw[k] for k in _FILES})
         catalog.seats = list(scenario.get("seats") or catalog._default_seats())
         return catalog
+
+    @classmethod
+    def _file_base(cls, scenario: dict[str, Any], scenarios_dir: Path) -> "Catalog":
+        from app.services.scenario import catalog_version
+
+        mission_id = scenario.get("mission_id", "debate")
+        recorded = scenario.get("catalog_version")
+        key = (scenarios_dir.resolve() / mission_id, recorded)
+        if key not in _FILE_BASES:
+            current = catalog_version(scenarios_dir, mission_id)
+            if recorded != current:
+                log.warning(
+                    "position catalog_version %s differs from current %s; missing parts come "
+                    "from the current %s files",
+                    recorded,
+                    current,
+                    mission_id,
+                )
+            _FILE_BASES[key] = cls.from_dir(scenarios_dir / "missions" / mission_id)
+        return _FILE_BASES[key]
 
     def _default_seats(self) -> list[dict[str, Any]]:
         return [

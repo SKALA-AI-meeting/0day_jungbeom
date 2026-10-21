@@ -79,11 +79,14 @@ export function EntryScreen({ entry, onNext }: { entry: Entry; onNext: () => voi
         <p className="text-footnote font-semibold text-muted">{entry.company_name}</p>
         <h1 className="text-large font-bold">새 프로젝트 팀 토론</h1>
         <p className="text-callout text-muted">
-          {entry.duration_minutes}분 · AI 동료 3명과 채팅으로 키워드 → 문제 상황 → 해결책을 정하고
-          기획안을 제출합니다.
+          {entry.duration_minutes}분 · AI 동료 3명과 채팅 토론
         </p>
       </div>
-      <p className="text-callout leading-relaxed">{entry.entry_notice}</p>
+      <ul className="flex flex-col gap-2 text-callout leading-relaxed">
+        {entry.entry_notice.split(/(?<=\.)\s+/).map((sentence) => (
+          <li key={sentence}>{sentence}</li>
+        ))}
+      </ul>
       <div>
         <Button onClick={onNext}>다음</Button>
       </div>

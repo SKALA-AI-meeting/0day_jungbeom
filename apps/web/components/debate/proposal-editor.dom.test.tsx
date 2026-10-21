@@ -47,7 +47,7 @@ test("제출 요청 중에는 입력이 잠기고, 실패해 끝나면 풀린다
       />,
     ),
   );
-  expect(textareas().every((t) => !t.disabled)).toBe(true);
+  expect(textareas().every((t) => !t.readOnly)).toBe(true);
 
   await act(async () => button("제출", container).click());
   await flush();
@@ -56,7 +56,7 @@ test("제출 요청 중에는 입력이 잠기고, 실패해 끝나면 풀린다
   await act(async () => button("제출", document.querySelector("[role=dialog]")!).click());
   await flush();
 
-  expect(textareas().every((t) => t.disabled)).toBe(true);
+  expect(textareas().every((t) => t.readOnly)).toBe(true);
   expect(container.textContent).toContain("제출 중");
 
   finish();

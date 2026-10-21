@@ -11,6 +11,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    /** 오류 객체의 추가 필드(code·message 말고, 예: failed_step) */
+    readonly extra: Record<string, unknown> = {},
   ) {
     super(message);
     this.name = "ApiError";
@@ -36,9 +38,14 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       return await mockRequest<T>(method, path, options.body);
     } catch (error) {
       // mock 서버의 오류({status, code})도 실제 응답과 같은 ApiError로 바꾼다
-      const e = error as { status?: number; code?: string; message?: string };
+      const e = error as {
+        status?: number;
+        code?: string;
+        message?: string;
+        extra?: Record<string, unknown>;
+      };
       if (typeof e.status === "number")
-        throw new ApiError(e.status, e.code ?? "http_error", e.message ?? "");
+        throw new ApiError(e.status, e.code ?? "http_error", e.message ?? "", e.extra);
       throw error;
     }
   }
@@ -56,11 +63,12 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   });
   const data = response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok) {
-    const error = data?.error ?? {};
+    const { code, message, ...extra } = data?.error ?? {};
     throw new ApiError(
       response.status,
-      error.code ?? "http_error",
-      error.message ?? response.statusText,
+      code ?? "http_error",
+      message ?? response.statusText,
+      extra,
     );
   }
   return data as T;

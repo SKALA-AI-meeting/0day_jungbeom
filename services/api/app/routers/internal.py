@@ -193,11 +193,13 @@ async def _write(ctx: AppContext, session_id: uuid.UUID, fn) -> Any:
     from app.services.common import Effects
 
     fx = Effects()
-    async with ctx.session_factory() as db:
-        session, position, _ = await load_context(db, session_id, lock=True)
-        result = await fn(db, session, position, fx)
-        await db.commit()
-    await ctx.apply(session_id, fx)
+    async with ctx.ordered(session_id):
+        async with ctx.session_factory() as db:
+            session, position, _ = await load_context(db, session_id, lock=True)
+            result = await fn(db, session, position, fx)
+            await db.commit()
+        ctx.emit(session_id, fx)
+    await ctx.publish(session_id, fx)
     return result
 
 
