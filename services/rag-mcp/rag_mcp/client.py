@@ -10,7 +10,7 @@
 | 404 | not_found | |
 | 409, 410 | conflict | 410은 만료·취소 |
 | 422, 그 외 400 | invalid_input | |
-| 423 | not_released | 공개 전 문서 |
+| 423 | not_released | 키워드 확정 전·다른 키워드 자료 |
 | 5xx, 연결 실패, 타임아웃 | upstream_unavailable | 1회 재시도, retryable=true |
 | 2xx인데 JSON이 아님 | upstream_unavailable | 재시도 없음, retryable=true |
 """

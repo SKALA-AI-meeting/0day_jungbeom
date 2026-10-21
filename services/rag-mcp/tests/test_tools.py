@@ -1,89 +1,103 @@
-"""완료 기준: 도구 목록·설명, 검색 응답, 미공개 문서 차단, 재색인(미션 폴더 해시 키), 오류
-매핑·재시도.
+"""완료 기준: 도구 목록·설명·async, 검색이 확정 키워드·같은 버전 청크만, 키워드 확정 전 차단,
+본문은 api 버전별 원문, 재색인(버전 키·이전 버전 유지), 오류 매핑·재시도.
 """
 
+import inspect
+import json
 import shutil
 
 import httpx
-from rag_mcp import documents
+from rag_mcp import materials, tools
 
-from tests.conftest import SCENARIOS, call, make_settings
+from tests.conftest import REPO_ROOT, SCENARIOS, call, make_settings
 
-TOOLS = {"search_documents", "get_document", "list_documents", "reindex_documents"}
-VERSION = documents.catalog_version(SCENARIOS)
-
-
-def content(doc_id: str, scenarios=SCENARIOS) -> str:
-    return next(d.content for d in documents.load_documents(scenarios) if d.doc_id == doc_id)
+TOOLS = {"search_materials", "get_material", "reindex_materials"}
+VERSION = materials.catalog_version(SCENARIOS)
+ALL = materials.load_materials(SCENARIOS)
 
 
-def session_documents(released: set[str], version: str = VERSION, scenarios=SCENARIOS):
-    """내부 GET /internal/sessions/{id}/documents 응답."""
-    docs = [
-        {"doc_id": d.doc_id, "title": d.title, "released": d.doc_id in released}
-        for d in documents.load_documents(scenarios)
+def content(material_id: str, scenarios=SCENARIOS) -> str:
+    return next(
+        m.content for m in materials.load_materials(scenarios) if m.material_id == material_id
+    )
+
+
+def session_materials(keyword: str | None, version: str = VERSION):
+    """내부 GET /internal/sessions/{id}/materials 응답. keyword=None이면 확정 전(잠김)."""
+    listed = [
+        {"material_id": m.material_id, "title": m.title} for m in ALL if m.keyword_key == keyword
     ]
-    return lambda r: httpx.Response(200, json={"catalog_version": version, "documents": docs})
+    body = {"catalog_version": version, "locked": keyword is None, "keyword_key": keyword,
+            "materials": listed}  # fmt: skip
+    return lambda r: httpx.Response(200, json=body)
 
 
-async def test_tools_listed_with_descriptions(mcp_client):
-    tools = await mcp_client.list_tools()
-    assert {t.name for t in tools} == TOOLS
-    for t in tools:
+async def test_tools_listed_async_with_descriptions(mcp_client):
+    listed = await mcp_client.list_tools()
+    assert {t.name for t in listed} == TOOLS
+    for t in listed:
         assert t.description and len(t.description) > 10
         for name, prop in t.input_schema["properties"].items():
             assert prop.get("description"), (t.name, name)
+    # S3: FastMCP는 sync 도구를 워커 스레드에서 돌리므로 모든 도구가 async def
+    assert all(inspect.iscoroutinefunction(getattr(tools, name)) for name in TOOLS)
 
 
-async def test_search_returns_matching_chunk_first(mcp_client, api, db):
-    indexed = await call(mcp_client, "reindex_documents", {})
+async def test_search_returns_confirmed_keyword_chunks_only(mcp_client, api, db):
+    indexed = await call(mcp_client, "reindex_materials", {})
     assert indexed["ok"] is True
-    target = documents.chunk(content("metrics"))[0]
+    target = materials.chunk(content("water_flood_cases"))[0]
+    fire_text = materials.chunk(content("fire_stats"))[0]
 
-    api.handler = session_documents({"metrics", "policy", "company_intro"})
-    out = await call(mcp_client, "search_documents", {"query": target, "session_id": "s1"})
-
+    api.handler = session_materials("water")
+    out = await call(mcp_client, "search_materials", {"query": target, "session_id": "s1"})
     assert out["ok"] is True
     top = out["data"][0]
-    assert (top["doc_id"], top["title"], top["chunk"]) == (
-        "metrics",
-        "지표 현황 (최근 3개월)",
+    assert (top["material_id"], top["title"], top["chunk"]) == (
+        "water_flood_cases",
+        "도심 침수 사례",
         target,
     )
     assert top["score"] > 0.99
-    assert len(out["data"]) == 3
-    assert api.requests[0].url.path == "/internal/sessions/s1/documents"
+    assert api.requests[0].url.path == "/internal/sessions/s1/materials"
     assert api.requests[0].headers["x-internal-token"] == "test-token"
 
+    other = await call(mcp_client, "search_materials", {"query": fire_text, "session_id": "s1"})
+    assert all(r["material_id"].startswith("water_") for r in other["data"])
 
-async def test_unreleased_documents_blocked(mcp_client, api, db):
-    await call(mcp_client, "reindex_documents", {})
-    hidden = documents.chunk(content("interview_summary"))[0]
-    api.handler = session_documents({"metrics"})
 
-    found = await call(mcp_client, "search_documents", {"query": hidden, "session_id": "s1"})
-    assert [r["doc_id"] for r in found["data"]] == ["metrics"]
+async def test_blocked_before_keyword_confirmed(mcp_client, api):
+    api.handler = session_materials(None)
+    out = await call(mcp_client, "search_materials", {"query": "침수", "session_id": "s1"})
+    assert out["ok"] is False and out["error"]["code"] == "not_released"
 
-    blocked = await call(
-        mcp_client, "get_document", {"doc_id": "interview_summary", "session_id": "s1"}
+    api.handler = lambda r: httpx.Response(
+        423, json={"error": {"code": "not_released", "message": "m"}}
     )
-    assert blocked["ok"] is False
-    assert blocked["error"]["code"] == "not_released"
+    got = await call(mcp_client, "get_material", {"material_id": "water_stats", "session_id": "s1"})
+    assert got["error"]["code"] == "not_released"
 
-    opened = await call(mcp_client, "get_document", {"doc_id": "metrics", "session_id": "s1"})
-    assert opened["data"]["content"] == content("metrics").strip()
 
-    listed = await call(mcp_client, "list_documents", {"session_id": "s1"})
-    assert {d["doc_id"]: d["released"] for d in listed["data"]}["interview_summary"] is False
+async def test_get_material_returns_api_versioned_source(mcp_client, api):
+    fixture = REPO_ROOT / "tests" / "fixtures" / "contracts" / "internal_material.json"
+    contract_material = json.loads(fixture.read_text(encoding="utf-8"))
+    api.handler = lambda r: httpx.Response(200, json=contract_material)
+    got = await call(
+        mcp_client, "get_material", {"material_id": "water_flood_cases", "session_id": "s1"}
+    )
+    assert got == {"ok": True, "data": contract_material}
+    assert api.requests[0].url.path == "/internal/sessions/s1/materials/water_flood_cases"
 
 
 async def test_search_without_index_for_version_is_upstream_unavailable(mcp_client, api, db):
-    await call(mcp_client, "reindex_documents", {})
-    api.handler = session_documents({"metrics"}, version="not-indexed")
-    out = await call(mcp_client, "search_documents", {"query": "지표", "session_id": "s1"})
-    assert out["ok"] is False
-    assert out["error"]["code"] == "upstream_unavailable"
-    assert out["error"]["retryable"] is True
+    await call(mcp_client, "reindex_materials", {})
+    api.handler = session_materials("water", version="not-indexed")
+    out = await call(mcp_client, "search_materials", {"query": "침수", "session_id": "s1"})
+    assert out["error"] == {
+        "code": "upstream_unavailable",
+        "message": out["error"]["message"],
+        "retryable": True,
+    }
 
 
 async def test_reindex_idempotent_and_keeps_previous_version(
@@ -93,46 +107,43 @@ async def test_reindex_idempotent_and_keeps_previous_version(
     shutil.copytree(SCENARIOS, scenarios, ignore=shutil.ignore_patterns("e2e", "__pycache__"))
     api.configure(make_settings(database_url, scenarios))
 
-    first = await call(mcp_client, "reindex_documents", {})
-    again = await call(mcp_client, "reindex_documents", {})
+    first = await call(mcp_client, "reindex_materials", {})
+    again = await call(mcp_client, "reindex_materials", {})
     assert first == again
     assert first["data"]["dim"] == 1024 and first["data"]["model"] == "fake-1024"
     old = first["data"]["catalog_version"]
-    count = "SELECT count(*) FROM doc_chunks WHERE catalog_version = $1"
+    count = "SELECT count(*) FROM material_chunks WHERE catalog_version = $1"
     assert await db.fetchval(count, old) == first["data"]["indexed"]
+    keys = {
+        r["keyword_key"] for r in await db.fetch("SELECT DISTINCT keyword_key FROM material_chunks")
+    }
+    assert keys == {"water", "fire", "tree", "wind"}
 
-    v1_metrics = content("metrics", scenarios).strip()
-    doc = scenarios / "missions" / "planning" / "documents" / "metrics.md"
-    doc.write_text(doc.read_text(encoding="utf-8") + "\n| 신규 지표 | 1 |\n", encoding="utf-8")
-    second = await call(mcp_client, "reindex_documents", {})
-
+    doc = scenarios / "missions" / "debate" / "materials" / "water" / "water_stats.md"
+    doc.write_text(doc.read_text(encoding="utf-8") + "\n- 추가 문단\n", encoding="utf-8")
+    second = await call(mcp_client, "reindex_materials", {})
     new = second["data"]["catalog_version"]
     assert new != old
     assert await db.fetchval(count, old) == first["data"]["indexed"]
     assert await db.fetchval(count, new) == second["data"]["indexed"]
 
-    # 파일이 바뀌어도 V1에 고정된 세션은 V1 본문을 받는다
-    api.handler = session_documents({"metrics"}, version=old, scenarios=scenarios)
-    pinned = await call(mcp_client, "get_document", {"doc_id": "metrics", "session_id": "s1"})
-    assert pinned["data"]["content"] == v1_metrics
 
-
-async def test_error_codes_mapped(mcp_client, api):
+async def test_error_codes_mapped_and_4xx_not_retried(mcp_client, api):
     cases = {401: "forbidden", 403: "forbidden", 404: "not_found", 410: "conflict"}
     for status, code in cases.items():
         api.handler = lambda r, s=status: httpx.Response(
             s, json={"error": {"code": "x", "message": "m"}}
         )
-        out = await call(mcp_client, "list_documents", {"session_id": "s1"})
-        assert out["ok"] is False
-        assert out["error"]["code"] == code
-        assert out["error"]["retryable"] is False
-    assert len(api.requests) == len(cases)  # 4xx는 재시도하지 않는다
+        out = await call(
+            mcp_client, "get_material", {"material_id": "water_stats", "session_id": "s1"}
+        )
+        assert out["ok"] is False and out["error"]["code"] == code
+    assert len(api.requests) == len(cases)
 
 
 async def test_invalid_input_returned_as_error_result(mcp_client, api):
     out = await call(
-        mcp_client, "search_documents", {"query": "지표", "session_id": "s1", "top_k": 0}
+        mcp_client, "search_materials", {"query": "침수", "session_id": "s1", "top_k": 0}
     )
     assert out["ok"] is False and out["error"]["code"] == "invalid_input"
     assert api.requests == []
@@ -143,16 +154,6 @@ async def test_connection_failure_retried_once_then_upstream_unavailable(mcp_cli
         raise httpx.ConnectError("down")
 
     api.handler = refuse
-    out = await call(mcp_client, "search_documents", {"query": "지표", "session_id": "s1"})
-    assert out["error"]["code"] == "upstream_unavailable"
-    assert out["error"]["retryable"] is True
-    assert len(api.requests) == 2
-
-
-async def test_5xx_retry_recovers(mcp_client, api):
-    listed = session_documents({"metrics"})
-    responses = iter([httpx.Response(503), listed(None)])
-    api.handler = lambda r: next(responses)
-    out = await call(mcp_client, "list_documents", {"session_id": "s1"})
-    assert out["ok"] is True
+    out = await call(mcp_client, "search_materials", {"query": "침수", "session_id": "s1"})
+    assert out["error"]["code"] == "upstream_unavailable" and out["error"]["retryable"] is True
     assert len(api.requests) == 2

@@ -252,9 +252,11 @@ dependencies = [
     { name = "asyncpg" },
     { name = "fastmcp" },
     { name = "httpx" },
+    { name = "mcp" },
     { name = "pgvector" },
     { name = "pydantic" },
     { name = "python-dotenv" },
+    { name = "pyyaml" },
     { name = "sentence-transformers" },
     { name = "torch", version = "2.14.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
     { name = "torch", version = "2.14.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'linux'" },
@@ -270,21 +272,23 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "asyncpg", specifier = ">=0.29" },
-    { name = "fastmcp", specifier = ">=2.10" },
+    { name = "fastmcp", specifier = "==4.1.1" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "mcp", specifier = "==2.3.0" },
     { name = "pgvector", specifier = ">=0.3" },
-    { name = "pydantic", specifier = ">=2.7" },
+    { name = "pydantic", specifier = "==2.14.1" },
     { name = "python-dotenv", specifier = ">=1.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "sentence-transformers", specifier = ">=3.0" },
     { name = "torch", marker = "sys_platform != 'linux'", specifier = ">=2.4" },
     { name = "torch", marker = "sys_platform == 'linux'", specifier = ">=2.4", index = "https://download.pytorch.org/whl/cpu" },
-    { name = "uvicorn", specifier = ">=0.30" },
+    { name = "uvicorn", specifier = "==0.54.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pytest", specifier = ">=8" },
-    { name = "pytest-asyncio", specifier = ">=0.24" },
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "pytest-asyncio", specifier = "==1.4.0" },
 ]
 
 [[package]]
