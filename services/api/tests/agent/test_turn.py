@@ -65,6 +65,21 @@ async def test_named_reply_first_and_at_most_two(harness):
     assert len(h.posted()) == 2 and not h.turn.calls
 
 
+async def test_named_order_follows_the_message_not_the_classifier(harness):
+    h = harness("solution")
+    h.server.confirm_keyword("water")
+    mid = h.candidate(
+        "서지안님, 하람님 대신 의견을 좀 말해 줄래요?", intent_of("question", to=("p2", "p3"))
+    )
+    run = await h.run("message", message_id=mid)
+    assert [s["seat"] for s in run.decision["speakers"]] == ["p3", "p2"]
+
+    # 분류가 호명을 놓쳐도 "이름님"으로 부른 자리가 답한다
+    mid = h.candidate("윤하람님 생각도 궁금해요.", intent_of("other", confidence="low"))
+    run = await h.run("message", message_id=mid)
+    assert [s["seat"] for s in run.decision["speakers"]] == ["p2"] and not h.turn.calls
+
+
 async def test_quiet_only_when_called_or_asked_all(harness):
     h = harness(
         "keyword",

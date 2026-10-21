@@ -5,6 +5,7 @@ import re
 import pytest
 import yaml
 from app.agent.catalog import render
+from app.agent.llm import tool_call
 from app.agent.mcp_client import ASSESSMENT, McpClient, RunTools
 from conftest import MISSION_DIR, intent_of, say
 
@@ -200,3 +201,97 @@ def test_credit_group_only_in_proposal_and_narrow(catalog):
         assert "credit" not in guard.check(text, "keyword").hits  # 토론 단계에는 적용하지 않는다
     for text in spec["examples"]["miss"]:
         assert guard.check(text, "proposal").ok, text
+
+
+async def test_decide_question_gets_fixed_notice_first(harness):
+    h = harness("keyword", persona=[say("저는 불이 맞다고 봐요.")])
+    mid = h.candidate("키워드는 어디서 고르나요?", intent_of("question", to=("p1",)))
+    await h.run("message", message_id=mid)
+    notice = h.server.catalog.notices["decide"]
+    assert h.posted("p1")[0]["content"] == f"{notice} 저는 불이 맞다고 봐요."
+    assert "[정해진 안내]" in h.snapshots[0]["text"]
+
+
+async def test_repeated_line_is_regenerated_once(harness):
+    line = "불이 맞아요. 쓰임이 넓어요."
+    h = harness("keyword", persona=[say(line), say(line + "!"), say("산불 대응도 불로 묶여요.")])
+    for _ in range(2):
+        mid = h.candidate("한결님 생각은요?", intent_of("question", to=("p1",)))
+        await h.run("message", message_id=mid)
+    posts = h.posted("p1")
+    assert [p["content"] for p in posts] == [line, "산불 대응도 불로 묶여요."]
+    assert posts[1]["meta"]["repeat"] == "regenerated"
+
+
+async def test_decide_question_is_answered_even_if_turn_llm_picks_nobody(harness):
+    h = harness("keyword", persona=[say("저는 바람이 낫다고 봐요.")])
+    mid = h.candidate("아무거나 골라도 돼요?", intent_of("other", confidence="low"))
+    run = await h.run("message", message_id=mid)
+    assert [s["seat"] for s in run.decision["speakers"]] == ["p3"]
+    assert h.posted("p3")[0]["content"].startswith(h.server.catalog.notices["decide"])
+
+
+async def test_long_body_is_cut_before_checks_so_notice_fits(harness):
+    h = harness("keyword", persona=[say("불이 맞아요. " * 60)])
+    mid = h.candidate("키워드는 어디서 고르나요?", intent_of("question", to=("p1",)))
+    await h.run("message", message_id=mid)
+    notice = h.server.catalog.notices["decide"]
+    posted = h.posted("p1")[0]["content"]
+    body = posted[len(notice) + 1 :]
+    assert posted.startswith(notice) and len(posted) <= 400
+    # stance_check(의도 분류 입력)가 본 글이 게시 본문과 같다
+    assert any(body in c.text for c in h.intent.calls)
+
+
+async def test_notice_is_attached_to_safe_phrase(harness):
+    bad = say("이렇게 하시면 합격이에요.")
+    h = harness("keyword", persona=[bad, bad])
+    mid = h.candidate("어디서 정해요? 아무거나 골라도 돼요?", intent_of("question", to=("p1",)))
+    await h.run("message", message_id=mid)
+    post = h.posted("p1")[0]
+    notice = h.server.catalog.notices["decide"]
+    assert post["meta"]["guard"] == "safe"
+    assert post["content"] == f"{notice} {h.server.catalog.safe_phrase('p1')}"
+
+
+async def test_repeat_regeneration_shares_the_tool_budget(harness):
+    line = "침수 사례 보면 센서가 맞아요."
+    h = harness(
+        "solution",
+        persona=[
+            say(line),
+            tool_call("search_materials", query="a"),
+            tool_call("search_materials", query="b"),
+            tool_call("search_materials", query="c"),
+            say(line),
+            say("경보가 30분 먼저 오면 대피가 돼요."),
+        ],
+    )
+    h.server.confirm_keyword("water")
+    for _ in range(2):
+        mid = h.candidate("한결님 생각은요?", intent_of("question", to=("p1",)))
+        await h.run("message", message_id=mid)
+    assert h.posted("p1")[1]["content"] == "경보가 30분 먼저 오면 대피가 돼요."
+    assert h.persona.calls[-1].tools is None  # 재생성에는 남은 도구 예산이 없다
+    assert [n for n in h.tool_names() if n == "search_materials"] == ["search_materials"] * 3
+
+
+def _three_tools() -> list:
+    return [tool_call("search_materials", query=q) for q in ("a", "b", "c")]
+
+
+@pytest.mark.parametrize("path", ["guard", "stance_check"])
+async def test_regeneration_paths_share_the_tool_budget(harness, path):
+    first = (
+        say("이렇게 하시면 합격이에요.")
+        if path == "guard"
+        else say("캠페인이 낫죠.", {"option_id": "water_s2", "stance": "support"})
+    )
+    h = harness("solution", persona=[*_three_tools(), first, say("경보가 30분 먼저 와요.")])
+    h.server.confirm_keyword("water")
+    mid = h.candidate("한결님 생각은요?", intent_of("question", to=("p1",)))
+    await h.run("message", message_id=mid)
+    post = h.posted("p1")[0]
+    assert post["content"] == "경보가 30분 먼저 와요." and post["meta"][path] == "regenerated"
+    assert h.persona.calls[-1].tools is None  # 재생성에는 남은 도구 예산이 없다
+    assert h.tool_names().count("search_materials") == 3
