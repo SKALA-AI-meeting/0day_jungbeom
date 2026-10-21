@@ -74,4 +74,20 @@ stage:           ## 단계 시드 세션 생성: make stage STAGE=keyword|proble
 stage-advance:   ## 시간 당기기: make stage-advance SID=<세션 id> TO=deadline|idle|card:<카드 id>|<초>
 	uv run --project services/api python scripts/stage_advance.py --sid $(SID) --to $(TO)
 
-.PHONY: infra-up infra-down up down seed test test-live lint e2e test-e2e eval-live e2e-auth e2e-faults stage stage-advance
+E2E_COMPOSE = docker compose -p dayzero-debate -f infra/docker-compose.yml -f infra/docker-compose.e2e.yml
+E2E_PORTS   = API_PORT=8100 WEB_PORT=3100 RABBITMQ_UI_PORT=15674
+
+e2e-stack-up:    ## 단계별 화면 테스트용 토론형 스택(별도 프로젝트 dayzero-debate, web 3100·api 8100·내부 8101). infra/.env.e2e 필요
+	$(E2E_PORTS) $(E2E_COMPOSE) up -d --build --wait
+
+e2e-stack-seed:  ## 위 스택에 자료 원문·재색인(postgres 5442·rag 9112)
+	SEED_DATABASE_URL=postgresql://dayzero:dayzero@localhost:5442/dayzero uv run --project services/api python scripts/seed.py --skip-position --rag http://localhost:9112/mcp --minutes 15
+
+e2e-stack-down:  ## 위 스택 내림(볼륨 유지)
+	$(E2E_PORTS) $(E2E_COMPOSE) down
+
+e2e-stages:      ## 단계별 화면 테스트(Playwright): make e2e-stages [STAGE=entry|keyword|problem|solution|proposal|debrief|admin-report] [LLM=fake|live] (LLM은 스택 env가 정하며 이 변수는 경고만 출력)
+	@[ "$(LLM)" != "live" ] || echo "LLM=live: 결정적 LLM 문장에 맞춘 단언은 실제 모델에서 달라질 수 있다"
+	cd apps/web && WEB_URL=$${WEB_URL:-http://localhost:3100} E2E_INTERNAL_URL=$${E2E_INTERNAL_URL:-http://localhost:8101} pnpm exec playwright test $(STAGE)
+
+.PHONY: infra-up infra-down up down seed test test-live lint e2e test-e2e eval-live e2e-auth e2e-faults stage stage-advance e2e-stack-up e2e-stack-seed e2e-stack-down e2e-stages
