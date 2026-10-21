@@ -1,6 +1,6 @@
 """공용 계약 픽스처(tests/fixtures/contracts/)의 형태 정의와 검사.
 
-`docs/common/contracts.md`의 필드를 작은 형태 언어로 옮긴 SHAPES가 검사 기준이다.
+`docs/contracts/README.md`의 필드를 작은 형태 언어로 옮긴 SHAPES가 검사 기준이다.
 픽스처는 SHAPES로 검사하고(`tests/test_contract_fixtures.py`), 생산자(api·MCP·워커) 테스트는
 같은 형태로 실제 응답을 검사한다(`assert_contract`). 표준 라이브러리만 쓰고, 각 서비스 테스트가
 파일 경로로 import한다.

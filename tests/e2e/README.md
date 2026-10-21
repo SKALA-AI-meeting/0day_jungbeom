@@ -1,6 +1,6 @@
 # e2e
 
-`run.py`가 `scenarios/e2e/*.yaml` 대본으로 실제 서비스를 상대해 세션을 끝까지 진행하고 `records/<일시>-<대본>/`에 기록을 남긴다. 형식과 단언은 `docs/common/testing.md`, step 키는 `scenarios/e2e/README.md`. 단계별 화면은 Playwright(`apps/web/e2e/stages/`)가 맡고 이 러너는 세션 전체를 API·WS 수준에서 본다.
+`run.py`가 `scenarios/e2e/*.yaml` 대본으로 실제 서비스를 상대해 세션을 끝까지 진행하고 `records/<일시>-<대본>/`에 기록을 남긴다. 형식과 단언은 `docs/guides/testing.md`, step 키는 `scenarios/e2e/README.md`. 단계별 화면은 Playwright(`apps/web/e2e/stages/`)가 맡고 이 러너는 세션 전체를 API·WS 수준에서 본다.
 
 | 파일 | 역할 |
 |---|---|

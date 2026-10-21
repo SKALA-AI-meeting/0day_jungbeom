@@ -1,6 +1,6 @@
 """페르소나 에이전트 respond: 컨텍스트 조립, 도구 루프, guard·stance_check 판정과 고정 문구.
 
-docs/agent/design.md "페르소나 에이전트"·"계획 밖 입장", harness.md Context.
+docs/architecture/agents.md "페르소나 에이전트"·"계획 밖 입장", harness.md Context.
 페르소나 입력에 넣지 않는 것: card_progress·cost_left·관찰·평가표·카드 이름·요소 이름·다른 자리 성향
 이름·어시스턴트 대화. DebateState는 load가 걸러 미리 넣으므로 get_debate_state는 바인딩하지 않는다.
 """
@@ -52,7 +52,7 @@ OUTPUT_RULE = (
     "입장을 표현하지 않는 발언이면 stance는 null이다. "
     "proposes·stance는 [내 입장 계획]의 안만 쓸 수 있다."
 )
-# 페르소나 컨텍스트에서 빼는 DebateState 필드(contracts.md DebateState)
+# 페르소나 컨텍스트에서 빼는 DebateState 필드(docs/contracts/internal.md DebateState)
 HIDDEN_STATE_KEYS = ("card_progress", "cost_left")
 
 

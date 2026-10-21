@@ -1,4 +1,4 @@
-// 관리자 화면 mock 서버. 오류 코드와 우선순위는 docs/common/contracts.md "관리자 REST"를 따르고 상태는 모듈 안에만 둔다.
+// 관리자 화면 mock 서버. 오류 코드와 우선순위는 docs/contracts/api.md "관리자 REST"를 따르고 상태는 모듈 안에만 둔다.
 //
 // 데이터: 채용 건 pos-1(admin_positions.json), 지원자 sess-1~6(admin_candidates.json) + 만료된 초대 1행(sess-x1).
 // 리포트는 sess-1(draft, report.json)과 sess-6(final, sample-report.json에 검토를 더함).

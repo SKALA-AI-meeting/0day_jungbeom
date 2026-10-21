@@ -1,7 +1,7 @@
 """assessment-mcp 클라이언트(Streamable HTTP, `X-Assessment-Token`).
 
 워커 허용 도구는 `get_rubric`·`get_session_record`·`get_transcript_span`·`get_contributions`·
-`save_evaluation`이다(contracts.md 허용 목록). 평가 LLM에는 도구를 바인딩하지 않고
+`save_evaluation`이다(docs/contracts/mcp.md 허용 목록). 평가 LLM에는 도구를 바인딩하지 않고
 코드가 직접 부른다.
 도구 결과 `{ok:false}`와 연결 실패는 모두 AssessmentError로 올린다. 재시도는 큐 소비자가 맡는다.
 호출마다 연결을 열고 닫는다(작업당 호출 수가 적고, anyio 연결을 task 사이에 넘기지 않기 위해서).

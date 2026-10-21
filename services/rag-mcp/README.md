@@ -1,7 +1,7 @@
 # rag-mcp
 
 키워드별 참고 자료(`scenarios/missions/<id>/keywords.yaml`의 `materials`, 본문 `materials/<keyword>/*.md`) 검색·조회·색인 MCP 서버. Streamable HTTP `:9102/mcp`, 헬스 `/health`. 도구는 모두 `async def`.
-계약: `docs/common/contracts.md` "rag-mcp", 설계: `docs/mcp/design.md`.
+계약: `docs/contracts/mcp.md` "rag-mcp", 설계: `docs/services/mcp.md`.
 
 ## 도구
 

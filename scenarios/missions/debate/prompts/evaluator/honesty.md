@@ -1,6 +1,6 @@
 # 요소 지침: 정직/공정 `honesty`
 
-[초안] 정본은 `docs/common/rubric.md` 3.5·4장. 차원 정의·앵커는 `[요소 척도]` 블록으로 주어진다. 사실 기준은 Contributions(실제 최초 제안자)와 칸 기록(`resolution`·지지 현황 스냅샷)이다.
+[초안] 정본은 `docs/product/rubric.md` 3.5·4장. 차원 정의·앵커는 `[요소 척도]` 블록으로 주어진다. 사실 기준은 Contributions(실제 최초 제안자)와 칸 기록(`resolution`·지지 현황 스냅샷)이다.
 
 ## 보지 않는 것
 

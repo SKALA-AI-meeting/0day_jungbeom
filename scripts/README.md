@@ -8,4 +8,4 @@
 | `stage_advance.py` | 세션 시간 당기기. `make stage-advance SID=<id> TO=deadline∣idle∣card:<id>∣<초>` | stage-kit |
 | `save_eval_fixture.py` | 실 스택에서 끝난 세션의 SessionRecord(assessment-mcp `get_session_record`)를 `tests/eval/fixtures/sessions/<session_id>.json`으로 저장 | e2e |
 
-서비스 이름: api(8000·내부 8001), debate-mcp(9101), rag-mcp(9102), assessment-mcp(9103), report-worker, web(3000). 자료 원문은 api가 `materials` 테이블에서 읽고 rag-mcp는 `material_chunks`만 쓴다(`docs/common/data-model.md`).
+서비스 이름: api(8000·내부 8001), debate-mcp(9101), rag-mcp(9102), assessment-mcp(9103), report-worker, web(3000). 자료 원문은 api가 `materials` 테이블에서 읽고 rag-mcp는 `material_chunks`만 쓴다(`docs/architecture/data-model.md`).

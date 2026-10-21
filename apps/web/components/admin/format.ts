@@ -35,7 +35,7 @@ export function purgeText(iso: string | null | undefined) {
   return iso ? `${formatDate(iso)} 삭제 예정` : null;
 }
 
-/** 오피스 시각 = 09:00 + t_min × 60 / session_minutes, 분 단위 내림 "HH:MM"(contracts.md 공통) */
+/** 오피스 시각 = 09:00 + t_min × 60 / session_minutes, 분 단위 내림 "HH:MM"(docs/contracts/README.md 공통) */
 export function officeClock(tMin: number, sessionMinutes: number) {
   const minutes = Math.floor(9 * 60 + (tMin * 60) / sessionMinutes);
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
@@ -75,7 +75,7 @@ export const ELEMENT_SHORT: Record<string, string> = {
   honesty: "정직",
 };
 
-/** 기획안 6칸(scenario-model.md 템플릿) */
+/** 기획안 6칸(docs/product/scenario.md 템플릿) */
 export const PROPOSAL_FIELDS: { id: string; label: string }[] = [
   { id: "keyword", label: "키워드" },
   { id: "problem", label: "문제 상황" },

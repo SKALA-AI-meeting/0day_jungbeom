@@ -1,6 +1,7 @@
 """평가 에이전트: 요소별 LLM 호출, 워커 검증, 요소 단위 1회 재요청, 확신도 clamp, 요소 수준.
 
-규칙 정본은 `docs/common/rubric.md` 2.2·2.4·7.3과 `contracts.md` EvaluationSave·검증 경계다.
+규칙 정본은 `docs/product/rubric.md` 2.2·2.4·7.3과 `docs/contracts/internal.md` EvaluationSave·검증
+경계다.
 
 - 요소마다 별도 호출(5회). 입력은 그 요소의 척도·지침과 세션 기록 전체뿐이고 다른 요소의 결과는
   넣지 않는다(후광 방지).

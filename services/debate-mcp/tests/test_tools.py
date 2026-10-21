@@ -14,7 +14,7 @@ CASES = fixture("mcp_tools")["debate"]
 SPECS = shape.MCP_TOOLS["debate"]
 BASE = "/internal/sessions/sess-1"
 
-# 도구 → (메서드, 내부 경로 접미사, 내부 응답 픽스처). 정본은 docs/common/contracts.md "debate-mcp"
+# 도구 → (메서드, 내부 경로 접미사, 내부 응답 픽스처). 정본은 docs/contracts/mcp.md "debate-mcp"
 ROUTES = {
     "get_transcript": ("GET", "/messages", "internal_messages"),
     "get_draft": ("GET", "/proposal", "internal_proposal"),

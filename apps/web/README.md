@@ -1,6 +1,6 @@
 # web
 
-Next.js App Router + Tailwind v4. 설계: `docs/frontend/design.md`. 계약: `docs/common/contracts.md`.
+Next.js App Router + Tailwind v4. 설계: `docs/product/user-flows.md`. 계약: `docs/contracts/README.md`.
 
 ```
 pnpm install

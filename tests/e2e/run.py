@@ -1,6 +1,6 @@
 """e2e 러너: 실제 서비스를 상대로 대본을 끝까지 돌리고 단언·기록을 남긴다.
 
-형식과 단언은 docs/common/testing.md e2e 절, step 키는 scenarios/e2e/README.md.
+형식과 단언은 docs/guides/testing.md e2e 절, step 키는 scenarios/e2e/README.md.
 
     uv run --project services/api python tests/e2e/run.py --script all_five      # 벽시계 15분
     uv run --project services/api python tests/e2e/run.py --script timeout_all --clock fake

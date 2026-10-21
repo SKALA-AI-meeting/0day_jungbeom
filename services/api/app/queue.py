@@ -2,7 +2,8 @@
 
 publish()가 예외 없이 끝나면 브로커가 받은 것이다.
 
-토폴로지(docs/worker-infra/design.md): exchange `dayzero`(direct), 큐 report.generate·report.approve
+토폴로지(docs/services/report-worker.md): exchange `dayzero`(direct), 큐
+report.generate·report.approve
 (durable, DLX → report.dlq), report.dlq.
 발행 실패는 예외로 올라가고 호출자는 *_enqueued_at을 비워 둔다.
 비워 둔 세션은 republish_pending()(스케줄러가 60초마다 호출)이 다시 발행한다.
@@ -80,7 +81,7 @@ async def declare_topology(channel: aio_pika.abc.AbstractChannel) -> aio_pika.ab
 
 
 def report_body(session_id: uuid.UUID, eval_round: int, attempt: int = 1) -> dict[str, Any]:
-    """contracts.md 큐 메시지 {session_id, attempt, eval_round}. 첫 발행은 attempt=1.
+    """docs/contracts/queue.md 큐 메시지 {session_id, attempt, eval_round}. 첫 발행은 attempt=1.
 
     워커는 실패 시 attempt+1로 재발행하고 3에 이르면 DLQ로 보낸다.
     """

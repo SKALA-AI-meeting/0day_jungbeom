@@ -3,7 +3,7 @@
 라우터는 app/routers/<이름>.py의 `router`다. 공개 앱은 /assets/missions/<id>/avatars/를 읽기
 전용으로
 서빙한다(카탈로그 정적 에셋, D13-3).
-오류 응답은 contracts.md "공통" 형식 `{"error": {"code", "message"}}`,
+오류 응답은 docs/contracts/README.md "공통" 형식 `{"error": {"code", "message"}}`,
 입력 검증 실패는 422 invalid_input.
 """
 

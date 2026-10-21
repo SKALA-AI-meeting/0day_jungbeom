@@ -3,7 +3,7 @@ name = "dayzero-assessment-mcp"
 version = "0.1.0"
 description = "Day Zero assessment-mcp: 카드 관찰 기록·평가표·세션 기록·평가 저장 도구(api 내부 엔드포인트 호출, 토큰 필수)"
 requires-python = ">=3.12,<3.13"
-# S6 동결 버전(docs/plan.md 3절 "agent-spike 결과")
+# S6 동결 버전(docs/decisions.md "agent-spike 반영" S6)
 dependencies = [
   "fastmcp==4.1.1",
   "mcp==2.3.0",

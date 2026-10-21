@@ -1,6 +1,6 @@
 # api
 
-토론형 세션의 상태·단계·칸·메일박스·스케줄러와 공개(8000)·내부(8001) REST·WS. 설계 `docs/api/design.md`, 계약 `docs/common/contracts.md`.
+토론형 세션의 상태·단계·칸·메일박스·스케줄러와 공개(8000)·내부(8001) REST·WS. 설계 `docs/services/api.md`, 계약 `docs/contracts/README.md`.
 
 ## 실행
 

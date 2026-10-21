@@ -1,4 +1,4 @@
--- Day Zero 토론형 스키마. 정본은 docs/common/data-model.md(필드 이름·상태값은 contracts.md와 같다).
+-- Day Zero 토론형 스키마. 정본은 docs/architecture/data-model.md(필드 이름·상태값은 docs/contracts/README.md와 같다).
 -- LangGraph checkpointer 테이블은 라이브러리가 만든다. 마이그레이션 도구 없이 빈 볼륨에서 한 번 적용한다.
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -27,7 +27,7 @@ CREATE TABLE positions (
   mission_id text NOT NULL DEFAULT 'debate',     -- scenarios/missions/<id>/
   session_minutes int NOT NULL DEFAULT 60 CHECK (session_minutes IN (60, 15)),
   catalog_version text NOT NULL,                 -- 미션 폴더 해시(scenarios/version.py)
-  scenario jsonb NOT NULL,                       -- seats·keywords·안·카드·평가표·프롬프트 복사본(scenario-model.md)
+  scenario jsonb NOT NULL,                       -- seats·keywords·안·카드·평가표·프롬프트 복사본(docs/product/scenario.md)
   created_at timestamptz NOT NULL DEFAULT now()
 );
 

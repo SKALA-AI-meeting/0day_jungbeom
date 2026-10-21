@@ -1,4 +1,5 @@
-"""큐 소비자 3개: report.generate·report.approve·report.dlq (worker-infra/design.md 1·4~7단계).
+"""큐 소비자 3개: report.generate·report.approve·report.dlq (docs/services/report-worker.md
+1·4~7단계).
 
 모두 prefetch 1, manual ack. 메시지 처리 규칙:
 - generate: 본문 eval_round의 thread `report:{session_id}:{eval_round}` 상태 조회 → interrupt에

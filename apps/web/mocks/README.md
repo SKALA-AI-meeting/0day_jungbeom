@@ -1,6 +1,6 @@
 # mocks
 
-`NEXT_PUBLIC_MOCK=1 pnpm dev`이면 `lib/api.ts`가 네트워크 대신 `mockRequest()`를, `lib/ws.ts`가 실제 소켓 대신 `createMockSocket()`을 쓴다. 형태는 전부 `docs/common/contracts.md`와 같다.
+`NEXT_PUBLIC_MOCK=1 pnpm dev`이면 `lib/api.ts`가 네트워크 대신 `mockRequest()`를, `lib/ws.ts`가 실제 소켓 대신 `createMockSocket()`을 쓴다. 형태는 전부 `docs/contracts/README.md`와 같다.
 
 | 파일                                   | 내용                                                                                                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |

@@ -1,7 +1,7 @@
 """세션별 메일박스(R5-1): asyncio Queue + 소비 Task 1개가 그래프 자극을 들어온 순서대로 직렬
 처리한다.
 
-처리 순서(contracts.md "세션 메일박스"):
+처리 순서(docs/architecture/session-lifecycle.md "세션 메일박스"):
 1. agent_runs가 이미 finished·skipped·deferred면 건너뛴다(같은 run_id 재실행 방지).
 2. started로 표시.
 3. message 자극이면 낡았는지와 상관없이 의도 분류·안·입장 반영(저장된 messages.phase 기준, 1회).

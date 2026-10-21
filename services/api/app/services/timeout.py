@@ -36,7 +36,7 @@ async def fill(
     if slot is None or slot.status != "empty":
         return False
     scenario = position.scenario
-    # 공지 자리는 지지자가 아니어도 된다(scenario-model.md "시간 초과 규칙")
+    # 공지 자리는 지지자가 아니어도 된다(docs/product/scenario.md "시간 초과 규칙")
     announcer = sc.seat_of_type(scenario, scenario["timeout_announcer_priority"][0])
     result, options = await judge_phase(db, session, scenario, phase)
     option_id = result["timeout_option_id"]

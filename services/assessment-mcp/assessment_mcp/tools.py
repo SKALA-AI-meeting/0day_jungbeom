@@ -1,7 +1,7 @@
 """assessment-mcp 도구 6개(변경 2, 조회 4). api 내부 REST로 전달·조립만 하고 판단은 api가 한다.
 
 반환은 `{ok, data}` 또는 `{ok:false, error:{code, message, retryable}}`. 목록·입출력 정본은
-docs/common/contracts.md "assessment-mcp". 멱등 키((session_id, card_id), (session_id, run_id))는
+docs/contracts/mcp.md "assessment-mcp". 멱등 키((session_id, card_id), (session_id, run_id))는
 가공 없이 그대로 보낸다. 토큰 검사는 server.py 미들웨어가 한다.
 """
 
@@ -241,7 +241,7 @@ def card_window(
     fired_t_min: float,
     bounds: dict[str, tuple[float, float]],
 ) -> dict[str, float]:
-    """카드 관찰 창(scenario-model.md 4.2). 핵심 장면 위치 표시용이며 입력 경계가 아니다.
+    """카드 관찰 창(docs/product/scenario.md 4.2). 핵심 장면 위치 표시용이며 입력 경계가 아니다.
 
     rule은 cards.yaml window 그대로: start = stage_start∣card_message,
     end = "stage_end:<phase>"∣submit.

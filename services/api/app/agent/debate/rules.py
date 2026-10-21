@@ -1,6 +1,9 @@
-"""토론 그래프의 결정적 규칙(docs/agent/design.md "턴 매니저 규칙"·"카드별 실행"·"stance_plan").
+"""토론 그래프의 결정적 규칙(docs/architecture/agents.md "턴 매니저 규칙"·"카드별
+실행"·"stance_plan").
 
-LLM 없는 순수 함수만 둔다. 입력은 DebateState(contracts.md, load가 읽은 값)·카탈로그·자극·의도 분류.
+LLM 없는 순수 함수만 둔다. 입력은 DebateState(docs/contracts/internal.md, load가 읽은
+값)·카탈로그·자극·의도
+분류.
 원칙 "결정은 결정적 코드가, 말투는 LLM이".
 """
 
@@ -34,7 +37,7 @@ PRESSURE_FOLLOWUP = (
     "지원자가 반박하면 [내 입장 계획]의 안으로 다시 짧게 재반박하세요. 같은 근거를 반복하고 "
     "인신공격·비하는 하지 않습니다."
 )
-# 카드 담당이 아닌 자리가 그 단계에서 지킬 선점 금지(scenario-model.md 4.2를 중립 문장으로)
+# 카드 담당이 아닌 자리가 그 단계에서 지킬 선점 금지(docs/product/scenario.md 4.2를 중립 문장으로)
 PREEMPT_BANS: dict[str, str] = {
     "persuasion_keyword": "다른 사람 대신 지원자 안을 요약하거나 변호하지 않는다.",
     "persuasion_solution": "다른 사람 대신 지원자 안을 요약하거나 변호하지 않는다.",
@@ -230,7 +233,7 @@ def counter_count(intents: list[dict[str, Any]], base_targets: set[str]) -> int:
 
 # ---- 카드 ------------------------------------------------------------------------------------
 def card_actors(card: dict[str, Any], ds: dict[str, Any], catalog: Catalog) -> list[str]:
-    """카드 담당 자리(scenario-model.md 4.2, cards.yaml actor_mode)."""
+    """카드 담당 자리(docs/product/scenario.md 4.2, cards.yaml actor_mode)."""
     mode = card.get("actor_mode")
     actor = card.get("actor")
     if mode == "none" or not actor:

@@ -1,4 +1,4 @@
-"""docs/common/rubric.md의 BARS 표를 읽는 파서.
+"""docs/product/rubric.md의 BARS 표를 읽는 파서.
 
 rubric.yaml이 정본 문서의 표(차원 목록·수준 앵커·담당자 참고 문구·기록 없음 사유)와
 글자 그대로 같은지 검사할 때 쓴다. 표준 라이브러리만 쓴다.
@@ -25,7 +25,7 @@ REASON_ROW = re.compile(r"^\| `(?P<code>[a-z_]+)` \| (?P<meaning>[^|]+?) \| (?P<
 
 def default_doc_path() -> Path:
     # scenarios/missions/debate/tests/rubric_doc.py → 저장소 루트
-    return Path(__file__).resolve().parents[4] / "docs" / "common" / "rubric.md"
+    return Path(__file__).resolve().parents[4] / "docs" / "product" / "rubric.md"
 
 
 def parse_rubric(path: Path | None = None) -> dict:

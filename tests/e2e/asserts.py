@@ -1,4 +1,4 @@
-"""단언. 번호는 docs/common/testing.md e2e "단언" 번호와 같다. 러너가 모은 bundle(dict)만 본다.
+"""단언. 번호는 docs/guides/testing.md e2e "단언" 번호와 같다. 러너가 모은 bundle(dict)만 본다.
 
 check(bundle) -> [{id, name, ok, failures, info?}]. 실패는 문장으로 남겨 summary.md에 그대로 쓴다.
 0은 러너 step 오류, R은 restart 대본 단언이다. 시간 값은 서버가 준 ISO 시각끼리 비교하고(가짜 시계로

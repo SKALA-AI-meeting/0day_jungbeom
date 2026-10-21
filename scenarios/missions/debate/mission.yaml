@@ -1,8 +1,8 @@
-# 미션: 토론형 기획 회의. 코드는 이 폴더를 해석만 한다. 구조 정본은 docs/common/scenario-model.md.
+# 미션: 토론형 기획 회의. 코드는 이 폴더를 해석만 한다. 구조 정본은 docs/product/scenario.md.
 # 채용 건 생성 때 api가 이 폴더 전체의 해시(scenarios/version.py catalog_version)를 고정하고
 # 페르소나·카드·키워드·평가표·프롬프트 본문을 positions.scenario에 복사한다. 자료 원문은 같은 catalog_version으로 DB에 시드한다.
 #
-# 표기: draft: true 또는 "[초안]" 주석이 붙은 값은 문서가 사용자 검토 대상으로 표시한 초안이다(scenario-model.md 머리말).
+# 표기: draft: true 또는 "[초안]" 주석이 붙은 값은 문서가 사용자 검토 대상으로 표시한 초안이다(docs/product/scenario.md 머리말).
 #
 # 폴더 구성
 #   mission.yaml   이 파일. 미션 이름·설정·단계·시간 규칙·칸 채우기·시간 초과·침묵 초대 규칙·기획안 템플릿·관리자/디브리핑 안내 문구
@@ -10,12 +10,12 @@
 #   materials/<keyword>/*.md  키워드별 참고 자료 본문
 #   personas.yaml  세션 페르소나 3명(고정)과 확장용 페르소나(조립에 쓰지 않음)
 #   cards.yaml     카드 6장과 흐름 이벤트
-#   rubric.yaml    BARS 척도(정본 docs/common/rubric.md)
+#   rubric.yaml    BARS 척도(정본 docs/product/rubric.md)
 #   prompts/       페르소나·턴 매니저·의도 분류·어시스턴트·평가 에이전트 프롬프트, 고정 문장, 금지 패턴, 프롬프트 픽스처
 #   assets/avatars/ 임시 프로필 이미지(파일 이름은 중립 번호, 유형 이름 금지)
 #   tests/         카탈로그 정합성 검사(pytest). 조립·실행 코드는 이 폴더를 읽지 않는다
 
-id: debate                       # [초안: id 이름] scenario-model.md 1.1
+id: debate                       # [초안: id 이름] docs/product/scenario.md 1.1
 name: 지역 생활 문제 해결 기획 회의
 setting: 새 프로젝트 팀이 지역 생활 문제 해결 공모에 낼 기획안을 정하는 첫 회의
 participants:
@@ -48,7 +48,7 @@ elements:
     meaning: 함께 만든 결과에서 누가 무엇을 냈는지와 어떻게 결정됐는지를 사실대로 드러내는 태도
     how_we_see: 기획안의 아이디어 기여 칸과 토론 중 말에서 동료의 아이디어를 그 사람의 것으로 다루는지, 합의 상태를 사실대로 말하는지 봅니다.
 
-# 단계 4개(scenario-model.md 1.2·1.3). budget_min은 60분 기준, 비율 10:18:18:14.
+# 단계 4개(docs/product/scenario.md 1.2·1.3). budget_min은 60분 기준, 비율 10:18:18:14.
 # 마감은 누적 고정: deadline_fraction × L (키워드 L/6, 문제 상황 7L/15, 해결책 23L/30, 기획안 L).
 stages:
   - stage_id: keyword
@@ -99,7 +99,7 @@ lead_option:
   skip_candidate_supported: true
   default: p1
 
-# AI 동료가 칸을 채우는 조건(scenario-model.md 1.4). [초안: 우선순위]
+# AI 동료가 칸을 채우는 조건(docs/product/scenario.md 1.4). [초안: 우선순위]
 consensus_fill:
   min_supporters: 3                 # 4명 중 3명 이상
   candidate_must_support: true      # 지원자의 현재 지지(confidence=high인 propose·agree)가 그 안
@@ -107,7 +107,7 @@ consensus_fill:
   filler_priority: [critic, quiet, stubborn]   # 그 안의 지지자 중 첫 번째
   phrase: consensus_fill            # prompts/fixed_phrases.yaml 키
 
-# 시간 초과(scenario-model.md 1.4). api가 결정적으로 직접 채운다(그래프 자극 아님). [초안: 경고 시점과 순위 규칙]
+# 시간 초과(docs/product/scenario.md 1.4). api가 결정적으로 직접 채운다(그래프 자극 아님). [초안: 경고 시점과 순위 규칙]
 timeout:
   warning_before_fraction: "1/30"   # 마감 L/30 전 시스템 안내(60분 2분, 15분 30초)
   warning_phrase: time_warning
@@ -120,7 +120,7 @@ timeout:
   phrase: timeout_fill
   proposal_auto_submit: true        # 기획안 단계 시간 초과면 그 시점 초안을 자동 제출(session.ended{reason: timeout})
 
-# 침묵 초대(scenario-model.md 3.1). [초안: 수치]
+# 침묵 초대(docs/product/scenario.md 3.1). [초안: 수치]
 silence_invite:
   stages: [keyword, problem, solution]
   idle_fraction: "1/20"             # 지원자 마지막 메시지(또는 단계 시작) 후 L/20 무발언 (60분 3분, 15분 45초)
@@ -131,7 +131,7 @@ silence_invite:
   defer_while_typing: true
   phrase: silence_invite
 
-# 최종 기획안(scenario-model.md 1.5). 칸 안내는 무엇을 적는 칸인지만 중립적으로 알린다(예시·추천 문구 없음, R7).
+# 최종 기획안(docs/product/scenario.md 1.5). 칸 안내는 무엇을 적는 칸인지만 중립적으로 알린다(예시·추천 문구 없음, R7).
 proposal_template:
   - field: keyword
     name: 키워드
@@ -177,7 +177,7 @@ admin_catalog:
 
 # 디브리핑 문구(GET /sessions/{id}/debrief). 카드별 문장은 cards.yaml debrief, 자리별 성향 설명은 personas.yaml persona_description.
 debrief:
-  intro_notice: 같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 반응을 봅니다.   # 첫 문장 고정(R1, scenario-model.md 7)
+  intro_notice: 같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 반응을 봅니다.   # 첫 문장 고정(R1, docs/product/scenario.md 7)
   draft: true                       # 아래 문구는 [초안]
   persona_note: 함께 토론한 세 동료는 각자 정해진 성향을 가진 AI였습니다. 성향은 아래 소개에서 처음 공개합니다.
   scoring_notice: 평가 결과는 보여 드리지 않습니다. 담당자가 근거를 확인해 조정하기 전의 판단이라 그대로 보면 오해를 낳을 수 있고, 합격 여부를 정하는 값도 아니기 때문입니다. 기업은 토론 대화와 어시스턴트 요청 원문, 제출한 기획안을 봅니다.

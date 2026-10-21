@@ -1,4 +1,5 @@
-"""테이블 모델. infra/db/schema.sql과 1:1이며 DDL은 그 파일이 정본이다(docs/common/data-model.md).
+"""테이블 모델. infra/db/schema.sql과 1:1이며 DDL은 그 파일이
+정본이다(docs/architecture/data-model.md).
 
 여기서 create_all 하지 않는다. CHECK·부분 unique 인덱스는 DDL에만 있다.
 LangGraph checkpointer 테이블과 rag-mcp 전용 material_chunks는 매핑하지 않는다.

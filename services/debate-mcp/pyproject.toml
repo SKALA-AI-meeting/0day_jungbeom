@@ -3,7 +3,7 @@ name = "dayzero-debate-mcp"
 version = "0.1.0"
 description = "Day Zero debate-mcp: 토론 상태 조회·메시지·안·입장·칸 채우기 도구(api 내부 엔드포인트 호출)"
 requires-python = ">=3.12,<3.13"
-# S6 동결 버전(docs/plan.md 3절 "agent-spike 결과")
+# S6 동결 버전(docs/decisions.md "agent-spike 반영" S6)
 dependencies = [
   "fastmcp==4.1.1",
   "mcp==2.3.0",

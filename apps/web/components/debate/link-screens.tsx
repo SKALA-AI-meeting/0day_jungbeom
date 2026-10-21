@@ -1,7 +1,7 @@
 "use client";
 
 // 토론방에 들어가기 전 화면: 링크 안내(만료·취소·없음), 입장, 동의(표시 이름·형식 안내), 대기(팀 소개).
-// 문구는 docs/frontend/design.md "지원자: 입장·동의·대기". 페르소나 유형·성향 설명은 여기 없다.
+// 문구는 docs/product/user-flows.md "지원자: 입장·동의·대기". 페르소나 유형·성향 설명은 여기 없다.
 import { useState, type ReactNode } from "react";
 
 import { Avatar, Button, Wordmark } from "@/components/ui";

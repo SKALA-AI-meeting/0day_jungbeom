@@ -1,6 +1,7 @@
 """세션별 WebSocket 연결, 단일 송신 큐(seq 부여), typing 상태. 한 프로세스(api) 안에서만 유효하다.
 
-프레임 봉투: {"type", "seq", "payload"} (contracts.md "WebSocket"). 모든 서버 프레임은 send()의
+프레임 봉투: {"type", "seq", "payload"} (docs/contracts/ws.md "WebSocket"). 모든 서버 프레임은
+send()의
 세션별
 FIFO 잠금 하나를 지나며 seq를 1씩 붙인다. 연결이 없어도 seq는 오르고 프레임은 버려진다(재연결한
 클라이언트는 /state의 ws_seq부터 이어 간다). 다른 경로에서 소켓에 직접 쓰지 않는다.

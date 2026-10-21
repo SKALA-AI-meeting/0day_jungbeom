@@ -1,4 +1,5 @@
-"""실시간 의도 분류 공개 함수(contracts.md "의도 분류 출력 스키마"). G-F 시그니처 동결.
+"""실시간 의도 분류 공개 함수(docs/contracts/internal.md "의도 분류 출력 스키마"). G-F 시그니처
+동결.
 
 api 메일박스(`services/debate.py`)가 `message` 자극마다 그래프 전에 부른다. 입력 단계는 저장된
 `messages.phase`이고 카탈로그 안 전체·그 단계의 기존 안·직전 메시지 5개·자리 이름을 받는다.
@@ -78,7 +79,7 @@ _cache: "OrderedDict[str, IntentResult]" = OrderedDict()
 
 
 def fallback() -> IntentResult:
-    """실패·스키마 위반 때의 결과(contracts.md). 호출마다 새 dict."""
+    """실패·스키마 위반 때의 결과(docs/contracts/internal.md). 호출마다 새 dict."""
     return {
         "intent": "other",
         "target_option_id": None,

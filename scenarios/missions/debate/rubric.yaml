@@ -1,10 +1,10 @@
-# BARS 척도(5요소·19차원). 정본은 docs/common/rubric.md 3장·5장이고 이 파일은 그 표를 데이터로 옮긴 것이다.
+# BARS 척도(5요소·19차원). 정본은 docs/product/rubric.md 3장·5장이고 이 파일은 그 표를 데이터로 옮긴 것이다.
 # [초안] 차원 구성·정의·앵커·예시 발언은 사용자 검토 대상이다(rubric.md 머리말). 내용을 바꾸려면 rubric.md를 먼저 고친다.
 # api가 채용 건 생성 때 positions.scenario.rubric으로 복사하고 assessment-mcp get_rubric이 그 복사본을 내준다.
 # get_rubric의 cards[{card_id, element, window}]는 cards.yaml에서 만든다. no_record_reasons.priority는 겹칠 때 앞선 순서(1이 먼저).
 rubric_version: debate-bars-2026-10-21-draft1
 draft: true
-source: docs/common/rubric.md (정본). 이 파일의 문장은 정본 표와 글자 그대로 같아야 한다(tests/test_catalog.py가 검사).
+source: docs/product/rubric.md (정본). 이 파일의 문장은 정본 표와 글자 그대로 같아야 한다(tests/test_catalog.py가 검사).
 elements:
 - element: persuasion
   name: 설득/논리력

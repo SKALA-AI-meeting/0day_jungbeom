@@ -5,7 +5,7 @@ api·debate-mcp·assessment-mcp·report-worker를 하위 프로세스로 띄우�
 `API_INTERNAL_URL`을 러너 안 프록시(faults.Proxy)로 돌린다. 끝나면 모든 앱 프로세스를 종료한다.
 web은 쓰지 않으므로 띄우지 않는다.
 
-주입 방식(다른 트랙이 맞춰야 하는 약속은 docs/handoff/reports/e2e-report.md):
+주입 방식(서비스 쪽 약속은 docs/guides/testing.md "러너가 기대는 계약과 장애 주입 훅"):
 | 장애 | 방식 |
 |---|---|
 | 큐 DLQ | 프록시가 워커의 `POST /report/draft`를 3회 503 → 재시도 3회 실패 → DLQ |

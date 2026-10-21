@@ -1,4 +1,4 @@
-// 칸 결과 표시 규칙(contracts.md "칸 결과 표시"): 화면은 api가 내려 주는 outcome만 본다(지지 현황은 계산하지 않는다).
+// 칸 결과 표시 규칙(docs/contracts/README.md "칸 결과 표시"): 화면은 api가 내려 주는 outcome만 본다(지지 현황은 계산하지 않는다).
 export type Outcome = "consensus" | "candidate_decision" | "timeout";
 export type ResolutionLabel = "합의" | "지원자 결정" | "시간 초과";
 

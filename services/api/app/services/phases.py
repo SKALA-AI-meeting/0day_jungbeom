@@ -2,7 +2,8 @@
 한다.
 
 advance_phase는 칸 확정과 같은 트랜잭션에서 호출되고(호출자가 이미 세션 행을 잠갔다), WS 프레임과
-phase_started 자극은 Effects에 쌓아 커밋 뒤에 보낸다. 프레임 순서(contracts.md):
+phase_started 자극은 Effects에 쌓아 커밋 뒤에 보낸다. 프레임
+순서(docs/architecture/session-lifecycle.md):
 (공지 message.new) → slot.confirmed → phase.changed → timer → (materials.opened) → 시스템 안내
 message.new.
 """

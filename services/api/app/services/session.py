@@ -1,4 +1,6 @@
-"""SessionService: 생명주기 전이(contracts.md 세션 상태 머신). 모든 전이는 현재 상태를 검사하고
+"""SessionService: 생명주기 전이(docs/architecture/session-lifecycle.md 세션 상태 머신). 모든 전이는
+현재 상태를
+검사하고
 멱등이다.
 
 단계 전환(advance_phase)은 phases.py, 칸 확정은 debate.py가 같은 트랜잭션에서 부른다.

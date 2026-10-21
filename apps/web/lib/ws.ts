@@ -1,4 +1,4 @@
-// 세션 WebSocket 연결과 재연결. 프레임 봉투와 close code는 docs/common/contracts.md의 WebSocket 절.
+// 세션 WebSocket 연결과 재연결. 프레임 봉투와 close code는 docs/contracts/ws.md의 WebSocket 절.
 // 끊기면 3초 뒤 다시 붙고, 열릴 때마다 onOpen으로 알려 화면이 /state를 다시 받게 한다(WS는 증분만 보낸다).
 // 프레임의 seq 공백 검사는 화면 reducer(components/debate/reducer.ts)가 한다.
 // 4401(토큰 없음·만료)은 /s/{token}/resume으로 새 토큰을 받아 바로 다시 붙는다. 재발급이 일시 장애로 실패하면

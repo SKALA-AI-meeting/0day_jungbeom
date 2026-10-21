@@ -1,4 +1,4 @@
-# 의도 분류 20문장 [초안] (docs/common/testing.md "근거 정확성·안전 픽스처", contracts.md "의도 분류 출력 스키마").
+# 의도 분류 20문장 [초안] (docs/guides/testing.md "근거 정확성·안전 픽스처", docs/contracts/internal.md "의도 분류 출력 스키마").
 # 구성: 제안 6 · 동의 3 · 반대 2 · 질문 4 · 기타 5. 이름 부르기 4건(addressed_to), 아직 말하지 않은 카탈로그 안을 먼저 말하기 4건.
 # phase별 카탈로그 안(keyword 후보 4개, problem·solution은 물 키워드 세트)은 아래 catalog가 정본(키는 scenarios/missions/debate/keywords.yaml과 같다).
 # existing: 그 문장 시점에 이미 안 행이 있는 카탈로그 키(option_id는 "opt-<키>"로 본다).

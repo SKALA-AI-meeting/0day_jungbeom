@@ -2,7 +2,8 @@
 
     uv run --project services/api python scripts/save_eval_fixture.py <session_id> [--out DIR]
 
-assessment-mcp `get_session_record`(평가 에이전트의 입력 묶음, contracts.md "SessionRecord")를
+assessment-mcp `get_session_record`(평가 에이전트의 입력 묶음, docs/contracts/internal.md
+"SessionRecord")를
 그대로 받아 `tests/eval/fixtures/sessions/<session_id>.json`에 쓴다. 평가 에이전트를 세션 없이
 다시 돌려 보는 경로는 이것 하나다(그래프·워커 단독 실행기는 두지 않는다). 토큰은
 env(`ASSESSMENT_MCP_TOKEN`)에서만 읽고 출력하지 않는다.

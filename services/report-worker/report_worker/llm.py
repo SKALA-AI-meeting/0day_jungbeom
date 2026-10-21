@@ -1,7 +1,8 @@
 """평가 에이전트 LLM 호출(`MODEL_EVALUATOR`, temperature 0.1, JSON 출력).
 
 전송 오류·타임아웃은 재시도 2회(1·3초) 뒤 LLMUnavailable로 올린다. 평가는 폴백 문장이 없다:
-아무것도 저장하지 않고 작업을 실패시켜 큐 재시도(attempt+1)에 맡긴다(worker-infra/design.md 4단계).
+아무것도 저장하지 않고 작업을 실패시켜 큐 재시도(attempt+1)에 맡긴다(docs/services/report-worker.md
+4단계).
 호출마다 사용량을 모아 reports.usage로 남긴다. 테스트는 같은 Protocol의 FakeLLM을 쓴다.
 """
 

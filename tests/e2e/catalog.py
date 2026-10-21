@@ -61,5 +61,5 @@ def phase_deadlines(session_minutes: int) -> dict[str, float]:
 
 
 def load_contract(name: str) -> Any:
-    """tests/fixtures/contracts/<name>.json (contracts.md 예시)."""
+    """tests/fixtures/contracts/<name>.json (docs/contracts/api.md 예시)."""
     return json.loads((CONTRACTS / f"{name}.json").read_text("utf-8"))

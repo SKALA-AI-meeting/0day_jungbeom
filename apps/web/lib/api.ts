@@ -1,4 +1,4 @@
-// api 호출 래퍼. 계약은 docs/common/contracts.md. 오류는 {"error": {code, message}} → ApiError.
+// api 호출 래퍼. 계약은 docs/contracts/README.md. 오류는 {"error": {code, message}} → ApiError.
 // NEXT_PUBLIC_MOCK=1이면 네트워크 대신 mocks/의 계약 예시 응답을 돌려준다.
 import { mockRequest } from "@/mocks";
 

@@ -1,4 +1,4 @@
-"""토론 그래프(docs/agent/design.md "토론 그래프"): 턴 매니저 + 페르소나 3.
+"""토론 그래프(docs/architecture/agents.md "토론 그래프"): 턴 매니저 + 페르소나 3.
 
 ```
 load → cards → turn ─┬─ (화자마다) respond → guard → stance_check → wait_typing → apply ─┐

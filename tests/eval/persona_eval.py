@@ -1,4 +1,4 @@
-"""페르소나 응답 품질 실행기와 채점(docs/common/testing.md "페르소나 응답 품질 픽스처").
+"""페르소나 응답 품질 실행기와 채점(docs/guides/testing.md "페르소나 응답 품질 픽스처").
 
 대본(persona_scripts.yaml)을 그래프 경로로 돌린다: services/api 에이전트 테스트의 Harness(가짜
 debate·rag MCP와 가짜 hub)에 LLM만 갈아 끼운다. 지원자 발언은 메일박스처럼 먼저 의도 분류해 결과를

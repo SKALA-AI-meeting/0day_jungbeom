@@ -1,7 +1,7 @@
 """인증: bcrypt 비밀번호, 역할별 JWT, 초대 토큰 해시, FastAPI 의존성.
 
 역할: admin(company_id), candidate(session_id), debrief(session_id, 디브리핑만 읽음).
-생명주기와 만료 규칙은 docs/common/contracts.md의 인증 생명주기 표가 정본이다.
+생명주기와 만료 규칙은 docs/contracts/README.md의 인증 생명주기 표가 정본이다.
 """
 
 import hashlib

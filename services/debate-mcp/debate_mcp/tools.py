@@ -1,7 +1,7 @@
 """debate-mcp 도구 7개(조회 3, 변경 4). 모두 api 내부 REST로 전달만 하고 판단은 api가 한다.
 
 반환은 `{ok, data}` 또는 `{ok:false, error:{code, message, retryable}}`. 목록·입출력 정본은
-docs/common/contracts.md "debate-mcp". 멱등 키((run_id, seq), scenario_option_key·source_message_id,
+docs/contracts/mcp.md "debate-mcp". 멱등 키((run_id, seq), scenario_option_key·source_message_id,
 run_id)와 expected_generation은 가공 없이 그대로 보낸다. 지원자의 안·입장은 api가 의도 분류로 직접
 저장하므로 proposer·participant·seat에 candidate는 없다.
 """

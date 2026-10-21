@@ -1,6 +1,6 @@
 # 테스트 픽스처
 
-`contracts/`는 `docs/common/contracts.md`의 계약 예시를 **한 세션**으로 채운 것이다: `sess-1`, 60분, 5요소 고정, 자리 `p1` 강한결(고집형)·`p2` 윤하람(소극형)·`p3` 서지안(비판형), 지원자 표시 이름 김지원(초대 별칭 지원자A). 서비스 사이(MCP·api·워커·web mock)가 같은 예시를 공유한다. `apps/web/mocks/fixtures/`에는 같은 이름·같은 내용으로 복사한다(web 전용 재생 대본 `debate_script.json`·`office_script.json`은 제외). 계약 예시가 바뀌면 두 곳을 함께 갱신하고 `apps/web`의 prettier(`.prettierrc.json`)로 포맷한다.
+`contracts/`는 `docs/contracts/api.md`의 계약 예시를 **한 세션**으로 채운 것이다: `sess-1`, 60분, 5요소 고정, 자리 `p1` 강한결(고집형)·`p2` 윤하람(소극형)·`p3` 서지안(비판형), 지원자 표시 이름 김지원(초대 별칭 지원자A). 서비스 사이(MCP·api·워커·web mock)가 같은 예시를 공유한다. `apps/web/mocks/fixtures/`에는 같은 이름·같은 내용으로 복사한다(web 전용 재생 대본 `debate_script.json`·`office_script.json`은 제외). 계약 예시가 바뀌면 두 곳을 함께 갱신하고 `apps/web`의 prettier(`.prettierrc.json`)로 포맷한다.
 
 형태 검사 기준은 `tests/contract_shape.py`의 `SHAPES`(필드·값 어휘)이고, `tests/test_contract_fixtures.py`가 모든 픽스처·web 복사본 일치·WS `seq` 연속·19차원·페르소나 유형 비노출을 검사한다.
 

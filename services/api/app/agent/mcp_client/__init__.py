@@ -1,8 +1,9 @@
-"""debate-mcp·rag-mcp·assessment-mcp Streamable HTTP 클라이언트(contracts.md "MCP 도구").
+"""debate-mcp·rag-mcp·assessment-mcp Streamable HTTP 클라이언트(docs/contracts/mcp.md "MCP 도구").
 
 - 한 실행(run) 동안 서버 연결을 열어 둔다. 연결은 들어간 task에서 닫아야 하므로(anyio) runner가
   `async with`로 열고 닫고, 그래프 노드는 열린 연결로 호출만 한다.
-- 주체별 허용 목록(contracts.md "도구 허용 목록")을 `scope(allowed)`로 고정한다. 허용 밖 도구는
+- 주체별 허용 목록(docs/contracts/mcp.md "도구 허용 목록")을 `scope(allowed)`로 고정한다. 허용 밖
+도구는
   서버를
   부르지 않고 `{ok:false, error:{code:"forbidden"}}`를 돌려준다.
 - **assessment는 클라이언트를 분리한다**: assessment URL·토큰은 `AssessmentClient`만 갖고, 페르소나
@@ -55,7 +56,7 @@ TOOL_SERVER: dict[str, str] = {
     **{name: ASSESSMENT for name in ASSESSMENT_TOOLS},
 }
 
-# 주체별 허용 목록(contracts.md). reindex_materials는 어느 에이전트에도 열지 않는다.
+# 주체별 허용 목록(docs/contracts/mcp.md). reindex_materials는 어느 에이전트에도 열지 않는다.
 CODE_TOOLS = DEBATE_TOOLS | frozenset({"record_observation"})  # 결정적 노드(load·cards·apply·fill)
 PERSONA_TOOLS = frozenset({"get_transcript", "search_materials", "get_material"})
 PERSONA_PROPOSAL_TOOLS = PERSONA_TOOLS | frozenset({"get_draft"})  # get_draft는 proposal 단계만

@@ -1,7 +1,8 @@
 """agent 단위 테스트 공용 가짜: 가짜 debate·rag·assessment MCP(메모리 상태), 가짜
 hub(FakeSessionPorts).
 
-LLM은 FakeLLM, DB·네트워크는 쓰지 않는다. 가짜 서버는 contracts.md의 도구 입출력과 409 세부 코드
+LLM은 FakeLLM, DB·네트워크는 쓰지 않는다. 가짜 서버는 docs/contracts/mcp.md의 도구 입출력과 409 세부
+코드
 (stale_generation·no_consensus·slot_confirmed·phase_not_open)를 같은 형식으로 흉내 낸다.
 """
 
@@ -119,7 +120,8 @@ class FakeServer:
         return mid
 
     def apply_candidate(self, result: dict[str, Any]) -> None:
-        """api 메일박스의 의도 반영(contracts.md): 안 행은 confidence와 무관, 입장은 high만."""
+        """api 메일박스의 의도 반영(docs/contracts/internal.md): 안 행은 confidence와 무관, 입장은
+        high만."""
         target = result.get("target_option_id")
         key = result.get("scenario_option_key")
         if result["intent"] == "propose" and key:

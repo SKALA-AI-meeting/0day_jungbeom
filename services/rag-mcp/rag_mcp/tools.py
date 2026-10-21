@@ -1,4 +1,4 @@
-"""rag-mcp 도구 3개(contracts.md "rag-mcp"). 모두 `async def`(S3).
+"""rag-mcp 도구 3개(docs/contracts/mcp.md "rag-mcp"). 모두 `async def`(S3).
 
 잠금(키워드 확정 전 차단)·확정 키워드·catalog_version은 api 내부
 `GET /internal/sessions/{id}/materials`가 최종 판단하고 rag-mcp는 그 값으로 거르기만 한다.

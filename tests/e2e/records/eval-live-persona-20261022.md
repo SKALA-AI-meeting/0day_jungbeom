@@ -1,6 +1,6 @@
 # 페르소나 응답 품질 live (2026-10-22, gpt-4o-mini, S4.5 persona-tune)
 
-지표는 `docs/common/testing.md` "페르소나 응답 품질 픽스처" 정의(채점 단위 = 실행·단계, 질문 응답률은 단계 끝 전 다음 페르소나 발언이 있었던 메시지만·무응답 종료 따로, 지목 응답률은 `addressed_to` 1개만·카드 화자 우선은 따로). 그래프 경로(실 페르소나·턴·의도 분류 LLM + 가짜 debate·rag MCP·가짜 hub, guard·stance_check 포함), 대본 `tests/eval/persona_scripts.yaml` 3단계 × 지원자 발언 7건 + 카드, 2회 반복. 합의 채우기는 대본이 끊기지 않게 끈다.
+지표는 `docs/guides/testing.md` "페르소나 응답 품질 픽스처" 정의(채점 단위 = 실행·단계, 질문 응답률은 단계 끝 전 다음 페르소나 발언이 있었던 메시지만·무응답 종료 따로, 지목 응답률은 `addressed_to` 1개만·카드 화자 우선은 따로). 그래프 경로(실 페르소나·턴·의도 분류 LLM + 가짜 debate·rag MCP·가짜 hub, guard·stance_check 포함), 대본 `tests/eval/persona_scripts.yaml` 3단계 × 지원자 발언 7건 + 카드, 2회 반복. 합의 채우기는 대본이 끊기지 않게 끈다.
 
 - 기준선: 116fd0d의 `services/api/app/agent`·`prompts`로, 고친 계산기에서 잰 live 원자료(events JSON)를 현재 계산기로 다시 채점했다(계산기는 그 뒤 바뀌지 않음, 추가 호출 없음).
 - 튜닝 후: 리뷰 반영(본문 선자르기 → guard·stance_check → 안내문 부착, 폴백에도 안내문, 반복 재생성 도구 예산 공유) 뒤 새로 잰 live. 그 전 한 번은 모델이 `get_material`에 잘못된 인자를 넣어 가짜 MCP가 예외를 내 run이 깨졌다(실 MCP 클라이언트는 오류 결과로 돌려줌). 가짜를 실 MCP처럼 `invalid_input`을 돌려주게 고치고 다시 쟀다.

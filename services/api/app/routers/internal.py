@@ -1,4 +1,5 @@
-"""내부 REST(/internal, 포트 8001, X-Internal-Token). contracts.md "내부 REST" 표 그대로.
+"""내부 REST(/internal, 포트 8001, X-Internal-Token). docs/contracts/internal.md "내부 REST" 표
+그대로.
 
 내부 읽기는 상태 제한이 없다. 내부 쓰기는 in_progress에서만(아니면 409 conflict, 이미 저장된 키의
 재전달은 기존 결과). evaluations·report/*는 completed 이후에만. 409의 error.code에는 세부 코드

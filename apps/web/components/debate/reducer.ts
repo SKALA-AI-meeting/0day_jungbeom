@@ -1,4 +1,4 @@
-// 토론 화면 상태. /state 스냅샷이 전체이고 WS 프레임은 증분이다(contracts.md WebSocket).
+// 토론 화면 상태. /state 스냅샷이 전체이고 WS 프레임은 증분이다(docs/contracts/ws.md WebSocket).
 // seq가 마지막 + 1이 아니면 적용을 멈추고 needsResync를 세워 화면이 /state를 다시 읽게 한다.
 import { applyFrame } from "./state";
 import type { EndReason, Seat, ServerFrame, SlotPhase, StateSnapshot } from "./types";

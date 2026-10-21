@@ -1,6 +1,6 @@
 """mock 모드용 가짜 api: 계약과 계약 픽스처만으로 만든다.
 
-기준은 docs/common/contracts.md와 tests/fixtures/contracts/다. 러너를 실 스택 없이 돌려 단언 로직을
+기준은 docs/contracts/README.md와 tests/fixtures/contracts/다. 러너를 실 스택 없이 돌려 단언 로직을
 확인하는 용도라서 서비스 코드(api·agent·worker)는 import하지 않는다.
 
 - 지원자 메시지 분류는 agent의 결정적 LLM 모드(LLM_FAKE=1)와 같은 규칙이다: 안 라벨이 문장에

@@ -1,4 +1,4 @@
-"""역할별 모델·키 선택과 호출 설정(docs/agent/design.md "역할별 모델"). G-F 동결.
+"""역할별 모델·키 선택과 호출 설정(docs/architecture/agents.md "역할별 모델"). G-F 동결.
 
 규칙은 여기 한 곳이다.
 

@@ -3,7 +3,7 @@ name = "dayzero-rag-mcp"
 version = "0.1.0"
 description = "Day Zero rag-mcp: 키워드별 참고 자료 검색·조회·색인(pgvector)"
 requires-python = ">=3.12,<3.13"
-# S6 동결 버전(docs/plan.md 3절 "agent-spike 결과")
+# S6 동결 버전(docs/decisions.md "agent-spike 반영" S6)
 dependencies = [
   "fastmcp==4.1.1",
   "mcp==2.3.0",

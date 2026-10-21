@@ -3,7 +3,7 @@
 실행: uv run --project services/api pytest -q scenarios/missions/debate/tests
 - 모든 YAML이 읽힌다
 - 참조 무결성: 카드 담당 → 페르소나 자리, 안 → 키워드, 자료·프롬프트·아바타 파일 존재, 픽스처의 id
-- 값이 정본 문서(docs/common/scenario-model.md·rubric.md) 표와 같다(5요소 19차원 포함)
+- 값이 정본 문서(docs/product/scenario.md·rubric.md) 표와 같다(5요소 19차원 포함)
 """
 
 import importlib.util
@@ -17,7 +17,7 @@ from rubric_doc import parse_rubric
 
 MISSION = Path(__file__).resolve().parents[1]
 REPO = MISSION.parents[2]
-SCENARIO_DOC = REPO / "docs" / "common" / "scenario-model.md"
+SCENARIO_DOC = REPO / "docs" / "product" / "scenario.md"
 
 ELEMENTS = ["persuasion", "listening", "inclusion", "flexibility", "honesty"]
 SESSION_TYPES = ["stubborn", "quiet", "critic"]
@@ -56,7 +56,7 @@ def rubric():
 
 
 def scale(offset_min: float, minutes: int) -> float:
-    """scenario-model.md 1.3: L 비율 환산, 0.01분 반올림, 카드 최소 0.34분."""
+    """docs/product/scenario.md 1.3: L 비율 환산, 0.01분 반올림, 카드 최소 0.34분."""
     return max(round(offset_min * minutes / 60, 2), 0.34)
 
 
@@ -81,7 +81,7 @@ def test_stages_match_doc(mission):
     assert [s["slot"] for s in stages] == ["keyword", "problem", "solution", None]
     for s in stages:
         assert Fraction(s["deadline_fraction"]) * 60 == s["deadline_min"]
-    # 15분 압축 마감(scenario-model.md 1.3 표)
+    # 15분 압축 마감(docs/product/scenario.md 1.3 표)
     assert [float(Fraction(s["deadline_fraction"]) * 15) for s in stages] == [2.5, 7, 11.5, 15]
     assert mission["session_minutes_options"] == [60, 15]
     assert mission["office_clock"] == {"start": "09:00", "end": "10:00"}
@@ -148,7 +148,7 @@ def test_debrief_intro(mission):
 
 
 def _doc_keyword_rows() -> dict[str, dict]:
-    """scenario-model.md 2.4 표에서 키워드 행을 읽는다."""
+    """docs/product/scenario.md 2.4 표에서 키워드 행을 읽는다."""
     rows = {}
     pat = re.compile(
         r"^\| `(?P<key>[a-z]+)` \| (?P<label>[^|]+?) \| (?P<problems>[^|]+?) "

@@ -14,7 +14,7 @@ CONTRACTS = REPO_ROOT / "tests" / "fixtures" / "contracts"
 
 
 def load_contract(name: str) -> Any:
-    """tests/fixtures/contracts/<name>.json (contracts.md 예시)."""
+    """tests/fixtures/contracts/<name>.json (docs/contracts/api.md 예시)."""
     return json.loads((CONTRACTS / f"{name}.json").read_text(encoding="utf-8"))
 
 

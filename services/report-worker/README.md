@@ -1,6 +1,6 @@
 # report-worker
 
-세션이 끝나면 큐 작업으로 리포트 그래프 `collect → aggregate → evaluate → draft → approval[interrupt] → finalize`(thread `report:{session_id}:{eval_round}`, PostgresSaver)를 돌리고, 큐 소비자 3개(`report.generate`, `report.approve`, `report.dlq`)를 둔다. 설계는 `docs/worker-infra/design.md`, 척도·검증 규칙은 `docs/common/rubric.md`, 형식은 `docs/common/contracts.md`.
+세션이 끝나면 큐 작업으로 리포트 그래프 `collect → aggregate → evaluate → draft → approval[interrupt] → finalize`(thread `report:{session_id}:{eval_round}`, PostgresSaver)를 돌리고, 큐 소비자 3개(`report.generate`, `report.approve`, `report.dlq`)를 둔다. 설계는 `docs/services/report-worker.md`, 척도·검증 규칙은 `docs/product/rubric.md`, 형식은 `docs/contracts/README.md`.
 
 | 모듈 | 내용 |
 |---|---|

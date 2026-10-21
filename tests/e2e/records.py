@@ -1,4 +1,4 @@
-"""기록 저장: tests/e2e/records/<YYYYMMDD-HHMM>-<대본>/ (docs/common/testing.md e2e "기록")."""
+"""기록 저장: tests/e2e/records/<YYYYMMDD-HHMM>-<대본>/ (docs/guides/testing.md e2e "기록")."""
 
 import json
 from datetime import datetime

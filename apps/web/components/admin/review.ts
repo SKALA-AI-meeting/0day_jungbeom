@@ -62,7 +62,7 @@ export function withEdits(dimensions: Dimension[], edits: Edits): Dimension[] {
   });
 }
 
-/** 요소 수준 = 수준이 있는 차원 평균을 반올림(.5 올림), 모두 기록 없음이면 null(contracts.md elements[]) */
+/** 요소 수준 = 수준이 있는 차원 평균을 반올림(.5 올림), 모두 기록 없음이면 null(docs/contracts/api.md elements[]) */
 export function elementLevel(dimensions: Dimension[], element: string, final = true): Level | null {
   const levels = dimensions
     .filter((d) => d.element === element)

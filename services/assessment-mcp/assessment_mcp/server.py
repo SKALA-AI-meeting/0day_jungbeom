@@ -2,7 +2,7 @@
 
 모든 도구 호출에 `X-Assessment-Token`(env `ASSESSMENT_MCP_TOKEN`)이 있어야 한다. 없거나 다르면
 api를 부르지 않고 `forbidden`을 돌려준다. 서버 토큰이 비어 있으면 모든 호출을 거부한다(닫힌 기본값).
-페르소나 클라이언트에는 이 토큰을 주지 않는다(contracts.md "도구 허용 목록").
+페르소나 클라이언트에는 이 토큰을 주지 않는다(docs/contracts/mcp.md "도구 허용 목록").
 """
 
 import hmac

@@ -45,7 +45,7 @@
 
 ## 2026-10-20 foundation 리뷰 반영 (Codex) — **일부 대체됨(2026-10-21 토론형 전환)**: 업무 시뮬레이션 전용 항목(문서·보드·분업·카드 시각·관찰 레이블)은 대체, 일반 규칙은 유지
 - 종료 run 실패: `complete()`는 종료 run이 `ok=False`여도 completed로 진행하고 리포트를 발행한다. agent_runs는 failed로 남기고 경고 로그를 찍는다. 이유: 지원자 작업물을 잃지 않기 위해. 대안: 세션 failed(작업물이 리포트로 가지 않음).
-- 종료 직렬화: `complete()` 전체(상태 재검증 → 종료 실행 → 재사용 추정 → completed 커밋 → 발행)를 세션 Lock 안에서 하고, Lock 안에서 다시 읽은 상태가 in_progress가 아니면 아무것도 하지 않는다. `run_agent(lock_held=True)`로 같은 Lock의 재획득(교착)을 피한다. 이유: 제출과 만료가 겹쳐도 종료 실행·발행이 한 번만 일어나게. **R5로 대체**: 세션 Lock·`lock_held`는 없다. 종료는 `SessionService.submit` 한 트랜잭션이고 메일박스의 남은 자극은 상태 검사로 skipped(`contracts.md` "세션 메일박스").
+- 종료 직렬화: `complete()` 전체(상태 재검증 → 종료 실행 → 재사용 추정 → completed 커밋 → 발행)를 세션 Lock 안에서 하고, Lock 안에서 다시 읽은 상태가 in_progress가 아니면 아무것도 하지 않는다. `run_agent(lock_held=True)`로 같은 Lock의 재획득(교착)을 피한다. 이유: 제출과 만료가 겹쳐도 종료 실행·발행이 한 번만 일어나게. **R5로 대체**: 세션 Lock·`lock_held`는 없다. 종료는 `SessionService.submit` 한 트랜잭션이고 메일박스의 남은 자극은 상태 검사로 skipped([architecture/session-lifecycle.md](architecture/session-lifecycle.md) "세션 메일박스").
 - web mocks 소유권 분리: `mocks/index.ts`(foundation)는 `mocks/admin.ts`(web-admin)·`mocks/office.ts`(web-office)의 ROUTES를 합치기만 하고, fixture도 `fixtures/admin/`·`fixtures/office/`로 나눈다. 이유: W2의 두 화면 트랙이 같은 파일을 고치지 않게.
 - 문서 파트 행: 세션 시작 시 `SessionService.start()`가 시나리오 parts 수만큼 `document_states`(빈 본문, revision 0)를 만든다. tasks는 분업 확정 때 api-candidate가 만든다. 이유: State 스냅샷과 문서 PUT이 행 존재를 전제로 단순해짐. 대안: PUT에서 upsert.
 - `SCENARIOS_DIR`: 기본값(/scenarios)이 로컬에 없을 때만 저장소 `scenarios/`로 대체하고, 사용자가 지정한 경로가 없으면 설정 오류로 멈춘다. 이유: 잘못된 경로를 조용히 숨기지 않게.
@@ -53,11 +53,11 @@
 - MVP 제외: 브로커가 발행을 확인한 뒤 큐가 유실된 경우의 복구(outbox는 `*_enqueued_at`이 비어 있는 세션만 재발행한다).
 
 ## 2026-10-20 api-admin 리뷰 반영 — **일부 대체됨(2026-10-21 토론형 전환)**: 업무 시뮬레이션 전용 항목(문서·보드·분업·카드 시각·관찰 레이블)은 대체, 일반 규칙은 유지
-- 관찰 창(`current_element`): 가장 최근에 실행된 **요소 카드**의 요소다. 흐름 카드·결 메시지는 창을 닫지 않고, 마지막 요소 창은 제출 뒤 종료 실행이 끝날 때(completed 전)까지 열려 있다. 이유: 보고 단계의 지적도 창 안으로 봐야 한다. `scenario-model.md`·`agent/design.md`의 예전 "흐름 카드도 창을 닫음" 문구는 이 결정이 우선한다(문서 정합화는 오케스트레이터).
+- 관찰 창(`current_element`): 가장 최근에 실행된 **요소 카드**의 요소다. 흐름 카드·결 메시지는 창을 닫지 않고, 마지막 요소 창은 제출 뒤 종료 실행이 끝날 때(completed 전)까지 열려 있다. 이유: 보고 단계의 지적도 창 안으로 봐야 한다. [product/scenario.md](product/scenario.md)·[architecture/agents.md](architecture/agents.md)의 예전 "흐름 카드도 창을 닫음" 문구는 이 결정이 우선한다(문서 정합화는 오케스트레이터).
 - `Idempotency-Key` 헤더를 MVP 계약에서 뺀다. 멱등은 도메인 규칙(세션 전이, 내부 저장 키, 리뷰 본문 비교)으로만 보장하고 화면은 생성 POST를 자동 재시도하지 않는다. 이유: 초대 토큰 원문이 DB에 없어 키 기반 재응답을 복원할 수 없고 저장소를 더하는 비용이 크다. 대안: 멱등 키 테이블(제외).
 - 종료 뒤 쓰기: 내부 문서·task·분업 PUT은 세션이 in_progress일 때만 받는다(제출 직후 종료 실행 중에는 in_progress라 허용). 이미 저장된 run_id 재전달은 기존 결과를 돌려준다. 이유: 확정 리포트의 산출물이 바뀌지 않게.
 - tasks 생성 담당 정정: 위 "foundation 리뷰 반영"의 "tasks는 분업 확정 때 api-candidate가 만든다"를 **api-admin의 내부 division PUT**으로 바꾼다(division과 tasks를 한 트랜잭션). api-candidate의 sync_tasks는 그쪽 수정 라운드에서 제거한다.
-- 리뷰 오류 우선순위: 이미 제출된 세션은 `already_reviewed`(409)가 `memo_required`·`invalid_item`·`duplicate_item`(400)보다 먼저다. **R5로 대체**: 입력 검증 실패는 모두 422(`memo_required`·`invalid_dimension`·`duplicate_dimension`·`invalid_input`)이고 판정 순서는 상태(409) → 검증(422)(`contracts.md` review).
+- 리뷰 오류 우선순위: 이미 제출된 세션은 `already_reviewed`(409)가 `memo_required`·`invalid_item`·`duplicate_item`(400)보다 먼저다. **R5로 대체**: 입력 검증 실패는 모두 422(`memo_required`·`invalid_dimension`·`duplicate_dimension`·`invalid_input`)이고 판정 순서는 상태(409) → 검증(422)([contracts/api.md](contracts/api.md) review).
 - 내부 메시지 응답(GET·POST·분류 PUT)은 `meta`를 포함한다(공개 API는 제외). 요청 본문 검증 실패는 두 앱 공통으로 422 `invalid_input`.
 
 ## 2026-10-20 prompts 리뷰 반영
@@ -68,7 +68,7 @@
 - 카드 실행은 세션별 due_at 직렬: 미완료(fired) 묶음이 done·failed·skipped가 되기 전에는 뒤 묶음을 디스패치하지 않는다. 재시작 복구도 같은 순서를 따른다. 이유: 상태를 가진 세션 그래프가 카드 순서를 뒤집어 처리하지 않게. 대안: retry를 events보다 먼저 호출(60초 미만 fired와 여러 pending 묶음 문제가 남음).
 - 지원자 문서 PUT 권한: 분업 확정 전에는 모든 파트(리드가 초안을 잡을 수 있음), 확정 뒤에는 candidate·both만, colleague 단독 파트는 403. 이유: 동료 파트(정책 위반 포함)를 지원자가 직접 덮어쓰면 관찰 전제가 깨진다.
 - **R5로 대체**(세션 Lock 없음, 문서 PUT 없음): 지원자 문서 PUT은 세션 Lock 안에서 상태를 다시 확인하고 저장한다. 내부 라우터는 Lock을 잡지 않는다. 이유: complete()와 직렬화해 종료 뒤 쓰기를 막되, 실행 중 runner의 내부 API 호출이 자기 Lock을 기다리는 교착을 피하려고. 대안: DB 행 잠금으로 complete와 공유(종료 경로 전체를 바꿔야 함).
-- **R5로 대체**(디브리핑 기한 = `ended_at` + 7일, 실패해도 `ends_at`은 바꾸지 않음. `contracts.md` 세션 상태 머신): 디브리핑 기한은 세션 종료 시각(submitted_at, 진행 중 실패면 실패 시각) + 7일로 고정하고 debrief_token exp를 그 시각으로 발급, 지나면 410 expired. 진행 중 실패 시각은 `fail(session)`이 ends_at을 실패 시각으로 당겨 기록한다(별도 컬럼 없이). 리포트 단계 실패는 세션 종료가 submitted_at이므로 그 기준. 이유: GET마다 "지금부터 7일"을 발급하면 기한이 무기한 연장된다.
+- **R5로 대체**(디브리핑 기한 = `ended_at` + 7일, 실패해도 `ends_at`은 바꾸지 않음. [architecture/session-lifecycle.md](architecture/session-lifecycle.md) 세션 상태 머신): 디브리핑 기한은 세션 종료 시각(submitted_at, 진행 중 실패면 실패 시각) + 7일로 고정하고 debrief_token exp를 그 시각으로 발급, 지나면 410 expired. 진행 중 실패 시각은 `fail(session)`이 ends_at을 실패 시각으로 당겨 기록한다(별도 컬럼 없이). 리포트 단계 실패는 세션 종료가 submitted_at이므로 그 기준. 이유: GET마다 "지금부터 7일"을 발급하면 기한이 무기한 연장된다.
 - 카드 3회 실패의 failed 기록과 SessionService.fail을 한 트랜잭션으로 하고, failed 필수 카드가 남은 in_progress 세션은 스케줄러 retry 단계가 fail로 수렴시킨다. 이유: 두 커밋 사이에 죽으면 세션이 진행 중으로 남아 만료 때 리포트까지 발행된다.
 - 시작 공개 문서는 `SessionService.start()`가 시작 트랜잭션에서 released_at을 바로 기록한다. 이유: 첫 tick(최대 5초)까지 423이 되는 공백 제거, 지원자·내부·rag가 같은 시점부터 같은 상태를 봄.
 - assistant_reuse의 revision 컬럼은 보류: 현재 내부 REST·워커 소비 계약에 revision이 없어 컬럼만 추가하는 효과가 없다. 순수 함수 반환값에만 revision을 둔다.
@@ -80,7 +80,7 @@
 - events: `GET /internal/sessions/{id}`에 `events: [{id, card_id, element, status, due_at, fired_at}]`. 워커는 카드 발생(status fired·done), 실제 카드 시각(같은 event_id의 첫 메시지), 전달 지연(예정보다 90초 초과 → window_missed)을 이걸로 판단하고 메시지 시각 기반 대용 추정은 지웠다. 이유: review와 respect처럼 같은 시각의 다른 카드를 구별 못 했다. `id`는 메시지 event_id와 맞추려고 넣었다.
 - messages `offset`: 정렬에 id를 더하고 offset 쿼리를 둔다. 워커는 limit 500으로 끝까지 읽는다. 이유: 1,000건 이후 근거가 수집되지 않아 정상 근거까지 제거됐다. 대안: since_t_min 커서(반올림 경계 누락).
 - null 지표 사유: aux 판정 지표(response_specific·proposes_alternative·proposes_fix)가 null이면 레이블이 정상이어도 `classify_failed`. 그 밖의 null은 레이블 unclassified·null이면 classify_failed, 아니면 no_activity. `window_missed`는 관찰 `metrics.window_missed: {value: true, evidence_ids: []}`(bool 허용)로 확정.
-- 소유권 예외: worker `pyproject.toml`·`uv.lock` 변경 승인(런타임 `psycopg[binary]`: slim 이미지에 libpq가 없음, dev `pyyaml`: 테스트가 카탈로그를 읽음). 이 라운드에 한해 worker 트랙이 `services/api/app/routers/internal.py`(events·offset·usage)와 해당 테스트, `contracts.md`·`decisions.md`를 고쳤다.
+- 소유권 예외: worker `pyproject.toml`·`uv.lock` 변경 승인(런타임 `psycopg[binary]`: slim 이미지에 libpq가 없음, dev `pyyaml`: 테스트가 카탈로그를 읽음). 이 라운드에 한해 worker 트랙이 `services/api/app/routers/internal.py`(events·offset·usage)와 해당 테스트, [contracts/README.md](contracts/README.md)·`decisions.md`를 고쳤다.
 - 금지어 보강: 1위·N위·N등·만점·감점·가산점·상위/하위 N%·등수. 업무 "우선순위", 근거 원문 quote, 평가표 숫자는 검사하지 않는다. 설정은 OPENAI_MODEL이 gpt-4o-mini가 아니면 시작 시 오류.
 
 ## 2026-10-20 인성 5요소·문서 주고받기 재설계
@@ -88,7 +88,7 @@
 대체됨(2026-10-21 토론형 전환) — 원문은 git 33cfe90. 업무 하루 기준 요소 5개, 문서 주고받기 협업, 보드, 팀장 DM, "주담당" 호칭, 미션 단위 카탈로그.
 
 ## 2026-10-20 개발 전 리뷰 3종 반영 — **일부 대체됨(2026-10-21 토론형 전환)**: 업무 시뮬레이션 전용 항목(문서·보드·분업·카드 시각·관찰 레이블)은 대체, 일반 규칙은 유지
-- Codex 설계 리뷰 차단 12건·권장 9건, 지원자 관점·담당자 관점 리뷰의 필수 항목을 반영(분류표 원문은 git 33cfe90). 설계 수준은 오케스트레이터 결정(보고는 팀 채널, rubric.md가 레이블·근거 타입 단일 표, document_revisions 복원, 보드가 분업 경로, 계획성 창은 0부터, 약속 이행은 종료 시 확정, 적응성 반영은 target_applied, 정직 전제 지표화, division_min에 3번 의존 보장, 문서 전송 실패 사유 document_missing, reporting 재입장).
+- Codex 설계 리뷰 차단 12건·권장 9건, 지원자 관점·담당자 관점 리뷰의 필수 항목을 반영(분류표 원문은 git 33cfe90). 설계 수준은 오케스트레이터 결정(보고는 팀 채널, [product/rubric.md](product/rubric.md)가 레이블·근거 타입 단일 표, document_revisions 복원, 보드가 분업 경로, 계획성 창은 0부터, 약속 이행은 종료 시 확정, 적응성 반영은 target_applied, 정직 전제 지표화, division_min에 3번 의존 보장, 문서 전송 실패 사유 document_missing, reporting 재입장).
 - 사용자 결정: 적응성 카드는 자료가 살아남는 변경(핵심 기능 축소·일정 당김), 전체 기록 읽기 전용 화면과 근거→기록 링크(F-05 MVP 포함), 리포트 화면은 디자인 컨셉으로 재설계, 샘플 리포트·인쇄/PDF 내보내기 MVP, AI 활용 라벨 제거(시간순 사실만). 이유: 담당자 조정과 "사람이 판단" 절차가 원문 없이 성립하지 않음, 라벨은 감점으로 읽힘, 연출이 자료를 무효화하면 유연성이 아니라 분노를 관찰함.
 - 계획: web-integrate 트랙 추가, scenario-redesign 소유권 확대(prompts 포함), 사용자 mock 확인이 막는 범위는 web-integrate·agent-session 착수뿐. 생성 화면 미리보기·버전 비교·최종본 append·둘째 계정은 MVP 제외.
 
@@ -124,7 +124,7 @@
 
 ## 2026-10-21 토론형 전환 (사용자 결정 D1~D21, D13-1~D13-3, D18·D19 개정, UX 결정 G-U, 리뷰 반영 R1~R7, 오케스트레이터 이름 정리)
 
-서비스 목적(행동 관찰로 인성을 보고, 최종 평가는 사람이 한다)은 그대로 두고 과제 형태를 바꾼다. 핵심은 채팅 과정에서 지원자의 인성이 잘 분석되는 것이고 UI와 도구는 거기에 맞춘다. 원문은 `docs/handoff/briefs/brief-debate-pivot.md`, 구체화는 `docs/common/scenario-model.md`·`rubric.md`·`contracts.md`·`data-model.md`·`architecture.md`. 위의 업무 시뮬레이션 결정(F1~F12 등)을 대체한다. D 결정과 리뷰 반영 결정(R1~R7, 아래 표)이 충돌하면 R이 우선한다.
+서비스 목적(행동 관찰로 인성을 보고, 최종 평가는 사람이 한다)은 그대로 두고 과제 형태를 바꾼다. 핵심은 채팅 과정에서 지원자의 인성이 잘 분석되는 것이고 UI와 도구는 거기에 맞춘다. 원문 브리프는 git 이력(1e35066 이전)에 있고, 구체화는 [product/scenario.md](product/scenario.md)·[product/rubric.md](product/rubric.md)·[contracts/README.md](contracts/README.md)·[architecture/data-model.md](architecture/data-model.md)·[architecture/overview.md](architecture/overview.md). 위의 업무 시뮬레이션 결정(F1~F12 등)을 대체한다. D 결정과 리뷰 반영 결정(R1~R7, 아래 표)이 충돌하면 R이 우선한다.
 
 | ID | 결정 (사용자) | 이유 | 대안과 기각 이유 |
 |---|---|---|---|
@@ -140,7 +140,7 @@
 | D10 멀티 에이전트 | MVP는 턴 매니저 + 페르소나 에이전트 3. 자극마다 턴 매니저가 규칙+LLM으로 화자 0~2명 선택. 고도화는 독립 비동기 에이전트 | 대화 흐름 통제와 Agentic 구조를 함께 확보 | 단일 LLM이 세 명 연기: 기억·도구 분리가 안 됨 |
 | D11 MCP 3개 | debate-mcp(손, business-mcp 재정의), rag-mcp(눈, 확정 전 자료 차단), assessment-mcp(기록자, 신규). 페르소나는 assessment 접근 불가, 턴 매니저 결정적 노드와 report-worker만 사용. scenario·웹 검색·가드 MCP는 두지 않음 | 평가 기준을 보고 행동을 맞추지 못하게(Harness 근거). 카탈로그는 debate-mcp로 충분, 웹 검색은 공정성 훼손, 출력 검사는 코드에서 무조건 실행해야 함 | MCP 2개 유지: 평가 기록 경계를 보여 줄 곳이 없음 |
 | D12 침묵 초대 | 지원자가 일정 시간 말이 없거나 단계에서 의견이 없으면 어울리는 페르소나(고집형 제외)가 "OO님은 어떻게 생각하세요?". 단계당 최대 1회. 발언을 자발 / 초대 후로 구분 기록 | 침묵한 지원자에게도 관찰 기회를 주고, 초대 여부는 사실로 구분 | 초대 없음: 기록 없음이 늘어남 |
-| D13 화면 | 가운데 토론방, 우측 탭(합의 · 자료 · AI 어시스턴트 · 기획안), 상단 단계 진행바·남은 시간. 세부 UI/UX(합의·확정 흐름, 기획안 작성 화면, 기업 리포트 화면)는 열린 항목 → **G-U로 확정**(아래 표, `docs/frontend/design.md` "UX 결정") | 채팅이 중심이고 작업은 보조 | — |
+| D13 화면 | 가운데 토론방, 우측 탭(합의 · 자료 · AI 어시스턴트 · 기획안), 상단 단계 진행바·남은 시간. 세부 UI/UX(합의·확정 흐름, 기획안 작성 화면, 기업 리포트 화면)는 열린 항목 → **G-U로 확정**(아래 표, [product/user-flows.md](product/user-flows.md) "UX 결정") | 채팅이 중심이고 작업은 보조 | — |
 | D13-1 채팅 표시 | 메시지마다 이름 + 이니셜 아바타. 참여자 4명 말풍선 배경색을 사람별로 구분(지원자 색 별도, 시스템 중립). 디자인 토큰, 라이트·다크 대비, 이름 항상 함께 | 네 명 대화에서 화자를 한눈에 구분 | 색만 구분: 접근성 문제 |
 | D13-2 디자인 컨셉 | Apple스러운 디자인. 넓은 여백과 분명한 위계, 흰색·연회색(#F5F5F7류) 바탕에 시스템 블루 계열 강조색 하나, 시스템 폰트(-apple-system, SF Pro 계열) + 한글 Pretendard, 일관된 둥근 모서리와 얇은 구분선, 반투명은 상단 바·패널에만, 절제된 전환. 채팅은 iMessage형(지원자 오른쪽 강조색, AI 동료 3명은 시스템 색 연한 틴트, 시스템 안내는 가운데 작은 회색 텍스트). 피함: 보라·파랑 그라데이션, ✨·로봇 아이콘, 글래스모피즘 남용, 네온, 과한 그림자, 카드 반복 대시보드. 라이트·다크 지원 | 지금 UI가 'AI스럽다'는 사용자 피드백. 채용 평가 도구는 차분하고 신뢰감 있어야 하고, 익숙한 메신저 문법이 토론 몰입을 돕는다 | 현재 스타일 유지: 'AI 데모' 인상. 강한 브랜드 색·일러스트 중심: 평가 장면에서 산만함 |
 | D13-3 이름·프로필 | 세션은 AI 동료 3명(페르소나 풀 5명 중) + 지원자. 지원자는 페르소나가 아니며 입장(동의) 화면에서 표시 이름을 입력(기본값은 초대 시 이름, 수정 가능), AI 동료는 "OO님"으로 부름. 리포트는 별칭 표기 가능. 페르소나마다 고정 프로필 이미지(실존 인물이 아닌 일관된 스타일의 일러스트, 성향을 암시하지 않는 중립 표정), 지원자는 이니셜 아바타. 지금 이미지는 임시이고 나중에 교체: 미션 카탈로그 `avatar` 필드와 정적 에셋 폴더로 분리, 원형 크롭·고정 크기. 계약·데이터에 자리별 `display_name`·`avatar_url`(지원자는 `display_name`) | 사람처럼 보이는 동료가 대화 몰입을 높이고, 지원자가 정한 이름으로 불려야 자연스럽다. 교체가 쉬워야 팀이 이미지를 나중에 정할 수 있다 | 이니셜만: 동료 구분과 몰입이 약함. 실존 인물 사진: 초상권·편향 문제. 성향별 표정: 유형이 드러남(D5 위반) |
@@ -157,12 +157,12 @@
 
 | ID | 결정 (사용자) | 이유 | 대안과 기각 이유 |
 |---|---|---|---|
-| D18 개정 척도 | 요소마다 하위 차원 3~4개, 차원마다 1~5 수준과 수준별 대표 행동(앵커). 앵커는 이 토론 시나리오의 실제 장면·예시 발언. 구체 목록은 `docs/common/rubric.md`(작성 중) | 코드 개수로 세는 방식은 토론의 미묘한 행동(맥락 속 존중·승복의 질)을 놓친다. 수준별 행동 앵커가 있으면 판단 기준이 공개되고 일관된다 | 행동 코드 + 조건 충족 수(이전 D18): 맥락 손실, 코드 1건이 조건을 뒤집음. 자유 서술 평가: 기준 비공개·비일관 |
+| D18 개정 척도 | 요소마다 하위 차원 3~4개, 차원마다 1~5 수준과 수준별 대표 행동(앵커). 앵커는 이 토론 시나리오의 실제 장면·예시 발언. 구체 목록은 [product/rubric.md](product/rubric.md)(작성 중) | 코드 개수로 세는 방식은 토론의 미묘한 행동(맥락 속 존중·승복의 질)을 놓친다. 수준별 행동 앵커가 있으면 판단 기준이 공개되고 일관된다 | 행동 코드 + 조건 충족 수(이전 D18): 맥락 손실, 코드 1건이 조건을 뒤집음. 자유 서술 평가: 기준 비공개·비일관 |
 | D18 개정 평가 에이전트 | report-worker 안의 평가 에이전트가 세션 종료 후 큐 작업으로 대화 전체·칸 기록·기획안·카드 발생 기록을 읽고 차원마다 `{level 1~5 \| 기록 없음+사유, evidence_message_ids(1개 이상), rationale, confidence: high\|medium\|low}`. 요소 수준은 평균 반올림 + 서술 한두 줄 | 평가표와 채팅을 읽고 판단하는 주체가 어차피 에이전트이므로 규칙 집계 뒤에 숨기지 않고 판단 자율성과 근거 제시 의무를 함께 준다 | 규칙 집계 유지: 분류는 AI인데 "AI는 점수를 매기지 않는다"는 설명이 실제와 어긋남 |
 | D18 개정 원칙 | "AI는 점수를 매기지 않는다" → "AI 평가 에이전트가 공개된 척도로 근거를 들어 수준을 판단하고, 담당자가 그것을 참고해 최종 평가한다". 합격·불합격·지원자 간 순위는 여전히 없음. 담당자는 차원 단위로 조정하고 메모 | 실제 구조를 정직하게 설명하면서 사람의 최종 결정(규제 대응)을 유지 | 원칙 문구 유지: 동의 화면·리포트 설명이 실제와 다름 |
 | D18 개정 사실 지표 | 발언 수, 자발/초대 후, 칸 기록, 아이디어 최초 제안자 등은 결정적 계산으로 유지, 평가 에이전트 입력과 리포트 보조. 행동 코드 20개는 독립 산출물에서 빠지고 앵커 작성 참고 어휘로만 | 재현 가능한 사실은 코드로, 해석은 에이전트로 분리 | 사실 지표도 LLM이 계산: 재현성 손실 |
 | D18 개정 일관성 | 같은 척도·같은 프롬프트·낮은 temperature, 지원자 행동 근거(메시지·칸 확정·기획안 필드) 없는 수준 금지(없으면 기록 없음), 확신도 low는 리포트에 표시, 파일럿에서 사람 평가와 일치도 측정 | LLM 판단의 흔들림과 근거 없는 판단을 구조로 막는다 | 다중 샘플 투표: 비용 증가(필요하면 파일럿 뒤 검토) |
-| D19 개정 분석 시점 | 세션 종료 후 report-worker 큐 작업으로 일괄은 유지. 산출 단위만 행동 코드 → 차원별 수준 판단. assessment-mcp `save_behavior_codes` → `save_evaluation`(입출력은 contracts.md) | 전체 대화를 보고 판단해야 하고 세션 중 비용·지연이 없다 | 실시간 판단: 뒤 맥락이 없음 |
+| D19 개정 분석 시점 | 세션 종료 후 report-worker 큐 작업으로 일괄은 유지. 산출 단위만 행동 코드 → 차원별 수준 판단. assessment-mcp `save_behavior_codes` → `save_evaluation`(입출력은 [contracts/README.md](contracts/README.md)) | 전체 대화를 보고 판단해야 하고 세션 중 비용·지연이 없다 | 실시간 판단: 뒤 맥락이 없음 |
 
 **UX 결정 G-U와 리뷰 반영 결정 R1~R7 (2026-10-21, 기획자·지원자·시니어 엔지니어·Codex 리뷰 후. 원문은 브리프 "UX 결정"·"리뷰 반영 결정")**
 
@@ -176,9 +176,9 @@
 | R5 기술 단순화 (오케스트레이터 결정) | 세션별 메일박스(직렬 소비)와 generation 비교로 Lock·handled 대체. 시간 초과는 api가 결정적으로 직접 채움(그래프 자극에서 timeout 제거). 그래프 자극 4종(message·phase_started·idle·card_due). 카드 트리거는 시각 기반 `card_due` 하나(카드별 `offset_min`), 담당 화자가 실제 게시해야 delivered, 기준안은 `card_due` 시점 잠금·카드 전 입장 비공개. 칸 상태 `empty\|confirmed`, 확정 값은 정규화 문자열·카탈로그 키로만 안 연결. 의도 분류 입력에 카탈로그 안 전체(최초 제안자 보존). 현재 지지 = 참여자당 마지막 support 하나(다른 안 support는 대체), 같은 안 후속 oppose는 철회. 계획 밖 입장은 재생성 → 고정 문구. 평가는 요소 단위 1회 재요청·확신도 clamp·`evaluation_runs`·`prompt_versions`, BARS 단독 확정은 `flex_decision_respect`만 판단. 그 밖 typing·WS seq·비용·어시스턴트 tool-calling·초대 재발급·삭제 기준(브리프 R5 1~22) | 시니어 엔지니어·Codex 리뷰의 동시성·중복 실행·카드 유실·지지 계산 모순 지적을 규칙 수를 줄이는 방향으로 해소 | 기존 Lock·이벤트 트리거 유지: 경합·유실 경로가 많아 테스트로 막기 어려움 |
 | R6 계획 수정 | agent-spike 트랙 신설, 웨이브 의존·트랙 수·stub 소유권·기대 실패 병합 규칙·우선순위 열·e2e P0 대본 조정, 옛 "F-25 무응답 확인" 제외 항목 삭제(현행 F-25 침묵 초대는 포함) | 병렬 작업이 막히는 지점과 범위 불일치 해소 | — |
 | R7 기획 문구 보강 | 동의 화면 어시스턴트 문구 "AI가 평가 수준을 매기지 않으며, 요청·응답 기록은 담당자에게 사실로 제공된다". 지원자 화면 용어 "정할 항목"·"결정 사항"·"이걸로 정하기". 남은 시간 중심 표시(오피스 시각은 메시지 타임스탬프에만). 시간 초과 문구 "대화에서 가장 많이 모인 의견으로". `idea_credit` 중립 안내 "이 기획에 반영된 의견과 그 의견을 낸 사람". 디브리핑에 본인 발언 2~3개 회고·이의 제기 경로·자유 의견. 리스크 표에 시나리오 유출·채팅 숙련도 편향·접속 끊김(이어하기 P0)·평가 일관성(3회 재평가·사람 2인, 차이 분포)·규제 해석 미확정. 6.1 목적 한 줄, 해결책은 방향(데이터·참여·인프라) | 내부 용어·두 시계 병기·"지지" 같은 투표식 표현이 지원자를 헷갈리게 하고 행동을 유도할 수 있음(기획자·지원자 리뷰) | 기존 문구 유지: 혼란과 유도 가능성 |
-| R5 보강 (오케스트레이터 결정, 2차 계약 리뷰) | 카드: `card_due`는 담당 전원 delivered까지 새 uuid4 run_id로 재enqueue(카드당 1회·고정 run_id 없음), 전달 멱등은 `delivered_seats`. 한 메시지가 여러 카드를 전달하면 `messages.card_ids`(배열)의 카드마다 `delivered_seats` 추가·관찰 카드마다 1건. 설득 카드 담당은 `scenario-model.md` 조건부 배정이 정본(담당만 바뀌고 입장은 그대로). 의도 분류는 메일박스 안에서 `message` 자극마다 순서대로 수행(낡은 자극도 분류·안·입장 반영, 건너뛰는 것은 턴·발언 생성뿐). run 완료 상태는 `finished`. 평가 워커는 `{session_id, attempt, eval_round}`를 소비하고 run_id = `uuid5(session_id, "evaluate:"+eval_round)`. 현재 지지는 참여자당 하나. 비용은 `sessions.debate_cost_usd`(토론, 하드 상한) + `sessions.cost_usd`(전체 관측), `cost_left = SESSION_COST_HARD_USD − debate_cost_usd`. 합의는 `apply` 뒤 재판정해 같은 run에서 채우고, `fill_slot` 성공 뒤에만 공지(409면 문장 없음, 공지 저장 방식은 아래 3차 행이 대체). 디브리핑은 요소 이름과 "이렇게 봅니다" 한 줄만 공개하고 척도 세부(차원·앵커)는 공개하지 않음. 페르소나에 `get_debate_state`를 바인딩하지 않음(DebateState는 주입). `fill_slot`에 resolution 인자 없음. `prompt_versions`는 파일별 개별 해시 맵. 페르소나 프롬프트는 남은 시간으로 말함 | 2차 리뷰가 지적한 문서 간 저장·소비 불일치(재실행 방지·재전달·재평가·지지 계산·비용 상한)를 계약 하나로 고정 | 문서별 표현 유지: 구현 트랙마다 다른 규칙을 구현함 |
+| R5 보강 (오케스트레이터 결정, 2차 계약 리뷰) | 카드: `card_due`는 담당 전원 delivered까지 새 uuid4 run_id로 재enqueue(카드당 1회·고정 run_id 없음), 전달 멱등은 `delivered_seats`. 한 메시지가 여러 카드를 전달하면 `messages.card_ids`(배열)의 카드마다 `delivered_seats` 추가·관찰 카드마다 1건. 설득 카드 담당은 [product/scenario.md](product/scenario.md) 조건부 배정이 정본(담당만 바뀌고 입장은 그대로). 의도 분류는 메일박스 안에서 `message` 자극마다 순서대로 수행(낡은 자극도 분류·안·입장 반영, 건너뛰는 것은 턴·발언 생성뿐). run 완료 상태는 `finished`. 평가 워커는 `{session_id, attempt, eval_round}`를 소비하고 run_id = `uuid5(session_id, "evaluate:"+eval_round)`. 현재 지지는 참여자당 하나. 비용은 `sessions.debate_cost_usd`(토론, 하드 상한) + `sessions.cost_usd`(전체 관측), `cost_left = SESSION_COST_HARD_USD − debate_cost_usd`. 합의는 `apply` 뒤 재판정해 같은 run에서 채우고, `fill_slot` 성공 뒤에만 공지(409면 문장 없음, 공지 저장 방식은 아래 3차 행이 대체). 디브리핑은 요소 이름과 "이렇게 봅니다" 한 줄만 공개하고 척도 세부(차원·앵커)는 공개하지 않음. 페르소나에 `get_debate_state`를 바인딩하지 않음(DebateState는 주입). `fill_slot`에 resolution 인자 없음. `prompt_versions`는 파일별 개별 해시 맵. 페르소나 프롬프트는 남은 시간으로 말함 | 2차 리뷰가 지적한 문서 간 저장·소비 불일치(재실행 방지·재전달·재평가·지지 계산·비용 상한)를 계약 하나로 고정 | 문서별 표현 유지: 구현 트랙마다 다른 규칙을 구현함 |
 | R5 보강 (오케스트레이터 결정, 3차 계약 리뷰) | 의도 분류 입력과 안·입장 저장 대상 단계는 저장된 `messages.phase`와 그 단계 카탈로그. 현재 단계 검사는 턴·발언 생성 생략 판단에만. 리포트 그래프 thread_id = `report:{session_id}:{eval_round}`(새 회차는 새 thread라 이전 interrupt 체크포인트를 재사용하지 않고, 같은 회차 재시도만 체크포인트에서 재개, `report.approve`에 `eval_round` 포함). 합의 공지는 별도 `post_message`가 아니라 `fill_slot{session_id, option_id, seat, content, run_id}`의 입력이고, api가 한 트랜잭션으로 합의 재검사 → 칸 confirmed → 공지 메시지 저장(seq 5, `meta.kind=consensus_fill`) → generation +1 후 WS `message.new`·`slot.confirmed`. 409면 아무것도 저장하지 않음. `announce_fill`은 일반 발언 루프(respond → apply)를 거치지 않는 `fill` 노드 전용 분기. 같은 run_id의 `fill_slot` 재호출은 기존 결과 | 밀린 메시지를 현재 단계로 분류하면 안·지지·최초 제안이 잘못 연결됨. 회차 구분 없는 thread는 재평가를 건너뜀. fill과 공지가 따로 커밋되면 그 사이 장애로 공지가 영영 빠짐(재실행은 단계 변경으로 skipped) | 미게시 공지를 stale 폐기 전에 보충하는 규칙: 상태와 분기가 늘어남. 체크포인트 회차 대조: thread 분리보다 규칙이 많음 |
-| agent-spike 반영 (오케스트레이터 결정) | S1 `message` 자극의 generation = 그 메시지 저장이 올린 값(더 새 메시지가 있으면 턴·발언만 skipped). S2 `stance_check`는 페르소나가 자기 계획 안에 반대하는 것도 계획 밖으로 판정. S3 MCP 도구는 모두 `async def`. S4 역할 env `MODEL_INTENT`·`MODEL_TURN`·`MODEL_PERSONA`·`MODEL_ASSISTANT`·`MODEL_EVALUATOR`. S5 `message.ack`는 저장 직후·의도 분류 전. S6 동결 의존성: Python 3.12, openai 3.35.1, fastmcp 4.1.1, mcp 2.3.0, pydantic 2.14.1, uvicorn 0.54.0, pytest 9.1.1, pytest-asyncio 1.4.0, langgraph·langchain 계열은 기존 lock. S7 실측 기준선(`harness.md`). 최적화·정확도 개선은 `harness.md` "MVP 이후" | 최소 경로 실측에서 드러난 낡은 자극 판정·입장 검사 빈틈·FastMCP 동기 도구 실행 방식·지연 측정 기준을 계약에 고정. MVP는 P0 완료가 우선 | enqueue 시점 generation: 저장과 enqueue 사이 메시지가 끼면 둘 다 최신으로 보임 |
+| agent-spike 반영 (오케스트레이터 결정) | S1 `message` 자극의 generation = 그 메시지 저장이 올린 값(더 새 메시지가 있으면 턴·발언만 skipped). S2 `stance_check`는 페르소나가 자기 계획 안에 반대하는 것도 계획 밖으로 판정. S3 MCP 도구는 모두 `async def`. S4 역할 env `MODEL_INTENT`·`MODEL_TURN`·`MODEL_PERSONA`·`MODEL_ASSISTANT`·`MODEL_EVALUATOR`. S5 `message.ack`는 저장 직후·의도 분류 전. S6 동결 의존성: Python 3.12, openai 3.35.1, fastmcp 4.1.1, mcp 2.3.0, pydantic 2.14.1, uvicorn 0.54.0, pytest 9.1.1, pytest-asyncio 1.4.0, langgraph·langchain 계열은 기존 lock. S7 실측 기준선([architecture/harness.md](architecture/harness.md)). 최적화·정확도 개선은 [architecture/harness.md](architecture/harness.md) "MVP 이후" | 최소 경로 실측에서 드러난 낡은 자극 판정·입장 검사 빈틈·FastMCP 동기 도구 실행 방식·지연 측정 기준을 계약에 고정. MVP는 P0 완료가 우선 | enqueue 시점 generation: 저장과 enqueue 사이 메시지가 끼면 둘 다 최신으로 보임 |
 
 **기본값으로 정한 것 (브리프)**
 
@@ -206,7 +206,7 @@
 
 **웨이브 1 이름 정리 (오케스트레이터 결정)**
 
-이름의 정본은 `contracts.md`(도구·이벤트·상태·경로), `data-model.md`(테이블), `scenario-model.md`(페르소나·카드·키워드·단계 규칙), `rubric.md`(행동 코드·조건·지표).
+이름의 정본은 [contracts/README.md](contracts/README.md)(도구·이벤트·상태·경로), [architecture/data-model.md](architecture/data-model.md)(테이블), [product/scenario.md](product/scenario.md)(페르소나·카드·키워드·단계 규칙), [product/rubric.md](product/rubric.md)(행동 코드·조건·지표).
 
 | 항목 | 통일한 이름 | 대체한 이름 |
 |---|---|---|
@@ -223,7 +223,7 @@
 
 ## 2026-10-21 저녁 개발 재계획: 7e64a02 폐기, 단계별 테스트 환경, 서브에이전트 개발·리뷰
 
-사용자 결정과 오케스트레이터 정리. 계획 정본은 `docs/plan.md` 1절(S1~S5).
+사용자 결정과 오케스트레이터 정리. 당시 계획 문서는 git 이력(1e35066 이전)에 있다.
 
 | 항목 | 결정 | 이유 | 대안 |
 |---|---|---|---|

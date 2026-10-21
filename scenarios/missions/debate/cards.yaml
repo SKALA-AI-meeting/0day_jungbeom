@@ -1,4 +1,4 @@
-# 카드 6장과 흐름 이벤트(scenario-model.md 3장·4장). [초안: 시각 수치와 고정 내용, 디브리핑 문장]
+# 카드 6장과 흐름 이벤트(docs/product/scenario.md 3장·4장). [초안: 시각 수치와 고정 내용, 디브리핑 문장]
 # 트리거는 card_due 하나(R5-4): 단계 실제 시작 + offset_min(조립 때 session_minutes에 비례 환산, 0.01분 반올림, 최소 0.34분).
 # offset_min은 L=60 기준 값이고 offset_fraction은 같은 값의 L 비율이다.
 # actor는 페르소나 유형 id(positions.scenario 복사본 안에서만 쓰고 실행 시 seats로 자리에 대응). actor_mode:
@@ -107,7 +107,7 @@ cards:
     debrief: 기획안 작성 단계에서는 동료들이 누가 어떤 아이디어를 냈는지 먼저 말하지 않도록 설정되어 있었습니다.
     report_template: 기획안 작성 단계에서 지원자가 혼자 최종 기획안을 쓰고 아이디어 기여 칸을 작성했습니다. AI 동료는 누가 무엇을 냈는지 먼저 말하지 않도록 설정된 장면입니다.
 
-# 흐름 이벤트(scenario-model.md 3장). 항상 일어나며 관찰 카드가 아니다. 문구는 prompts/fixed_phrases.yaml.
+# 흐름 이벤트(docs/product/scenario.md 3장). 항상 일어나며 관찰 카드가 아니다. 문구는 prompts/fixed_phrases.yaml.
 flow_events:
   - { event_id: stage_start, when: 각 단계 시작, by: system, phrase: stage_start }
   - { event_id: time_warning, when: 단계 마감 L/30 전, by: system, phrase: time_warning }

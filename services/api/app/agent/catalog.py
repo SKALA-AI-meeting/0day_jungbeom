@@ -1,6 +1,6 @@
 """그래프·어시스턴트가 읽는 미션 카탈로그 뷰(positions.scenario 복사본 + 프롬프트 본문).
 
-정본 구조는 docs/common/scenario-model.md 6장. 실행은 채용 건에 고정된 복사본을 읽는다:
+정본 구조는 docs/product/scenario.md 6장. 실행은 채용 건에 고정된 복사본을 읽는다:
 - `scenario["seats"]`: 자리 → 페르소나 유형·이름(고정 p1·p2·p3).
 - `scenario["prompts"]`: `prompts/` 상대 경로 → 본문(guard_patterns.yaml·fixed_phrases.yaml 포함).
 - `scenario["catalog"]`: `{mission, personas, cards, keywords}` = 미션 폴더 YAML 4개를 읽은 dict.

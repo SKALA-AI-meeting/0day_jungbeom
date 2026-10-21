@@ -1,4 +1,4 @@
-# 키워드 세트(scenario-model.md 2.4). [초안 전체]
+# 키워드 세트(docs/product/scenario.md 2.4). [초안 전체]
 # 옵션 키(scenario_option_key): 키워드 = 키워드 id, 문제 = <keyword>_p1~p3, 해결책 = <keyword>_s1~s3. 지원자 새 안은 cand_<n>(코드가 만든다).
 # problems 순서 = P1·P2·P3(기준안 계산 순서). solutions는 키워드 단위 해결 방향(S1 데이터 · S2 참여 · S3 인프라)이라
 # 그 키워드의 어느 문제에도 붙는다(문제마다 따로 두지 않음, R7).

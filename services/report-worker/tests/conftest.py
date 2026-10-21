@@ -2,7 +2,8 @@
 가짜 assessment-mcp, 가짜 내부 API, 메모리 체크포인터로 조립한 그래프와 소비자.
 
 가짜 assessment와 가짜 api는 같은 평가 저장소를 본다(api의 evaluation_runs·evaluations 행).
-draft·final 규칙은 contracts.md 내부 REST와 같다(final 해시가 draft와 다르면 409 draft_mismatch).
+draft·final 규칙은 docs/contracts/internal.md 내부 REST와 같다(final 해시가 draft와 다르면 409
+draft_mismatch).
 """
 
 import copy

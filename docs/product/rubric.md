@@ -4,11 +4,11 @@
 
 **리포트는 담당자가 평가할 때 보는 참고 자료다.** 합격·불합격·지원자 간 순위·추천 표현은 어디에도 만들지 않는다.
 
-**이 문서의 차원 id·수준 앵커·기록 없음 사유 코드·사실 지표 표가 단일 정본이다.** agent(report-worker 평가 에이전트 프롬프트), assessment-mcp(`get_rubric`·`save_evaluation`), contracts, data-model, worker, frontend 리포트 화면, testing 픽스처는 이 이름을 그대로 쓴다. 카드·페르소나·관찰 창은 `scenario-model.md`, 저장 형식과 근거 참조 형식은 `contracts.md`가 정한다.
+**이 문서의 차원 id·수준 앵커·기록 없음 사유 코드·사실 지표 표가 단일 정본이다.** agent(report-worker 평가 에이전트 프롬프트), assessment-mcp(`get_rubric`·`save_evaluation`), contracts, data-model, worker, frontend 리포트 화면, testing 픽스처는 이 이름을 그대로 쓴다. 카드·페르소나·관찰 창은 [product/scenario.md](scenario.md), 저장 형식과 근거 참조 형식은 [contracts/api.md](../contracts/api.md)가 정한다.
 
 **[초안]**: 차원 구성·정의·앵커·예시 발언, 확신도 기준, 요소 간 경계표, 파일럿 수치 전체가 사용자 검토 대상이다. BARS + 평가 에이전트 방식(D18·D19 개정), 세션 종료 후 분석(D19), 실시간 의도 분류와의 구분(D16), 근거 없는 수준 금지, 담당자 차원 단위 조정과 메모 필수, 합격·순위 표현 금지는 결정이다.
 
-예시 발언 속 페르소나 이름(강한결·윤하람·서지안)과 키워드(물: P1 가뭄 생활용수 제한, P2 도심 폭우·침수, S1 센서 경보(데이터), S2 절수 보상 캠페인(참여), S3 빗물 저금통(인프라))는 설명용이다. MVP 세션은 5요소·카드 6장·이 세 페르소나로 고정이고(`scenario-model.md` 2.1·2.2, R2), 평가 에이전트는 이름이 아니라 자리(`p1`~`p3`)와 `positions.scenario.seats`의 유형 대응으로 장면을 찾는다.
+예시 발언 속 페르소나 이름(강한결·윤하람·서지안)과 키워드(물: P1 가뭄 생활용수 제한, P2 도심 폭우·침수, S1 센서 경보(데이터), S2 절수 보상 캠페인(참여), S3 빗물 저금통(인프라))는 설명용이다. MVP 세션은 5요소·카드 6장·이 세 페르소나로 고정이고([product/scenario.md](scenario.md) 2.1·2.2, R2), 평가 에이전트는 이름이 아니라 자리(`p1`~`p3`)와 `positions.scenario.seats`의 유형 대응으로 장면을 찾는다.
 
 ## 1. 평가 방식 개요
 
@@ -20,7 +20,7 @@
 - **앞뒤 맥락 조회**(`get_transcript_span`, 기본 앞 5·뒤 3)는 판단 입력의 한계가 아니라 **리포트에서 근거 메시지의 앞뒤 맥락을 보여 주는 용도**다.
 - **요소 수준**은 차원 수준을 담당자가 읽기 쉽게 요약한 값이다(차원 평균 반올림 + 서술 1~2줄). 요소 수준끼리 더하거나 가중한 총점은 만들지 않는다 **[초안]**.
 - **담당자**가 차원 단위로 수준을 조정하고 메모를 남겨 최종 평가한다(8장).
-- MVP는 모든 세션이 5요소 19차원을 평가한다(요소 선택 없음, R2). 요소 선택은 MVP 이후 확장(`scenario-model.md` 4.3).
+- MVP는 모든 세션이 5요소 19차원을 평가한다(요소 선택 없음, R2). 요소 선택은 MVP 이후 확장([product/scenario.md](scenario.md) 4.3).
 
 ### 1.2 실시간 의도 분류(D16)와의 구분
 
@@ -41,10 +41,10 @@
 리포트 그래프 노드: `collect → aggregate(사실 지표) → evaluate(평가 에이전트) → draft → interrupt → finalize`.
 
 1. 제출(자동 제출 포함)로 세션이 종료되면 api가 리포트 작업을 큐에 넣는다.
-2. `collect`·`aggregate`: 워커가 세션 기록 전체(대화 전체·칸 기록·기획안 제출본·카드 발생 기록·`get_contributions`)를 모으고 사실 지표(6장)를 규칙으로 계산한다. 대화 전체를 읽는 정확한 경로는 `contracts.md`가 정한다.
+2. `collect`·`aggregate`: 워커가 세션 기록 전체(대화 전체·칸 기록·기획안 제출본·카드 발생 기록·`get_contributions`)를 모으고 사실 지표(6장)를 규칙으로 계산한다. 대화 전체를 읽는 정확한 경로는 [contracts/README.md](../contracts/README.md)가 정한다.
 3. `evaluate`: 평가 에이전트가 모은 세션 전체 기록과 척도(`get_rubric`)로 **요소마다 한 번** 판단한다. 한 호출은 그 요소의 차원 전부를 내고, 다른 요소의 판단 결과는 입력에 넣지 않는다(후광 방지).
 4. 워커가 출력을 검증한다(7.3). 형식 오류나 근거 부재가 있으면 **그 요소 호출을 1회** 다시 요청하고(R5-14, 이전의 차원 단위 재요청을 대체), 그래도 실패한 차원은 `evaluate_failed`로 둔다(자동 대체 모델 없음, 워커가 근거를 고쳐 쓰지 않음). 근거가 1개인 수준 4·5는 거부하지 않고 수준 3·확신도 최대 medium으로 깎고(상한), 확신도 상한 위반도 거부하지 않고 워커가 상한으로 깎는다(clamp). 근거 개수는 `hon_credit_record` 예외(3.5)를 따른다. LLM 전송·타임아웃 실패는 저장하지 않고 큐가 재시도한다.
-5. `save_evaluation`으로 차원 평가와 요소 요약(`elements`)을 함께 저장한다(실행 단위 기록 `evaluation_runs`에 `rubric_version`·평가 프롬프트 파일별 해시 맵 `prompt_versions`·모델·`elements`, 정확한 입출력은 `contracts.md`). 같은 세션의 재시도는 저장된 평가를 재사용하고, `evaluate_failed`가 섞인 결과는 리포트 재생성 때 새 `run_id`로 다시 평가한다. 요소 수준(평균 반올림)은 워커가 결정적으로 계산하고, 요소 서술 1~2줄은 평가 에이전트가 쓴다. api는 형식·세션 소속만 검증하고 판단 규칙 검증(7.3)은 워커가 한다.
+5. `save_evaluation`으로 차원 평가와 요소 요약(`elements`)을 함께 저장한다(실행 단위 기록 `evaluation_runs`에 `rubric_version`·평가 프롬프트 파일별 해시 맵 `prompt_versions`·모델·`elements`, 정확한 입출력은 [contracts/README.md](../contracts/README.md)). 같은 세션의 재시도는 저장된 평가를 재사용하고, `evaluate_failed`가 섞인 결과는 리포트 재생성 때 새 `run_id`로 다시 평가한다. 요소 수준(평균 반올림)은 워커가 결정적으로 계산하고, 요소 서술 1~2줄은 평가 에이전트가 쓴다. api는 형식·세션 소속만 검증하고 판단 규칙 검증(7.3)은 워커가 한다.
 6. `draft`: 근거마다 `get_transcript_span`(기본 앞 5·뒤 3)으로 앞뒤 맥락을 붙여 리포트 초안을 만든다.
 7. `interrupt`·`finalize`: 리포트를 저장하고 담당자 검토를 기다린다. 같은 작업의 재실행은 멱등이다(저장된 평가가 있으면 재사용).
 
@@ -55,7 +55,7 @@
 ### 2.1 판단 순서
 
 0. **전체 읽기**: 세션 대화 전체와 기록을 처음부터 끝까지 읽고 지원자의 행동 흐름을 파악한다. 카드 창은 입력을 자르는 경계가 아니다.
-1. **장면 위치 확인**: 차원의 핵심 장면(카드 관찰 창)과 보조 장면(다른 카드 창, 카드 밖 자연스러운 행동)을 세션 안에서 찾는다. 창 정의는 `scenario-model.md` 4.2, 카드 발동 여부와 시각은 `observations`.
+1. **장면 위치 확인**: 차원의 핵심 장면(카드 관찰 창)과 보조 장면(다른 카드 창, 카드 밖 자연스러운 행동)을 세션 안에서 찾는다. 창 정의는 [product/scenario.md](scenario.md) 4.2, 카드 발동 여부와 시각은 `observations`.
 2. **기록 없음 검사**: 5장 사유에 해당하면 수준을 내지 않는다.
 3. **앵커 대조**: 핵심 장면의 지원자 행동을 앵커와 대조해 기본 수준을 정한다. 가장 좋은 한 번이나 가장 나쁜 한 번이 아니라 **반복된 대표 행동**을 기준으로 한다.
 4. **보조 장면 반영**: 2.5 규칙으로 최대 ±1 조정한다.
@@ -657,7 +657,7 @@
 | 지표 | 타입 | 정의 | 주로 쓰는 차원 |
 |---|---|---|---|
 | `message_count` | int(전체·단계별) | 지원자 메시지 수 | 전 차원(기록 없음 판정) |
-| `spontaneous_count` / `invited_count` | int | `origin`별 지원자 메시지 수(`scenario-model.md` 3.1) | 표시만 |
+| `spontaneous_count` / `invited_count` | int | `origin`별 지원자 메시지 수([product/scenario.md](scenario.md) 3.1) | 표시만 |
 | `spontaneous_ratio` | float | `spontaneous_count / message_count` | 표시만 |
 | `silence_invites_received` | int(단계별) | 받은 침묵 초대 수(최대 3) | 배려(잘못 세지 않기) |
 | `first_message_sec` | int·null(단계별) | 단계 시작부터 지원자 첫 메시지까지 | 배려, 수용(참고) |
@@ -682,7 +682,7 @@
 
 ## 7. 평가 에이전트 출력 형식
 
-정확한 필드 타입, 저장 테이블, `save_evaluation` 입출력, 근거 참조 문자열 형식은 `contracts.md`·`data-model.md`가 정한다. 이 장은 담아야 할 내용을 정한다.
+정확한 필드 타입, 저장 테이블, `save_evaluation` 입출력, 근거 참조 문자열 형식은 [contracts/README.md](../contracts/README.md)·[architecture/data-model.md](../architecture/data-model.md)가 정한다. 이 장은 담아야 할 내용을 정한다.
 
 ### 7.1 차원 평가 (DimensionEvaluation)
 
@@ -695,7 +695,7 @@
 | `rationale` | 판단 이유 1~3문장. 어떤 앵커에 맞췄는지, 핵심/보조 장면, ±1 조정·상한 적용, 경계표 측면을 적는다. 관찰된 행동을 서술하고 판정 형용사(미흡·부족·우수·낮은/높은 수준)는 쓰지 않는다. 합격·순위·총점 표현 금지 |
 | `confidence` | `high` ∣ `medium` ∣ `low`. 기록 없음이면 `null` |
 
-**근거 참조 형식**(`evidence_refs[]`의 문자열 하나가 근거 하나, 정본은 `contracts.md` "근거 참조"):
+**근거 참조 형식**(`evidence_refs[]`의 문자열 하나가 근거 하나, 정본은 [contracts/api.md](../contracts/api.md) "근거 참조"):
 
 | 형식 | 가리키는 것 | 예시 | 개수에 듦 |
 |---|---|---|---|
@@ -704,7 +704,7 @@
 | `proposal:<field>` | 제출 기획안 필드 | `proposal:idea_credit` | 예 |
 | `contribution:<option_id>` | Contributions 대조표 행(맥락) | `contribution:<option_id>` | 아니오(`hon_credit_record` 예외, 3.5) |
 
-리포트는 참조마다 `evidence[]` 항목을 만들고 `counted`(근거 개수에 드는지)를 표시한다(`contracts.md` Report).
+리포트는 참조마다 `evidence[]` 항목을 만들고 `counted`(근거 개수에 드는지)를 표시한다([contracts/api.md](../contracts/api.md) Report).
 
 ### 7.2 요소 요약 (ElementSummary)
 
@@ -752,7 +752,7 @@
 - **리포트 맨 위**: 요소별 한 줄 서술과 수준 요약표, 그 아래 사실 지표 요약. 차원 상세는 접힘이 기본이다.
 - **총점 없음 [초안]**: 요소 수준을 더하거나 평균한 총점은 만들지 않는다. 요소는 서로 다른 행동이라 합치면 의미가 없어진다.
 - **지원자 목록**: 요소별 수준 칩, 확신도 `low` 차원 수, 출처(`auto`/`reviewer`). 수준 정렬 없음, 합격·불합격·순위 없음.
-- **담당자 조정**: **차원 단위**로 수준(1~5) 또는 기록 없음(사유 선택)으로 바꿀 수 있고, **조정 행마다 메모(`memo`) 필수**(빈 문자열 불가). 리포트는 조정 값을 `adjusted_level`·`adjusted_no_record_reason`·`adjust_memo`로 병합한다. 요소 수준은 조정된 차원으로 다시 계산하고, 자동 서술은 그대로 두되 "담당자 조정됨" 표시와 메모를 함께 보인다. 최종값 = 조정 행이 있으면 그 값, 없으면 자동 값. 자동 판단과 담당자 정정은 같은 화면에 나란히 보인다. 검토 완료 뒤에는 값 재조정 없이 메모 추가만 허용한다(API 규칙은 `contracts.md`).
+- **담당자 조정**: **차원 단위**로 수준(1~5) 또는 기록 없음(사유 선택)으로 바꿀 수 있고, **조정 행마다 메모(`memo`) 필수**(빈 문자열 불가). 리포트는 조정 값을 `adjusted_level`·`adjusted_no_record_reason`·`adjust_memo`로 병합한다. 요소 수준은 조정된 차원으로 다시 계산하고, 자동 서술은 그대로 두되 "담당자 조정됨" 표시와 메모를 함께 보인다. 최종값 = 조정 행이 있으면 그 값, 없으면 자동 값. 자동 판단과 담당자 정정은 같은 화면에 나란히 보인다. 검토 완료 뒤에는 값 재조정 없이 메모 추가만 허용한다(API 규칙은 [contracts/README.md](../contracts/README.md)).
 - AI 활용과 기획안 품질은 평가하지 않는다.
 
 ## 9. 일관성 장치·파일럿 측정·리스크

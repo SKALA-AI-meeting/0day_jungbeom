@@ -1,4 +1,5 @@
-"""SessionPorts: api/agent 경계(R6-d, contracts.md "세션 메일박스"). G-F 동결.
+"""SessionPorts: api/agent 경계(R6-d, docs/architecture/session-lifecycle.md "세션 메일박스"). G-F
+동결.
 
 그래프가 api 내부 상태에 닿는 길은 이 네 메서드뿐이고 나머지 읽기·쓰기는 MCP를 거친다.
 포트 하나는 세션 하나에 묶인다(api가 세션별로 만들어 그래프에 넘긴다). 모두 메모리 접근이라

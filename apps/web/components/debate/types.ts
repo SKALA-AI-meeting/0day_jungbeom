@@ -1,4 +1,4 @@
-// 지원자 화면이 쓰는 계약 형태(docs/common/contracts.md "지원자 REST"·"State 스냅샷"·"WebSocket").
+// 지원자 화면이 쓰는 계약 형태(docs/contracts/api.md "지원자 REST"·"State 스냅샷"·"WebSocket").
 // 공개 API에는 자리 id와 표시 이름만 나오고 페르소나 유형은 디브리핑(Debrief.seats)에만 있다.
 
 import type { Outcome } from "@/lib/resolution";

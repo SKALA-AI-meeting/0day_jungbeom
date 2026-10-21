@@ -1,4 +1,6 @@
-"""합의 판정과 시간 초과 선택(contracts.md "합의 판정과 시간 초과 선택"). 순수 함수.
+"""합의 판정과 시간 초과 선택(docs/architecture/session-lifecycle.md "합의 판정과 시간 초과 선택").
+순수
+함수.
 
 DebateState, 내부 `POST /slots/fill` 검사, 시간 초과 채우기가 같은 함수를 쓴다.
 

@@ -1,4 +1,4 @@
-# 공통 타깃. 서비스 목록은 docs/worker-infra/design.md "Docker Compose"(8개 서비스)와 같다.
+# 공통 타깃. 서비스 목록은 docs/architecture/deployment.md "Docker Compose"(8개 서비스)와 같다.
 COMPOSE     = docker compose -f infra/docker-compose.yml --env-file infra/.env
 COMPOSE_DEV = $(COMPOSE) -f infra/docker-compose.dev.yml
 SERVICES    = services/api services/debate-mcp services/rag-mcp services/assessment-mcp services/report-worker

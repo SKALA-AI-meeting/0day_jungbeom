@@ -1,6 +1,6 @@
 import { Badge, type BadgeTone } from "./badge";
 
-/** contracts.md의 display_status: 세션 status에 만료(expired)를 더한 표시값. */
+/** docs/contracts/api.md의 display_status: 세션 status에 만료(expired)를 더한 표시값. */
 export type DisplayStatus =
   | "invited"
   | "expired"

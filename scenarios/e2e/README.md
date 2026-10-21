@@ -1,6 +1,6 @@
 # e2e 대본
 
-`tests/e2e/run.py`가 읽는 세션 대본이다. 형식·단언은 `docs/common/testing.md` e2e 절이 정본이고, 단계 시드(`stages/`)는 stage-kit 소유다. 문장은 결정적 LLM 모드(`LLM_FAKE=1`)의 의도 분류 규칙(안 라벨이 문장에 있으면 그 안, "좋아요" agree, "아니·반대" oppose, 물음표 question)에 맞춰 쓴다.
+`tests/e2e/run.py`가 읽는 세션 대본이다. 형식·단언은 `docs/guides/testing.md` e2e 절이 정본이고, 단계 시드(`stages/`)는 stage-kit 소유다. 문장은 결정적 LLM 모드(`LLM_FAKE=1`)의 의도 분류 규칙(안 라벨이 문장에 있으면 그 안, "좋아요" agree, "아니·반대" oppose, 물음표 question)에 맞춰 쓴다.
 
 | 대본 | 우선순위 | 내용 |
 |---|---|---|

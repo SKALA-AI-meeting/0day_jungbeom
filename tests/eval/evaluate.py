@@ -18,7 +18,7 @@ import yaml
 HERE = Path(__file__).resolve().parent
 INTENTS = ("propose", "agree", "oppose", "question", "other")
 STANCE_INTENTS = ("propose", "agree", "oppose")
-INTENT_BASELINE = 0.85  # gpt-4o-mini, docs/common/harness.md "실측 기준선"
+INTENT_BASELINE = 0.85  # gpt-4o-mini, docs/architecture/harness.md "실측 기준선"
 BARS_PILOT_TARGET = 0.80  # ±1 일치율 파일럿 목표(잠정)
 
 

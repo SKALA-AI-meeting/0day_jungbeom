@@ -1,7 +1,9 @@
-"""AgentRunner 경계(docs/agent/design.md "AgentRunner 인터페이스와 SessionPorts"). G-F 동결.
+"""AgentRunner 경계(docs/architecture/agents.md "AgentRunner 인터페이스와 SessionPorts"). G-F 동결.
 
 api 메일박스는 이 Protocol만 알고, agent 트랙의 LangGraph 토론 그래프가 같은 시그니처로 갈아 끼운다.
-자극은 4종(contracts.md "그래프 자극")이고 `timeout`·`room_quiet`는 없다. 같은 run_id 재실행은
+자극은 4종(docs/architecture/session-lifecycle.md "그래프 자극")이고 `timeout`·`room_quiet`는 없다.
+같은 run_id
+재실행은
 메시지 (session_id, run_id, seq) 등 멱등 키로 중복이 생기지 않아야 한다.
 FakeAgentRunner는 LLM 없이 자리별 고정 문장을 post_message 하는 개발·테스트용 구현이다.
 """
@@ -22,7 +24,8 @@ RunStatus = Literal["finished", "deferred", "skipped", "failed"]
 
 @dataclass(frozen=True)
 class Stimulus:
-    """contracts.md `Stimulus = {type, phase, generation, message_id?, card_id?}`.
+    """docs/architecture/session-lifecycle.md `Stimulus = {type, phase, generation, message_id?,
+    card_id?}`.
 
     generation: message 자극은 그 메시지 저장 트랜잭션이 올린 값(enqueue 때 다시 읽지 않음),
     그 밖의 자극은 enqueue 시점의 sessions.generation. message 자극의 phase는 messages.phase.
@@ -45,9 +48,9 @@ class Stimulus:
 
 @dataclass
 class RunResult:
-    """docs/agent/design.md RunResult + 메일박스 상태(agent-spike 7절).
+    """docs/architecture/agents.md RunResult + 메일박스 상태(agent-spike 7절).
 
-    decision은 턴 매니저 결정 스키마(contracts.md), usage는 agent_runs.usage
+    decision은 턴 매니저 결정 스키마(docs/contracts/internal.md), usage는 agent_runs.usage
     {llm_calls, retries, tokens_in, tokens_out, cost_usd, latency_ms, tool_calls}.
     """
 
@@ -71,7 +74,7 @@ class AgentRunner(Protocol):
 PostMessage = Callable[..., Awaitable[Any]]
 PortsFor = Callable[[uuid.UUID], SessionPorts]
 
-# 노드별 고정 seq 슬롯(docs/agent/design.md): 화자1 발언=1, 화자2=2, 합의 채우기 공지=5
+# 노드별 고정 seq 슬롯(docs/architecture/agents.md): 화자1 발언=1, 화자2=2, 합의 채우기 공지=5
 SPEAKER_SEQ = 1
 FAKE_LINES: dict[StimulusType, tuple[Seat, str]] = {
     "message": ("p1", "[fake] 네, 그 의견 잘 들었어요."),
@@ -133,7 +136,8 @@ class FakeAgentRunner:
 
 @dataclass
 class AssistantResult:
-    """어시스턴트 응답(contracts.md assistant_response의 content·cited_material_ids·tool_calls)."""
+    """어시스턴트 응답(docs/contracts/mcp.md assistant_response의
+    content·cited_material_ids·tool_calls)."""
 
     content: str
     cited_material_ids: list[str] = field(default_factory=list)

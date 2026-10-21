@@ -2,7 +2,7 @@ import { CircleAlert, CircleCheck, CircleDot } from "lucide-react";
 
 import { cn } from "./cn";
 
-/** contracts.md dimensions[].confidence. 기록 없음 차원은 null이라 태그를 그리지 않는다 */
+/** docs/contracts/api.md dimensions[].confidence. 기록 없음 차원은 null이라 태그를 그리지 않는다 */
 export type Confidence = "high" | "medium" | "low";
 
 const LABEL: Record<Confidence, string> = { high: "높음", medium: "보통", low: "낮음" };

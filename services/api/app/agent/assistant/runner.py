@@ -1,4 +1,4 @@
-"""어시스턴트: AssistantRunner Protocol 구현(docs/agent/design.md "어시스턴트", R5-13).
+"""어시스턴트: AssistantRunner Protocol 구현(docs/architecture/agents.md "어시스턴트", R5-13).
 
 ```
 agent(LLM, 도구 바인딩) ⇄ tools(search_materials·get_material) … 최대 3회 → answer → guard

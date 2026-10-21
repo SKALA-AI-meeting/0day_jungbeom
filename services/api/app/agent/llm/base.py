@@ -1,9 +1,12 @@
 """LLM 호출 공통부: 재시도(역할별, 기본 2회 1·3초) → LLMUnavailable, usage·비용 집계, LangSmith
 태그.
 
-docs/common/harness.md Recovery·Observability 행. 모델은 역할별(roles.py)이고 대체 모델은 없다.
+docs/architecture/harness.md Recovery·Observability 행. 모델은 역할별(roles.py)이고 대체 모델은
+없다.
 재시도까지 실패하면 LLMUnavailable을 올리고, 호출한 노드가 규칙 폴백(고정 문장)으로 간다.
-비용은 이 파일의 단가 표 한 곳에서 계산한다(contracts.md "세션 메일박스" 비용, R5-11).
+비용은 이 파일의 단가 표 한 곳에서 계산한다(docs/architecture/session-lifecycle.md "세션 메일박스"
+비용,
+R5-11).
 """
 
 import asyncio
@@ -98,7 +101,7 @@ class Trace:
     """LangSmith trace에 붙일 run_id·session_id·노드 이름.
 
     메타데이터 키는 `agent_run_id`다(`run_id`를 쓰면 LangGraph가 같은 run_id 재호출을 끝난 실행으로
-    본다, docs/agent/design.md "재실행 멱등").
+    본다, docs/architecture/agents.md "재실행 멱등").
     """
 
     run_id: str

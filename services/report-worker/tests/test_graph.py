@@ -1,6 +1,7 @@
 """리포트 그래프·소비자(FakeLLM, 가짜 assessment·api, 메모리 체크포인터).
 
-완료 기준(worker-infra/design.md): 요소당 1회 호출·결과 격리, save_evaluation 1회(척도 버전·프롬프트
+완료 기준(docs/services/report-worker.md): 요소당 1회 호출·결과 격리, save_evaluation 1회(척도
+버전·프롬프트
 버전 맵·모델), 재전달·저장 직후 장애에 LLM 재호출 없음, 리포트 형태, 카드 장면 = report_template,
 eval_round·thread 규칙, interrupt·resume과 final 해시, LLM 타임아웃 → 저장 없이 큐 재시도,
 3회 → DLQ, 계약 테스트 C7(정직 대조).

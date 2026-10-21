@@ -1,4 +1,5 @@
-"""지원자 REST(/s, /sessions, 포트 8000). 계약: contracts.md "지원자 REST"·"인증 생명주기"."""
+"""지원자 REST(/s, /sessions, 포트 8000). 계약: docs/contracts/api.md "지원자 REST"·"인증
+생명주기"."""
 
 import re
 import uuid
