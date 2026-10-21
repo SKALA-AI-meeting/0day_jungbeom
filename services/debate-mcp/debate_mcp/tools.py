@@ -1,30 +1,30 @@
-"""debate-mcp 도구 11개(조회 4, 변경 7). 모두 api 내부 REST로 전달만 하고 판단은 api가 한다.
+"""debate-mcp 도구 7개(조회 3, 변경 4). 모두 api 내부 REST로 전달만 하고 판단은 api가 한다.
 
 반환은 `{ok, data}` 또는 `{ok:false, error:{code, message, retryable}}`. 목록·입출력 정본은
-docs/common/contracts.md "MCP 도구". 멱등 키(run_id·seq, doc_id·run_id, card_id·window_start)는 가공
-없이 그대로 보낸다.
+docs/common/contracts.md "debate-mcp". 멱등 키((run_id, seq), scenario_option_key·source_message_id,
+run_id)와 expected_generation은 가공 없이 그대로 보낸다. 지원자의 안·입장은 api가 의도 분류로 직접
+저장하므로 proposer·participant·seat에 candidate는 없다.
 """
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from debate_mcp import client
 from debate_mcp.server import mcp
 
 SessionId = Annotated[str, Field(description="세션 ID. 그래프가 주입하며 모델이 바꾸지 않는다.")]
 RunId = Annotated[
-    str, Field(description="이 실행의 run ID. 같은 키로 다시 호출해도 중복 생성되지 않는다.")
+    str,
+    Field(min_length=1, description="이 실행의 run ID. 같은 키로 다시 호출해도 중복되지 않는다."),
 ]
-PartNo = Annotated[int, Field(ge=1, le=5, description="파트 번호(1~5)")]
-Assignee = Literal["candidate", "colleague", "both"]
+Seat = Literal["p1", "p2", "p3"]
+SlotPhase = Literal["keyword", "problem", "solution"]
+Phase = Literal["keyword", "problem", "solution", "proposal"]
 
-
-class Evidence(BaseModel):
-    type: Literal[
-        "message", "document", "share", "open", "task_event", "doc_view", "assistant_call"
-    ] = Field(description="근거 종류(rubric.md 근거 타입 7개)")
-    id: str = Field(description="이 세션에 속한 해당 종류 행의 ID")
+# get_transcript가 돌려주는 메시지 필드(meta·intent·origin·card_ids 없음)
+TRANSCRIPT_FIELDS = ("id", "sender", "content", "phase", "is_invite", "t_min")
+DRAFT_FIELDS = ("sections", "revision", "updated_at")
 
 
 def _base(session_id: str) -> str:
@@ -35,50 +35,62 @@ def _drop_none(body: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in body.items() if v is not None}
 
 
+def _pick(item: dict[str, Any], fields: tuple[str, ...]) -> dict[str, Any]:
+    return {k: item[k] for k in fields if k in item}
+
+
 # ───────────── 조회 ─────────────
 
 
 @mcp.tool
-async def get_session(session_id: SessionId) -> dict[str, Any]:
-    """세션 상태를 조회한다.
+async def get_debate_state(session_id: SessionId) -> dict[str, Any]:
+    """현재 단계의 토론 상태(DebateState)와 참여자 자리 목록을 조회한다.
 
-    상태, 채용 건 시나리오(mission_id·elements·catalog_version), 분업, 시작·제출·보고·종료 시각,
-    현재 시각(t_min_now), 열린 관찰 창의 카드(current_card), 이벤트 목록을 돌려준다.
+    단계·남은 시간·칸·안별 지지/반대·현재 지지·합의 판정(consensus_option_id)·시간 초과 시 고를 안·
+    지원자 발언 여부·침묵 초대 여부·확정된 칸·카드 진행을 돌려주고, seats에는 자리별 표시 이름과
+    아바타만 담는다(페르소나 유형은 빼고 전달). 결정적 노드(load) 전용이다.
     """
-    return await client.call("GET", _base(session_id))
+    state = await client.call("GET", f"{_base(session_id)}/debate_state")
+    if not state["ok"]:
+        return state
+    session = await client.call("GET", _base(session_id))
+    if not session["ok"]:
+        return session
+    seats = [
+        {k: v for k, v in seat.items() if k != "persona_type"}
+        for seat in session["data"].get("seats", [])
+    ]
+    return client.ok({**state["data"], "seats": seats})
 
 
 @mcp.tool
-async def list_messages(
+async def get_transcript(
     session_id: SessionId,
     since_t_min: Annotated[
-        float | None, Field(description="이 시각(분) 이후 메시지만. 생략하면 처음부터")
+        float | None, Field(description="이 세션 시각(분) 이후 메시지만. 생략하면 처음부터")
     ] = None,
-    channel: Annotated[
-        str | None,
-        Field(description="채널 필터: team, dm, manager_dm, notice 등. 생략하면 전체"),
-    ] = None,
-    limit: Annotated[int, Field(ge=1, le=50, description="최대 개수(기본·상한 50)")] = 50,
+    phase: Annotated[Phase | None, Field(description="이 단계의 메시지만. 생략하면 전체")] = None,
+    limit: Annotated[int, Field(ge=1, le=200, description="최대 개수(기본 30)")] = 30,
 ) -> dict[str, Any]:
-    """세션의 메시지 목록을 시간순으로 조회한다. 시각·채널로 거를 수 있다."""
-    params = {"since_t_min": since_t_min, "channel": channel, "limit": limit}
-    return await client.call("GET", f"{_base(session_id)}/messages", params=params)
+    """토론방 메시지를 시간순으로 조회한다.
 
-
-@mcp.tool
-async def get_board(session_id: SessionId) -> dict[str, Any]:
-    """태스크 보드(파트별 담당·상태·순서·언제까지·의존)를 조회한다. 미배정 담당은 null이다."""
-    return await client.call("GET", f"{_base(session_id)}/board")
-
-
-@mcp.tool
-async def get_shared_documents(session_id: SessionId) -> dict[str, Any]:
-    """주고받은 파트 문서를 조회한다.
-
-    지원자 문서는 지원자가 보낸 버전만, 동료 문서는 보낸 버전 전부를 돌려준다. 지원자가 보내지 않은
-    문서·버전은 결과에 없다.
+    각 메시지는 id·보낸 자리(sender)·본문·단계·침묵 초대 여부·세션 시각(t_min)만 담는다
+    (의도 분류·메타·발언 경위는 없다). 시각과 단계로 거를 수 있다.
     """
-    return await client.call("GET", f"{_base(session_id)}/docs/shared")
+    params = {"since_t_min": since_t_min, "phase": phase, "limit": limit}
+    result = await client.call("GET", f"{_base(session_id)}/messages", params=params)
+    if not result["ok"]:
+        return result
+    return client.ok([_pick(m, TRANSCRIPT_FIELDS) for m in result["data"]])
+
+
+@mcp.tool
+async def get_draft(session_id: SessionId) -> dict[str, Any]:
+    """기획안 초안(sections 6칸·revision·updated_at)을 조회한다. 기획안 단계에서만 쓴다."""
+    result = await client.call("GET", f"{_base(session_id)}/proposal")
+    if not result["ok"]:
+        return result
+    return client.ok(_pick(result["data"], DRAFT_FIELDS))
 
 
 # ───────────── 변경 ─────────────
@@ -87,161 +99,120 @@ async def get_shared_documents(session_id: SessionId) -> dict[str, Any]:
 @mcp.tool
 async def post_message(
     session_id: SessionId,
-    channel: Annotated[
-        Literal["team", "dm", "manager_dm", "notice"],
-        Field(description="메시지 채널: team, dm(동료), manager_dm(팀장), notice(지원자에게만)"),
+    sender: Annotated[
+        Literal["p1", "p2", "p3", "system"],
+        Field(description="보내는 자리: p1·p2·p3 또는 system"),
     ],
-    sender: Annotated[Literal["colleague", "manager", "system"], Field(description="보내는 사람")],
     content: Annotated[str, Field(min_length=1, description="메시지 본문")],
     run_id: RunId,
     seq: Annotated[
         int,
         Field(ge=0, description="노드별 고정 슬롯. (run_id, seq)가 같으면 기존 메시지를 돌려준다"),
     ],
-    event_id: Annotated[str | None, Field(description="카드 실행 결과일 때 그 이벤트 ID")] = None,
+    expected_generation: Annotated[
+        int | None,
+        Field(description="실행 시작 때 generation. 다르면 conflict/stale_generation(게시 안 함)"),
+    ] = None,
+    is_invite: Annotated[
+        bool | None, Field(description="침묵 초대 메시지면 true. 단계당 두 번째 초대는 conflict")
+    ] = None,
+    card_ids: Annotated[
+        list[str] | None, Field(description="전달하는 카드 ID 목록(공동 전달이면 여러 개)")
+    ] = None,
+    cited_material_ids: Annotated[
+        list[str] | None, Field(description="발언이 인용한 자료 ID 목록")
+    ] = None,
     meta: Annotated[
-        dict[str, Any] | None, Field(description="토큰·지연·모델 등 응답 메타. 그대로 저장된다")
+        dict[str, Any] | None, Field(description="모델·지연·비용·stance_check 등 메타. 그대로 저장")
     ] = None,
 ) -> dict[str, Any]:
-    """세션에 동료·팀장·시스템 메시지를 저장하고 지원자 화면에 전달한다.
+    """AI 동료(p1·p2·p3) 또는 시스템 메시지를 토론방에 게시한다.
 
-    같은 run_id와 seq로 다시 부르면 새로 만들지 않고 기존 메시지를 돌려준다.
+    같은 run_id와 seq로 다시 부르면 새로 만들지 않고 기존 메시지를 돌려준다. card_ids가 있으면 api가
+    카드마다 이 화자를 전달 자리에 더하고, is_invite면 그 단계의 침묵 초대를 기록한다.
     """
-    body = {"channel": channel, "sender": sender, "content": content, "run_id": run_id, "seq": seq}
-    body.update(_drop_none({"event_id": event_id, "meta": meta}))
+    body = {"sender": sender, "content": content, "run_id": run_id, "seq": seq}
+    body.update(
+        _drop_none(
+            {
+                "expected_generation": expected_generation,
+                "is_invite": is_invite,
+                "card_ids": card_ids,
+                "cited_material_ids": cited_material_ids,
+                "meta": meta,
+            }
+        )
+    )
     return await client.call("POST", f"{_base(session_id)}/messages", json=body)
 
 
 @mcp.tool
-async def set_division(
+async def propose_option(
     session_id: SessionId,
-    parts: Annotated[
-        dict[str, Assignee],
-        Field(description='파트 번호별 담당. 예: {"1": "candidate", "3": "both"}'),
-    ],
-    decided_by: Annotated[
-        Literal["candidate", "colleague_default"],
-        Field(description="candidate(주담당이 채팅으로 정함) 또는 colleague_default(기본안)"),
+    phase: Annotated[SlotPhase, Field(description="안을 낼 토론 단계(현재 단계여야 함)")],
+    label: Annotated[str, Field(min_length=1, description="안의 표시 문구")],
+    proposer: Annotated[Seat, Field(description="제안한 AI 동료 자리")],
+    source_message_id: Annotated[
+        str, Field(min_length=1, description="이 안을 말한 자기 메시지 ID(자유 안의 멱등 키)")
     ],
     run_id: RunId,
-) -> dict[str, Any]:
-    """분업을 확정하고 보드 담당을 채운다.
-
-    전 파트를 지정해야 하고 최소 조건(2번 주담당, 3번 동료 또는 같이, 4·5 중 하나는 동료 혼자)을
-    어기면 api가 invalid_input으로 거부한다. 같은 내용의 재호출은 저장된 값을 돌려준다.
-    """
-    body = {"parts": parts, "decided_by": decided_by, "run_id": run_id}
-    return await client.call("PUT", f"{_base(session_id)}/division", json=body)
-
-
-@mcp.tool
-async def update_task(
-    session_id: SessionId,
-    part_no: PartNo,
-    status: Annotated[Literal["todo", "doing", "done"], Field(description="새 상태")],
-    run_id: RunId,
-) -> dict[str, Any]:
-    """동료가 맡은 파트의 보드 상태만 바꾼다(담당·순서·언제까지는 못 바꿈).
-
-    동료 담당(혼자·같이)이 아니면 api가 forbidden으로 거부한다. (part_no, run_id)로 멱등이다.
-    """
-    body = {"status": status, "run_id": run_id}
-    return await client.call("PUT", f"{_base(session_id)}/tasks/{part_no}", json=body)
-
-
-@mcp.tool
-async def send_document(
-    session_id: SessionId,
-    content: Annotated[str, Field(min_length=1, description="보낼 문서 본문 전체")],
-    channel: Annotated[Literal["team", "dm"], Field(description="문서 카드를 올릴 채널")],
-    run_id: RunId,
-    seq: Annotated[int, Field(ge=0, description="문서 카드 메시지 슬롯. 파트 번호×10")],
-    doc_id: Annotated[str | None, Field(description="이미 있는 동료 문서 ID")] = None,
-    part_no: Annotated[
-        int | None, Field(ge=1, le=5, description="동료 문서가 아직 없으면 파트 번호(1~5)")
-    ] = None,
-    event_id: Annotated[str | None, Field(description="카드 실행 결과일 때 그 이벤트 ID")] = None,
-) -> dict[str, Any]:
-    """동료 문서를 쓰고 새 버전으로 보낸다(문서 카드 메시지 1건).
-
-    doc_id 또는 part_no 하나를 준다. 같은 문서·run_id로 다시 부르면 버전을 늘리지 않고 기존 버전과
-    메시지를 돌려준다. 동료 담당이 아닌 파트·동료 문서가 아닌 doc_id는 forbidden.
-    """
-    if (doc_id is None) == (part_no is None):
-        return client.fail("invalid_input", "exactly one of doc_id or part_no")
-    body = {"content": content, "channel": channel, "run_id": run_id, "seq": seq}
-    body.update(_drop_none({"doc_id": doc_id, "part_no": part_no, "event_id": event_id}))
-    return await client.call("POST", f"{_base(session_id)}/docs/send", json=body)
-
-
-@mcp.tool
-async def release_document(
-    session_id: SessionId,
-    doc_id: Annotated[str, Field(min_length=1, description="공개할 회사 문서 ID")],
-) -> dict[str, Any]:
-    """회사 문서를 지원자에게 공개한다. 이미 공개된 문서면 기존 공개 시각을 돌려준다."""
-    return await client.call("POST", f"{_base(session_id)}/releases/{doc_id}")
-
-
-@mcp.tool
-async def record_observation(
-    session_id: SessionId,
-    card_id: Annotated[str, Field(min_length=1, description="관찰 창을 연 카드 ID")],
-    element: Annotated[str, Field(min_length=1, description="카드의 요소 ID")],
-    window_start: Annotated[
-        float, Field(description="관찰 창 시작(세션 분). (card_id, window_start)가 같으면 기존 행")
-    ],
-    window_end: Annotated[float, Field(description="관찰 창 끝(세션 분)")],
-    metrics: Annotated[
-        dict[str, Any], Field(description="규칙으로 센 지표 {이름: {value, evidence_ids}}")
-    ],
-    label: Annotated[str | None, Field(description="분류 레이블. 분류 실패면 null")],
-    evidence: Annotated[
-        list[Evidence], Field(description="근거 목록. 각 id는 이 세션의 해당 행이어야 한다")
-    ],
-    run_id: RunId,
-    aux: Annotated[dict[str, Any] | None, Field(description="레이블과 함께 낸 보조 판정")] = None,
-    facts: Annotated[
-        dict[str, Any] | None, Field(description="정직 카드의 사실 입력(honesty_facts)")
+    scenario_option_key: Annotated[
+        str | None, Field(description="시나리오 카탈로그 안이면 그 키(시나리오 안의 멱등 키)")
     ] = None,
 ) -> dict[str, Any]:
-    """카드 관찰 창의 지표·레이블·근거를 기록한다.
+    """AI 동료가 말한 안을 토론 안 목록에 등록한다.
 
-    같은 card_id와 window_start로 다시 부르면 기존 행의 id를 돌려준다. 근거 id가 이 세션의 행이
-    아니면 invalid_input.
+    같은 카탈로그 안이 이미 있으면(지원자가 먼저 말한 경우 포함) 새로 만들지 않고 기존 행을
+    existing=true로 돌려준다(최초 제안자 보존). 현재 단계가 아니면 conflict/phase_not_open.
     """
     body = {
-        "card_id": card_id,
-        "element": element,
-        "window_start": window_start,
-        "window_end": window_end,
-        "metrics": metrics,
+        "phase": phase,
         "label": label,
-        "evidence": [e.model_dump() for e in evidence],
+        "proposer": proposer,
+        "source_message_id": source_message_id,
         "run_id": run_id,
     }
-    body.update(_drop_none({"aux": aux, "facts": facts}))
-    return await client.call("POST", f"{_base(session_id)}/observations", json=body)
+    body.update(_drop_none({"scenario_option_key": scenario_option_key}))
+    return await client.call("POST", f"{_base(session_id)}/options", json=body)
 
 
 @mcp.tool
-async def update_observation(
+async def set_stance(
     session_id: SessionId,
-    card_id: Annotated[str, Field(min_length=1, description="갱신할 관찰의 카드 ID")],
-    window_start: Annotated[float, Field(description="갱신할 관찰 창 시작(세션 분)")],
-    metrics_patch: Annotated[
-        dict[str, Any], Field(description="바꿀 지표만 {이름: {value, evidence_ids}}")
+    participant: Annotated[Seat, Field(description="입장을 밝힌 AI 동료 자리")],
+    option_id: Annotated[str, Field(min_length=1, description="대상 안 ID")],
+    stance: Annotated[Literal["support", "oppose"], Field(description="지지 또는 반대")],
+    source_message_id: Annotated[
+        str, Field(min_length=1, description="이 입장을 말한 자기 메시지 ID")
     ],
     run_id: RunId,
 ) -> dict[str, Any]:
-    """기록된 관찰의 지정한 지표만 갱신한다(세션 종료 때 약속 이행 promise_kept 확정).
-
-    같은 (card_id, window_start, run_id) 재호출은 멱등이다. 관찰 행이 없으면 not_found.
-    """
+    """AI 동료의 안에 대한 지지·반대 입장을 기록한다. 같은 메시지·자리·안 재호출은 멱등이다."""
     body = {
-        "card_id": card_id,
-        "window_start": window_start,
-        "metrics_patch": metrics_patch,
+        "participant": participant,
+        "option_id": option_id,
+        "stance": stance,
+        "source_message_id": source_message_id,
         "run_id": run_id,
     }
-    return await client.call("PATCH", f"{_base(session_id)}/observations", json=body)
+    return await client.call("POST", f"{_base(session_id)}/stances", json=body)
+
+
+@mcp.tool
+async def fill_slot(
+    session_id: SessionId,
+    option_id: Annotated[
+        str, Field(min_length=1, description="합의된 안 ID(대상 단계는 이 안의 단계)")
+    ],
+    seat: Annotated[Seat, Field(description="합의를 공지하고 칸을 채우는 AI 동료 자리")],
+    content: Annotated[str, Field(min_length=1, description="합의 공지 문장(고정 문구)")],
+    run_id: RunId,
+) -> dict[str, Any]:
+    """합의된 안으로 현재 단계의 칸을 채우고 공지 메시지를 남긴다(합의 채우기 전용).
+
+    칸 확정·공지 메시지 저장·다음 단계 전환을 api가 한 트랜잭션으로 하고 {slot, message, phase}를
+    돌려준다. 같은 run_id 재호출은 기존 결과. 실패는 conflict이고 message는 phase_not_open·
+    slot_confirmed·no_consensus 중 하나이며 이때 칸도 공지도 저장되지 않는다.
+    """
+    body = {"option_id": option_id, "seat": seat, "content": content, "run_id": run_id}
+    return await client.call("POST", f"{_base(session_id)}/slots/fill", json=body)

@@ -6,7 +6,6 @@
 # G-F(be-foundation): services/api의 옛 코드(보드·문서·이벤트·자료 지연·재사용·열람, agent/session·observe)와 옛 테스트
 # 전부를 함께 삭제해 api 줄은 없다. business-mcp는 debate-mcp로 이름만 옮겼고 옛 도구 테스트는 mcp가 코드와 함께 교체한다.
 # make test는 이 목록의 경로를 건너뛴다(파일·디렉터리는 --ignore/--exclude, 노드 id는 --deselect).
-services/debate-mcp/tests/test_tools.py | mcp | 수집 오류(KeyError 'business'). 옛 도구 테스트, mcp가 코드와 함께 교체
 services/report-worker/tests/test_report.py | report-worker | 옛 Report 형태·옛 planning 카탈로그 조립(삭제됨). 옛 코드, report-worker가 코드와 함께 삭제
 services/report-worker/tests/test_rubric.py | report-worker | 수집 오류: conftest가 옛 api 조립으로 삭제된 planning 카탈로그를 읽음(G-F 확인, 목록 추가). 옛 코드, report-worker가 교체
 services/report-worker/tests/test_graph.py | report-worker | 위와 같은 conftest 조립 오류(G-F 확인, 목록 추가). 옛 코드, report-worker가 교체

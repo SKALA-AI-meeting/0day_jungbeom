@@ -8,9 +8,9 @@
 | 401 | forbidden | 내부 토큰 불일치. 호출 인자로 고칠 수 없음, retryable=false |
 | 403 | forbidden | |
 | 404 | not_found | |
-| 409, 410 | conflict | 410은 만료·취소 |
+| 409, 410 | conflict | 410은 만료·취소. 409 message는 api 오류 코드 그대로(no_consensus 등) |
 | 422, 그 외 400 | invalid_input | |
-| 423 | not_released | 공개 전 문서 |
+| 423 | not_released | 잠긴 자료 |
 | 5xx, 연결 실패, 타임아웃 | upstream_unavailable | 1회 재시도, retryable=true |
 | 2xx인데 JSON이 아님 | upstream_unavailable | 재시도 없음, retryable=true |
 """
@@ -59,10 +59,17 @@ def fail(code: str, message: str, retryable: bool = False) -> dict[str, Any]:
 def _error_message(response: httpx.Response) -> str:
     try:
         error = response.json()["error"]
-        # api 오류 코드(draft_mismatch 등)는 세부 구분을 위해 메시지에 함께 싣는다.
-        return f"{error.get('code', '')}: {error.get('message', '')}".strip(": ")
     except (ValueError, KeyError, TypeError, AttributeError):
+        error = None
+    if not isinstance(error, dict):
+        if response.status_code == 409:
+            return "conflict"
         return f"api responded {response.status_code}"
+    code, message = error.get("code") or "", error.get("message") or ""
+    if response.status_code == 409:
+        # 결정적 노드가 message로 분기하므로 api 오류 코드(no_consensus 등)만 그대로 싣는다.
+        return code or "conflict"
+    return f"{code}: {message}".strip(": ")
 
 
 async def call(
