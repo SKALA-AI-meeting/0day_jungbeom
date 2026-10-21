@@ -102,7 +102,7 @@
 
 <!-- 표지 -->
 <section class="page cover">
-  <div class="date">2026. 10. 21 · 최종 과제 보고서</div>
+  <div class="date">2026. 10. 22 · 최종 과제 보고서</div>
   <h1>Day Zero<br>토론으로 인성을 본다</h1>
   <svg class="arc" viewBox="0 0 1000 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0,86 Q500,-36 1000,86" fill="none" stroke="#141413" stroke-width="1.1"/></svg>
   <div class="sub">AI 동료 3명과의 채팅 토론에서 인성을 관찰하는 채용 서비스</div>
@@ -129,11 +129,14 @@
     <div><span class="no">3.3</span><span class="line"></span><span>단계 전환과 칸 확정</span><span class="pg">9</span></div>
     <div><span class="no">4</span><span class="line"></span><span><b>MCP 설계와 접근 경계</b></span><span class="pg">10</span></div>
     <div><span class="no">5</span><span class="line"></span><span><b>평가 설계(BARS)</b></span><span class="pg">11</span></div>
-    <div><span class="no">6</span><span class="line"></span><span><b>품질 관리와 하네스</b></span><span class="pg">12</span></div>
-    <div><span class="no">7</span><span class="line"></span><span><b>주요 기능과 구현 결과</b></span><span class="pg">13</span></div>
-    <div><span class="no">7.1</span><span class="line"></span><span>지원자 화면</span><span class="pg">13</span></div>
-    <div><span class="no">7.2</span><span class="line"></span><span>디브리핑과 관리자 리포트</span><span class="pg">14</span></div>
-    <div><span class="no">8</span><span class="line"></span><span><b>한계와 개선 방향</b></span><span class="pg">15</span></div>
+    <div><span class="no">6</span><span class="line"></span><span><b>품질 관리와 검증 결과</b></span><span class="pg">12</span></div>
+    <div><span class="no">6.1</span><span class="line"></span><span>하네스와 검증 계층</span><span class="pg">12</span></div>
+    <div><span class="no">6.2</span><span class="line"></span><span>검증 결과</span><span class="pg">13</span></div>
+    <div><span class="no">7</span><span class="line"></span><span><b>주요 기능과 구현 결과</b></span><span class="pg">14</span></div>
+    <div><span class="no">7.1</span><span class="line"></span><span>지원자 화면</span><span class="pg">14</span></div>
+    <div><span class="no">7.2</span><span class="line"></span><span>자료 열람과 AI 어시스턴트</span><span class="pg">15</span></div>
+    <div><span class="no">7.3</span><span class="line"></span><span>디브리핑과 관리자 리포트</span><span class="pg">16</span></div>
+    <div><span class="no">8</span><span class="line"></span><span><b>한계와 개선 방향</b></span><span class="pg">17</span></div>
   </div>
   <div class="foot"><span>Day Zero 최종 보고서</span><span>02</span></div>
 </section>
@@ -287,7 +290,7 @@
     <tr><th class="num" style="width:6%">자리</th><th style="width:19%">이름 · 유형</th><th>토론에서 하는 일</th></tr>
     <tr><td class="num">p1</td><td><b>강한결 · 고집형</b></td><td>자기 안을 반복해 밀고 반대에 바로 재반박. 확정 전에는 입장을 바꾸지 않음. 서지안이 못 맡는 설득 카드를 대신 맡음</td></tr>
     <tr><td class="num">p2</td><td><b>윤하람 · 소극형</b></td><td>스스로 주장하지 않음. 이름이 불리면 자료 근거로 자기 안을 말함</td></tr>
-    <tr><td class="num">p3</td><td><b>서지안 · 비판형</b></td><td>모이는 안의 약점을 짚음. 지원자의 반대 · 대안 2회면 설득됨. 설득 카드 우선 담당(지원자가 서지안 안을 지지하면 강한결)</td></tr>
+    <tr><td class="num">p3</td><td><b>서지안 · 비판형</b></td><td>모이는 안의 약점을 짚음. 지원자의 반대 · 대안 2회면 설득되고, 이동한 안의 지지는 코드가 보장함. 설득 카드 우선 담당(지원자가 서지안 안을 지지하면 강한결)</td></tr>
   </table>
   <div class="foot"><span>Day Zero 최종 보고서</span><span>07</span></div>
 </section>
@@ -307,6 +310,7 @@
     <tr><th style="width:19%">규칙</th><th>처리</th></tr>
     <tr><td><b>끼어들기</b></td><td>지원자 메시지를 저장하면 generation이 +1 됩니다. 그래프는 게시 직전에 값이 바뀐 것을 보고 남은 화자를 버립니다</td></tr>
     <tr><td><b>입력 중 표시</b></td><td>클라이언트는 5초마다 typing을 갱신하고 서버는 6초 동안 갱신이 없으면 만료합니다</td></tr>
+    <tr><td><b>안내 · 호명 · 반복</b></td><td>정하는 방법을 묻는 질문이면 코드가 첫 화자 발언 앞에 "결정 사항"에서 정한다는 안내문을 붙입니다. 이름이 불린 동료는 불린 순서대로 답하고, 자기 최근 발언과 거의 같으면 1회 다시 씁니다</td></tr>
     <tr><td><b>검사</b></td><td>guard는 점수 · 판정 · 결론 대리 · 미래 카드 암시를 막고, stance_check는 계획 밖 입장을 막습니다. 각각 재생성 1회 뒤 고정 문구</td></tr>
     <tr><td><b>실패</b></td><td>발언 실패는 그 발언만 생략(연속 3회면 세션 실패), turn LLM 실패는 규칙 결과만, MCP 장애는 1회 재시도</td></tr>
   </table>
@@ -318,7 +322,7 @@
   <div class="kicker"><b>3</b> &nbsp;에이전트 설계</div>
   <h2>3.3 단계 전환과 칸 확정</h2>
   <p class="lede">단계 시간과 칸 확정은 규칙이 정하고 LLM은 문장만 만든다.</p>
-  <p class="bal">칸 상태는 <span class="k">empty</span>와 <span class="k">confirmed</span> 두 개이고, 확정 경로에는 LLM이 없습니다. 칸마다 합의 · 시간 초과와 채운 사람을 남깁니다.</p>
+  <p class="bal">칸 상태는 <span class="k">empty</span>와 <span class="k">confirmed</span> 두 개이고, 확정 경로에는 LLM이 없습니다. 칸마다 결과(합의 · 지원자 결정 · 시간 초과)와 채운 사람을 남깁니다.</p>
   <figure>
     <img src="report-assets/phase-transition.svg" alt="단계 전환과 카드 시각">
     <figcaption><b>그림 3-3</b>단계 전환과 카드 시각. 카드 5장은 단계 시작 기준 정해진 시각에 담당 동료의 발언으로 전달되고, 정직 카드는 기획안 단계 시작 때 기록됩니다.</figcaption>
@@ -326,8 +330,9 @@
   <h3 style="margin-top:3mm"><span class="n">표 3-4</span>단계 중 사건과 처리</h3>
   <table>
     <tr><th style="width:19%">사건</th><th style="width:25%">감지</th><th>처리</th></tr>
-    <tr><td><b>지원자 확정</b></td><td>[이걸로 정하기]</td><td>확인 창 하나 뒤 칸 확정, 다음 단계로. 키워드는 후보 버튼</td></tr>
+    <tr><td><b>지원자 확정</b></td><td>[이걸로 정하기]</td><td>확인 창 하나 뒤 칸 확정, 다음 단계로. 확정 순간 그 안의 지지자가 4명 중 3명 이상이면 "합의", 아니면 "지원자 결정". 키워드는 후보 버튼</td></tr>
     <tr><td><b>AI 합의 채우기</b></td><td>턴 매니저 fill</td><td>지원자 포함 3/4 지지면 fill_slot 한 번으로 api가 한 트랜잭션에서 재검사 · 칸 확정 · <span class="nw">"그럼 X로 정리할게요."</span> 저장 · generation +1. 409면 저장 없음</td></tr>
+    <tr><td><b>기획안 제출</b></td><td>[제출]</td><td>저장 완료 뒤 빈 칸이 있으면 비운 칸 이름과 함께 경고 창. 확인하면 제출하고 빈 칸 목록과 경고 확인 여부를 저장(평가는 맥락 참고만)</td></tr>
     <tr><td><b>단계 마감</b></td><td>스케줄러 · 칸이 비어 있음</td><td>api가 한 트랜잭션으로 안을 고르고 우선순위 자리 이름으로 고정 문장 게시</td></tr>
     <tr><td><b>침묵 초대</b></td><td>스케줄러 · 지원자 침묵</td><td>서지안이 "OO님은 어떻게 생각하세요?" 단계당 1회</td></tr>
     <tr><td><b>카드 시각</b></td><td>단계 시작 + offset</td><td>담당 화자가 고정 내용을 말하고 메시지의 card_ids로 카드마다 전달 자리를 기록. 담당 전원이 말할 때까지 card_due를 다시 넣음. 발언 없는 honesty_credit만 기획안 단계 시작 때 cards 노드가 기록</td></tr>
@@ -389,15 +394,16 @@
     <div class="note" style="margin:0"><div class="t">차원마다 내는 것</div><p>수준 1~5 또는 기록 없음과 사유, <span class="nw">근거 참조(메시지 · 칸 · 기획안 필드)</span>, 판단 이유 1~3문장. 확신도는 기록이 있을 때 <span class="nw">high · medium · low</span>, 기록 없음이면 null입니다.</p></div>
     <div class="note" style="margin:0"><div class="t">총점 없음 · 사람 확인</div><p>요소 수준은 차원 평균의 반올림입니다. 담당자는 차원 단위로 조정하고 메모를 남기며, 합격 · 순위는 만들지 않습니다.</p></div>
   </div>
+  <div class="note"><div class="t">출력 검증</div><p>근거가 1개인 수준 4 · 5는 수준 3, 확신도 medium 이하로 낮춥니다. 형식 · 근거 오류는 요소 호출 전체를 사유와 함께 1회 다시 요청하고, 그 뒤에도 남은 차원만 "판단 보류"로 표시합니다. 핵심 카드가 발생하지 않은 차원은 근거에 보조 장면 표시가 없으면 "이벤트 미발생" 기록 없음으로 두고(표시가 있으면 보조 장면 판단, 확신도 low) 검증으로 바뀐 요소의 요약을 다시 씁니다.</p></div>
   <div class="foot"><span>Day Zero 최종 보고서</span><span>11</span></div>
 </section>
 
 <!-- 10 품질과 하네스 -->
 <section class="page compact-tables">
   <div class="kicker"><b>6</b> &nbsp;품질</div>
-  <h2>6. 품질 관리와 하네스</h2>
-  <p class="lede">안전장치는 코드에 걸고, 검증은 층마다 계획으로 정했다.</p>
-  <p class="bal">프롬프트에 맡기면 흔들리는 규칙은 결정적 코드로 강제합니다. 스파이크 외 검증은 계획이며 통합 뒤 기록합니다.</p>
+  <h2>6.1 하네스와 검증 계층</h2>
+  <p class="lede">안전장치는 코드에 걸고, 검증은 층마다 따로 돌린다.</p>
+  <p class="bal">프롬프트에 맡기면 흔들리는 규칙은 결정적 코드로 강제합니다. 검증은 가짜 LLM으로 빠르게 도는 층과 실제 LLM으로 재는 층을 나눕니다.</p>
 
   <h3><span class="n">표 6-1</span>하네스 8요소</h3>
   <table>
@@ -406,31 +412,59 @@
     <tr><td><b>Tools</b></td><td>노드별 허용 목록, 응답당 도구 3회, 검색 상위 3, 페르소나의 assessment 차단</td></tr>
     <tr><td><b>Context</b></td><td>페르소나에게 척도 · 관찰 · 다른 자리 성향 · 열리지 않은 자료를 넣지 않음</td></tr>
     <tr><td><b>State · Memory</b></td><td>PostgresSaver 체크포인트(<span class="k">debate:</span> · <span class="k">assistant:</span> · <span class="k">report:{session_id}:{eval_round}</span>), 자리별 기억</td></tr>
-    <tr><td><b>Agent Loop</b></td><td>실행당 화자 2명, 같은 자리 연속 3회 금지 <span class="nw">(카드 · 지명 응답 제외)</span>, 침묵 초대 단계당 1회</td></tr>
-    <tr><td><b>Guardrails</b></td><td>guard · stance_check, 합의 전 칸 채우기 409, 근거 없는 수준 거부</td></tr>
+    <tr><td><b>Agent Loop</b></td><td>실행당 화자 2명, 같은 자리 연속 3회 금지 <span class="nw">(카드 · 지명 응답 제외)</span>, 침묵 초대 단계당 1회, 설득 이동 자리별 1회</td></tr>
+    <tr><td><b>Guardrails</b></td><td>guard · stance_check · 반복 재생성, 합의 전 칸 채우기 409, 근거 없는 수준 거부 · 근거 1개 수준 상한</td></tr>
     <tr><td><b>Recovery</b></td><td>발언 실패 생략, 리포트 최초 포함 3회<span class="nw">(추가 재시도 2회)</span> 뒤 DLQ, 멱등 키로 재실행</td></tr>
     <tr><td><b>Observability</b></td><td>LangSmith trace, 실행별 결정 · 사용량 기록, 비용 cost_usd 관측(목표 $0.5) · debate_cost_usd 상한 $2</td></tr>
   </table>
 
-  <h3><span class="n">표 6-2</span>검증 계획</h3>
+  <h3><span class="n">표 6-2</span>검증 계층</h3>
   <table>
-    <tr><th style="width:18%">층</th><th>확인하는 것</th><th style="width:14%">상태</th></tr>
-    <tr><td><b>단위</b></td><td>턴 규칙 · 카드 트리거 · guard · 평가 출력 검증 · 시간 로직(가짜 시계)</td><td>계획</td></tr>
-    <tr><td><b>연결</b></td><td>메시지 → 분류 → 그래프 → MCP → WS 최소 경로, 자료 차단, assessment 거부</td><td>계획</td></tr>
-    <tr><td><b>e2e</b></td><td>15분 세션 대본(전 요소 · 전부 시간 초과 · 정직 대조), 큐 DLQ · 타임아웃 장애 주입</td><td>계획</td></tr>
-    <tr><td><b>의도 분류</b></td><td>20문장 intent 정확도</td><td>스파이크 측정</td></tr>
-    <tr><td><b>BARS 픽스처</b></td><td>사람 평가와의 수준 차이</td><td>계획</td></tr>
-  </table>
-  <h3><span class="n">표 6-3</span>사전 검증(스파이크) 결과 · gpt-4o-mini</h3>
-  <table>
-    <tr><th style="width:30%">항목</th><th class="num" style="width:22%">값</th><th>비고</th></tr>
-    <tr><td><b>의도 분류 지연</b></td><td class="num">1.0 / 1.2초</td><td>p50 / p95, 63회</td></tr>
-    <tr><td><b>페르소나 발언 지연</b></td><td class="num">1.2 / 1.4초</td><td>p50 / p95, 21회</td></tr>
-    <tr><td><b>턴 LLM 지연</b></td><td class="num">1.2 / 1.5초</td><td>p50 / p95, 11회</td></tr>
-    <tr><td><b>60분 세션 비용 추정</b></td><td class="num">$0.08~0.11</td><td>지원자 40~80메시지 가정, 목표 $0.5 안</td></tr>
-    <tr><td><b>의도 분류 정확도</b></td><td class="num">0.85</td><td>키워드 단계 20문장 × 3회, 기준선 프롬프트</td></tr>
+    <tr><th style="width:21%">층</th><th>확인하는 것</th><th style="width:16%">결과</th></tr>
+    <tr><td><b>단위 · 연결</b></td><td>턴 규칙 · 카드 트리거 · guard · 평가 출력 검증 · 시간 로직(가짜 시계), 메시지 → 분류 → 그래프 → MCP → WS 최소 경로, 자료 차단, assessment 거부</td><td>통과</td></tr>
+    <tr><td><b>단계별 화면 테스트</b></td><td>입장 · 키워드 · 문제 상황 · 해결책 · 기획안 · 디브리핑 · 관리자 리포트를 단계 시드에서 따로 시작해 Playwright로 조작(가짜 LLM, 영상 · trace 기록)</td><td>7 spec 9 테스트 통과</td></tr>
+    <tr><td><b>e2e 대본</b></td><td>15분 세션 대본(전 요소 · 전부 시간 초과 · 정직 대조), 큐 DLQ · 타임아웃 장애 주입, 실 스택 실제 LLM 1회</td><td>통과</td></tr>
+    <tr><td><b>playtest</b></td><td>블라인드 페르소나 4종(정석 · 서두름 · 헤매는 · 관리자)이 실제 LLM 스택에서 단계마다 직접 조작해 막힘을 보고</td><td>2회 실행</td></tr>
+    <tr><td><b>eval-live</b></td><td>의도 분류 20문장, 평가 에이전트 BARS 19차원, 유출 · 유도 질문 7건, 페르소나 응답 품질</td><td>6.2 표</td></tr>
   </table>
   <div class="foot"><span>Day Zero 최종 보고서</span><span>12</span></div>
+</section>
+
+<section class="page compact-tables">
+  <div class="kicker"><b>6</b> &nbsp;품질</div>
+  <h2>6.2 검증 결과</h2>
+  <p class="lede">실제 LLM(gpt-4o-mini)으로 잰 값이고, 한 가지만 목표를 근소하게 넘었다.</p>
+  <p class="bal">모든 값은 저장소의 실행 기록에서 가져왔고, 평가 값은 정답 픽스처와의 비교이지 사람 평가자 간 일치도가 아닙니다.</p>
+
+  <h3><span class="n">표 6-3</span>실 스택 15분 세션(all_five, 실제 LLM)</h3>
+  <table>
+    <tr><th style="width:36%">항목</th><th class="num" style="width:20%">값</th><th>목표 · 비고</th></tr>
+    <tr><td><b>단언</b></td><td class="num">8 / 8 통과</td><td>러너 step · 단계 · 턴 · 카드 · 선점 금지 · 리포트 · 검토 · 비용·지연</td></tr>
+    <tr><td><b>카드 전달</b></td><td class="num">6장 모두</td><td>키워드 · 문제 상황 · 해결책 세 칸이 모두 합의로 확정</td></tr>
+    <tr><td><b>세션 비용</b></td><td class="num">$0.0129</td><td>목표 $0.5 이하</td></tr>
+    <tr><td><b>첫 페르소나 게시 p95</b></td><td class="num">8.6초</td><td>목표 8초, 근접 초과(8장 한계)</td></tr>
+    <tr><td><b>의도 분류 p95</b></td><td class="num">1.4초</td><td>목표 3초 이하</td></tr>
+  </table>
+
+  <h3><span class="n">표 6-4</span>eval-live: 분류 · 평가 · 유출</h3>
+  <table>
+    <tr><th style="width:36%">항목</th><th class="num" style="width:20%">값</th><th>기준 · 비고</th></tr>
+    <tr><td><b>의도 분류 정확도</b></td><td class="num">0.90</td><td>20문장, 기준선 0.85. 대상 안 정확도 0.85, 확신도 0.80, 호명 대상 정확도 1.0</td></tr>
+    <tr><td><b>BARS 수준 ±1 이내</b></td><td class="num">1.0</td><td>19차원, 목표 0.8. 정확 일치 0.42, 판단 실패 0</td></tr>
+    <tr><td><b>유출 · 유도 질문</b></td><td class="num">위반 0</td><td>키워드 · 문제 상황 · 해결책 · 기획안 단계 7건(평가 질문 · 미래 카드 · 결론 대리 · 기여 선점 유도)</td></tr>
+  </table>
+
+  <h3><span class="n">표 6-5</span>페르소나 응답 품질 지표</h3>
+  <table>
+    <tr><th style="width:36%">지표</th><th class="num" style="width:20%">기준선</th><th class="num" style="width:20%">최종</th><th>비고</th></tr>
+    <tr><td><b>같은 말 반복률</b></td><td class="num">0.148</td><td class="num">0.0</td><td>54쌍 중 8쌍 → 0쌍, 재생성 4회</td></tr>
+    <tr><td><b>질문 응답률</b></td><td class="num">0.455</td><td class="num">1.0</td><td>22건</td></tr>
+    <tr><td><b>진행 질문 응답률</b></td><td class="num">0.0</td><td class="num">1.0</td><td>"어디서 정하나요" 류</td></tr>
+    <tr><td><b>지목 응답률</b></td><td class="num">1.0</td><td class="num">1.0</td><td>안전 위반 0 유지</td></tr>
+  </table>
+
+  <div class="note" style="margin-top:3mm"><div class="t">playtest에서 확인한 것</div><p>블라인드 페르소나 4종의 조작에서, 지원자 혼자 확정한 칸은 "지원자 결정"으로 표시되고 정하는 방법을 묻는 질문에는 동료가 "결정 사항"에서 정한다고 안내합니다. 빈 칸이 있으면 제출 전에 경고 창이 뜨고 관리자 리포트에 빈 칸과 경고 확인이 표시됩니다. 요소 요약은 차원 상세와 맞게 다시 쓰고, 핵심 카드 미발생 차원은 낮은 수준이 아닌 기록 없음입니다.</p></div>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>13</span></div>
 </section>
 
 <!-- 11 서비스 구현 결과 -->
@@ -440,34 +474,53 @@
   <p class="lede">토론, 결정, 기획안 작성이 한 화면에서 이어진다.</p>
   <p class="bal">가운데 토론방과 우측 탭(결정 사항 · 자료 · AI 어시스턴트 · 기획안), 상단 단계 진행바와 남은 시간으로 구성합니다.</p>
   <figure>
-    <img src="report-assets/ui-debate.png" alt="지원자 토론방 화면" style="width:90%;margin:auto">
-    <figcaption><b>그림 7-1</b>지원자 토론방. 사람별 말풍선 색과 이름, 가운데 회색 시스템 안내, 입력 중 표시 <span class="nw">(목업, 예시 데이터)</span></figcaption>
+    <img src="report-assets/real-debate.png" alt="지원자 토론방 화면" style="width:90%;margin:auto">
+    <figcaption><b>그림 7-1</b>지원자 토론방. 해결책 합의 직후 상단 진행바의 "합의" 표시와 기획안 단계 안내 <span class="nw">(실 스택 화면, 가짜 LLM 응답)</span></figcaption>
   </figure>
   <div class="grid2">
     <figure style="margin:0">
-      <img src="report-assets/ui-decisions.png" alt="결정 사항 패널">
-      <figcaption><b>그림 7-2</b>결정 사항 패널. 정한 결과와 정한 사람, 현재 항목의 <span class="nw">[이걸로 정하기]</span> <span class="nw">(목업, 예시 데이터)</span></figcaption>
+      <img src="report-assets/real-decisions.png" alt="결정 사항 패널">
+      <figcaption><b>그림 7-2</b>결정 사항 패널. 칸마다 결과(지원자 결정 · 시간 초과)와 정한 사람, 현재 항목의 <span class="nw">[이걸로 정하기]</span> <span class="nw">(실 스택 화면, 가짜 LLM 응답)</span></figcaption>
     </figure>
     <figure style="margin:0">
-      <img src="report-assets/ui-proposal.png" alt="기획안 탭">
-      <figcaption><b>그림 7-3</b>기획안. 6칸 폼 중 해결책 · 근거 · 기대효과 · 아이디어 기여와 자동 저장, 제출 <span class="nw">(목업, 예시 데이터)</span></figcaption>
+      <img src="report-assets/real-proposal.png" alt="기획안 탭">
+      <figcaption><b>그림 7-3</b>기획안. 앞 세 칸 자동 채움, 6칸 폼, 자동 저장 시각, 제출 <span class="nw">(실 스택 화면, 가짜 LLM 응답)</span></figcaption>
     </figure>
   </div>
-  <div class="foot"><span>Day Zero 최종 보고서</span><span>13</span></div>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>14</span></div>
 </section>
 
 <section class="page">
   <div class="kicker"><b>7</b> &nbsp;주요 기능과 구현 결과</div>
-  <h2>7.2 디브리핑과 관리자 리포트</h2>
+  <h2>7.2 자료 열람과 AI 어시스턴트</h2>
+  <p class="lede">자료는 키워드를 정한 뒤에 열리고, 어시스턴트는 열린 자료만 인용해 답한다.</p>
+  <figure>
+    <img src="report-assets/real-materials.png" alt="자료 탭" style="width:70%;margin:auto">
+    <figcaption><b>그림 7-4</b>자료 탭. 확정한 키워드 "물"의 자료 4건이 열립니다 <span class="nw">(실 스택 화면, 가짜 LLM 응답)</span></figcaption>
+  </figure>
+  <figure style="margin-top:4mm">
+    <img src="report-assets/real-assistant.png" alt="AI 어시스턴트 탭" style="width:84%;margin:auto">
+    <figcaption><b>그림 7-5</b>AI 어시스턴트. 자료에 대한 요청에 인용(자료 이름)과 함께 답합니다. 토론방 동료는 이 대화를 보지 않습니다 <span class="nw">(실 스택 화면, 실제 LLM)</span></figcaption>
+  </figure>
+  <figure style="margin-top:4mm">
+    <img src="report-assets/real-blank-warning.png" alt="빈 칸 제출 경고 창" style="width:62%;margin:auto">
+    <figcaption><b>그림 7-6</b>빈 칸 제출 경고. 비운 칸 이름과 함께 [돌아가서 쓰기] · [그대로 제출]을 묻습니다 <span class="nw">(playtest 화면, 실제 LLM)</span></figcaption>
+  </figure>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>15</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker"><b>7</b> &nbsp;주요 기능과 구현 결과</div>
+  <h2>7.3 디브리핑과 관리자 리포트</h2>
   <p class="lede">지원자는 설계된 장면을 설명받고, 담당자는 근거를 보며 차원 단위로 조정한다.</p>
   <div class="grid2">
     <figure style="margin:0">
-      <img src="report-assets/ui-debrief.png" alt="디브리핑 화면">
-      <figcaption><b>그림 7-4</b>디브리핑. 같은 장면 안내와 이번 세션의 장면 <span class="nw">(목업, 예시 데이터)</span></figcaption>
+      <img src="report-assets/real-debrief.png" alt="디브리핑 화면">
+      <figcaption><b>그림 7-7</b>디브리핑. 같은 장면을 겪었다는 안내와 종료 설문 <span class="nw">(실 스택 화면, 가짜 LLM 응답)</span></figcaption>
     </figure>
     <figure style="margin:0">
-      <img src="report-assets/ui-admin-report.png" alt="관리자 리포트 화면">
-      <figcaption><b>그림 7-5</b>관리자 리포트. 설계된 장면 표시와 요소별 수준 요약, 총점 없음 <span class="nw">(목업, 예시 데이터)</span></figcaption>
+      <img src="report-assets/real-admin.png" alt="관리자 리포트 화면">
+      <figcaption><b>그림 7-8</b>관리자 리포트. 근거 원문과 "기록에서 보기", AI 판단과 담당자 조정, 이벤트 미발생 표시 <span class="nw">(실 스택 화면, 가짜 LLM 응답)</span></figcaption>
     </figure>
   </div>
 
@@ -475,27 +528,28 @@
   <table>
     <tr><th style="width:22%">화면</th><th>주요 기능</th></tr>
     <tr><td><b>지원자 토론방</b></td><td>사람별 말풍선 색과 이름 · 아바타, 가운데 회색 시스템 안내, "OO님이 입력 중" 표시, 단계 진행바와 남은 시간</td></tr>
-    <tr><td><b>결정 사항 패널</b></td><td>정한 결과 줄과 합의 · 시간 초과 표시, 정한 사람. 현재 항목에만 입력, 키워드는 후보 버튼, 정하기는 확인 창 하나</td></tr>
-    <tr><td><b>기획안</b></td><td>키워드 · 문제 상황 · 해결책 · 근거 · 기대효과 · 아이디어 기여 6칸, 자동 저장 시각 표시, 제출</td></tr>
+    <tr><td><b>결정 사항 패널</b></td><td>정한 결과 줄과 결과 표시(합의 · 지원자 결정 · 시간 초과), 정한 사람. 현재 항목에만 입력, 키워드는 후보 버튼, 정하기는 확인 창 하나</td></tr>
+    <tr><td><b>기획안</b></td><td>키워드 · 문제 상황 · 해결책 · 근거 · 기대효과 · 아이디어 기여 6칸, 자동 저장 시각 표시, 빈 칸 경고 창, 제출 확인 창</td></tr>
     <tr><td><b>디브리핑</b></td><td>"같은 채용 건의 모든 지원자가 같은 장면을 겪었다"로 시작, 이번 세션의 장면, 보는 요소, 내 발언 돌아보기, 이의 제기 경로, 종료 설문. 척도 세부와 수준은 공개하지 않음</td></tr>
-    <tr><td><b>관리자 리포트</b></td><td>요소 수준 요약(총점 없음), 차원별 확신도, 근거 앞뒤 맥락과 "기록에서 보기", 차원 단위 조정(메모 필수), 인쇄</td></tr>
+    <tr><td><b>관리자 리포트</b></td><td>요소 수준 요약(총점 없음), 차원별 확신도, 근거 앞뒤 맥락과 "기록에서 보기", 판단 보류 · 근거 약함 개수와 설명, 빈 칸 · 경고 확인 표시, 차원 단위 조정(메모 필수), 인쇄</td></tr>
   </table>
-  <div class="foot"><span>Day Zero 최종 보고서</span><span>14</span></div>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>16</span></div>
 </section>
 
 <!-- 12 한계와 개선 방향 -->
 <section class="page">
   <div class="kicker"><b>8</b> &nbsp;한계와 대응</div>
   <h2>8. 한계와 개선 방향</h2>
-  <p class="lede">MVP 실행을 확인했고, 평가 신뢰도와 편향 검증은 별도로 필요하다.</p>
+  <p class="lede">실 스택 실행과 비용을 확인했고, 응답 지연과 평가 신뢰도는 더 재야 한다.</p>
   <p class="bal">현재의 한계와 대응을 정리하고, MVP 이후 고려할 개선 방향을 남깁니다.</p>
 
   <h3><span class="n">표 8-1</span>한계와 대응</h3>
   <table>
     <tr><th style="width:24%">한계</th><th>영향</th><th style="width:32%">대응</th></tr>
-    <tr><td><b>목업 기준 캡처</b></td><td>7장 화면은 목업 데이터로 동작하는 UI 캡처</td><td>실 스택 캡처는 통합 후 교체</td></tr>
+    <tr><td><b>캡처의 가짜 응답</b></td><td>7장 화면은 실 스택이지만 동료 문장은 고정 응답(그림 7-5 · 7-6은 실제 LLM)</td><td>실제 말투는 6.2의 실제 LLM 측정으로 확인</td></tr>
+    <tr><td><b>응답 지연 p95 8.6초</b></td><td>지원자 메시지 뒤 첫 페르소나 게시가 목표 8초를 근소하게 넘음</td><td>역할별 모델 · 프롬프트를 조정해 재측정</td></tr>
     <tr><td><b>척도 · 시나리오 초안</b></td><td>차원 앵커 · 카드 시각 수치가 검토 전</td><td>검토 뒤 카탈로그 버전으로 고정</td></tr>
-    <tr><td><b>평가 일치도 미측정</b></td><td>LLM 판단이 같은 대화에도 흔들릴 수 있음</td><td>사람 2인과 차이 분포, 3회 재평가 변동 폭 측정</td></tr>
+    <tr><td><b>평가 일치도 일부만 측정</b></td><td>정답 픽스처와는 ±1 이내 1.0이나 정확 일치는 0.42</td><td>사람 2인과 차이 분포, 3회 재평가 변동 폭 측정</td></tr>
     <tr><td><b>api 단일 프로세스</b></td><td>메일박스 · 송신 큐 · 스케줄러가 메모리에 있음</td><td>AgentRunner 경계에서 분리 가능</td></tr>
     <tr><td><b>채팅 숙련도 편향</b></td><td>타자 속도 · 내향성이 불리할 수 있음</td><td>발언 수로 수준을 올리지 않음, 상관 점검</td></tr>
     <tr><td><b>규제 해석</b></td><td>채용은 고영향 AI 영역 해당 여부가 미확정</td><td>사람이 최종 결정하는 구조, 법률 검토</td></tr>
@@ -509,8 +563,11 @@
     <tr><td class="num">3</td><td>대상 라벨이 없는 분류 결과는 confidence를 low로 강제하는 후처리를 둔다</td></tr>
     <tr><td class="num">4</td><td>턴 LLM의 화자 쏠림을 보정한다</td></tr>
     <tr><td class="num">5</td><td>서비스 간 websockets 버전을 통일한다</td></tr>
+    <tr><td class="num">6</td><td>해결책 입력 예시를 보강하고 채용 건 목록에 검색 · 필터를 둔다</td></tr>
+    <tr><td class="num">7</td><td>확정 직전에 만들어진 동료 발언이 확정 뒤 도착하지 않게 한다</td></tr>
+    <tr><td class="num">8</td><td>"리포트 전" 자동 갱신, 확인 창 중복, 디브리핑 안내 문구 위치를 정리한다</td></tr>
   </table>
-  <div class="foot"><span>Day Zero 최종 보고서</span><span>15</span></div>
+  <div class="foot"><span>Day Zero 최종 보고서</span><span>17</span></div>
 </section>
 
 </body>
