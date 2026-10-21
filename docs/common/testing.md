@@ -130,7 +130,7 @@ P1 대본 단언: `restart`(재시작 후 90초 안에 WS 재연결·`/state` �
 | debrief | R1 첫 문장, 내 발언 ≤ 3, 설문 제출 |
 | admin-report | `ended` 시드의 리포트 → 차원 1개 조정(메모) → 검토 완료 → 수준 재계산 표시 |
 
-- 기록: 테스트마다 영상(webm)·trace·핵심 시점 스크린샷, 전체 HTML 리포트를 `tests/e2e/records/stages/<단계>/`에 남긴다. 스크린샷은 보고서 캡처(report-refresh)의 원본이다.
+- 기록: 핵심 시점 스크린샷과 `summary.md`는 `tests/e2e/records/stages/<단계>/`(커밋), 테스트마다 영상(webm)·trace는 `apps/web/.artifacts/<테스트>/`, 전체 HTML 리포트는 `apps/web/html-report/`(둘 다 git 무시)에 남긴다. 스크린샷은 보고서 캡처(report-refresh)의 원본이다.
 - 실행: `make e2e-stages [STAGE=<단계>] [LLM=fake|live]`. G-E에서 전 단계가 `LLM=fake`로 통과해야 한다.
 
 ## playtest (게이트 아님)
