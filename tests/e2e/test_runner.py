@@ -182,3 +182,14 @@ async def test_live_llm_mode_skips_level_expectations(fake, target, monkeypatch)
     assert run_mod.detect_llm_fake(False)[1] == "env LLM_FAKE=0"
     monkeypatch.setenv("LLM_FAKE", "1")
     assert run_mod.detect_llm_fake(False)[0] is True
+
+
+async def test_assistant_must_cite_keyword_materials(fake, target):
+    """assistant step이 있는 대본: 인용이 비면(색인 버전 불일치 등) 단언 5가 실패한다."""
+    bundle = await run_script(fake, target, "all_five")
+    assert asserts._assistant_citations(bundle) == []
+    for call in bundle["assistant_calls"]:
+        call["cited_material_ids"] = []
+    assert any("인용하지 못함" in f for f in asserts.assert_5_report(bundle))
+    bundle["assistant_calls"][0]["cited_material_ids"] = ["fire_stats"]
+    assert any("확정 키워드의 자료가 아님" in f for f in asserts.assert_5_report(bundle))

@@ -536,10 +536,29 @@ def _contribution_expectations(b: dict[str, Any], report: dict[str, Any]) -> lis
     return out
 
 
+def _assistant_citations(b: dict[str, Any]) -> list[str]:
+    """대본에 assistant step이 있으면 어시스턴트가 확정 키워드의 자료를 1개 이상 인용했는지."""
+    if not any("assistant" in step for step in b["script"]["steps"]):
+        return []
+    calls = b.get("assistant_calls") or []
+    if not calls:
+        return ["assistant step이 있는데 assistant_calls가 없음"]
+    keyword_materials = {
+        m["material_id"]
+        for m in ((b["states"].get("final") or {}).get("materials") or {}).get("materials", [])
+    }
+    cited = {m for c in calls for m in c.get("cited_material_ids") or []}
+    if not cited:
+        return ["어시스턴트가 자료를 하나도 인용하지 못함(rag 색인 버전 확인)"]
+    outside = cited - keyword_materials
+    return [f"인용한 자료가 확정 키워드의 자료가 아님: {sorted(outside)}"] if outside else []
+
+
 def assert_5_report(b: dict[str, Any]) -> list[str]:
     if not b.get("draft"):
         return ["draft 리포트 없음"]
-    out = _check_report(b, b["draft"], "draft")
+    out = _assistant_citations(b)
+    out += _check_report(b, b["draft"], "draft")
     out += _contribution_expectations(b, b["draft"])
     if b.get("final"):
         out += _check_report(b, b["final"], "final")
