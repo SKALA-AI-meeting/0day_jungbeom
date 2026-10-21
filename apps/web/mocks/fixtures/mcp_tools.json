@@ -1,0 +1,334 @@
+{
+  "debate": {
+    "get_debate_state": {
+      "input": {
+        "session_id": "sess-1"
+      },
+      "output": {
+        "phase": "problem",
+        "generation": 6,
+        "phase_deadline_at": "2026-10-21T01:28:00Z",
+        "phase_remaining_seconds": 840,
+        "slot": {
+          "phase": "problem",
+          "status": "empty",
+          "value": null
+        },
+        "options": [
+          {
+            "option_id": "opt-pb-p1",
+            "label": "가뭄으로 생활용수 제한이 잦아짐",
+            "proposer": "candidate",
+            "scenario_option_key": "water_p1",
+            "created_at": "2026-10-21T01:10:30Z",
+            "supporters": ["candidate"],
+            "opposers": []
+          },
+          {
+            "option_id": "opt-pb-p2",
+            "label": "도심 폭우·침수 피해 증가",
+            "proposer": "p1",
+            "scenario_option_key": "water_p2",
+            "created_at": "2026-10-21T01:11:12Z",
+            "supporters": ["p1", "p3"],
+            "opposers": ["candidate"]
+          }
+        ],
+        "catalog_options": [
+          {
+            "scenario_option_key": "water_p1",
+            "label": "가뭄으로 생활용수 제한이 잦아짐",
+            "spoken": true
+          },
+          {
+            "scenario_option_key": "water_p2",
+            "label": "도심 폭우·침수 피해 증가",
+            "spoken": true
+          },
+          {
+            "scenario_option_key": "water_p3",
+            "label": "수돗물 불신으로 생수 플라스틱 증가",
+            "spoken": false
+          }
+        ],
+        "current_support": {
+          "candidate": "opt-pb-p1",
+          "p1": "opt-pb-p2",
+          "p2": null,
+          "p3": "opt-pb-p2"
+        },
+        "consensus_option_id": null,
+        "timeout_option_id": "opt-pb-p2",
+        "candidate": {
+          "spoke_in_phase": true,
+          "last_message_t_min": 13.0,
+          "typing": false
+        },
+        "invite_delivered": false,
+        "last_room_message_t_min": 13.8,
+        "confirmed": [
+          {
+            "phase": "keyword",
+            "value": "물",
+            "option_id": "opt-kw-water",
+            "resolution": "consensus",
+            "filled_by": "candidate"
+          }
+        ],
+        "card_progress": [
+          {
+            "card_id": "flexibility_majority",
+            "locked_option_id": "opt-pb-p2",
+            "delivered": ["p1", "p3"]
+          },
+          {
+            "card_id": "listening_pressure",
+            "locked_option_id": "opt-pb-p2",
+            "delivered": ["p1"]
+          }
+        ],
+        "cost_left": 1.97,
+        "seats": [
+          {
+            "seat": "candidate",
+            "display_name": "김지원"
+          },
+          {
+            "seat": "p1",
+            "display_name": "강한결",
+            "avatar_url": "/assets/missions/debate/avatars/avatar-01.png"
+          },
+          {
+            "seat": "p2",
+            "display_name": "윤하람",
+            "avatar_url": "/assets/missions/debate/avatars/avatar-02.png"
+          },
+          {
+            "seat": "p3",
+            "display_name": "서지안",
+            "avatar_url": "/assets/missions/debate/avatars/avatar-03.png"
+          }
+        ]
+      }
+    },
+    "get_transcript": {
+      "input": {
+        "session_id": "sess-1",
+        "phase": "problem",
+        "limit": 30
+      },
+      "output": [
+        {
+          "id": "m-10",
+          "sender": "system",
+          "content": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 19분 남았어요. 자료 탭이 열렸어요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 8.2
+        },
+        {
+          "id": "m-11",
+          "sender": "p1",
+          "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 9.0
+        },
+        {
+          "id": "m-12",
+          "sender": "candidate",
+          "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 10.5
+        },
+        {
+          "id": "m-13",
+          "sender": "p1",
+          "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 11.2
+        },
+        {
+          "id": "m-14",
+          "sender": "p3",
+          "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 11.6
+        },
+        {
+          "id": "m-15",
+          "sender": "candidate",
+          "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 13.0
+        },
+        {
+          "id": "m-16",
+          "sender": "p1",
+          "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+          "phase": "problem",
+          "is_invite": false,
+          "t_min": 13.8
+        }
+      ]
+    },
+    "get_draft": {
+      "input": {
+        "session_id": "sess-1"
+      },
+      "output": {
+        "sections": {
+          "keyword": "물",
+          "problem": "도심 폭우·침수 피해 증가",
+          "solution": "하수관 수위 센서로 침수 위험을 미리 알리는 데이터 기반 경보에 빗물 저금통·투수 포장을 함께 설치",
+          "rationale": "최근 3년 침수 신고와 피해액이 함께 늘었고, 센서 경보와 빗물 인프라를 함께 쓴 지역에서 피해가 줄었다.",
+          "expected_effect": "",
+          "idea_credit": "문제 상황: 강한결 님 제안"
+        },
+        "revision": 5,
+        "updated_at": "2026-10-21T01:51:48Z"
+      }
+    },
+    "post_message": {
+      "input": {
+        "session_id": "sess-1",
+        "sender": "p1",
+        "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+        "run_id": "run-card-pb",
+        "seq": 0,
+        "expected_generation": 5,
+        "is_invite": false,
+        "card_ids": ["flexibility_majority", "listening_pressure"],
+        "cited_material_ids": ["water_flood_cases"],
+        "meta": {
+          "stance_check": "pass",
+          "model": "gpt-4o-mini",
+          "latency_ms": 1240,
+          "cost_usd": 0.0004
+        }
+      },
+      "output": "internal_message_post.json"
+    },
+    "propose_option": {
+      "input": {
+        "session_id": "sess-1",
+        "phase": "solution",
+        "label": "주민 절수·보상 캠페인",
+        "proposer": "p3",
+        "scenario_option_key": "water_s2",
+        "source_message_id": "m-23",
+        "run_id": "run-card-ps"
+      },
+      "output": "internal_option.json"
+    },
+    "set_stance": {
+      "input": {
+        "session_id": "sess-1",
+        "participant": "p3",
+        "option_id": "opt-sl-s2",
+        "stance": "support",
+        "source_message_id": "m-23",
+        "run_id": "run-card-ps"
+      },
+      "output": "internal_stance.json"
+    },
+    "fill_slot": {
+      "input": {
+        "session_id": "sess-1",
+        "option_id": "opt-pb-p2",
+        "seat": "p3",
+        "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+        "run_id": "run-msg-18"
+      },
+      "output": "internal_slot_fill.json"
+    }
+  },
+  "rag": {
+    "search_materials": {
+      "input": {
+        "session_id": "sess-1",
+        "query": "침수 센서 경보 효과",
+        "top_k": 3
+      },
+      "output": [
+        {
+          "material_id": "water_flood_cases",
+          "title": "도심 침수 사례",
+          "chunk": "하수관 수위 센서로 침수 30분 전 경보를 보낸 구는 차량 침수 피해가 줄었다.",
+          "score": 0.82
+        },
+        {
+          "material_id": "water_rain_reuse",
+          "title": "빗물 재이용 사례",
+          "chunk": "빗물 저금통과 투수 포장을 함께 설치한 마을은 첫 30분 유출량이 줄었다.",
+          "score": 0.64
+        }
+      ]
+    },
+    "get_material": {
+      "input": {
+        "session_id": "sess-1",
+        "material_id": "water_flood_cases"
+      },
+      "output": "internal_material.json"
+    },
+    "reindex_materials": {
+      "input": {
+        "mission_id": "debate"
+      },
+      "output": {
+        "indexed": 64,
+        "model": "text-embedding-3-small",
+        "dim": 1024,
+        "catalog_version": "cat-debate-20261021-a1b2c3"
+      }
+    }
+  },
+  "assessment": {
+    "record_observation": {
+      "input": {
+        "session_id": "sess-1",
+        "card_id": "listening_pressure",
+        "phase": "problem",
+        "trigger_message_id": "m-13",
+        "run_id": "run-card-pb"
+      },
+      "output": "internal_observation_created.json"
+    },
+    "get_rubric": {
+      "input": {
+        "session_id": "sess-1"
+      },
+      "output": "internal_rubric.json"
+    },
+    "get_session_record": {
+      "input": {
+        "session_id": "sess-1"
+      },
+      "output": "session_record.json"
+    },
+    "get_transcript_span": {
+      "input": {
+        "session_id": "sess-1",
+        "message_id": "m-15",
+        "before": 5,
+        "after": 3
+      },
+      "output": "internal_transcript_span.json"
+    },
+    "get_contributions": {
+      "input": {
+        "session_id": "sess-1"
+      },
+      "output": "internal_contributions.json"
+    },
+    "save_evaluation": {
+      "input": "evaluation_save.json",
+      "output": "internal_evaluations_saved.json"
+    }
+  }
+}

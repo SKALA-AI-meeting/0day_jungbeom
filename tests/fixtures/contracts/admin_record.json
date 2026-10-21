@@ -1,284 +1,486 @@
 [
   {
     "t_min": 0.0,
-    "type": "message",
-    "channel": "team",
-    "by": "manager",
-    "summary": "안녕하세요, 이번 건 주담당은 지원자A님입니다. 모아런 재참여율 개선 기획 초안을 2시간 안에 모아 주세요. 최종본 템플릿은 오른쪽 탭에 있고 섹션당 5~10줄이면 됩니다. 인터뷰 요약은 01:00에 공유될 예정이에요.",
+    "type": "phase",
+    "by": "system",
+    "summary": "keyword 단계 시작",
     "ref": {
-      "type": "message",
-      "id": "m-1",
+      "type": "phase",
+      "id": "keyword",
       "t_min": 0.0
     }
   },
   {
-    "t_min": 10.0,
+    "t_min": 0.0,
     "type": "message",
-    "channel": "team",
-    "by": "colleague",
-    "summary": "파트는 어떻게 나눌까요? 3번은 2번 자료가 필요해서 그 순서만 신경 쓰면 될 것 같아요.",
+    "by": "system",
+    "summary": "키워드 단계예요. 물·불·나무·바람 중 하나를 함께 정해 주세요. 이 단계 10분 남았어요.",
+    "ref": {
+      "type": "message",
+      "id": "m-01",
+      "t_min": 0.0
+    }
+  },
+  {
+    "t_min": 0.8,
+    "type": "message",
+    "by": "p3",
+    "summary": "바람은 어떨까요? 미세먼지 얘기는 누구나 공감할 것 같은데요.",
+    "ref": {
+      "type": "message",
+      "id": "m-02",
+      "t_min": 0.8
+    }
+  },
+  {
+    "t_min": 1.5,
+    "type": "message",
+    "by": "p1",
+    "summary": "불이 맞아요. 화재는 피해가 바로 보이잖아요.",
+    "ref": {
+      "type": "message",
+      "id": "m-03",
+      "t_min": 1.5
+    }
+  },
+  {
+    "t_min": 3.0,
+    "type": "message",
+    "by": "p3",
+    "summary": "저는 바람으로 가고 싶어요. 생활에 바로 닿는 문제라 근거 찾기도 쉬워요. 다른 키워드는 어떤 점이 더 낫다고 보세요?",
+    "ref": {
+      "type": "message",
+      "id": "m-04",
+      "t_min": 3.0
+    }
+  },
+  {
+    "t_min": 3.2,
+    "type": "message",
+    "by": "p3",
+    "summary": "김지원님은 어떻게 생각하세요?",
+    "ref": {
+      "type": "message",
+      "id": "m-05",
+      "t_min": 3.2
+    }
+  },
+  {
+    "t_min": 3.6,
+    "type": "message",
+    "by": "candidate",
+    "summary": "저는 물이 좋아요. 가뭄이랑 침수가 둘 다 매년 반복돼서 다룰 거리가 많아요.",
+    "ref": {
+      "type": "message",
+      "id": "m-06",
+      "t_min": 3.6
+    }
+  },
+  {
+    "t_min": 4.4,
+    "type": "message",
+    "by": "p2",
+    "summary": "음… 저도 물 괜찮은 것 같아요.",
+    "ref": {
+      "type": "message",
+      "id": "m-07",
+      "t_min": 4.4
+    }
+  },
+  {
+    "t_min": 6.0,
+    "type": "message",
+    "by": "candidate",
+    "summary": "서지안님, 바람도 좋지만 물은 가뭄·침수·수질까지 자료가 더 다양할 것 같아요. 물로 가면 어떨까요?",
+    "ref": {
+      "type": "message",
+      "id": "m-08",
+      "t_min": 6.0
+    }
+  },
+  {
+    "t_min": 7.0,
+    "type": "message",
+    "by": "p3",
+    "summary": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
+    "ref": {
+      "type": "message",
+      "id": "m-09",
+      "t_min": 7.0
+    }
+  },
+  {
+    "t_min": 8.2,
+    "type": "phase",
+    "by": "system",
+    "summary": "problem 단계 시작",
+    "ref": {
+      "type": "phase",
+      "id": "problem",
+      "t_min": 8.2
+    }
+  },
+  {
+    "t_min": 8.2,
+    "type": "message",
+    "by": "system",
+    "summary": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 19분 남았어요. 자료 탭이 열렸어요.",
     "ref": {
       "type": "message",
       "id": "m-10",
+      "t_min": 8.2
+    }
+  },
+  {
+    "t_min": 8.2,
+    "type": "slot",
+    "by": "candidate",
+    "summary": "keyword 확정: 물 (consensus)",
+    "ref": {
+      "type": "slot",
+      "id": "keyword",
+      "t_min": 8.2
+    }
+  },
+  {
+    "t_min": 9.0,
+    "type": "message",
+    "by": "p1",
+    "summary": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+    "ref": {
+      "type": "message",
+      "id": "m-11",
+      "t_min": 9.0
+    }
+  },
+  {
+    "t_min": 10.0,
+    "type": "material_view",
+    "by": "candidate",
+    "summary": "자료 열람: water_stats",
+    "ref": {
+      "type": "material_view",
+      "id": "mv-1",
       "t_min": 10.0
     }
   },
   {
-    "t_min": 11.0,
+    "t_min": 10.5,
     "type": "message",
-    "channel": "team",
     "by": "candidate",
-    "summary": "제가 1·2번, 도현님이 4·5번, 3번은 같이 보죠. 2번 자료 나오는 대로 3번 골격부터 잡을게요. 보드에도 적어 둘게요.",
+    "summary": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
     "ref": {
       "type": "message",
-      "id": "m-11",
-      "t_min": 11.0
+      "id": "m-12",
+      "t_min": 10.5
     }
   },
   {
-    "t_min": 12.0,
-    "type": "task_event",
-    "by": "candidate",
-    "summary": "1번 담당 → 지원자(12분)",
-    "ref": {
-      "type": "task_event",
-      "id": "te-1",
-      "t_min": 12.0
-    }
-  },
-  {
-    "t_min": 12.5,
-    "type": "task_event",
-    "by": "candidate",
-    "summary": "1번 언제까지 → 40분(12.5분)",
-    "ref": {
-      "type": "task_event",
-      "id": "te-6",
-      "t_min": 12.5
-    }
-  },
-  {
-    "t_min": 25.0,
-    "type": "share",
-    "channel": "team",
-    "by": "candidate",
-    "summary": "1번 파트 v1 보냄(25분)",
-    "ref": {
-      "type": "share",
-      "id": "sh-1",
-      "t_min": 25.0
-    }
-  },
-  {
-    "t_min": 30.0,
+    "t_min": 11.2,
     "type": "message",
-    "channel": "dm",
-    "by": "colleague",
-    "summary": "4번 사례 고르는 기준이 헷갈려서요. 채팅으로 기준 두세 개만 10분 정도 같이 봐 줄 수 있을까요?",
+    "by": "p1",
+    "summary": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+    "ref": {
+      "type": "message",
+      "id": "m-13",
+      "t_min": 11.2
+    }
+  },
+  {
+    "t_min": 11.6,
+    "type": "message",
+    "by": "p3",
+    "summary": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+    "ref": {
+      "type": "message",
+      "id": "m-14",
+      "t_min": 11.6
+    }
+  },
+  {
+    "t_min": 13.0,
+    "type": "message",
+    "by": "candidate",
+    "summary": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
     "ref": {
       "type": "message",
       "id": "m-15",
-      "t_min": 30.0
+      "t_min": 13.0
     }
   },
   {
-    "t_min": 31.2,
-    "type": "connection_gap",
-    "by": "system",
-    "summary": "00:31~00:46 연결 끊김",
-    "ref": {
-      "type": "connection_gap",
-      "id": "gap-1",
-      "t_min": 31.2
-    }
-  },
-  {
-    "t_min": 45.0,
+    "t_min": 13.8,
     "type": "message",
-    "channel": "team",
-    "by": "colleague",
-    "summary": "4번 초안 v1 보냅니다. 방향 봐 주세요.",
+    "by": "p1",
+    "summary": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+    "ref": {
+      "type": "message",
+      "id": "m-16",
+      "t_min": 13.8
+    }
+  },
+  {
+    "t_min": 15.5,
+    "type": "message",
+    "by": "candidate",
+    "summary": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+    "ref": {
+      "type": "message",
+      "id": "m-17",
+      "t_min": 15.5
+    }
+  },
+  {
+    "t_min": 16.0,
+    "type": "material_view",
+    "by": "candidate",
+    "summary": "자료 열람: water_flood_cases",
+    "ref": {
+      "type": "material_view",
+      "id": "mv-2",
+      "t_min": 16.0
+    }
+  },
+  {
+    "t_min": 24.8,
+    "type": "message",
+    "by": "candidate",
+    "summary": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+    "ref": {
+      "type": "message",
+      "id": "m-18",
+      "t_min": 24.8
+    }
+  },
+  {
+    "t_min": 25.4,
+    "type": "phase",
+    "by": "system",
+    "summary": "solution 단계 시작",
+    "ref": {
+      "type": "phase",
+      "id": "solution",
+      "t_min": 25.4
+    }
+  },
+  {
+    "t_min": 25.4,
+    "type": "message",
+    "by": "p3",
+    "summary": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+    "ref": {
+      "type": "message",
+      "id": "m-19",
+      "t_min": 25.4
+    }
+  },
+  {
+    "t_min": 25.4,
+    "type": "message",
+    "by": "system",
+    "summary": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+    "ref": {
+      "type": "message",
+      "id": "m-20",
+      "t_min": 25.4
+    }
+  },
+  {
+    "t_min": 25.4,
+    "type": "slot",
+    "by": "p3",
+    "summary": "problem 확정: 도심 폭우·침수 피해 증가 (consensus)",
+    "ref": {
+      "type": "slot",
+      "id": "problem",
+      "t_min": 25.4
+    }
+  },
+  {
+    "t_min": 27.4,
+    "type": "message",
+    "by": "p2",
+    "summary": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
     "ref": {
       "type": "message",
       "id": "m-21",
-      "t_min": 45.0
+      "t_min": 27.4
     }
   },
   {
-    "t_min": 45.0,
-    "type": "share",
-    "channel": "team",
-    "by": "colleague",
-    "summary": "동료 4번 파트 v1 보냄(45분)",
-    "ref": {
-      "type": "share",
-      "id": "ksh-4-1",
-      "t_min": 45.0
-    }
-  },
-  {
-    "t_min": 46.5,
-    "type": "open",
-    "by": "candidate",
-    "summary": "동료 4번 v1 열람(46.5분)",
-    "ref": {
-      "type": "open",
-      "id": "op-1",
-      "t_min": 46.5
-    }
-  },
-  {
-    "t_min": 47.0,
+    "t_min": 29.0,
     "type": "message",
-    "channel": "team",
     "by": "candidate",
-    "summary": "4번 사례 방향 좋아요. 두 번째 사례는 지표 문서의 재참여율과 연결해 주세요. 2번은 인터뷰 요약 나오면 바로 채울게요.",
+    "summary": "저는 하수관에 센서를 달아서 침수 위험을 미리 알리는 데이터 기반 경보를 제안해요.",
+    "ref": {
+      "type": "message",
+      "id": "m-22",
+      "t_min": 29.0
+    }
+  },
+  {
+    "t_min": 30.4,
+    "type": "message",
+    "by": "p3",
+    "summary": "센서는 설치 비용이 커요. 자료를 보면 주민 참여 캠페인이 더 빨리 효과를 냈어요. 절수·보상 캠페인으로 가죠.",
+    "ref": {
+      "type": "message",
+      "id": "m-23",
+      "t_min": 30.4
+    }
+  },
+  {
+    "t_min": 31.0,
+    "type": "message",
+    "by": "candidate",
+    "summary": "윤하람님, 아까 생각하신 게 있다고 하셨는데 편하게 말씀해 주세요. 듣고 싶어요.",
     "ref": {
       "type": "message",
       "id": "m-24",
-      "t_min": 47.0
+      "t_min": 31.0
     }
   },
   {
-    "t_min": 47.5,
+    "t_min": 31.5,
+    "type": "message",
+    "by": "p2",
+    "summary": "음… 저는 빗물 저금통이나 투수 포장 같은 생활 인프라가 좋을 것 같아요. 빗물 재이용 사례가 있어서요.",
+    "ref": {
+      "type": "message",
+      "id": "m-25",
+      "t_min": 31.5
+    }
+  },
+  {
+    "t_min": 32.5,
+    "type": "material_view",
+    "by": "candidate",
+    "summary": "자료 열람: water_rain_reuse",
+    "ref": {
+      "type": "material_view",
+      "id": "mv-3",
+      "t_min": 32.5
+    }
+  },
+  {
+    "t_min": 33.0,
+    "type": "message",
+    "by": "p1",
+    "summary": "센서 안이 맞아요. 데이터가 있어야 경보가 되죠.",
+    "ref": {
+      "type": "message",
+      "id": "m-26",
+      "t_min": 33.0
+    }
+  },
+  {
+    "t_min": 36.0,
+    "type": "message",
+    "by": "candidate",
+    "summary": "윤하람님 안도 좋네요. 센서 경보에 빗물 저금통을 같이 묶으면 침수 전후를 다 다룰 수 있을 것 같아요.",
+    "ref": {
+      "type": "message",
+      "id": "m-27",
+      "t_min": 36.0
+    }
+  },
+  {
+    "t_min": 38.0,
     "type": "assistant_call",
     "by": "candidate",
-    "summary": "재참여율 22%가 낮은 편인지 비슷한 서비스 기준으로 알려 줘",
+    "summary": "도심 침수 사례에서 센서 경보 효과가 있었던 곳을 알려 줘",
     "ref": {
       "type": "assistant_call",
       "id": "ac-1",
-      "t_min": 47.5
+      "t_min": 38.0
     }
   },
   {
-    "t_min": 60.0,
-    "type": "notice",
-    "channel": "notice",
+    "t_min": 44.0,
+    "type": "message",
     "by": "system",
-    "summary": "사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
+    "summary": "이 단계 2분 남았어요.",
+    "ref": {
+      "type": "message",
+      "id": "m-28",
+      "t_min": 44.0
+    }
+  },
+  {
+    "t_min": 46.0,
+    "type": "phase",
+    "by": "system",
+    "summary": "proposal 단계 시작",
+    "ref": {
+      "type": "phase",
+      "id": "proposal",
+      "t_min": 46.0
+    }
+  },
+  {
+    "t_min": 46.0,
+    "type": "message",
+    "by": "p3",
+    "summary": "시간이 다 돼서 대화에서 가장 많이 모인 의견인 센서·데이터 기반 물 관리·경보로 할게요.",
+    "ref": {
+      "type": "message",
+      "id": "m-29",
+      "t_min": 46.0
+    }
+  },
+  {
+    "t_min": 46.0,
+    "type": "message",
+    "by": "system",
+    "summary": "기획안 작성 단계예요. 기획안 탭에서 혼자 작성해 제출해 주세요. 14분 남았어요.",
     "ref": {
       "type": "message",
       "id": "m-30",
-      "t_min": 60.0
+      "t_min": 46.0
     }
   },
   {
-    "t_min": 62.0,
+    "t_min": 46.0,
+    "type": "slot",
+    "by": "p3",
+    "summary": "solution 확정: 센서·데이터 기반 물 관리·경보 (timeout)",
+    "ref": {
+      "type": "slot",
+      "id": "solution",
+      "t_min": 46.0
+    }
+  },
+  {
+    "t_min": 49.0,
     "type": "message",
-    "channel": "team",
     "by": "candidate",
-    "summary": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
+    "summary": "기획안 쓰면서 침수 사례 자료를 다시 봤어요. 근거 정리는 제가 해 볼게요.",
     "ref": {
       "type": "message",
       "id": "m-31",
-      "t_min": 62.0
+      "t_min": 49.0
     }
   },
   {
-    "t_min": 72.0,
-    "type": "assistant_call",
+    "t_min": 51.0,
+    "type": "connection_gap",
     "by": "candidate",
-    "summary": "인터뷰 요약에서 두 번째 모임에 안 온 이유만 뽑아 줘",
+    "summary": "연결 끊김 0.6분",
     "ref": {
-      "type": "assistant_call",
-      "id": "ac-2",
-      "t_min": 72.0
+      "type": "connection_gap",
+      "id": "gap-1",
+      "t_min": 51.0
     }
   },
   {
-    "t_min": 73.0,
-    "type": "share",
-    "channel": "dm",
+    "t_min": 57.0,
+    "type": "proposal_submit",
     "by": "candidate",
-    "summary": "2번 파트 v1 보냄(73분)",
+    "summary": "기획안 제출",
     "ref": {
-      "type": "share",
-      "id": "sh-2",
-      "t_min": 73.0
-    }
-  },
-  {
-    "t_min": 75.0,
-    "type": "message",
-    "channel": "team",
-    "by": "manager",
-    "summary": "대표님과 이야기해 보니 핵심 기능을 '첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고, 출시 일정은 다음 분기에서 이번 분기로 당겨 주세요. 대상 사용자·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요.",
-    "ref": {
-      "type": "message",
-      "id": "m-35",
-      "t_min": 75.0
-    }
-  },
-  {
-    "t_min": 77.0,
-    "type": "message",
-    "channel": "dm",
-    "by": "candidate",
-    "summary": "도현님, 3번은 48시간 후속 모임 제안 기능 하나로 좁혀 주시고 5번 일정은 이번 분기 기준으로 바꿔 주세요. 사례는 그대로 두셔도 돼요.",
-    "ref": {
-      "type": "message",
-      "id": "m-36",
-      "t_min": 77.0
-    }
-  },
-  {
-    "t_min": 84.0,
-    "type": "share",
-    "channel": "team",
-    "by": "candidate",
-    "summary": "1번 파트 v2 보냄(84분)",
-    "ref": {
-      "type": "share",
-      "id": "sh-3",
-      "t_min": 84.0
-    }
-  },
-  {
-    "t_min": 90.5,
-    "type": "message",
-    "channel": "team",
-    "by": "colleague",
-    "summary": "주담당 파트도 보내 주시면 볼게요. 그리고 1번에서 '다음 모임 일정을 놓쳐서'가 주원인이라고 쓰셨는데, 인터뷰 8명 중 5명은 '아는 사람이 없어 어색해서'를 먼저 말해서 저는 그쪽이 주원인에 가깝다고 봐요.",
-    "ref": {
-      "type": "message",
-      "id": "m-53",
-      "t_min": 90.5
-    }
-  },
-  {
-    "t_min": 93.0,
-    "type": "message",
-    "channel": "team",
-    "by": "candidate",
-    "summary": "인터뷰 기준으론 어색함이 더 많이 나오는 게 맞아요. 다만 지표 문서의 이탈 시점이 일정 놓친 직후라서 둘 다 쓰고 일정 쪽을 먼저 두는 걸로 할게요.",
-    "ref": {
-      "type": "message",
-      "id": "m-54",
-      "t_min": 93.0
-    }
-  },
-  {
-    "t_min": 110.0,
-    "type": "message",
-    "channel": "team",
-    "by": "manager",
-    "summary": "마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
-    "ref": {
-      "type": "message",
-      "id": "m-60",
-      "t_min": 110.0
-    }
-  },
-  {
-    "t_min": 112.0,
-    "type": "message",
-    "channel": "team",
-    "by": "candidate",
-    "summary": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
-    "ref": {
-      "type": "message",
-      "id": "m-62",
-      "t_min": 112.0
+      "type": "proposal_submit",
+      "id": "sess-1",
+      "t_min": 57.0
     }
   }
 ]

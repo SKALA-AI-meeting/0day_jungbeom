@@ -1,839 +1,630 @@
-"""내부 REST (/internal/*, 포트 8001, X-Internal-Token). 계약은 docs/common/contracts.md.
+"""내부 REST(/internal, 포트 8001, X-Internal-Token). contracts.md "내부 REST" 표 그대로.
 
-business-mcp·rag-mcp·report-worker가 부른다. 권한·상태 검증(담당자, 세션 상태, 문서 공개 여부)의
-최종 판단은 여기서 한다. 저장은 모두 멱등 키로 중복 없이 한 번만 만든다. 세션 Lock은 잡지 않는다: 이
-API는 Lock을 쥔 채 실행 중인 러너가 MCP를 거쳐 부르므로 잡으면 교착된다.
+내부 읽기는 상태 제한이 없다. 내부 쓰기는 in_progress에서만(아니면 409 conflict, 이미 저장된 키의
+재전달은 기존 결과). evaluations·report/*는 completed 이후에만. 409의 error.code에는 세부 코드
+(no_consensus·stale_generation·slot_confirmed·phase_not_open)를 그대로 넣는다.
 """
 
-import hashlib
-import json
 import uuid
-from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, model_validator
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import scheduler
 from app.auth import require_internal
 from app.models import (
-    Admin,
     AssistantCall,
-    AssistantReuse,
-    Company,
-    Document,
-    DocumentOpen,
-    DocumentRevision,
-    DocumentShare,
-    DocumentVersion,
-    DocView,
-    Invite,
     Message,
+    MessageIntent,
     Observation,
-    Position,
-    Report,
+    Option,
+    Proposal,
     Session,
-    SessionEvent,
-    TaskEvent,
+    SessionCard,
+    Slot,
 )
-from app.services import board, documents, releases, views
-from app.services import scenario as scenario_service
+from app.services import debate, facts, reports, test_sessions, views
+from app.services import proposal as proposal_service
+from app.services import scenario as sc
+from app.services.common import (
+    ServiceError,
+    conflict,
+    iso,
+    load_context,
+    not_found,
+    serialize_message,
+    slot_full,
+    t_min,
+)
 from app.services.context import AppContext, get_context
-from app.services.documents import DocumentError
-from app.services.messages import save_internal_message, serialize, t_min_at
-from app.services.states import SessionError
 
 router = APIRouter(prefix="/internal", dependencies=[Depends(require_internal)])
-
-Channel = Literal["team", "dm", "manager_dm", "notice", "assistant"]
-E2E_COMPANY = "e2e 테스트 회사"
-OPEN_STATUSES = ("in_progress", "reporting")
-
-
-def error(status: int, code: str, message: str) -> HTTPException:
-    return HTTPException(status, detail={"error": {"code": code, "message": message}})
-
-
-def doc_error(exc: DocumentError) -> HTTPException:
-    return error(404 if exc.code == "not_found" else 403, exc.code, exc.message)
-
-
-async def get_db(ctx: Annotated[AppContext, Depends(get_context)]):
-    async with ctx.session_factory() as db:
-        yield db
-
-
 Ctx = Annotated[AppContext, Depends(get_context)]
-Db = Annotated[AsyncSession, Depends(get_db)]
+Seat = Literal["p1", "p2", "p3"]
 
 
-def iso(value: datetime | None) -> str | None:
-    return value.isoformat() if value else None
-
-
-async def load_session(db: AsyncSession, session_id: uuid.UUID) -> Session:
-    session = await db.get(Session, session_id, populate_existing=True)
-    if session is None:
-        raise SessionError("not_found", "session not found")
-    return session
-
-
-async def load_position(db: AsyncSession, session: Session) -> Position:
-    invite = await db.get(Invite, session.invite_id)
-    return await db.get(Position, invite.position_id)
-
-
-def with_meta(message: Message, session: Session) -> dict[str, Any]:
-    """내부 API 전용: 공개 Message 형식에 meta(classification 포함)를 더한다."""
-    return {**serialize(message, session), "meta": message.meta or {}}
-
-
-def require_in_progress(session: Session, action: str) -> None:
-    """문서·보드·분업 쓰기는 in_progress일 때만(제출 뒤 보고 요청 카드 실행 중에도 in_progress)."""
-    if session.status != "in_progress":
-        raise SessionError("conflict", f"cannot {action} from {session.status}")
-
-
-async def _check_event(db: AsyncSession, session_id: uuid.UUID, event_id: uuid.UUID | None) -> None:
-    if event_id is None:
-        return
-    owner = await db.scalar(select(SessionEvent.session_id).where(SessionEvent.id == event_id))
-    if owner != session_id:
-        raise error(422, "invalid_event", "event_id is not an event of this session")
-
-
-# ───────────── 세션 컨텍스트·메시지 ─────────────
-
-
-def current_card(events: list[SessionEvent], status: str) -> str | None:
-    """열린 관찰 창의 카드. 가장 최근에 실행된 요소 카드다.
-
-    흐름 카드와 결 메시지는 창을 닫지 않는다. 마지막 창은 보고 종료(completed)까지 열려 있다.
-    """
-    if status not in OPEN_STATUSES:
-        return None
-    fired = [e for e in events if e.status in ("fired", "done") and e.element and not e.texture]
-    if not fired:
-        return None
-    return max(fired, key=lambda e: (e.due_at, e.card_id == "collab_disagree")).card_id
+def _card_progress(cards: list[SessionCard]) -> list[dict[str, Any]]:
+    return [
+        {
+            "card_id": c.card_id,
+            "locked_option_id": str(c.locked_option_id) if c.locked_option_id else None,
+            "delivered": list(c.delivered_seats),
+        }
+        for c in cards
+    ]
 
 
 @router.get("/sessions/{session_id}")
-async def get_session(session_id: uuid.UUID, db: Db) -> dict[str, Any]:
-    session = await load_session(db, session_id)
-    position = await load_position(db, session)
-    events = list(
-        (await db.execute(select(SessionEvent).where(SessionEvent.session_id == session_id)))
-        .scalars()
-        .all()
-    )
+async def get_session(session_id: uuid.UUID, ctx: Ctx) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, position, invite = await load_context(db, session_id)
+        cards = (
+            await db.scalars(select(SessionCard).where(SessionCard.session_id == session_id))
+        ).all()
+        return {
+            "id": str(session.id),
+            "status": session.status,
+            "phase": session.phase,
+            "alias": invite.alias,
+            "display_name": session.display_name,
+            "position": {
+                "name": position.name,
+                "mission_id": position.mission_id,
+                "session_minutes": position.session_minutes,
+                "scenario": position.scenario,
+                "catalog_version": position.catalog_version,
+            },
+            "seats": views.seats_typed(position.scenario, session, invite),
+            "started_at": iso(session.started_at),
+            "ends_at": iso(session.ends_at),
+            "phase_started_at": iso(session.phase_started_at),
+            "phase_deadline_at": iso(session.phase_deadline_at),
+            "completed_at": iso(session.completed_at),
+            "ended_at": iso(session.ended_at),
+            "t_min_now": t_min(session, ctx.clock.now()),
+            "generation": session.generation,
+            "invite_delivered_phases": list(session.invite_delivered_phases),
+            "card_progress": _card_progress(list(cards)),
+            "connection_gaps": await views.gaps(db, session),
+        }
+
+
+@router.get("/sessions/{session_id}/debate_state")
+async def debate_state(session_id: uuid.UUID, ctx: Ctx) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, position, _ = await load_context(db, session_id)
+        if session.phase is None or session.phase == "completed":
+            raise conflict("phase_not_open", "no debate phase")
+        return await debate.debate_state(
+            db, session, position, ctx.clock.now(), ctx.hub.is_candidate_typing(session_id)
+        )
+
+
+def _internal_message(session: Session, m: Message, intent: MessageIntent | None) -> dict:
     return {
-        "id": str(session.id),
-        "status": session.status,
-        "position": {
-            "mission_id": position.mission_id,
-            "elements": position.elements,
-            "scenario": position.scenario,
-            "catalog_version": position.catalog_version,
+        **serialize_message(session, m),
+        "card_ids": list(m.card_ids),
+        "meta": m.meta or {},
+        "origin": m.origin,
+        "intent": None
+        if intent is None
+        else {
+            "intent": intent.intent,
+            "target_option_id": str(intent.target_option_id) if intent.target_option_id else None,
+            "scenario_option_key": intent.scenario_option_key,
+            "new_option_label": intent.new_option_label,
+            "confidence": intent.confidence,
+            "addressed_to": list(intent.addressed_to),
         },
-        "division": session.division,
-        "started_at": iso(session.started_at),
-        "ends_at": iso(session.ends_at),
-        "submitted_at": iso(session.submitted_at),
-        "reported_at": iso(session.reported_at),
-        "completed_at": iso(session.completed_at),
-        "deadline_at": iso(session.deadline_at),
-        "t_min_now": t_min_at(datetime.now(UTC), session),
-        "current_card": current_card(events, session.status),
-        "connection_gaps": await views.connection_gaps(db, session),
-        # 워커가 카드별 발생 여부·실제 카드 시각(같은 event_id의 메시지)·문서 미제공을 판단한다
-        "events": [
-            {
-                "id": str(e.id),
-                "card_id": e.card_id,
-                "element": e.element,
-                "status": e.status,
-                "due_at": iso(e.due_at),
-                "fired_at": iso(e.fired_at),
-                "document_missing": e.document_missing,
-            }
-            for e in sorted(events, key=lambda e: (e.due_at, e.card_id == "collab_disagree"))
-        ],
     }
+
+
+async def _with_intents(db, session: Session, rows: list[Message]) -> list[dict]:
+    ids = [m.id for m in rows]
+    intents = (
+        {
+            i.message_id: i
+            for i in (
+                await db.scalars(select(MessageIntent).where(MessageIntent.message_id.in_(ids)))
+            ).all()
+        }
+        if ids
+        else {}
+    )
+    return [_internal_message(session, m, intents.get(m.id)) for m in rows]
 
 
 @router.get("/sessions/{session_id}/messages")
 async def list_messages(
     session_id: uuid.UUID,
-    db: Db,
+    ctx: Ctx,
     since_t_min: float | None = None,
-    channel: Channel | None = None,
+    phase: str | None = None,
     limit: Annotated[int, Query(ge=1, le=1000)] = 200,
     offset: Annotated[int, Query(ge=0)] = 0,
+    tail: Annotated[int | None, Query(ge=1, le=1000)] = None,
 ) -> list[dict[str, Any]]:
-    session = await load_session(db, session_id)
-    query = select(Message).where(Message.session_id == session_id)
-    if channel is not None:
-        query = query.where(Message.channel == channel)
-    if since_t_min is not None and session.started_at is not None:
-        since = session.started_at + timedelta(minutes=since_t_min)
-        query = query.where(Message.created_at > since)
-    # id까지 정렬해 offset 페이지가 겹치거나 빠지지 않게 한다(워커의 전체 수집)
-    query = query.order_by(Message.created_at, Message.seq, Message.id)
-    rows = await db.execute(query.offset(offset).limit(limit))
-    return [with_meta(m, session) for m in rows.scalars()]
+    """토론방(room) 메시지만. tail=N이면 최근 N개를 오래된 순으로(limit·offset 무시)."""
+    async with ctx.session_factory() as db:
+        session, _, _ = await load_context(db, session_id)
+        query = select(Message).where(Message.session_id == session_id, Message.channel == "room")
+        if phase:
+            query = query.where(Message.phase == phase)
+        if since_t_min is not None and session.started_at is not None:
+            from datetime import timedelta
+
+            query = query.where(
+                Message.created_at >= session.started_at + timedelta(minutes=since_t_min)
+            )
+        if tail is not None:
+            rows = list(
+                (
+                    await db.scalars(
+                        query.order_by(Message.created_at.desc(), Message.seq.desc()).limit(tail)
+                    )
+                ).all()
+            )
+            rows.reverse()
+        else:
+            rows = list(
+                (
+                    await db.scalars(
+                        query.order_by(Message.created_at, Message.seq).limit(limit).offset(offset)
+                    )
+                ).all()
+            )
+        return await _with_intents(db, session, rows)
 
 
-class MessageIn(BaseModel):
-    channel: Channel
-    sender: Literal["colleague", "manager", "system"]
+class PostMessageIn(BaseModel):
+    sender: Literal["p1", "p2", "p3", "system"]
     content: str
-    event_id: uuid.UUID | None = None
     run_id: uuid.UUID
     seq: int
-    meta: dict[str, Any] | None = None
+    expected_generation: int | None = None
+    is_invite: bool = False
+    card_ids: list[str] = []
+    cited_material_ids: list[str] = []
+    meta: dict[str, Any] = {}
+
+
+async def _write(ctx: AppContext, session_id: uuid.UUID, fn) -> Any:
+    from app.services.common import Effects
+
+    fx = Effects()
+    async with ctx.session_factory() as db:
+        session, position, _ = await load_context(db, session_id, lock=True)
+        result = await fn(db, session, position, fx)
+        await db.commit()
+    await ctx.apply(session_id, fx)
+    return result
 
 
 @router.post("/sessions/{session_id}/messages")
-async def post_message(session_id: uuid.UUID, body: MessageIn, ctx: Ctx, db: Db):
-    await load_session(db, session_id)
-    await _check_event(db, session_id, body.event_id)
-    message, _ = await save_internal_message(
-        db,
-        ctx.hub,
-        session_id,
-        body.channel,
-        body.sender,
-        body.content,
-        body.run_id,
-        body.seq,
-        body.event_id,
-        body.meta,
-    )
-    session = await load_session(db, session_id)
-    return with_meta(message, session)
-
-
-class Classification(BaseModel):
-    recipient: str
-    kind: str
-    instruction: str | None = None
-    related_card: str | None = None
-
-
-@router.put("/sessions/{session_id}/messages/{message_id}/classification")
-async def put_classification(
-    session_id: uuid.UUID, message_id: uuid.UUID, body: Classification, ctx: Ctx, db: Db
-) -> dict[str, Any]:
-    """respond 앞 분류 결과를 meta.classification에 저장한다. 팀 채널·팀장 DM의 지원자
-    보고(kind=report)면 reported_at을 남겨 스케줄러가 보고 대기를 끝내게 한다(보고 요청 이후의
-    메시지만)."""
-    session = await load_session(db, session_id)
-    message = await db.get(Message, message_id, populate_existing=True)
-    if message is None or message.session_id != session_id:
-        raise error(404, "not_found", "message not found")
-    message.meta = {**(message.meta or {}), "classification": body.model_dump()}
-    await db.commit()
-    is_report = (
-        body.kind == "report"
-        and message.sender == "candidate"
-        and message.channel in ("team", "manager_dm")
-    )
-    if is_report:
-        await ctx.session_service(db).mark_reported(session_id, message.created_at)
-    return with_meta(message, session)
-
-
-# ───────────── 보드·분업 ─────────────
-
-
-@router.get("/sessions/{session_id}/board")
-async def get_board(session_id: uuid.UUID, db: Db) -> dict[str, Any]:
-    await load_session(db, session_id)
-    return {"tasks": [board.task_json(t) for t in await board.load_tasks(db, session_id)]}
-
-
-class TaskIn(BaseModel):
-    status: Literal["todo", "doing", "done"]
-    run_id: uuid.UUID
-
-
-async def _replayed(db: AsyncSession, session_id: uuid.UUID, run_id: uuid.UUID) -> bool:
-    found = await db.scalar(
-        select(TaskEvent.id).where(TaskEvent.session_id == session_id, TaskEvent.run_id == run_id)
-    )
-    return found is not None
-
-
-@router.put("/sessions/{session_id}/tasks/{part_no}")
-async def put_task(
-    session_id: uuid.UUID, part_no: int, body: TaskIn, ctx: Ctx, db: Db
-) -> dict[str, Any]:
-    """동료 상태 변경. 동료 담당(colleague·both)이 아니면 403, (part_no, field, run_id) 멱등."""
-    session = await load_session(db, session_id)
-    if session.status != "in_progress" and not await _replayed(db, session_id, body.run_id):
-        require_in_progress(session, "change task")
-    try:
-        task = await board.colleague_status(db, session_id, part_no, body.status, body.run_id)
-    except LookupError as exc:
-        raise error(404, "not_found", str(exc)) from exc
-    except PermissionError as exc:
-        raise error(403, "forbidden", str(exc)) from exc
-    await db.commit()
-    payload = board.task_json(task)
-    await ctx.hub.broadcast(session_id, "task.updated", {**payload, "by": "colleague"})
-    return payload
-
-
-@router.get("/sessions/{session_id}/task_events")
-async def task_events(session_id: uuid.UUID, db: Db) -> list[dict[str, Any]]:
-    await load_session(db, session_id)
-    rows = await db.execute(
-        select(TaskEvent)
-        .where(TaskEvent.session_id == session_id)
-        .order_by(TaskEvent.created_at, TaskEvent.part_no)
-    )
-    return [
-        {
-            "id": str(e.id),
-            "part_no": e.part_no,
-            "by": e.by,
-            "field": e.field,
-            "old_value": e.old_value,
-            "new_value": e.new_value,
-            "created_at": iso(e.created_at),
-        }
-        for e in rows.scalars()
-    ]
-
-
-class DivisionIn(BaseModel):
-    parts: dict[str, Literal["candidate", "colleague", "both"]]
-    decided_by: Literal["candidate", "colleague_default"]
-    run_id: uuid.UUID
-
-
-@router.put("/sessions/{session_id}/division")
-async def put_division(session_id: uuid.UUID, body: DivisionIn, ctx: Ctx, db: Db):
-    """동료 set_division(채팅으로 정한 분업·기본안). 같은 tasks를 채우고 바뀐 행마다 task_event."""
-    session = await load_session(db, session_id)
-    current = session.division or {}
-    if session.status != "in_progress":
-        if current.get("parts") == body.parts:
-            return {"division": current}
-        require_in_progress(session, "divide")
-    position = await load_position(db, session)
-    try:
-        tasks, changed = await board.set_division(
-            db, session, position.scenario, body.parts, body.decided_by, body.run_id
+async def post_message(session_id: uuid.UUID, body: PostMessageIn, ctx: Ctx) -> dict[str, Any]:
+    async def fn(db, session, position, fx):
+        message = await debate.post_internal_message(
+            db, session, body.model_dump(mode="json"), ctx.clock, fx
         )
-    except board.InvalidDivision as exc:
-        await db.rollback()
-        raise error(422, "invalid_division", str(exc)) from exc
-    await db.commit()
-    if changed:
-        for task in tasks:
-            await ctx.hub.broadcast(
-                session_id, "task.updated", {**board.task_json(task), "by": "colleague"}
-            )
-        if not current:
-            payload = {
-                "parts": session.division["parts"],
-                "decided_by": session.division["decided_by"],
-                "t_min": t_min_at(datetime.now(UTC), session),
-            }
-            await ctx.hub.broadcast(session_id, "division.confirmed", payload)
-    return {"division": session.division}
+        return serialize_message(session, message)
+
+    return await _write(ctx, session_id, fn)
 
 
-@router.get("/sessions/{session_id}/honesty_facts")
-async def honesty_facts(session_id: uuid.UUID, db: Db) -> dict[str, Any]:
-    session = await load_session(db, session_id)
-    position = await load_position(db, session)
-    return await documents.honesty_facts(db, session, position.scenario)
-
-
-# ───────────── 문서 주고받기 ─────────────
-
-
-@router.get("/sessions/{session_id}/docs")
-async def docs(session_id: uuid.UUID, db: Db) -> dict[str, Any]:
-    session = await load_session(db, session_id)
-    return await documents.internal_docs(db, session)
-
-
-@router.get("/sessions/{session_id}/docs/shared")
-async def docs_shared(session_id: uuid.UUID, db: Db) -> dict[str, Any]:
-    session = await load_session(db, session_id)
-    return await documents.shared_docs(db, session)
-
-
-@router.get("/sessions/{session_id}/document_revisions")
-async def document_revisions(
-    session_id: uuid.UUID, db: Db, doc_id: uuid.UUID | None = None, since_t_min: float | None = None
-) -> list[dict[str, Any]]:
-    session = await load_session(db, session_id)
-    return await documents.revisions(db, session, doc_id, since_t_min)
-
-
-class SendIn(BaseModel):
-    doc_id: uuid.UUID | None = None
-    part_no: int | None = None
-    content: str
-    channel: Literal["team", "dm"]
-    run_id: uuid.UUID
-    event_id: uuid.UUID | None = None
-    seq: int
-
-    @model_validator(mode="after")
-    def _target(self) -> "SendIn":
-        if (self.doc_id is None) == (self.part_no is None):
-            raise ValueError("exactly one of doc_id or part_no")
-        return self
-
-
-@router.post("/sessions/{session_id}/docs/send")
-async def docs_send(session_id: uuid.UUID, body: SendIn, ctx: Ctx, db: Db) -> dict[str, Any]:
-    """동료 문서 쓰기·보내기. (doc_id, run_id) 멱등, 문서 카드 메시지는 (run_id, seq)."""
-    session = await load_session(db, session_id)
-    position = await load_position(db, session)
-    await _check_event(db, session_id, body.event_id)
-    if session.status != "in_progress" and not await _sent(db, session_id, body.run_id):
-        require_in_progress(session, "send document")
-    try:
-        return await documents.colleague_send(
-            db,
-            ctx.hub,
-            session,
-            position.scenario,
-            body.content,
-            body.channel,
-            body.run_id,
-            body.seq,
-            body.event_id,
-            doc_id=body.doc_id,
-            part_no=body.part_no,
-        )
-    except DocumentError as exc:
-        raise doc_error(exc) from exc
-
-
-async def _sent(db: AsyncSession, session_id: uuid.UUID, run_id: uuid.UUID) -> bool:
-    """이 run_id로 이미 보낸 동료 문서가 있는가(제출 뒤 재전달은 기존 결과를 돌려준다)."""
-    found = await db.scalar(
-        select(DocumentVersion.id)
-        .join(Document, Document.id == DocumentVersion.doc_id)
-        .where(Document.session_id == session_id, DocumentVersion.run_id == run_id)
-    )
-    return found is not None
-
-
-# ───────────── 회사 문서 공개·열람 ─────────────
-
-
-@router.get("/sessions/{session_id}/documents")
-async def company_docs(session_id: uuid.UUID, db: Db) -> dict[str, Any]:
-    session = await load_session(db, session_id)
-    position = await load_position(db, session)
-    return {
-        "catalog_version": position.catalog_version,
-        "documents": await views.company_documents(db, session, position.scenario),
-    }
-
-
-@router.post("/sessions/{session_id}/releases/{doc_id}")
-async def release_document(
-    session_id: uuid.UUID, doc_id: str, ctx: Ctx, db: Db
-) -> dict[str, str | None]:
-    session = await load_session(db, session_id)
-    position = await load_position(db, session)
-    if doc_id not in {d["doc_id"] for d in position.scenario["documents"]}:
-        raise error(404, "not_found", "document not found")
-    released_at = await releases.release(
-        db, ctx.hub, session_id, position.scenario, doc_id, datetime.now(UTC)
-    )
-    return {"released_at": iso(released_at)}
-
-
-@router.get("/sessions/{session_id}/doc_views")
-async def doc_views(session_id: uuid.UUID, db: Db) -> list[dict[str, Any]]:
-    await load_session(db, session_id)
-    rows = await db.execute(
-        select(DocView).where(DocView.session_id == session_id).order_by(DocView.viewed_at)
-    )
-    return [
-        {"id": str(v.id), "doc_id": v.doc_id, "viewed_at": iso(v.viewed_at)} for v in rows.scalars()
-    ]
-
-
-# ───────────── 관찰 ─────────────
-
-EvidenceType = Literal[
-    "message", "document", "share", "open", "task_event", "doc_view", "assistant_call"
-]
-
-
-class Evidence(BaseModel):
-    type: EvidenceType
-    id: uuid.UUID
-
-
-class ObservationIn(BaseModel):
-    """window_start·window_end는 세션 분(t_min). 키는 (card_id, window_start)."""
-
-    card_id: str
-    element: str
-    window_start: float
-    window_end: float
-    metrics: dict[str, Any] = {}
-    label: str | None = None
-    aux: dict[str, Any] = {}
-    evidence: list[Evidence] = []
-    facts: dict[str, Any] | None = None
+class OptionIn(BaseModel):
+    phase: Literal["keyword", "problem", "solution"]
+    label: str
+    proposer: Seat
+    scenario_option_key: str | None = None
+    source_message_id: uuid.UUID | None = None
     run_id: uuid.UUID | None = None
 
 
-class ObservationPatch(BaseModel):
-    card_id: str
-    window_start: float
-    metrics_patch: dict[str, Any] = Field(min_length=1)
+@router.post("/sessions/{session_id}/options")
+async def post_option(session_id: uuid.UUID, body: OptionIn, ctx: Ctx) -> dict[str, Any]:
+    async def fn(db, session, position, fx):
+        return await debate.internal_option(db, session, body.model_dump(mode="json"), ctx.clock)
+
+    return await _write(ctx, session_id, fn)
+
+
+class StanceIn(BaseModel):
+    participant: Seat
+    option_id: uuid.UUID
+    stance: Literal["support", "oppose"]
+    source_message_id: uuid.UUID
+    run_id: uuid.UUID | None = None
+
+
+@router.post("/sessions/{session_id}/stances")
+async def post_stance(session_id: uuid.UUID, body: StanceIn, ctx: Ctx) -> dict[str, Any]:
+    async def fn(db, session, position, fx):
+        return await debate.internal_stance(db, session, body.model_dump(mode="json"), ctx.clock)
+
+    return await _write(ctx, session_id, fn)
+
+
+class FillIn(BaseModel):
+    option_id: uuid.UUID
+    seat: Seat
+    content: str
     run_id: uuid.UUID
 
 
-def _at(session: Session, minutes: float) -> datetime:
-    return session.started_at + timedelta(minutes=minutes)
-
-
-async def _evidence_in_session(db: AsyncSession, session_id: uuid.UUID, item: Evidence) -> bool:
-    """근거 id가 이 세션의 해당 테이블 행인가(rubric.md 근거 타입 표)."""
-    direct = {
-        "message": Message,
-        "doc_view": DocView,
-        "assistant_call": AssistantCall,
-        "task_event": TaskEvent,
-    }
-    if item.type in direct:
-        table = direct[item.type]
-        found = await db.scalar(
-            select(table.id).where(table.id == item.id, table.session_id == session_id)
+@router.post("/sessions/{session_id}/slots/fill")
+async def fill(session_id: uuid.UUID, body: FillIn, ctx: Ctx) -> dict[str, Any]:
+    async def fn(db, session, position, fx):
+        return await debate.fill_slot(
+            db, session, position, body.model_dump(mode="json"), ctx.clock, fx
         )
-        return found is not None
-    via_doc = {"document": DocumentRevision, "share": DocumentShare, "open": DocumentOpen}[
-        item.type
-    ]
-    found = await db.scalar(
-        select(via_doc.id)
-        .join(Document, Document.id == via_doc.doc_id)
-        .where(via_doc.id == item.id, Document.session_id == session_id)
-    )
-    return found is not None
+
+    return await _write(ctx, session_id, fn)
 
 
-def observation_json(o: Observation, session: Session) -> dict[str, Any]:
-    """계약 픽스처 형태. facts는 정직 카드 행에만 싣는다."""
-    row = {
-        "id": str(o.id),
-        "card_id": o.card_id,
-        "element": o.element,
-        "window_start": t_min_at(o.window_start, session),
-        "window_end": t_min_at(o.window_end, session),
-        "metrics": o.metrics,
-        "label": o.label,
-        "aux": o.aux,
-        "evidence": o.evidence,
-        "run_id": str(o.run_id) if o.run_id else None,
-        "created_at": iso(o.created_at),
-    }
-    if o.facts is not None:
-        row["facts"] = o.facts
-    return row
+@router.get("/sessions/{session_id}/proposal")
+async def get_proposal(session_id: uuid.UUID, ctx: Ctx) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, _, _ = await load_context(db, session_id)
+        proposal = await db.get(Proposal, session_id)
+        if proposal is None:
+            raise not_found("proposal not found")
+        return proposal_service.internal(proposal, session)
 
 
-async def _find_observation(
-    db: AsyncSession, session: Session, card_id: str, window_start: float
-) -> Observation | None:
-    return await db.scalar(
-        select(Observation)
-        .where(
-            Observation.session_id == session.id,
-            Observation.card_id == card_id,
-            Observation.window_start == _at(session, window_start),
-        )
-        .execution_options(populate_existing=True)
-    )
+@router.get("/sessions/{session_id}/materials")
+async def materials(session_id: uuid.UUID, ctx: Ctx) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, position, _ = await load_context(db, session_id)
+        from app.services.phases import keyword_key
+
+        kw = await keyword_key(db, session_id)
+        listed = await views.materials(db, session, position)
+        return {
+            "catalog_version": position.catalog_version,
+            "locked": listed["locked"],
+            "keyword_key": kw,
+            "materials": listed["materials"],
+        }
+
+
+@router.get("/sessions/{session_id}/materials/{material_id}")
+async def material(session_id: uuid.UUID, material_id: str, ctx: Ctx) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, position, _ = await load_context(db, session_id)
+        row = await views.material(db, session, position, material_id)
+        if row is None:
+            raise ServiceError(423, "not_released", "material not released")
+        return {"material_id": row.material_id, "title": row.title, "content": row.content}
+
+
+class ObservationIn(BaseModel):
+    card_id: str
+    phase: Literal["keyword", "problem", "solution", "proposal"]
+    trigger_message_id: uuid.UUID | None = None
+    run_id: uuid.UUID | None = None
 
 
 @router.post("/sessions/{session_id}/observations")
-async def post_observation(session_id: uuid.UUID, body: ObservationIn, db: Db) -> dict[str, str]:
-    session = await load_session(db, session_id)
-    for item in body.evidence:
-        if not await _evidence_in_session(db, session_id, item):
-            raise error(422, "invalid_evidence", f"{item.type} {item.id} is not in this session")
-    stmt = (
-        insert(Observation)
-        .values(
-            session_id=session_id,
-            card_id=body.card_id,
-            element=body.element,
-            window_start=_at(session, body.window_start),
-            window_end=_at(session, body.window_end),
-            metrics=body.metrics,
-            label=body.label,
-            aux=body.aux,
-            evidence=[{"type": e.type, "id": str(e.id)} for e in body.evidence],
-            facts=body.facts,
-            run_id=body.run_id,
+async def post_observation(session_id: uuid.UUID, body: ObservationIn, ctx: Ctx) -> dict[str, Any]:
+    async def fn(db, session, position, fx):
+        found = await db.scalar(
+            select(Observation).where(
+                Observation.session_id == session_id, Observation.card_id == body.card_id
+            )
         )
-        .on_conflict_do_nothing(index_elements=["session_id", "card_id", "window_start"])
-        .returning(Observation.id)
-    )
-    new_id = (await db.execute(stmt)).scalar_one_or_none()
-    await db.commit()
-    if new_id is None:
-        new_id = (await _find_observation(db, session, body.card_id, body.window_start)).id
-    return {"id": str(new_id)}
+        if found is None:
+            debate.require_writable(session)
+            card = sc.card(position.scenario, body.card_id)
+            fired_at = ctx.clock.now()
+            if body.trigger_message_id:
+                trigger = await db.get(Message, body.trigger_message_id)
+                if trigger is not None and trigger.session_id == session_id:
+                    fired_at = trigger.created_at
+            found = Observation(
+                session_id=session_id,
+                card_id=body.card_id,
+                element=card["element"],
+                phase=body.phase,
+                fired_at=fired_at,
+                trigger_message_id=body.trigger_message_id,
+                run_id=body.run_id,
+                created_at=ctx.clock.now(),
+            )
+            db.add(found)
+            await db.flush()
+        return {
+            "observation_id": str(found.id),
+            "fired_at": iso(found.fired_at),
+            "t_min": t_min(session, found.fired_at) or 0.0,
+        }
+
+    return await _write(ctx, session_id, fn)
 
 
-@router.patch("/sessions/{session_id}/observations")
-async def patch_observation(
-    session_id: uuid.UUID, body: ObservationPatch, db: Db
-) -> dict[str, Any]:
-    """종료 finalize의 지표 갱신(collab_help promise_kept).
-
-    지정한 지표만 바꾸고 같은 run_id는 멱등이다.
-    """
-    session = await load_session(db, session_id)
-    row = await _find_observation(db, session, body.card_id, body.window_start)
-    if row is None:
-        raise error(404, "not_found", "observation not found")
-    if row.updated_run_id != body.run_id:
-        row.metrics = {**row.metrics, **body.metrics_patch}
-        row.updated_run_id = body.run_id
-        row.updated_at = datetime.now(UTC)
-        await db.commit()
-    return observation_json(row, session)
+async def observations_view(db, session: Session, scenario: dict) -> list[dict[str, Any]]:
+    rows = (
+        await db.scalars(
+            select(Observation)
+            .where(Observation.session_id == session.id)
+            .order_by(Observation.fired_at)
+        )
+    ).all()
+    cards = {
+        c.card_id: c
+        for c in (
+            await db.scalars(select(SessionCard).where(SessionCard.session_id == session.id))
+        ).all()
+    }
+    out = []
+    for o in rows:
+        card_def = sc.card(scenario, o.card_id)
+        need = sc.card_required_count(card_def)
+        delivered_seats = cards[o.card_id].delivered_seats if o.card_id in cards else []
+        out.append(
+            {
+                "observation_id": str(o.id),
+                "card_id": o.card_id,
+                "element": o.element,
+                "phase": o.phase,
+                "fired_at": iso(o.fired_at),
+                "t_min": t_min(session, o.fired_at) or 0.0,
+                "trigger_message_id": str(o.trigger_message_id) if o.trigger_message_id else None,
+                "delivered": len(delivered_seats) >= need,
+            }
+        )
+    return out
 
 
 @router.get("/sessions/{session_id}/observations")
-async def observations(session_id: uuid.UUID, db: Db) -> list[dict[str, Any]]:
-    session = await load_session(db, session_id)
-    rows = await db.execute(
-        select(Observation)
-        .where(Observation.session_id == session_id)
-        .order_by(Observation.window_start, Observation.card_id)
-    )
-    return [observation_json(o, session) for o in rows.scalars()]
+async def get_observations(session_id: uuid.UUID, ctx: Ctx) -> list[dict[str, Any]]:
+    async with ctx.session_factory() as db:
+        session, position, _ = await load_context(db, session_id)
+        return await observations_view(db, session, position.scenario)
 
 
-# ───────────── 어시스턴트 기록 ─────────────
+@router.get("/sessions/{session_id}/transcript_span")
+async def transcript_span(
+    session_id: uuid.UUID, message_id: uuid.UUID, ctx: Ctx, before: int = 5, after: int = 3
+) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, _, _ = await load_context(db, session_id)
+        target = await db.get(Message, message_id)
+        if target is None or target.session_id != session_id or target.channel != "room":
+            raise not_found("message not found")
+        base = select(Message).where(Message.session_id == session_id, Message.channel == "room")
+        prev = list(
+            (
+                await db.scalars(
+                    base.where(Message.created_at < target.created_at)
+                    .order_by(Message.created_at.desc())
+                    .limit(before)
+                )
+            ).all()
+        )
+        prev.reverse()
+        nxt = (
+            await db.scalars(
+                base.where(Message.created_at > target.created_at)
+                .order_by(Message.created_at)
+                .limit(after)
+            )
+        ).all()
+        [t] = await _with_intents(db, session, [target])
+        return {
+            "target": t,
+            "before": await _with_intents(db, session, prev),
+            "after": await _with_intents(db, session, list(nxt)),
+        }
+
+
+async def contributions_view(db, session: Session) -> dict[str, Any]:
+    options = (
+        await db.scalars(
+            select(Option).where(Option.session_id == session.id).order_by(Option.created_at)
+        )
+    ).all()
+    slots = (await db.scalars(select(Slot).where(Slot.session_id == session.id))).all()
+    adopted = {s.option_id for s in slots if s.status == "confirmed" and s.option_id}
+    proposer = {o.id: o.proposer for o in options}
+    return {
+        "options": [
+            {
+                "option_id": str(o.id),
+                "phase": o.phase,
+                "label": o.label,
+                "first_proposer": o.proposer,
+                "source_message_id": str(o.source_message_id) if o.source_message_id else None,
+                "t_min": t_min(session, o.created_at) or 0.0,
+                "adopted": o.id in adopted,
+            }
+            for o in options
+        ],
+        "slots": [
+            {
+                "phase": s.phase,
+                "option_id": str(s.option_id) if s.option_id else None,
+                "first_proposer": proposer.get(s.option_id),
+                "filled_by": s.filled_by,
+                "resolution": s.resolution,
+            }
+            for s in sorted(slots, key=lambda s: sc.PHASES.index(s.phase))
+            if s.status == "confirmed"
+        ],
+    }
+
+
+@router.get("/sessions/{session_id}/contributions")
+async def contributions(session_id: uuid.UUID, ctx: Ctx) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, _, _ = await load_context(db, session_id)
+        return await contributions_view(db, session)
+
+
+@router.get("/sessions/{session_id}/rubric")
+async def rubric(session_id: uuid.UUID, ctx: Ctx) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        _, position, _ = await load_context(db, session_id)
+        return reports.rubric_view(position.scenario)
+
+
+@router.post("/sessions/{session_id}/evaluations")
+async def save_evaluation(session_id: uuid.UUID, body: dict[str, Any], ctx: Ctx) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, position, _ = await load_context(db, session_id, lock=True)
+        for key in (
+            "run_id",
+            "rubric_version",
+            "prompt_versions",
+            "model",
+            "dimensions",
+            "elements",
+        ):
+            if key not in body:
+                raise ServiceError(422, "invalid_input", f"missing {key}")
+        try:
+            result = await reports.save_evaluation(db, session, position, body, ctx.clock.now())
+        except (ValueError, TypeError, KeyError) as exc:
+            raise ServiceError(422, "invalid_input", str(exc)) from exc
+        await db.commit()
+        return result
+
+
+@router.get("/sessions/{session_id}/evaluations")
+async def get_evaluations(
+    session_id: uuid.UUID, ctx: Ctx, run_id: uuid.UUID | None = None
+) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, _, _ = await load_context(db, session_id)
+        result = await reports.get_evaluations(db, session, run_id)
+        if result is None:
+            raise not_found("no evaluation")
+        return result
+
+
+@router.get("/sessions/{session_id}/facts")
+async def get_facts(session_id: uuid.UUID, ctx: Ctx) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, position, _ = await load_context(db, session_id)
+        return await facts.compute(db, session, position)
+
+
+@router.get("/sessions/{session_id}/slots")
+async def get_slots(session_id: uuid.UUID, ctx: Ctx) -> list[dict[str, Any]]:
+    async with ctx.session_factory() as db:
+        session, _, _ = await load_context(db, session_id)
+        rows = (await db.scalars(select(Slot).where(Slot.session_id == session_id))).all()
+        return [slot_full(session, s) for s in sorted(rows, key=lambda s: sc.PHASES.index(s.phase))]
 
 
 @router.get("/sessions/{session_id}/assistant_calls")
-async def assistant_calls(session_id: uuid.UUID, db: Db) -> list[dict[str, Any]]:
-    await load_session(db, session_id)
-    rows = await db.execute(
-        select(AssistantCall)
-        .where(AssistantCall.session_id == session_id)
-        .order_by(AssistantCall.created_at)
-    )
-    return [
-        {
-            "id": str(c.id),
-            "request_message_id": str(c.request_message_id),
-            "response_message_id": str(c.response_message_id) if c.response_message_id else None,
-            "cited_doc_ids": c.cited_doc_ids,
-            "created_at": iso(c.created_at),
-        }
-        for c in rows.scalars()
-    ]
-
-
-@router.get("/sessions/{session_id}/assistant_reuse")
-async def assistant_reuse(session_id: uuid.UUID, db: Db) -> list[dict[str, Any]]:
-    """제출 후에만 값이 있다. 비율은 내부 계산값이라 싣지 않고, 대신 호출마다 비율이 큰 행부터
-    준다(워커는 호출의 첫 applied 행을 반영 파트로 쓴다)."""
-    await load_session(db, session_id)
-    rows = await db.execute(
-        select(AssistantReuse)
-        .join(AssistantCall, AssistantCall.id == AssistantReuse.call_id)
-        .where(AssistantCall.session_id == session_id)
-        .order_by(
-            AssistantCall.created_at,
-            AssistantCall.id,
-            AssistantReuse.ratio.desc(),
-            AssistantReuse.part_no.nulls_last(),
+async def assistant_calls(session_id: uuid.UUID, ctx: Ctx) -> list[dict[str, Any]]:
+    """행마다 요청·응답 원문(request·response). 워커가 Report ai_usage 인용을 여기서 만든다."""
+    async with ctx.session_factory() as db:
+        await load_context(db, session_id)
+        rows = (
+            await db.scalars(
+                select(AssistantCall)
+                .where(AssistantCall.session_id == session_id)
+                .order_by(AssistantCall.created_at)
+            )
+        ).all()
+        ids = [c.request_message_id for c in rows] + [
+            c.response_message_id for c in rows if c.response_message_id
+        ]
+        texts = (
+            {
+                m.id: m.content
+                for m in (await db.scalars(select(Message).where(Message.id.in_(ids)))).all()
+            }
+            if ids
+            else {}
         )
-    )
-    return [
-        {
-            "call_id": str(r.call_id),
-            "doc_id": str(r.doc_id),
-            "part_no": r.part_no if r.part_no is not None else "final",
-            "applied": r.applied,
-        }
-        for r in rows.scalars()
-    ]
+        return [
+            {
+                "id": str(c.id),
+                "request_message_id": str(c.request_message_id),
+                "response_message_id": str(c.response_message_id)
+                if c.response_message_id
+                else None,
+                "request": texts.get(c.request_message_id, ""),
+                "response": texts.get(c.response_message_id, "") if c.response_message_id else "",
+                "cited_material_ids": list(c.cited_material_ids),
+                "created_at": iso(c.created_at),
+            }
+            for c in rows
+        ]
 
 
-# ───────────── 종료·리포트 ─────────────
-
-
-@router.post("/sessions/{session_id}/complete")
-async def complete(session_id: uuid.UUID, ctx: Ctx, db: Db) -> dict[str, Any]:
-    """보고 종료. 그래프가 보고 메시지 저장 뒤 부른다(러너가 세션 Lock을 쥔 채라 여기서 종료를
-    끝까지 돌리면 교착된다). 그래서 completed_at만 확정하고 나머지 종료(종료 실행·발행)는
-    백그라운드로 띄운다. 응답의 completed_at은 최종값이다."""
-    session = await load_session(db, session_id)
-    if session.status in ("completed", "report_ready", "approving", "reviewed"):
-        return {"status": "completed", "completed_at": iso(session.completed_at)}
-    if session.status != "reporting":
-        raise SessionError("conflict", f"cannot complete from {session.status}")
-    if session.completed_at is None:
-        session.completed_at = session.reported_at or datetime.now(UTC)
-        await db.commit()
-    reason = scheduler.ended_reason(session)
-    scheduler.spawn(("end", session_id), lambda: scheduler.complete(ctx, session_id, reason))
-    return {"status": "completed", "completed_at": iso(session.completed_at)}
-
-
-def content_hash(content: dict[str, Any]) -> str:
-    """정규화 JSON(키 정렬·공백 제거)의 sha256. draft와 final의 동일성 판단에 쓴다."""
-    canonical = json.dumps(content, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return hashlib.sha256(canonical.encode()).hexdigest()
-
-
-class ReportIn(BaseModel):
+class DraftIn(BaseModel):
     content: dict[str, Any]
-    # 워커 LLM 사용량(reports.usage). 해시는 content에만 적용한다
     usage: dict[str, Any] | None = None
 
 
 @router.post("/sessions/{session_id}/report/draft")
-async def save_draft(session_id: uuid.UUID, body: ReportIn, ctx: Ctx, db: Db) -> dict[str, str]:
-    session = await load_session(db, session_id)
-    if session.status in ("report_ready", "approving", "reviewed"):
-        return {"status": "report_ready"}  # 재전달. 먼저 저장된 draft를 그대로 둔다
-    if session.status != "completed":
-        raise SessionError("conflict", f"cannot save draft from {session.status}")
-    total = body.content.get("rubric", {}).get("auto_total") or {}
-    await db.execute(
-        insert(Report)
-        .values(
-            session_id=session_id,
-            stage="draft",
-            content=body.content,
-            content_hash=content_hash(body.content),
-            usage=body.usage or {},
-            auto_met=total.get("met"),
-            auto_unmet=total.get("unmet"),
-            auto_no_record=total.get("no_record"),
-        )
-        .on_conflict_do_nothing(index_elements=["session_id"])
-    )
-    await ctx.session_service(db).mark_report_ready(session_id)  # 한 번 커밋
-    return {"status": "report_ready"}
+async def report_draft(session_id: uuid.UUID, body: DraftIn, ctx: Ctx) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, _, _ = await load_context(db, session_id, lock=True)
+        result = await reports.save_draft(db, session, body.model_dump(), ctx.clock.now())
+        await db.commit()
+        return result
+
+
+class FinalIn(BaseModel):
+    content: dict[str, Any]
 
 
 @router.post("/sessions/{session_id}/report/final")
-async def save_final(session_id: uuid.UUID, body: ReportIn, ctx: Ctx, db: Db) -> dict[str, Any]:
-    # 세션 행을 잠근 채 상태를 다시 읽어, 동시 재전달에도 reviewed_at이 하나로 정해진다
-    session = (
-        await db.execute(
-            select(Session)
-            .where(Session.id == session_id)
-            .with_for_update()
-            .execution_options(populate_existing=True)
-        )
-    ).scalar_one_or_none()
-    if session is None:
-        raise SessionError("not_found", "session not found")
-    report = await db.get(Report, session_id, populate_existing=True)
-    if report is None or session.status not in ("approving", "reviewed"):
-        raise SessionError("conflict", f"cannot save final from {session.status}")
-    if content_hash(body.content) != report.content_hash:
-        raise error(409, "draft_mismatch", "final content differs from the approved draft")
-    if session.status == "reviewed":
-        return {"status": "reviewed", "reviewed_at": iso(report.reviewed_at)}
-    report.stage = "final"
-    report.reviewed_at = datetime.now(UTC)
-    await ctx.session_service(db).mark_reviewed(session_id)  # 한 번 커밋
-    return {"status": "reviewed", "reviewed_at": iso(report.reviewed_at)}
+async def report_final(session_id: uuid.UUID, body: FinalIn, ctx: Ctx) -> dict[str, Any]:
+    async with ctx.session_factory() as db:
+        session, _, _ = await load_context(db, session_id, lock=True)
+        result = await reports.save_final(db, session, body.model_dump(), ctx.clock.now())
+        await db.commit()
+        return result
 
 
-class ReportFailedIn(BaseModel):
+class FailedIn(BaseModel):
     error: str
 
 
 @router.post("/sessions/{session_id}/report_failed")
-async def report_failed(
-    session_id: uuid.UUID, body: ReportFailedIn, ctx: Ctx, db: Db
-) -> dict[str, str]:
-    session = await ctx.session_service(db).fail(session_id, "report", body.error)
-    return {"status": session.status}
+async def report_failed(session_id: uuid.UUID, body: FailedIn, ctx: Ctx) -> dict[str, Any]:
+    async def fn(db, session, position, fx):
+        return reports.report_failed(session, body.error, ctx.clock.now(), fx)
 
-
-# ───────────── e2e 전용 ─────────────
+    return await _write(ctx, session_id, fn)
 
 
 class TestSessionIn(BaseModel):
-    elements: list[str]
-    session_minutes: int = 120
-    mission_id: str = scenario_service.DEFAULT_MISSION
-    alias: str = "e2e"
-    # 둘 중 하나로 회사를 지정하면 그 회사의 채용 건으로 만든다(관리자 화면에서 보이게).
-    # 둘 다 오면 company_id 우선, 없는 회사면 404. 빈 문자열은 지정 실수라 422
+    session_minutes: Literal[60, 15] = 15
+    alias: str | None = None
     company_id: uuid.UUID | None = None
-    admin_email: str | None = Field(default=None, min_length=1)
+    admin_email: str | None = None
+    start_at: Literal["entry", "keyword", "problem", "solution", "proposal", "ended"] = "entry"
+    stage: str | None = None
 
 
-@router.post("/test/sessions")
-async def create_test_session(body: TestSessionIn, ctx: Ctx, db: Db) -> dict[str, str]:
-    """ENABLE_TEST_API=1일 때만. 회사·채용 건·초대를 한 번에 만들어 e2e가 링크로 입장하게 한다."""
+def _require_test_api(ctx: Ctx) -> None:
+    """의존성이라 본문 검증보다 먼저 돈다: 꺼져 있으면 본문과 상관없이 404."""
     if not ctx.settings.enable_test_api:
-        raise error(404, "not_found", "not found")
-    try:
-        scenario, version = scenario_service.build_scenario(
-            ctx.settings.scenarios_dir, body.elements, body.session_minutes, body.mission_id
-        )
-    except scenario_service.InvalidMission as exc:
-        raise error(422, "invalid_mission", str(exc)) from exc
-    except scenario_service.InvalidElements as exc:
-        raise error(422, "invalid_elements", str(exc)) from exc
-    if body.company_id is not None:
-        company = await db.get(Company, body.company_id)
-    elif body.admin_email is not None:
-        company = await db.scalar(
-            select(Company)
-            .join(Admin, Admin.company_id == Company.id)
-            .where(Admin.email == body.admin_email)
-        )
-    else:
-        company = await db.scalar(select(Company).where(Company.name == E2E_COMPANY))
-    if company is None and (body.company_id is not None or body.admin_email is not None):
-        raise error(404, "not_found", "company not found")
-    if company is None:
-        company = Company(name=E2E_COMPANY)
-        db.add(company)
-        await db.flush()
-    position = Position(
-        company_id=company.id,
-        name="e2e",
-        mission_id=body.mission_id,
-        elements=body.elements,
-        session_minutes=body.session_minutes,
-        catalog_version=version,
-        scenario=scenario,
-    )
-    db.add(position)
-    await db.commit()
-    session, _, raw = await ctx.session_service(db).create_for_invite(
-        position.id, body.alias, "e2e@example.com"
-    )
-    return {
-        "session_id": str(session.id),
-        "token": raw,
-        "invite_url": f"{ctx.settings.web_origins[0]}/s/{raw}",
-    }
+        raise not_found("test api disabled")
+
+
+TestApi = [Depends(_require_test_api)]
+
+
+@router.post("/test/sessions", dependencies=TestApi)
+async def test_session(body: TestSessionIn, ctx: Ctx) -> dict[str, Any]:
+    """단계 시드를 재생한 세션(ENABLE_TEST_API=1일 때만, 아니면 404)."""
+    return await test_sessions.create(ctx, body.model_dump())
+
+
+class AdvanceIn(BaseModel):
+    seconds: int | None = None
+    to: str | None = None
+
+
+@router.post("/test/sessions/{session_id}/advance", dependencies=TestApi)
+async def test_advance(session_id: uuid.UUID, body: AdvanceIn, ctx: Ctx) -> dict[str, Any]:
+    """시간 당기기. 시간 초과·카드·침묵 초대·자동 제출은 다음 스케줄러 틱이 평소대로 처리한다."""
+    return await test_sessions.advance(ctx, session_id, body.model_dump())

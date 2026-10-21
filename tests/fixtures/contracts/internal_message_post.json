@@ -1,13 +1,9 @@
 {
-  "channel": "team",
-  "sender": "colleague",
-  "content": "지표 문서 보니까 재참여율이 22%라서, 그 숫자부터 잡아 볼게요.",
-  "event_id": null,
-  "run_id": "r-2",
-  "seq": 1,
-  "meta": {
-    "tokens": 212,
-    "latency_ms": 1840,
-    "model": "gpt-4o-mini"
-  }
+  "id": "m-13",
+  "sender": "p1",
+  "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+  "phase": "problem",
+  "is_invite": false,
+  "t_min": 11.2,
+  "created_at": "2026-10-21T01:11:12Z"
 }

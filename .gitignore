@@ -15,3 +15,15 @@ apps/web/.claude/
 apps/web/skills-lock.json
 docs/handoff/reviews/uiux-shots/
 docs/handoff/reports/web-polish-shots/
+
+# stage-e2e 기록: 영상·trace·HTML 리포트는 커밋하지 않고 스크린샷·summary만 남긴다
+tests/e2e/records/stages/.artifacts/
+tests/e2e/records/stages/html-report/
+apps/web/test-results/
+
+# playtest 영상·스크린샷(용량이 커서 커밋하지 않음, 로그·제안·요약만 커밋)
+tests/playtest/records/**/*.webm
+tests/playtest/records/**/shots/
+tests/playtest/records/**/video/
+tests/playtest/records/**/server.log
+tests/playtest/records/**/server.pid

@@ -1,498 +1,399 @@
-"""리포트 draft 조립(docs/worker-infra/design.md 3단계, 형식은 contracts.md Report).
+"""aggregate(결정적 정리)와 draft(Report 조립). 둘 다 LLM을 부르지 않는다.
 
-요소 섹션 안에 카드 소섹션을 두고, 평가표는 카드마다 rubric.evaluate로 계산한다. LLM은 부르지 않는다
-(분류는 observe가 이미 했고 리포트 문장은 카탈로그 label_texts). collect가 모은 같은 세션 데이터만
-근거로 쓰며, 관찰이나 지표가 가리키는 id가 이 세션 데이터에 없으면(다른 세션 id 등) 뺀다.
-텍스트 필드(observed·note·line)는 금지어가 든 문장을 지운다.
-
-근거의 record_ref는 api 전체 기록(GET /admin/sessions/{id}/record)의 ref와 같은 값이다:
-같은 type·id와 세션 시작 기준 분(소수 둘째 자리). 기록에 없는 document·doc_view는 null.
-alias·position·deliverable·reviewer·notes·connection_gaps·purge_at은 api가 GET 때 붙인다.
+- aggregate: 사실 지표는 api 계산값 그대로(facts), 칸 기록에 최초 제안자·라벨, 카드 6장의 발동·전달·
+  장면 문장(`report_template` 그대로), 디브리핑용 관찰 창, 기여 대조표(contribution_check).
+  수준을 정하지 않는다.
+- draft: 저장된 평가(차원 행 + 요소 요약)에 차원 이름·담당자 참고 문구·근거 원문과 앞뒤 맥락
+  (`get_transcript_span`, 앞 5·뒤 3)을 붙인다. 요소 summary는 평가 에이전트 문장 그대로다.
+  총점·합계 필드는 없다. 조정·검토·메모·접속 끊김·기획안·설문은 api가 GET 때 병합한다.
 """
 
 import re
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from report_worker import rubric
-from report_worker.llm import LLM, empty_usage
+from report_worker.evaluate import FAILED_SUMMARY, RefIndex, has_forbidden
 
-PERSONAS = ("colleague", "manager")
-FIRED = ("fired", "done")
-# 카드 메시지가 예정 시각보다 이만큼(분) 넘게 늦으면 창을 놓친 것으로 본다(agent/design.md 90초)
-DELIVERY_DELAY_MAX_MIN = 1.5
-RECORDED = ("message", "share", "open", "task_event", "assistant_call")  # 전체 기록에 있는 타입
-REPORT_KINDS = ("team", "manager_dm")
+SEATS = ("p1", "p2", "p3")
+QUOTE_CHARS = 200
+PHASE_WORDS = {"keyword": ("키워드",), "problem": ("문제",), "solution": ("해결",)}
+# 앞 글자가 한글이면 낱말 일부("문제 ")라 제외한다
+SELF_WORDS = re.compile(r"(?<![가-힣])(본인|제가|저의|저는|내가|나의|제\s)")
+CREDIT_SPLIT = re.compile(r"[.\n/;]")
 
-# 합격·순위 표현과 평가표 밖의 점수 표현. 업무 문장("우선순위")은 남긴다.
-FORBIDDEN = re.compile(
-    r"합격|불합격|탈락|당락|(?<!우선)순위|등수|석차|(상위|하위)\s*\d+(\.\d+)?\s*%"
-    r"|\d+\s*위(?!치)|\d+\s*등(?!분)|\d+(\.\d+)?\s*점(?!검)"
-    r"|만점|감점|가산점|점수|채용\s*(을\s*)?(추천|권장)",
-    re.IGNORECASE,
-)
-SENTENCE_SPLIT = re.compile(r"(?<=[.!?。])\s+|\n+")
-TEXT_FIELDS = ("observed", "note", "line")
+SpanFn = Callable[[str], Awaitable[dict[str, Any]]]
 
 
-def clean_text(text: str | None) -> str | None:
-    """금지어가 든 문장을 지운다. 남는 문장이 없으면 null."""
-    if text is None:
+def _ts(value: str | None) -> datetime | None:
+    if not value:
         return None
-    kept = [s for s in SENTENCE_SPLIT.split(text) if s.strip() and not FORBIDDEN.search(s)]
-    return " ".join(s.strip() for s in kept) or None
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def clean_fields(node: Any) -> Any:
-    """observed·note·line 키의 문자열을 재귀로 검사한다."""
-    if isinstance(node, list):
-        return [clean_fields(v) for v in node]
-    if isinstance(node, dict):
-        return {
-            k: clean_text(v) if k in TEXT_FIELDS and isinstance(v, str) else clean_fields(v)
-            for k, v in node.items()
-        }
-    return node
+def t_min_of(started_at: str | None, at: str | None, default: float = 0.0) -> float:
+    start, moment = _ts(started_at), _ts(at)
+    if start is None or moment is None:
+        return default
+    return round((moment - start).total_seconds() / 60, 1)
 
 
-def _parse(value: str | None) -> datetime | None:
-    return datetime.fromisoformat(value) if value else None
+def excerpt(text: str | None) -> str:
+    text = (text or "").strip()
+    return text if len(text) <= QUOTE_CHARS else text[:QUOTE_CHARS] + "…"
 
 
-def _num(value: float | None) -> str:
-    """12.0 → "12", 12.5 → "12.5"(요약 문장의 분 표기, api 전체 기록과 같은 표기)."""
-    return "" if value is None else f"{value:g}"
+# ---- 기여 대조 ---------------------------------------------------------------------------------
 
 
-# 보드 변경 요약의 필드·값 한국어 표기(contracts.md "n번 <필드> → <새 값>(t분)").
-_FIELD_NAMES = {"assignee": "담당", "status": "상태", "order": "순서", "due_min": "언제까지"}
-_VALUE_NAMES = {
-    "candidate": "지원자",
-    "colleague": "동료",
-    "both": "함께",
-    "todo": "할 일",
-    "doing": "진행 중",
-    "done": "완료",
-}
+def _name_variants(display_name: str) -> list[str]:
+    # "강한결" → ["강한결", "한결"]: 성을 뺀 호칭("한결님")도 같은 사람으로 본다
+    names = [display_name]
+    if len(display_name) == 3:
+        names.append(display_name[1:])
+    return names
 
 
-def _task_summary(part_no: int, field: str, new_value: str | None, t_min: float | None) -> str:
-    """ "1번 담당 → 지원자(12분)", "1번 언제까지 → 40분(15분)". 값이 비면 "없음"."""
-    if new_value is None:
-        value = "없음"
-    elif field == "due_min":
-        value = f"{new_value}분"
-    else:
-        value = _VALUE_NAMES.get(new_value, new_value)
-    return f"{part_no}번 {_FIELD_NAMES.get(field, field)} → {value}({_num(t_min)}분)"
-
-
-class SessionData:
-    """collect 결과를 타입·id로 찾는 색인. 근거 검증의 기준(이 세션의 실제 행)."""
-
-    def __init__(self, data: dict[str, Any]) -> None:
-        self.session = data["session"]
-        self.scenario = self.session["position"]["scenario"]
-        self.started = _parse(self.session.get("started_at"))
-        self.events = {e["card_id"]: e for e in self.session.get("events") or []}
-        self.observations = {o["card_id"]: o for o in data.get("observations") or []}
-        self.honesty_facts = data.get("honesty_facts")
-        company = self.scenario.get("company") or {}
-        self.names = {
-            "colleague": (company.get("colleague") or {}).get("name") or "동료",
-            "manager": (company.get("manager") or {}).get("display")
-            or (company.get("manager") or {}).get("name")
-            or "팀장",
-        }
-        self.doc_titles = {d["doc_id"]: d["title"] for d in self.scenario.get("documents") or []}
-
-        self.messages = {m["id"]: m for m in data.get("messages") or []}
-        self.ordered_messages = sorted(
-            self.messages.values(), key=lambda m: (m.get("t_min") is None, m.get("t_min") or 0)
-        )
-        docs = (data.get("docs") or {}).get("documents") or []
-        self.docs = {d["doc_id"]: d for d in docs}
-        self.shares, self.opens = {}, {}
-        for d in docs:
-            for s in d.get("shares") or []:
-                self.shares[s["id"]] = {**s, "doc": d, "t_min": self.minutes(s["created_at"])}
-            for o in d.get("opens") or []:
-                self.opens[o["id"]] = {**o, "doc": d, "t_min": self.minutes(o["created_at"])}
-        self.revisions = {r["id"]: r for r in data.get("document_revisions") or []}
-        self.task_events = {
-            e["id"]: {**e, "t_min": self.minutes(e["created_at"])}
-            for e in data.get("task_events") or []
-        }
-        self.views = {
-            v["id"]: {**v, "t_min": self.minutes(v["viewed_at"])}
-            for v in data.get("doc_views") or []
-        }
-        self.calls = {}
-        for call in data.get("assistant_calls") or []:
-            request = self.messages.get(call.get("request_message_id")) or {}
-            response = self.messages.get(call.get("response_message_id")) or {}
-            self.calls[call["id"]] = {
-                **call,
-                "t_min": self.minutes(call["created_at"]),
-                "request": request.get("content", ""),
-                "response": response.get("content", ""),
-            }
-        self.reuse = [r for r in data.get("assistant_reuse") or [] if r["call_id"] in self.calls]
-        self.by_type: dict[str, dict[str, Any]] = {
-            "message": self.messages,
-            "document": self.revisions,
-            "share": self.shares,
-            "open": self.opens,
-            "task_event": self.task_events,
-            "doc_view": self.views,
-            "assistant_call": self.calls,
-        }
-
-    def minutes(self, value: str | None) -> float | None:
-        moment = _parse(value)
-        if moment is None or self.started is None:
-            return None
-        return round((moment - self.started).total_seconds() / 60, 2)
-
-    def type_of(self, item_id: str) -> str | None:
-        for kind, rows in self.by_type.items():
-            if item_id in rows:
-                return kind
-        return None
-
-    def card_timing(self, card: dict[str, Any]) -> tuple[bool, float | None, bool]:
-        """(발생, 실제 카드 시각(분), 전달 지연). 실제 시각은 이 이벤트 id의 첫 메시지 시각."""
-        event = self.events.get(card["card_id"])
-        if event is None or event.get("status") not in FIRED:
-            return False, None, False
-        sent = [
-            m["t_min"]
-            for m in self.ordered_messages
-            if m.get("event_id") == event["id"] and m.get("t_min") is not None
-        ]
-        actual = sent[0] if sent else self.minutes(event.get("fired_at"))
-        due = self.minutes(event.get("due_at"))
-        delayed = actual is not None and due is not None and actual - due > DELIVERY_DELAY_MAX_MIN
-        return True, actual if actual is not None else due, delayed
-
-    def prev_persona_message(self, t_min: float | None) -> str | None:
-        """근거 직전의 동료·팀장 메시지 1개를 "<보낸이> · <t>분: <본문>"으로(맥락, 점수 아님)."""
-        if t_min is None:
-            return None
-        prev = None
-        for m in self.ordered_messages:
-            if m.get("t_min") is None or m["t_min"] > t_min:
-                break
-            if m.get("sender") in PERSONAS:
-                prev = m
-        if prev is None:
-            return None
-        return f"{self.names[prev['sender']]} · {_num(prev['t_min'])}분: {prev.get('content', '')}"
-
-
-def _evidence(kind: str, item_id: str, data: SessionData, card_at: float | None) -> dict[str, Any]:
-    """contracts.md evidence 타입별 표현과 맥락·record_ref."""
-    row = data.by_type[kind][item_id]
-    t_min = row.get("t_min")
-    item: dict[str, Any] = {"type": kind, "id": item_id, "t_min": t_min}
-    if kind == "message":
-        item.update(channel=row.get("channel"), quote=row.get("content", ""))
-        reply = (row.get("meta") or {}).get("reply_to_doc") or row.get("reply_to_doc")
-        if reply:
-            item["reply_to_doc"] = reply
-    elif kind == "assistant_call":
-        item["quote"] = row["request"]
-    elif kind == "document":
-        part = row.get("part_no")
-        where = "최종본" if part == "final" else f"{part}번 파트"
-        item.update(
-            doc_id=row["doc_id"],
-            part_no=part,
-            revision=row["revision"],
-            summary=f"{where} 편집({_num(t_min)}분)",
-        )
-    elif kind == "share":
-        doc = row["doc"]
-        item.update(
-            doc_id=doc["doc_id"],
-            part_no=doc["part_no"],
-            version=row["version"],
-            summary=f"{doc['part_no']}번 파트 v{row['version']} 보냄({_num(t_min)}분)",
-        )
-    elif kind == "open":
-        doc = row["doc"]
-        item.update(
-            doc_id=doc["doc_id"],
-            version=row["version"],
-            summary=f"동료 {doc['part_no']}번 v{row['version']} 열람({_num(t_min)}분)",
-        )
-    elif kind == "task_event":
-        item.update(
-            part_no=row["part_no"],
-            field=row["field"],
-            summary=_task_summary(row["part_no"], row["field"], row.get("new_value"), t_min),
-        )
-    elif kind == "doc_view":
-        title = data.doc_titles.get(row["doc_id"], row["doc_id"])
-        item.update(doc_id=row["doc_id"], summary=f"{title} 열람({_num(t_min)}분)")
-    item["context"] = {
-        "prev_persona_message": data.prev_persona_message(t_min),
-        "card_at_t_min": card_at,
-    }
-    item["record_ref"] = {"type": kind, "id": item_id, "t_min": t_min} if kind in RECORDED else None
-    return item
-
-
-def _refs(ids: list[str], data: SessionData, allowed: set[str]) -> list[tuple[str, str]]:
-    """이 세션에 있고 항목이 허용하는 타입의 (타입, id)만. 순서 유지·중복 제거."""
-    out = []
-    for item_id in dict.fromkeys(str(i) for i in ids):
-        kind = data.type_of(item_id)
-        if kind in allowed:
-            out.append((kind, item_id))
-    return out
-
-
-def _window(
-    card: dict[str, Any],
-    observation: dict[str, Any] | None,
-    data: SessionData,
-    card_at: float | None,
-):
-    """관찰 창 {start_min, end_min}. 관찰 행이 없으면 실제 시각으로 계산한다: 이 카드의 실제
-    시각부터 다음에 실제로 실행된 요소 카드 또는 실제 종료까지. 조기 제출로 보고 요청이 당겨져도
-    창이 역전되지 않는다. 미발생 카드는 예정 시각(종료 뒤면 종료 시각)의 빈 창."""
-    if observation is not None:
-        return {"start_min": observation["window_start"], "end_min": observation["window_end"]}
-    end = data.minutes(data.session.get("completed_at"))
-    if card_at is None:
-        at = card["at_min"] if end is None else min(card["at_min"], end)
-        return {"start_min": at, "end_min": at}
-    start = card.get("window_start_min", card_at)
-    for other in data.scenario["cards"]:
-        if not other.get("element") or other["card_id"] == card["card_id"]:
-            continue
-        fired, at, _ = data.card_timing(other)
-        if fired and at is not None and at > card_at and (end is None or at < end):
-            end = at
-    return {"start_min": start, "end_min": end}
-
-
-def _label_messages(observation: dict[str, Any] | None, data: SessionData) -> list[str]:
-    """label 판정에 쓰인 지원자 활동: 관찰 evidence와 aux.related_message_ids."""
-    if observation is None:
-        return []
-    ids = [str(e["id"]) for e in observation.get("evidence") or []]
-    ids += [str(i) for i in (observation.get("aux") or {}).get("related_message_ids") or []]
-    return ids
-
-
-def build_card(card: dict[str, Any], data: SessionData) -> tuple[dict[str, Any], dict[str, Any]]:
-    """(섹션의 카드 소섹션, 평가표의 카드)."""
-    observation = data.observations.get(card["card_id"])
-    fired, card_at, delayed = data.card_timing(card)
-    missed = fired and (delayed or rubric.missed_window(observation))
-    event = data.events.get(card["card_id"]) or {}
-    missing = bool(event.get("document_missing"))
-    values = rubric.evaluate(
-        card,
-        observation,
-        event_fired=fired,
-        window_missed=missed,
-        document_missing=missing,
-    )
-    label_ids = _label_messages(observation, data)
-    labels = (card.get("label_texts") or {}) if observation else {}
-    state = rubric.label_state(card, observation)
-
-    items, scored = [], {}  # scored: 항목 근거로 실린 것(점수·판정에 쓰임, flag 없음)
-    for value, item_def in zip(values, card.get("rubric") or [], strict=True):
-        allowed = set(item_def.get("evidence_types") or data.by_type)
-        if value["auto"] == 1:
-            refs = _refs(value["evidence_ids"], data, allowed)
-        elif item_def["basis"] == "label" and value["auto"] == 0:
-            # label 항목은 판정 창의 지원자 활동을 met·unmet과 무관하게 싣는다(contracts.md)
-            refs = _refs(label_ids, data, allowed)
-        else:
-            refs = []
-        auto, reason = value["auto"], value["no_record_reason"]
-        if item_def["basis"] == "label" and auto is not None and not refs:
-            auto, reason = None, rubric.CLASSIFY_FAILED  # 근거 없는 분류 결과는 쓰지 않는다
-        basis = item_def["basis"]
-        if basis == "by_source":
-            # 충족시킨 근거가 보드면 기록 기반, 채팅(분류 aux)이면 AI 분류 기반
-            basis = "metric" if any(k == "task_event" for k, _ in refs) or not refs else "label"
-        evidence = [_evidence(k, i, data, card_at) for k, i in refs]
-        for e in evidence:
-            scored[(e["type"], e["id"])] = e
-        item = {
-            "id": item_def["id"],
-            "text": item_def["text"],
-            "basis": basis,
-            "auto": auto,
-            "reviewer": None,
-            "memo": None,
-            "adjusted": False,
-            "no_record_reason": reason,
-            "evidence": evidence,
-        }
-        if item_def.get("when", {}).get("metric") == "response_minutes":
-            # 실제 분. 관련 메시지가 없으면(0점 처리) null로 두어 0분과 구분한다
-            item["minutes"] = rubric.metric_value(observation, "response_minutes")[0]
-        items.append(item)
-
-    # 소섹션 근거: 항목 근거(flag 없음) + 그 밖의 관찰 근거·aux 사실·창 밖 관련 메시지.
-    # 항목 근거가 아닌 것은 중복 여부와 따로 판정해 aux 사실이면 aux_fact, 창 밖이면 out_of_window
-    window = _window(card, observation, data, card_at)
-    every = set(data.by_type)
-    aux_ids = {
-        ref
-        for name in card.get("aux_facts") or []
-        for ref in _refs(rubric.metric_value(observation, name)[1], data, every)
-    }
-
-    def outside(kind: str, item_id: str) -> bool:
-        t_min = data.by_type[kind][item_id].get("t_min")
-        end = window["end_min"]
-        return t_min is not None and not (
-            window["start_min"] <= t_min and (end is None or t_min < end)
-        )
-
-    related = [
-        ("message", m["id"])
-        for m in data.ordered_messages
-        if m.get("sender") == "candidate"
-        and ((m.get("meta") or {}).get("classification") or {}).get("related_card")
-        == card["card_id"]
+def credited_participants(segment: str, seat_names: dict[str, str]) -> list[str]:
+    credited = [
+        seat for seat, name in seat_names.items() if any(n in segment for n in _name_variants(name))
     ]
-    others = _refs(label_ids, data, every) + sorted(aux_ids) + related
-    section_evidence = list(scored.values())
-    seen = set(scored)
-    for kind, item_id in dict.fromkeys(others):
-        if (kind, item_id) in seen:
+    if SELF_WORDS.search(segment):
+        credited.append("candidate")
+    return credited
+
+
+def credit_segment(idea_credit: str, phase: str, label: str) -> str | None:
+    """idea_credit에서 그 안(단계 이름 또는 라벨)을 말한 첫 조각."""
+    segments = [s.strip() for s in CREDIT_SPLIT.split(idea_credit or "") if s.strip()]
+    for segment in segments:
+        if label and label in segment:
+            return segment
+    for segment in segments:
+        if any(word in segment for word in PHASE_WORDS.get(phase, ())):
+            return segment
+    return None
+
+
+def contribution_check(
+    contributions: dict[str, Any], idea_credit: str, seat_names: dict[str, str]
+) -> list[dict[str, Any]]:
+    """채택된 칸 중 최초 제안자가 AI 동료인 안마다 실제 제안자 / 기획안에 적힌 기여자."""
+    options = {o["option_id"]: o for o in contributions.get("options", [])}
+    rows = []
+    for slot in contributions.get("slots", []):
+        option_id = slot.get("option_id")
+        if not option_id or slot.get("first_proposer") not in SEATS:
             continue
-        seen.add((kind, item_id))
-        flag = None
-        if (kind, item_id) in aux_ids:
-            flag = "aux_fact"
-        elif kind == "message" and outside(kind, item_id):
-            flag = "out_of_window"
-        elif (kind, item_id) in related:
-            continue  # 창 안의 관련 메시지는 관찰 근거로 오지 않았으면 싣지 않는다
-        item = _evidence(kind, item_id, data, card_at)
-        section_evidence.append({**item, "flag": flag} if flag else item)
-    section_evidence.sort(key=lambda e: (e["t_min"] is None, e["t_min"] or 0))
-
-    reason = _card_reason(state, fired, missed, missing, items)
-    no_record_texts = (data.scenario.get("rubric_rules") or {}).get("no_record_reasons") or {}
-    section = {
-        "card_id": card["card_id"],
-        "name": card["name"],
-        "situation": card.get("situation"),
-        "event_fired": fired,
-        "card_at_t_min": card_at,
-        "window": window,
-        # 항목이 전부 기록 없음이면(미발생·창 놓침·문서 미제공 등) 관찰 문장도 싣지 않는다
-        "observed": labels.get(observation.get("label"))
-        if state == "labeled" and reason is None
-        else None,  # reason은 항목이 하나라도 값을 가지면 None이다
-        "no_record_reason": reason,
-        "note": no_record_texts.get(reason) if reason else None,
-        "evidence": section_evidence if reason in (None, rubric.CLASSIFY_FAILED) else [],
-    }
-    if card["card_id"] == "honesty_report":
-        section["facts"] = data.honesty_facts
-    rubric_card = {"card_id": card["card_id"], "name": card["name"], "items": items}
-    return section, rubric_card
-
-
-def _card_reason(state: str, fired: bool, missed: bool, missing: bool, items) -> str | None:
-    """카드 소섹션의 기록 없음 사유. 근거 검사까지 마친 최종 항목 값으로 계산하며, 항목이 모두
-    기록 없음일 때만 값이 있다."""
-    if any(i["auto"] is not None for i in items):
-        return None
-    if not fired:
-        return rubric.EVENT_NOT_FIRED
-    if missed:
-        return rubric.WINDOW_MISSED
-    if missing:
-        return rubric.DOCUMENT_MISSING
-    if state in ("missing", rubric.NO_ACTIVITY):
-        return rubric.NO_ACTIVITY
-    if state == rubric.UNCLASSIFIED:
-        return rubric.CLASSIFY_FAILED
-    reasons = {i["no_record_reason"] for i in items}
-    if len(reasons) == 1:
-        return reasons.pop()  # 예: 초안이 끝내 오지 않아 두 항목 모두 document_missing
-    if rubric.CLASSIFY_FAILED in reasons:
-        return rubric.CLASSIFY_FAILED
-    return items[0]["no_record_reason"]
-
-
-def build_ai_usage(data: SessionData) -> dict[str, Any]:
-    """시간순 사실만(분류 라벨·비율 없음). applied_part는 반영된(applied) 파트 중 반영 비율이
-    가장 큰 것: 내부 API가 호출마다 비율 큰 순으로 주므로 첫 applied 행이다."""
-    calls = sorted(data.calls.values(), key=lambda c: (c["t_min"] is None, c["t_min"] or 0))
-    applied: dict[str, int | str] = {}
-    for row in data.reuse:
-        if row.get("applied") and row["call_id"] not in applied:
-            applied[row["call_id"]] = row["part_no"]
-    return {
-        "used": bool(calls),
-        "events": [
+        label = options.get(option_id, {}).get("label", "")
+        segment = credit_segment(idea_credit, slot["phase"], label)
+        rows.append(
             {
-                "call_id": c["id"],
-                "t_min": c["t_min"],
-                "request_quote": c["request"],
-                "response_quote": c["response"],
-                "cited_doc_ids": list(c.get("cited_doc_ids") or []),
-                "applied_part": applied.get(c["id"]),
+                "phase": slot["phase"],
+                "option_id": option_id,
+                "label": label,
+                "first_proposer": slot["first_proposer"],
+                "credited_in_proposal": credited_participants(segment, seat_names)
+                if segment
+                else [],
+                "credit_quote": segment,
             }
-            for c in calls
-        ],
+        )
+    return rows
+
+
+# ---- aggregate ---------------------------------------------------------------------------------
+
+
+def aggregate(
+    session: dict[str, Any], record: dict[str, Any], contributions: dict[str, Any]
+) -> dict[str, Any]:
+    scenario = (session.get("position") or {}).get("scenario") or {}
+    options = {o["option_id"]: o for o in contributions.get("options", [])}
+    first_by_phase = {s["phase"]: s.get("first_proposer") for s in contributions.get("slots", [])}
+    seat_names = {
+        s["seat"]: s["display_name"] for s in record.get("seats", []) if s["seat"] in SEATS
     }
+    observations = {o["card_id"]: o for o in record.get("observations", [])}
+    idea_credit = (((record.get("proposal") or {}).get("sections")) or {}).get("idea_credit", "")
+
+    slots = [
+        {
+            "phase": s["phase"],
+            "value": s["value"],
+            "option_id": s.get("option_id"),
+            "filled_by": s["filled_by"],
+            "resolution": s["resolution"],
+            "t_min": s["t_min"],
+            "first_proposer": first_by_phase.get(s["phase"]) if s.get("option_id") else None,
+            "support": [
+                {
+                    "option_id": row["option_id"],
+                    "label": options.get(row["option_id"], {}).get("label", ""),
+                    "supporters": row["supporters"],
+                }
+                for row in s.get("support", [])
+            ],
+        }
+        for s in record.get("slots", [])
+    ]
+    cards, debrief_cards = [], []
+    for card in scenario.get("cards", []):
+        seen = observations.get(card["card_id"])
+        cards.append(
+            {
+                "card_id": card["card_id"],
+                "element": card["element"],
+                "fired_at": seen["t_min"] if seen else None,
+                "delivered": bool(seen and seen.get("delivered")),
+                "scene": card.get("report_template", ""),
+            }
+        )
+        debrief_cards.append(
+            {
+                "card_id": card["card_id"],
+                "element": card["element"],
+                "phase": card.get("stage_id") or (seen or {}).get("phase"),
+                "fired": seen is not None,
+                "fired_t_min": seen["t_min"] if seen else None,
+                "window": seen.get("window") if seen else None,
+            }
+        )
+    return {
+        "facts": record.get("facts", {}),
+        "contribution_check": contribution_check(contributions, idea_credit, seat_names),
+        "slots": slots,
+        "cards": cards,
+        "debrief_cards": debrief_cards,
+    }
+
+
+def ai_usage(
+    calls: list[dict[str, Any]],
+    facts: dict[str, Any],
+    started_at: str | None,
+) -> dict[str, Any]:
+    """어시스턴트 호출을 시간순 사실로만. 분류·비율 없음."""
+    fact_t = {c["call_id"]: c["t_min"] for c in facts.get("assistant_calls", [])}
+    events = [
+        {
+            "call_id": call["id"],
+            "t_min": fact_t.get(call["id"], t_min_of(started_at, call.get("created_at"))),
+            "request_quote": excerpt(call.get("request")),
+            "response_quote": excerpt(call.get("response")),
+            "cited_material_ids": call.get("cited_material_ids", []),
+        }
+        for call in calls
+    ]
+    events.sort(key=lambda e: e["t_min"])
+    return {"used": bool(events), "events": events}
+
+
+# ---- draft -------------------------------------------------------------------------------------
+
+
+def _context(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {"id": m["id"], "sender": m["sender"], "content": m["content"], "t_min": m["t_min"]}
+        for m in items
+    ]
+
+
+class EvidenceBuilder:
+    """근거 참조 문자열 → Report `evidence[]` 항목. 메시지 맥락은 메시지마다 한 번만 조회한다."""
+
+    def __init__(
+        self,
+        session_id: str,
+        record: dict[str, Any],
+        contributions: dict[str, Any],
+        span: SpanFn,
+    ) -> None:
+        self.session_id = session_id
+        self.refs = RefIndex(record, contributions)
+        self.messages = {m["id"]: m for m in record.get("messages", [])}
+        self.slots = {s["phase"]: s for s in record.get("slots", [])}
+        proposal = record.get("proposal") or {}
+        self.sections = proposal.get("sections") or {}
+        session = record.get("session") or {}
+        self.proposal_t = t_min_of(
+            session.get("started_at"),
+            proposal.get("submitted_at") or session.get("completed_at"),
+            float(session.get("session_minutes") or 0),
+        )
+        self.options = {o["option_id"]: o for o in contributions.get("options", [])}
+        self.span = span
+        self._spans: dict[str, dict[str, Any]] = {}
+
+    async def build(self, ref: str, dimension_id: str) -> dict[str, Any]:
+        if not self.refs.exists(ref):
+            raise ValueError(f"evidence ref not in session: {ref}")
+        kind, key = ref.split(":", 1)
+        head = {"ref": ref, "counted": self.refs.counted(ref, dimension_id)}
+        if kind == "msg":
+            m = self.messages[key]
+            if key not in self._spans:
+                self._spans[key] = await self.span(key)
+            span = self._spans[key]
+            return {
+                **head,
+                "kind": "message",
+                "speaker": m["sender"],
+                "phase": m["phase"],
+                "t_min": m["t_min"],
+                "origin": m.get("origin"),
+                "quote": m["content"],
+                "context": {
+                    "before": _context(span.get("before", [])),
+                    "after": _context(span.get("after", [])),
+                },
+                "record_ref": {"type": "message", "id": key, "t_min": m["t_min"]},
+            }
+        if kind == "slot":
+            s = self.slots[key]
+            return {
+                **head,
+                "kind": "slot",
+                "phase": key,
+                "value": s["value"],
+                "resolution": s["resolution"],
+                "filled_by": s["filled_by"],
+                "support": s.get("support", []),
+                "t_min": s["t_min"],
+                "record_ref": {"type": "slot", "id": key, "t_min": s["t_min"]},
+            }
+        if kind == "proposal":
+            return {
+                **head,
+                "kind": "proposal",
+                "field": key,
+                "quote": excerpt(self.sections.get(key)),
+                "t_min": self.proposal_t,
+                "record_ref": {
+                    "type": "proposal_submit",
+                    "id": self.session_id,
+                    "t_min": self.proposal_t,
+                },
+            }
+        option = self.options[key]
+        slot = self.slots.get(option["phase"])
+        if option.get("adopted") and slot:
+            record_ref = {"type": "slot", "id": option["phase"], "t_min": slot["t_min"]}
+        elif option.get("source_message_id"):
+            record_ref = {
+                "type": "message",
+                "id": option["source_message_id"],
+                "t_min": option["t_min"],
+            }
+        else:
+            record_ref = {"type": "phase", "id": option["phase"], "t_min": option["t_min"]}
+        fields = (
+            "option_id",
+            "phase",
+            "label",
+            "first_proposer",
+            "source_message_id",
+            "t_min",
+            "adopted",
+        )
+        return {
+            **head,
+            "kind": "contribution",
+            **{f: option.get(f) for f in fields},
+            "record_ref": record_ref,
+        }
+
+
+def _check_text(text: str | None, forbidden: list[re.Pattern], where: str) -> None:
+    if text and has_forbidden(text, forbidden):
+        raise ValueError(f"forbidden expression in {where}")
 
 
 async def build_draft(
-    raw: dict[str, Any], llm: LLM, *, now: datetime | None = None
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """(draft content, usage). 선택 요소만, 요소 섹션 안에 카드 소섹션을 둔다. LLM 호출은 없다."""
-    data = SessionData(raw)
-    selected = set(data.session["position"]["elements"])
-    meta = {e["id"]: e for e in data.scenario.get("element_meta") or []}
-    order = [e["id"] for e in data.scenario.get("element_meta") or [] if e["id"] in selected]
-    cards_by_element: dict[str, list[dict[str, Any]]] = {e: [] for e in order}
-    for card in data.scenario["cards"]:
-        if card.get("element") in cards_by_element:
-            cards_by_element[card["element"]].append(card)
+    *,
+    session: dict[str, Any],
+    record: dict[str, Any],
+    rubric: dict[str, Any],
+    contributions: dict[str, Any],
+    aggregated: dict[str, Any],
+    evaluation: dict[str, Any],
+    usage_ai: dict[str, Any],
+    span: SpanFn,
+    forbidden: list[re.Pattern],
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    session_id = session["id"]
+    rows = {d["dimension_id"]: d for d in evaluation["dimensions"]}
+    summaries = {e["element"]: e for e in evaluation["elements"]}
+    evidence = EvidenceBuilder(session_id, record, contributions, span)
 
-    summary, sections, rubric_elements = [], [], []
-    for element in order:
-        name = meta[element]["name"]
-        built = [build_card(card, data) for card in cards_by_element[element]]
-        auto = rubric.tally([i["auto"] for _, c in built for i in c["items"]])
-        observed = [s["observed"] for s, _ in built if s["observed"]]
-        summary.append(
-            {"element": element, "name": name, "line": ". ".join(observed) or None, **auto}
+    elements, dimensions = [], []
+    for element_rubric in rubric["elements"]:
+        element = element_rubric["element"]
+        element_rows = []
+        for dimension in element_rubric["dimensions"]:
+            row = rows[dimension["dimension_id"]]
+            _check_text(row["rationale"], forbidden, dimension["dimension_id"])
+            item = {
+                "element": element,
+                "dimension_id": row["dimension_id"],
+                "name": dimension["name"],
+                "level": row["level"],
+                "no_record_reason": row.get("no_record_reason"),
+                "rationale": row["rationale"],
+                "confidence": row.get("confidence"),
+                "evidence_refs": row["evidence_refs"],
+                "evidence": [
+                    await evidence.build(ref, row["dimension_id"]) for ref in row["evidence_refs"]
+                ],
+            }
+            if row["level"] is not None:
+                hints = {lv["level"]: lv.get("reviewer_hint") for lv in dimension.get("levels", [])}
+                if hints.get(row["level"]):
+                    item["reviewer_hint"] = hints[row["level"]]
+            element_rows.append(item)
+        summary = summaries[element]
+        text = summary.get("summary") or FAILED_SUMMARY
+        _check_text(text, forbidden, f"{element} summary")
+        elements.append(
+            {
+                "element": element,
+                "name": element_rubric["name"],
+                "level": summary["level"],
+                "summary": text,
+                "dimension_count": summary["dimension_count"],
+                "no_record_count": summary["no_record_count"],
+                "low_confidence_count": sum(r["confidence"] == "low" for r in element_rows),
+            }
         )
-        sections.append({"element": element, "name": name, "cards": [s for s, _ in built]})
-        rubric_elements.append(
-            {"element": element, "name": name, "auto": auto, "cards": [c for _, c in built]}
-        )
+        dimensions.extend(element_rows)
 
-    content = {
-        "session_id": data.session["id"],
+    seats = sorted(session.get("seats", []), key=lambda s: s["seat"] != "candidate")
+    position = session.get("position") or {}
+    generated = (now or datetime.now(UTC)).isoformat().replace("+00:00", "Z")
+    return {
+        "session_id": session_id,
+        "alias": session.get("alias") or "",
         "stage": "draft",
-        "summary": summary,
-        "rubric": {
-            "elements": rubric_elements,
-            "auto_total": rubric.total([e["auto"] for e in rubric_elements]),
-            "reviewer_total": None,
-            "review": None,
+        "position": {
+            "name": position.get("name") or "",
+            "session_minutes": position.get("session_minutes")
+            or (record.get("session") or {}).get("session_minutes"),
         },
-        "sections": sections,
-        "ai_usage": build_ai_usage(data),
-        "generated_at": (now or datetime.now(UTC)).isoformat(),
-        "reviewed_at": None,
+        "seats": seats,
+        "evaluation": {
+            "run_id": evaluation["run_id"],
+            "rubric_version": evaluation["rubric_version"],
+            "prompt_versions": evaluation["prompt_versions"],
+            "model": evaluation["model"],
+        },
+        "elements": elements,
+        "dimensions": dimensions,
+        "facts": aggregated["facts"],
+        "contribution_check": aggregated["contribution_check"],
+        "slots": aggregated["slots"],
+        "cards": aggregated["cards"],
+        "debrief": {"cards": aggregated["debrief_cards"]},
+        "ai_usage": usage_ai,
+        "generated_at": generated,
     }
-    return clean_fields(content), empty_usage(llm.model)

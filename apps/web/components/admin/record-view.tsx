@@ -2,82 +2,54 @@
 
 // 전체 기록(읽기 전용 타임라인). 리포트의 "기록에서 보기"로 들어오면 #<type>-<id> 줄로 스크롤하고 하이라이트한다.
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
-import { Button, Chip, cn } from "@/components/ui";
+import { Avatar, Button, Chip, cn } from "@/components/ui";
 
-import { sessionClock } from "./format";
+import { nameOf, officeClock, PHASE_TEXT, readableSummary } from "./format";
 import { recordAnchor } from "./review";
-import type { RecordEntry } from "./types";
+import type { PhaseId, RecordEntry, ReportSeat, Sender } from "./types";
 
-type Kind = "talk" | "doc" | "board" | "assistant" | "gap";
-
-const KIND_OF: Record<RecordEntry["type"], Kind> = {
-  message: "talk",
-  notice: "talk",
-  share: "doc",
-  open: "doc",
-  task_event: "board",
-  assistant_call: "assistant",
-  connection_gap: "gap",
-};
-
-const KIND_LABEL: Record<Kind, string> = {
-  talk: "대화",
-  doc: "문서",
-  board: "보드",
-  assistant: "어시스턴트",
-  gap: "접속 끊김",
-};
-
-const TYPE_LABEL: Record<RecordEntry["type"], string> = {
+export const TYPE_LABEL: Record<RecordEntry["type"], string> = {
   message: "메시지",
-  notice: "알림",
-  share: "보냄",
-  open: "열람",
-  task_event: "보드",
+  slot: "칸 확정",
+  phase: "단계",
   assistant_call: "어시스턴트",
-  connection_gap: "끊김",
+  material_view: "자료 열람",
+  proposal_submit: "기획안 제출",
+  connection_gap: "접속 끊김",
 };
 
-const CHANNEL_LABEL: Record<string, string> = {
-  team: "팀 채널",
-  dm: "동료 DM",
-  manager_dm: "팀장 DM",
-  notice: "알림",
-};
-const BY_LABEL: Record<string, string> = {
-  candidate: "지원자",
-  colleague: "동료",
-  manager: "팀장",
-  system: "시스템",
+const BUBBLE: Record<Sender, string> = {
+  candidate: "bg-bubble-candidate text-on-bubble-candidate",
+  p1: "bg-bubble-p1 text-on-bubble",
+  p2: "bg-bubble-p2 text-on-bubble",
+  p3: "bg-bubble-p3 text-on-bubble",
+  system: "",
 };
 
-const FIELD_LABEL: Record<string, string> = {
-  assignee: "담당",
-  due_min: "언제까지",
-  status: "상태",
-  order: "순서",
+export type RecordFilter = {
+  type: RecordEntry["type"] | "all";
+  by: Sender | "all";
+  phase: PhaseId | "all";
 };
 
-/**
- * 서버 요약의 코드 값을 사람 말로: "1번 카드 assignee 변경(12분)" → "1번 담당 변경 · 00:12".
- * 바뀐 값(누구로·언제까지)은 기록 응답에 없어 보이지 못한다(보고서 변경 요청).
- */
-export function readable(e: RecordEntry) {
-  const m = /^(\d+)번 카드 (\w+) 변경\(([\d.]+)분\)$/.exec(e.summary);
-  if (m) return `${m[1]}번 ${FIELD_LABEL[m[2]] ?? m[2]} 변경 · ${sessionClock(Number(m[3]))}`;
-  return e.summary.replace(/\(([\d.]+)분\)$/, (_, t: string) => ` · ${sessionClock(Number(t))}`);
+/** 각 줄의 단계: 단계 시작 줄을 만날 때마다 바뀐다 */
+export function phasesOf(entries: RecordEntry[]): PhaseId[] {
+  let current: PhaseId = "keyword";
+  return entries.map((e) => {
+    if (e.type === "phase" && e.ref.id in PHASE_TEXT) current = e.ref.id as PhaseId;
+    return current;
+  });
 }
 
-export type RecordFilter = { kind: Kind | "all"; channel: string | "all"; by: string | "all" };
-
 export function filterRecord(entries: RecordEntry[], f: RecordFilter) {
+  const phases = phasesOf(entries);
   return entries.filter(
-    (e) =>
-      (f.kind === "all" || KIND_OF[e.type] === f.kind) &&
-      (f.channel === "all" || e.channel === f.channel) &&
-      (f.by === "all" || e.by === f.by),
+    (e, i) =>
+      (f.type === "all" || e.type === f.type) &&
+      (f.by === "all" || e.by === f.by) &&
+      (f.phase === "all" || phases[i] === f.phase),
   );
 }
 
@@ -112,17 +84,25 @@ function Select({
 
 export function RecordView({
   entries,
+  seats,
+  sessionMinutes,
   backHref,
   highlight: forced,
 }: {
   entries: RecordEntry[];
+  seats: ReportSeat[];
+  sessionMinutes: number;
   backHref: string;
-  /** 테스트·서버 렌더용. 없으면 주소의 #앵커를 읽는다 */
+  /** 테스트용. 없으면 주소의 #앵커를 읽는다 */
   highlight?: string;
 }) {
-  const [hash, setHash] = useState<string | null>(forced ?? null);
-  const [filter, setFilter] = useState<RecordFilter>({ kind: "all", channel: "all", by: "all" });
+  const [hash, setHash] = useState<string | null>(null);
+  const [filter, setFilter] = useState<RecordFilter>({ type: "all", by: "all", phase: "all" });
   const highlight = forced ?? hash;
+  const names = Object.fromEntries(seats.map((s) => [s.seat, s.display_name])) as Partial<
+    Record<Sender, string>
+  >;
+  const avatars = Object.fromEntries(seats.map((s) => [s.seat, s.avatar_url]));
 
   useEffect(() => {
     const read = () => setHash(window.location.hash.slice(1) || null);
@@ -135,45 +115,40 @@ export function RecordView({
   }, [highlight, entries.length]);
 
   const rows = filterRecord(entries, filter);
-  // 리포트 카드에서 왔으면 돌아갈 때 그 카드를 펼친다
-  const card = useSyncExternalStore(
-    () => () => {},
-    () => new URLSearchParams(window.location.search).get("card"),
-    () => null,
+  const people: [string, string][] = (["candidate", "p1", "p2", "p3", "system"] as Sender[]).map(
+    (s) => [s, s === "candidate" ? `지원자 ${names.candidate ?? ""}`.trim() : nameOf(names, s)],
   );
-  const back = card ? `${backHref}#card-${card}` : backHref;
   return (
     <div className="flex flex-col gap-4">
-      {/* 머리 고정: 길게 내려가도 "리포트로 돌아가기"와 필터가 남는다 */}
-      <div className="no-print sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-3 border-b border-line bg-canvas/95 px-1 py-2 backdrop-blur-[2px]">
-        <Link href={back}>
+      <div className="no-print sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-3 border-b border-line bg-canvas px-1 py-2">
+        <Link href={backHref}>
           <Button variant="secondary" size="sm">
             ← 리포트로 돌아가기
           </Button>
         </Link>
         <Select
           label="종류"
-          value={filter.kind}
-          onChange={(v) => setFilter((f) => ({ ...f, kind: v as RecordFilter["kind"] }))}
-          options={[["all", "전체"], ...(Object.entries(KIND_LABEL) as [string, string][])]}
-        />
-        <Select
-          label="채널"
-          value={filter.channel}
-          onChange={(v) => setFilter((f) => ({ ...f, channel: v }))}
-          options={[["all", "전체"], ...Object.entries(CHANNEL_LABEL)]}
+          value={filter.type}
+          onChange={(v) => setFilter((f) => ({ ...f, type: v as RecordFilter["type"] }))}
+          options={[["all", "전체"], ...(Object.entries(TYPE_LABEL) as [string, string][])]}
         />
         <Select
           label="주체"
           value={filter.by}
-          onChange={(v) => setFilter((f) => ({ ...f, by: v }))}
-          options={[["all", "전체"], ...Object.entries(BY_LABEL)]}
+          onChange={(v) => setFilter((f) => ({ ...f, by: v as RecordFilter["by"] }))}
+          options={[["all", "전체"], ...people]}
+        />
+        <Select
+          label="단계"
+          value={filter.phase}
+          onChange={(v) => setFilter((f) => ({ ...f, phase: v as RecordFilter["phase"] }))}
+          options={[["all", "전체"], ...(Object.entries(PHASE_TEXT) as [string, string][])]}
         />
         <Button variant="ghost" size="sm" className="ml-auto" onClick={() => window.print()}>
           인쇄
         </Button>
       </div>
-      <p className="text-sm text-muted">세션 전체 시간순 기록 · 읽기 전용</p>
+      <p className="text-sm text-muted">세션 전체 시간순 기록 · 읽기 전용 · 시각은 회의 속 시각</p>
       {rows.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted">조건에 맞는 기록 없음</p>
       ) : (
@@ -187,22 +162,44 @@ export function RecordView({
                 id={anchor}
                 aria-current={on || undefined}
                 className={cn(
-                  "grid scroll-mt-20 grid-cols-[56px_88px_1fr] gap-3 border-b border-line px-4 py-2.5 text-sm transition-colors duration-300 last:border-b-0",
+                  "grid scroll-mt-20 grid-cols-[48px_84px_1fr] gap-3 border-b border-line px-4 py-2.5 text-sm transition-colors duration-300 last:border-b-0",
                   on && "bg-accent-soft",
                 )}
               >
-                <span className="text-muted tabular-nums">{sessionClock(e.t_min)}</span>
-                <span className="flex flex-col items-start gap-1">
+                <span className="text-muted tabular-nums">
+                  {officeClock(e.t_min, sessionMinutes)}
+                </span>
+                <span>
                   <Chip tone={e.type === "connection_gap" ? "danger" : "outline"}>
                     {TYPE_LABEL[e.type]}
                   </Chip>
                 </span>
-                <span className="min-w-0">
-                  <span className="text-xs text-muted">
-                    {e.type === "notice" ? "리서치 담당" : (BY_LABEL[e.by] ?? e.by)}
-                    {e.channel && ` · ${CHANNEL_LABEL[e.channel] ?? e.channel}`}
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted">
+                    {e.by !== "system" && (
+                      <Avatar
+                        seat={e.by}
+                        src={avatars[e.by]}
+                        name={nameOf(names, e.by)}
+                        size={20}
+                      />
+                    )}
+                    {nameOf(names, e.by)}
                   </span>
-                  <span className="block break-words">{readable(e)}</span>
+                  {e.type === "message" && e.by !== "system" ? (
+                    <span
+                      className={cn(
+                        "w-fit max-w-[85%] rounded-bubble px-3 py-1.5 break-words",
+                        BUBBLE[e.by],
+                      )}
+                    >
+                      {e.summary}
+                    </span>
+                  ) : (
+                    <span className={cn("break-words", e.by === "system" && "text-muted")}>
+                      {readableSummary(e.summary)}
+                    </span>
+                  )}
                 </span>
               </li>
             );

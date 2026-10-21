@@ -1,126 +1,185 @@
-// 완료 기준(리포트): draft의 요약표·출처 칩·주고받은 문서·접힌 소섹션·기록/AI 분류 칩·사유 문장·정직 주석·시간순 AI 활용,
-// 검토 완료(검토자 이름, 확정 중 → final)와 final 메모 추가, "기록에서 보기" 하이라이트, 인쇄 때 소섹션 전부 펼침.
+// 완료 기준(리포트): 머리 안내·설계된 장면, 요약표 "수준 N (1~5)"(합계 없음), 타임라인, 차원 수준·확신도·근거,
+// low 표시, 사유 5종, 기여 대조표, 사실 지표, 기획안, AI 활용, 차원 단위 조정(메모 필수)·요소 재계산·검토 완료·final 메모,
+// "기록에서 보기" 하이라이트, 인쇄 때 차원 전부 펼침. 샘플 리포트 픽스처 요건.
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test } from "vitest";
 
-import { mockRequest } from "@/mocks";
-import { resetAdminMock } from "@/mocks/admin";
+import sampleJson from "@/fixtures/sample-report.json";
+import { adminMockRequest as mockRequest, resetAdminMock } from "@/mocks/admin";
 import recordJson from "@/mocks/fixtures/admin_record.json";
 
 import { NO_RECORD_TEXT } from "./format";
 import { RecordView } from "./record-view";
-import { AI_HEADER, HONESTY_NOTE, REPORT_NOTICE_LINES, ReportView } from "./report-view";
-import { changedAdjustments, missingMemos, phaseOf, recordAnchor, reviewBodyFrom } from "./review";
+import {
+  AI_HEADER,
+  DESIGNED_SCENE_NOTICE,
+  FACTS_NOTE,
+  REPORT_NOTICE,
+  ReportView,
+} from "./report-view";
+import { elementLevel, phaseOf, recordAnchor, withEdits } from "./review";
 import type { RecordEntry, Report } from "./types";
 
 beforeEach(resetAdminMock);
 
+const sample = sampleJson as unknown as Report;
 const href = (ref: { type: string; id: string; t_min: number }) => `/r#${recordAnchor(ref)}`;
-const get = () => mockRequest<Report>("GET", "/admin/sessions/sess-1/report");
+const get = (id = "sess-1") => mockRequest<Report>("GET", `/admin/sessions/${id}/report`);
+const TOTAL = /총점|합계|점수/;
+// 고정 안내문("합격·불합격·순위는 판정하지 않습니다")을 뺀 나머지에 판정 표현이 없어야 한다
+const judged = (html: string) => /합격|(?<!우선)순위/.test(html.replace(REPORT_NOTICE, ""));
 
-test("리포트 draft → 검토 완료 → final 메모, 기록 하이라이트, 인쇄 펼침", async () => {
+test("샘플 리포트 픽스처: 5요소·19차원, 사유 5종, 미발생 카드 1장, 조정 1개, 확신도 3종, 근거 4종", () => {
+  expect(sample.elements).toHaveLength(5);
+  expect(sample.dimensions).toHaveLength(19);
+  const reasons = new Set(sample.dimensions.map((d) => d.no_record_reason).filter(Boolean));
+  expect([...reasons].sort()).toEqual(Object.keys(NO_RECORD_TEXT).sort());
+  expect(sample.cards).toHaveLength(6);
+  expect(sample.cards.filter((c) => c.fired_at == null)).toHaveLength(1);
+  expect(sample.dimensions.filter((d) => d.adjusted_level != null && d.adjust_memo)).toHaveLength(
+    1,
+  );
+  expect(new Set(sample.dimensions.map((d) => d.confidence).filter(Boolean))).toEqual(
+    new Set(["high", "medium", "low"]),
+  );
+  const kinds = new Set(sample.dimensions.flatMap((d) => d.evidence.map((e) => e.kind)));
+  expect(kinds).toEqual(new Set(["message", "slot", "proposal", "contribution"]));
+  for (const d of sample.dimensions) {
+    if (d.level != null && d.level >= 4) {
+      expect(d.evidence.filter((e) => e.counted).length).toBeGreaterThanOrEqual(2);
+    }
+  }
+  // record_ref는 전체 기록 픽스처와 맞는다
+  const anchors = new Set((recordJson as RecordEntry[]).map((e) => recordAnchor(e.ref)));
+  for (const d of sample.dimensions) {
+    for (const e of d.evidence) expect(anchors.has(recordAnchor(e.record_ref))).toBe(true);
+  }
+  expect(JSON.stringify(sample)).not.toMatch(/"total_score"|"sum"/);
+});
+
+test("샘플 리포트 화면: 사유 문장 5종, 미발생 카드, 담당자 조정 나란히, 조정·검토 UI 없음", () => {
+  const html = renderToStaticMarkup(<ReportView report={sample} recordHref={href} sample />);
+  for (const text of Object.values(NO_RECORD_TEXT)) expect(html).toContain(text);
+  expect(html).toContain("이벤트 미발생");
+  expect(html).toContain("담당자 조정됨");
+  expect(html).toContain("메모 · 09:06 발언 앞뒤에서");
+  expect(html).not.toContain("검토 완료");
+  expect(html).not.toMatch(TOTAL);
+  expect(judged(html)).toBe(false);
+});
+
+test("리포트 draft 렌더: 안내·요약·타임라인·차원·근거·사실·기획안·AI 활용", async () => {
   const draft = await get();
+  expect(phaseOf(draft)).toBe("draft");
   const html = renderToStaticMarkup(
     <ReportView report={draft} recordHref={href} onReview={() => {}} />,
   );
   expect(html).toContain("검토 대기");
-  for (const line of REPORT_NOTICE_LINES) expect(html).toContain(line);
-  // 관찰 창과 겹친 끊김, 근거 없는 AI 분류 항목의 판정 창(B6)
-  expect(html).toContain("이 구간 연결 끊김 00:31~00:46");
-  expect(html).toContain("판정 창 00:30~00:45 지원자 메시지 없음");
-  expect(html).toContain("충족 16 · 미충족 2 · 기록 없음 2");
-  expect(html).toContain("도현 v2 + 편집 ▾"); // 누르면 동료 원문과 나란히
-  expect(html).toContain("주고받은 문서");
-  expect(html).toContain("v1·v2 열람");
-  expect(html).not.toMatch(/<details[^>]* open=""/); // 소섹션은 접힘이 기본
-  expect(html).toContain("기록 기반");
-  expect(html).toContain("AI 분류 기반");
-  expect(html).toContain("지원자 활동 없음");
-  expect(html).toContain(HONESTY_NOTE);
-  expect(html).toContain("실제 2분");
+  expect(html).toContain(REPORT_NOTICE);
+  expect(html).toContain(DESIGNED_SCENE_NOTICE);
+  expect(html).toContain("설계된 장면");
+  expect(html).toContain("고집형");
+  expect(html).toContain("수준 3 (1~5)");
+  expect(html).toContain("근거 약함, 원문 확인 권장");
+  expect(html).toContain("확신도 높음");
+  expect(html).toContain("해당 없음"); // hon_source_in_talk
+  expect(html).toContain("최초 제안자");
+  expect(html).toContain("시간 초과");
+  expect(html).toContain("기여 대조표");
+  expect(html).toContain(FACTS_NOTE);
+  expect(html).toContain("아이디어 기여");
   expect(html).toContain(AI_HEADER);
-  expect(html.indexOf("00:47")).toBeLessThan(html.indexOf("01:12"));
-  expect(html).toContain('href="/r#message-m-31"');
-  expect(html).not.toMatch(/합격 가능|순위|등급/);
-  expect(Object.values(NO_RECORD_TEXT)).toEqual([
-    "지원자 활동 없음",
-    "시스템: 분류 실패",
-    "시스템: 메시지 지연",
-    "시스템: 문서 미제공",
-    "해당 없음",
-    "이벤트 미발생(조기 제출)",
-  ]);
+  expect(html).toContain("도심 침수 사례"); // 인용 자료 제목
+  expect(html).toContain("맥락"); // AI 동료 메시지 근거
+  expect(html).toContain("09:03"); // 오피스 시각(60분 세션 t_min 3.6)
+  expect(html).toContain('href="/r#message-m-06"');
+  expect(html).not.toMatch(/<details[^>]* open=""/); // 차원은 접힘이 기본
+  expect(html).not.toMatch(TOTAL);
+  expect(judged(html)).toBe(false);
 
-  // 인쇄 미리보기: 소섹션 전부 펼침
+  // 인쇄 미리보기: 19개 차원 전부 펼침, 조정 버튼은 no-print
   const printed = renderToStaticMarkup(<ReportView report={draft} recordHref={href} printing />);
-  expect(printed.match(/<details[^>]* open=""/g)).toHaveLength(7);
+  expect(printed.match(/<details[^>]* open=""/g)).toHaveLength(19);
+});
 
-  // 바꾸면 메모 필수, 검토자 이름과 함께 제출 → 확정 중 → final
-  const adjustments = changedAdjustments(draft, {
-    resp_proposed_alternative: { choice: "1", memo: "" },
+test("차원 조정은 메모 필수, 요소 수준 재계산, 검토 완료 → 확정 중 → final → 메모 추가", async () => {
+  const draft = await get();
+  // 화면 편집 반영 요소 수준: 경쟁 안 비교 2 → 4면 설득 (3+3+4+4)/4 = 3.5 → 4
+  const edited = withEdits(draft.dimensions, {
+    pers_comparison: { level: 4, reason: null, memo: "근거 있음" },
   });
-  expect(missingMemos(adjustments)).toEqual(["resp_proposed_alternative"]);
+  expect(elementLevel(draft.dimensions, "persuasion")).toBe(3);
+  expect(elementLevel(edited, "persuasion")).toBe(4);
+
+  await expect(
+    mockRequest("POST", "/admin/sessions/sess-1/review", {
+      reviewer_name: "박채용",
+      adjustments: [{ dimension_id: "pers_comparison", level: 4, memo: " " }],
+    }),
+  ).rejects.toMatchObject({ code: "memo_required" });
+  await expect(
+    mockRequest("POST", "/admin/sessions/sess-1/review", { reviewer_name: "", adjustments: [] }),
+  ).rejects.toMatchObject({ code: "invalid_input" });
+
   const body = {
-    adjustments: [{ ...adjustments[0], memo: "62분 대안 제시" }],
-    reviewer_name: "김담당",
+    reviewer_name: "박채용",
+    adjustments: [
+      { dimension_id: "pers_comparison", level: 4, memo: "실현 가능성 비교도 함" },
+      {
+        dimension_id: "incl_shared_decision",
+        level: null,
+        no_record_reason: "not_applicable",
+        memo: "확인할 장면이 없었음",
+      },
+    ],
   };
   expect(await mockRequest("POST", "/admin/sessions/sess-1/review", body)).toEqual({
     status: "approving",
   });
-  expect(phaseOf(await get())).toBe("approving"); // 워커가 final을 저장할 때까지 폴링
-  expect(phaseOf(await get())).toBe("final");
-  const final = await mockRequest<{ notes: unknown[] }>(
+  const approving = await get();
+  expect(phaseOf(approving)).toBe("approving");
+  expect(approving.elements.find((e) => e.element === "persuasion")?.adjusted_level).toBe(4);
+  const html = renderToStaticMarkup(<ReportView report={approving} recordHref={href} />);
+  expect(html).toContain("담당자 조정됨");
+  expect(html).toContain("확정 중");
+
+  // 다른 본문 재요청은 409
+  await expect(
+    mockRequest("POST", "/admin/sessions/sess-1/review", { ...body, adjustments: [] }),
+  ).rejects.toMatchObject({ code: "already_reviewed" });
+
+  const final = await get();
+  expect(phaseOf(final)).toBe("final");
+  const notes = await mockRequest<{ notes: unknown[] }>(
     "POST",
     "/admin/sessions/sess-1/report/notes",
     {
-      text: "면접에서 5번 일정 확인",
-      reviewer_name: "김담당",
+      text: "2차 면접에서 확인",
+      reviewer_name: "박채용",
     },
   );
-  expect(final.notes).toHaveLength(1);
-  const reviewed = renderToStaticMarkup(
-    <ReportView report={await get()} recordHref={href} onAddNote={async () => {}} />,
+  expect(notes.notes).toHaveLength(1);
+  const finalHtml = renderToStaticMarkup(
+    <ReportView report={await get()} recordHref={href} onAddNote={() => {}} />,
   );
-  expect(reviewed).toContain("검토 완료");
-  expect(reviewed).toContain("검토자 김담당");
-  expect(reviewed).toContain("면접에서 5번 일정 확인");
-  expect(reviewed).toContain("메모 추가");
-  expect(reviewed).not.toContain("자동 값 유지");
-
-  // 전체 기록: 리포트 근거의 앵커 줄을 하이라이트
-  const record = renderToStaticMarkup(
-    <RecordView entries={recordJson as RecordEntry[]} backHref="/x" highlight="message-m-31" />,
-  );
-  expect(record).toMatch(/id="message-m-31" aria-current="true" class="[^"]*bg-accent-soft/);
-  expect(record).toContain("리포트로 돌아가기");
-
-  // 확정이 멈춘 리포트에 다시 들어와도 서버 값으로 같은 본문을 만들어 재시도한다(Codex B6)
-  resetAdminMock();
-  await mockRequest("POST", "/admin/sessions/sess-1/review", {
-    adjustments: [{ item_id: "resp_proposed_alternative", value: 1, memo: "대안 제시" }],
-    reviewer_name: "김담당 지연",
-  });
-  await get();
-  const restored = reviewBodyFrom(await get())!;
-  expect(await mockRequest("POST", "/admin/sessions/sess-1/review", restored)).toEqual({
-    status: "approving",
-  });
-  await get(); // 확정이 다시 돌아 폴링 뒤 final
-  expect(phaseOf(await get())).toBe("final");
+  expect(finalHtml).toContain("검토 완료");
+  expect(finalHtml).toContain("2차 면접에서 확인");
+  expect(finalHtml).toContain("메모 추가");
 });
 
-test("1분 미만 연결 끊김은 접어서 세고 펼친 내용은 초 단위로 표시한다", async () => {
-  const report = await get();
-  report.connection_gaps = [
-    { from_t_min: 31.2, to_t_min: 46 },
-    { from_t_min: 30.1, to_t_min: 30.6 },
-    { from_t_min: 90, to_t_min: 90.01 },
-  ];
-  const html = renderToStaticMarkup(<ReportView report={report} recordHref={href} />);
-  expect(html).toContain("연결 끊김 00:31~00:46");
-  expect(html).toContain("짧은 끊김 2회");
-  expect(html).toMatch(/<details[^>]*><summary[^>]*>짧은 끊김 2회<\/summary>/);
-  expect(html).toContain("00:30:06~00:30:36 (30초)");
-  expect(html).toContain("01:30:00~01:30:01 (1초)");
-  expect(html).toContain("이 구간 연결 끊김 00:30~00:30");
+test("전체 기록: 근거 앵커 줄 하이라이트, 오피스 시각, 단계·결과 한국어", () => {
+  const html = renderToStaticMarkup(
+    <RecordView
+      entries={recordJson as RecordEntry[]}
+      seats={sample.seats}
+      sessionMinutes={60}
+      backHref="/admin/sample-report"
+      highlight="message-m-06"
+    />,
+  );
+  expect(html).toMatch(/id="message-m-06" aria-current="true"/);
+  expect(html).toContain("리포트로 돌아가기");
+  expect(html).toContain("키워드 확정: 물 · 합의");
+  expect(html).toContain("자료 열람: 지역별 물 부족 통계");
+  expect(html).toContain("09:46");
 });

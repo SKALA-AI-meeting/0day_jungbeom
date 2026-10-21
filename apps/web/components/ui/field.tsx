@@ -4,7 +4,7 @@ import { useId } from "react";
 import { cn } from "./cn";
 
 const control =
-  "w-full rounded-md border border-line bg-surface px-3 py-2 text-base text-ink placeholder:text-subtle read-only:bg-surface-sunken disabled:opacity-60";
+  "w-full rounded-md border border-line bg-surface px-3 py-2 text-base text-ink transition-[border-color,box-shadow] duration-150 placeholder:text-subtle read-only:bg-surface-sunken focus:border-accent focus:ring-1 focus:ring-accent focus-visible:outline-none aria-invalid:border-danger disabled:opacity-60";
 
 type FieldChrome = {
   label?: ReactNode;

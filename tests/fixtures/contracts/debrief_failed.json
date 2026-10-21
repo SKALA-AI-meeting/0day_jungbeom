@@ -1,12 +1,30 @@
 {
-  "events": [],
-  "persona_note": null,
-  "scoring_notice": "세션이 시스템 문제로 중단됐습니다. 담당자가 새 초대를 보내면 다시 응시할 수 있습니다.",
-  "final": null,
-  "final_view_until": null,
+  "intro_notice": "세션이 시스템 문제로 중단되었습니다. 평가에 쓰이지 않으며, 담당자가 다시 응시할 수 있게 안내합니다.",
+  "scoring_notice": "중단된 세션은 평가하지 않습니다.",
+  "appeal_contact": "장면이 불공정했거나 연결이 끊긴 구간이 있었다면 채용 담당자 또는 recruit@example.com로 알려 주세요.",
+  "connection_gaps": [],
+  "retention_notice": "대화·어시스턴트 요청 원문과 제출 기획안은 기업 담당자가 보며, 기록은 종료 후 90일 뒤 삭제됩니다.",
+  "contact_email": "recruit@example.com",
+  "view_until": "2026-10-28T01:57:00Z",
   "survey": {
     "submitted": false,
-    "questions": []
+    "questions": [
+      {
+        "q": "natural",
+        "text": "AI 동료와의 대화가 자연스러웠나요?",
+        "kind": "scale"
+      },
+      {
+        "q": "fair",
+        "text": "장면이 공정하다고 느꼈나요?",
+        "kind": "scale"
+      },
+      {
+        "q": "free_comment",
+        "text": "더 하고 싶은 말이 있으면 적어 주세요.",
+        "kind": "text"
+      }
+    ]
   },
   "failed_stage": "session"
 }

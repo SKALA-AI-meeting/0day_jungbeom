@@ -1,0 +1,188 @@
+[
+  {
+    "id": "m-10",
+    "sender": "system",
+    "content": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 19분 남았어요. 자료 탭이 열렸어요.",
+    "phase": "problem",
+    "is_invite": false,
+    "t_min": 8.2,
+    "created_at": "2026-10-21T01:08:12Z",
+    "card_ids": [],
+    "meta": {
+      "kind": null
+    },
+    "origin": null,
+    "intent": null
+  },
+  {
+    "id": "m-11",
+    "sender": "p1",
+    "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+    "phase": "problem",
+    "is_invite": false,
+    "t_min": 9.0,
+    "created_at": "2026-10-21T01:09:00Z",
+    "card_ids": [],
+    "meta": {
+      "kind": null,
+      "model": "gpt-4o-mini",
+      "stance_check": "pass",
+      "latency_ms": 1240,
+      "cost_usd": 0.0004
+    },
+    "origin": null,
+    "intent": null
+  },
+  {
+    "id": "m-12",
+    "sender": "candidate",
+    "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+    "phase": "problem",
+    "is_invite": false,
+    "t_min": 10.5,
+    "created_at": "2026-10-21T01:10:30Z",
+    "card_ids": [],
+    "meta": {},
+    "origin": "spontaneous",
+    "intent": {
+      "intent": "propose",
+      "target_option_id": null,
+      "scenario_option_key": "water_p1",
+      "new_option_label": null,
+      "confidence": "high",
+      "addressed_to": []
+    }
+  },
+  {
+    "id": "m-13",
+    "sender": "p1",
+    "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+    "phase": "problem",
+    "is_invite": false,
+    "t_min": 11.2,
+    "created_at": "2026-10-21T01:11:12Z",
+    "card_ids": ["flexibility_majority", "listening_pressure"],
+    "meta": {
+      "kind": null,
+      "model": "gpt-4o-mini",
+      "stance_check": "pass",
+      "latency_ms": 1240,
+      "cost_usd": 0.0004
+    },
+    "origin": null,
+    "intent": null
+  },
+  {
+    "id": "m-14",
+    "sender": "p3",
+    "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+    "phase": "problem",
+    "is_invite": false,
+    "t_min": 11.6,
+    "created_at": "2026-10-21T01:11:36Z",
+    "card_ids": ["flexibility_majority"],
+    "meta": {
+      "kind": null,
+      "model": "gpt-4o-mini",
+      "stance_check": "pass",
+      "latency_ms": 1240,
+      "cost_usd": 0.0004
+    },
+    "origin": null,
+    "intent": null
+  },
+  {
+    "id": "m-15",
+    "sender": "candidate",
+    "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+    "phase": "problem",
+    "is_invite": false,
+    "t_min": 13.0,
+    "created_at": "2026-10-21T01:13:00Z",
+    "card_ids": [],
+    "meta": {},
+    "origin": "spontaneous",
+    "intent": {
+      "intent": "oppose",
+      "target_option_id": "opt-pb-p2",
+      "scenario_option_key": null,
+      "new_option_label": null,
+      "confidence": "high",
+      "addressed_to": ["p1"]
+    }
+  },
+  {
+    "id": "m-16",
+    "sender": "p1",
+    "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+    "phase": "problem",
+    "is_invite": false,
+    "t_min": 13.8,
+    "created_at": "2026-10-21T01:13:48Z",
+    "card_ids": [],
+    "meta": {
+      "kind": null,
+      "model": "gpt-4o-mini",
+      "stance_check": "pass",
+      "latency_ms": 1240,
+      "cost_usd": 0.0004
+    },
+    "origin": null,
+    "intent": null
+  },
+  {
+    "id": "m-17",
+    "sender": "candidate",
+    "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+    "phase": "problem",
+    "is_invite": false,
+    "t_min": 15.5,
+    "created_at": "2026-10-21T01:15:30Z",
+    "card_ids": [],
+    "meta": {},
+    "origin": "spontaneous",
+    "intent": {
+      "intent": "question",
+      "target_option_id": null,
+      "scenario_option_key": null,
+      "new_option_label": null,
+      "confidence": "low",
+      "addressed_to": ["p1"]
+    }
+  },
+  {
+    "id": "m-18",
+    "sender": "candidate",
+    "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+    "phase": "problem",
+    "is_invite": false,
+    "t_min": 24.8,
+    "created_at": "2026-10-21T01:24:48Z",
+    "card_ids": [],
+    "meta": {},
+    "origin": "spontaneous",
+    "intent": {
+      "intent": "agree",
+      "target_option_id": "opt-pb-p2",
+      "scenario_option_key": null,
+      "new_option_label": null,
+      "confidence": "high",
+      "addressed_to": []
+    }
+  },
+  {
+    "id": "m-19",
+    "sender": "p3",
+    "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+    "phase": "problem",
+    "is_invite": false,
+    "t_min": 25.4,
+    "created_at": "2026-10-21T01:25:24Z",
+    "card_ids": [],
+    "meta": {
+      "kind": "consensus_fill"
+    },
+    "origin": null,
+    "intent": null
+  }
+]

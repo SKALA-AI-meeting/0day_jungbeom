@@ -1,6 +1,9 @@
--- Day Zero 스키마. 정본은 docs/common/data-model.md. LangGraph checkpointer 테이블은 라이브러리가 만든다.
+-- Day Zero 토론형 스키마. 정본은 docs/common/data-model.md(필드 이름·상태값은 contracts.md와 같다).
+-- LangGraph checkpointer 테이블은 라이브러리가 만든다. 마이그레이션 도구 없이 빈 볼륨에서 한 번 적용한다.
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- 계정·채용 건 ------------------------------------------------------------------
 
 CREATE TABLE companies (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -12,21 +15,20 @@ CREATE TABLE admins (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id uuid NOT NULL REFERENCES companies(id),
   email text NOT NULL UNIQUE,
-  password_hash text NOT NULL,
+  password_hash text NOT NULL,              -- bcrypt
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- 요소 선택 컬럼 없음(모든 채용 건이 5요소·카드 6장). scenario는 생성 때 조립·복사하고 수정·삭제 없음.
 CREATE TABLE positions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id uuid NOT NULL REFERENCES companies(id),
   name text NOT NULL,
-  mission_id text NOT NULL DEFAULT 'planning',   -- scenarios/missions/<id>/
-  elements text[] NOT NULL,
-  session_minutes int NOT NULL DEFAULT 120,
-  catalog_version text NOT NULL,                 -- 미션 폴더 전체 해시(scenarios/version.py)
-  scenario jsonb NOT NULL,                       -- 카드·문서·프롬프트 본문 복사본. 수정·삭제 없음
-  created_at timestamptz NOT NULL DEFAULT now(),
-  CHECK (cardinality(elements) BETWEEN 1 AND 5)
+  mission_id text NOT NULL DEFAULT 'debate',     -- scenarios/missions/<id>/
+  session_minutes int NOT NULL DEFAULT 60 CHECK (session_minutes IN (60, 15)),
+  catalog_version text NOT NULL,                 -- 미션 폴더 해시(scenarios/version.py)
+  scenario jsonb NOT NULL,                       -- seats·keywords·안·카드·평가표·프롬프트 복사본(scenario-model.md)
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE invites (
@@ -34,277 +36,278 @@ CREATE TABLE invites (
   position_id uuid NOT NULL REFERENCES positions(id),
   alias text NOT NULL,
   email text NOT NULL,
-  token_hash text NOT NULL UNIQUE,
+  token_hash text NOT NULL UNIQUE,          -- 토큰 원문은 링크에만
   expires_at timestamptz NOT NULL,
   used_at timestamptz,
   cancelled_at timestamptz,
-  previous_session_id uuid,                 -- failed(session)·만료·cancelled 세션만
+  previous_session_id uuid,                 -- 재응시: 이전 세션
+  reissued_at timestamptz,                  -- 재발급(같은 행의 token_hash·expires_at 교체)
+  superseded_at timestamptz,                -- 재응시로 대체된 초대(같은 별칭 재사용 허용)
   created_at timestamptz NOT NULL DEFAULT now()
 );
--- 같은 채용 건 안 별칭 중복은 api가 409로 막는다. 재응시·재발행은 이전 응시와 같은 별칭을 쓰므로
--- DB unique로 두지 않는다(contracts.md 지원자 목록 예시의 retry 행).
-CREATE INDEX ON invites (position_id, alias);
+CREATE UNIQUE INDEX invites_alias_active ON invites (position_id, alias) WHERE superseded_at IS NULL;
+
+-- 세션과 토론 상태 ----------------------------------------------------------------
 
 CREATE TABLE sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   invite_id uuid NOT NULL UNIQUE REFERENCES invites(id),
   status text NOT NULL DEFAULT 'invited'
-    CHECK (status IN ('invited','cancelled','in_progress','reporting','completed','report_ready','approving','reviewed','failed')),
+    CHECK (status IN ('invited','cancelled','in_progress','completed','report_ready','approving','reviewed','failed')),
+  phase text CHECK (phase IN ('keyword','problem','solution','proposal','completed')),
+  display_name text CHECK (display_name IS NULL OR char_length(display_name) BETWEEN 1 AND 20),
   consented_at timestamptz,
   started_at timestamptz,
   ends_at timestamptz,
-  division jsonb,                           -- {parts, decided_by: candidate|colleague_default, decided_at}
+  phase_started_at timestamptz,
+  phase_deadline_at timestamptz,            -- 누적 고정 마감
+  generation int NOT NULL DEFAULT 0,        -- 지원자 메시지 저장·단계 전환마다 +1
+  invite_delivered_phases text[] NOT NULL DEFAULT '{}',
   submitted_at timestamptz,
-  deadline_at timestamptz,                  -- submitted_at + 5분(보고 대기 상한)
-  reported_at timestamptz,                  -- kind=report 지원자 메시지 저장 시각
-  completed_at timestamptz,                 -- 보고 종료. 마지막 관찰 창의 끝, 디브리핑 기한·삭제 예정일 기준
-  llm_failures int NOT NULL DEFAULT 0,      -- 일반 응답 LLM 실패 연속 횟수(3이면 세션 failed, 정상 응답이면 0)
-  redivisions jsonb NOT NULL DEFAULT '[]'::jsonb,  -- 확정 뒤 재분업 기록 [{stage: before_change|after_change, via: board|chat, t_min}]. 보드·채팅 공용 한도
+  completed_at timestamptz,
+  ended_at timestamptz,                     -- completed·failed(session)·cancelled 시각(90일 보관 기준)
+  llm_failures int NOT NULL DEFAULT 0,
+  debate_cost_usd numeric NOT NULL DEFAULT 0,   -- 토론 LLM 비용(하드 상한용)
+  cost_usd numeric NOT NULL DEFAULT 0,          -- 토론 + 리포트 전체(관측)
   report_enqueued_at timestamptz,
-  approve_enqueued_at timestamptz,          -- report.approve 발행 기록(outbox)
+  approve_enqueued_at timestamptz,
+  eval_round int NOT NULL DEFAULT 1,
   failed_stage text CHECK (failed_stage IN ('session','report')),
   failed_reason text,
-  token_usage jsonb NOT NULL DEFAULT '{}'::jsonb,  -- 세션 누계(agent_runs 합), 예산 검사용
   created_at timestamptz NOT NULL DEFAULT now()
 );
-
-CREATE TABLE session_events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id uuid NOT NULL REFERENCES sessions(id),
-  card_id text NOT NULL,
-  element text,                             -- 흐름 카드·texture는 null
-  due_at timestamptz NOT NULL,
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','fired','done','failed','skipped')),   -- skipped는 texture만
-  fired_at timestamptz,
-  done_at timestamptz,
-  attempts int NOT NULL DEFAULT 0,
-  run_id uuid,                              -- fired 시 생성, 재실행에서 재사용
-  texture boolean NOT NULL DEFAULT false,   -- 결 메시지(midpoint_draft): 관찰 창에 안 들어감
-  or_on_submit boolean NOT NULL DEFAULT false,      -- 제출 시 pending이면 즉시 fired(보고 요청)
-  document_missing boolean NOT NULL DEFAULT false,  -- send_document가 재시도 뒤에도 실패
-  UNIQUE (session_id, card_id)
-);
-CREATE INDEX ON session_events (due_at) WHERE status = 'pending';
-CREATE INDEX ON session_events (session_id) WHERE status = 'fired';
+CREATE INDEX sessions_in_progress ON sessions (phase_deadline_at) WHERE status = 'in_progress';
 
 CREATE TABLE messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL REFERENCES sessions(id),
-  channel text NOT NULL CHECK (channel IN ('team','dm','manager_dm','assistant','notice')),   -- notice: 지원자에게만 보이는 시스템 알림
-  sender text NOT NULL CHECK (sender IN ('manager','colleague','candidate','assistant','system')),
+  channel text NOT NULL CHECK (channel IN ('room','assistant')),
+  sender text NOT NULL CHECK (sender IN ('candidate','p1','p2','p3','system','assistant')),
+  phase text CHECK (phase IN ('keyword','problem','solution','proposal')),
   content text NOT NULL,
-  event_id uuid REFERENCES session_events(id),
   run_id uuid,
   seq int,
-  client_msg_id text,                       -- 지원자 메시지 재전송 멱등
-  meta jsonb NOT NULL DEFAULT '{}'::jsonb,  -- classification, shared_doc, reply_to_doc, 토큰·지연·모델
+  client_msg_id text,
+  origin text CHECK (origin IN ('spontaneous','invited')),   -- 지원자 room 메시지만
+  is_invite boolean NOT NULL DEFAULT false,
+  card_ids text[] NOT NULL DEFAULT '{}',
+  cited_material_ids text[] NOT NULL DEFAULT '{}',
+  meta jsonb NOT NULL DEFAULT '{}'::jsonb,  -- 토큰·지연·모델·cost_usd·guard·stance_check·kind
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (session_id, run_id, seq)
 );
-CREATE INDEX ON messages (session_id, created_at);
-CREATE UNIQUE INDEX ON messages (session_id, client_msg_id) WHERE client_msg_id IS NOT NULL;
+CREATE INDEX messages_session_time ON messages (session_id, created_at);
+CREATE UNIQUE INDEX messages_client_msg ON messages (session_id, client_msg_id) WHERE client_msg_id IS NOT NULL;
 
-CREATE TABLE agent_runs (
-  run_id uuid PRIMARY KEY,
-  session_id uuid NOT NULL REFERENCES sessions(id),
-  stimulus text NOT NULL CHECK (stimulus IN ('message','event','division','end')),
-  ref_ids uuid[] NOT NULL DEFAULT '{}',     -- message_id, event_id 묶음 또는 task_event id
-  status text NOT NULL DEFAULT 'started' CHECK (status IN ('started','finished','failed')),
-  usage jsonb NOT NULL DEFAULT '{}'::jsonb, -- llm_calls, retries, tokens_in, tokens_out, latency_ms, tool_calls
-  started_at timestamptz NOT NULL DEFAULT now(),
-  finished_at timestamptz
-);
-CREATE INDEX ON agent_runs (session_id) WHERE status = 'started';
-
--- 문서 = 파트 하나 또는 최종본. 주인 한 명. 시작 시 지원자 파트 문서 5개와 최종본 1개, 동료 문서는 처음 보낼 때 생성.
-CREATE TABLE documents (
+CREATE TABLE options (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL REFERENCES sessions(id),
-  owner text NOT NULL CHECK (owner IN ('candidate','colleague')),
-  part_no int CHECK (part_no BETWEEN 1 AND 5),   -- 최종본은 null
-  final boolean NOT NULL DEFAULT false,
-  title text NOT NULL,
-  content text NOT NULL DEFAULT '',         -- 현재 편집 내용(디바운스 저장, version 아님)
-  revision int NOT NULL DEFAULT 0,          -- 마지막 자동 저장 번호
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  CHECK (final = (part_no IS NULL)),
-  UNIQUE (session_id, owner, part_no)
-);
-CREATE UNIQUE INDEX ON documents (session_id) WHERE final;
-
-CREATE TABLE document_revisions (            -- 자동 저장마다 append(최종본 섹션 편집·가져오기 포함)
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  doc_id uuid NOT NULL REFERENCES documents(id),
-  revision int NOT NULL,
-  by text NOT NULL CHECK (by IN ('candidate','colleague')),
-  content text NOT NULL,                    -- 본문 스냅샷
-  length int NOT NULL,
-  diff_ratio real,                          -- 직전 revision 대비 변화율
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (doc_id, revision)
-);
-
-CREATE TABLE document_versions (             -- "보내기"가 만든다. 보낸 시점의 revision을 가리킨다
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  doc_id uuid NOT NULL REFERENCES documents(id),
-  version int NOT NULL,
-  revision int NOT NULL,
-  content text NOT NULL,
-  run_id uuid,                              -- 동료 보내기만. 같은 (doc_id, run_id)는 기존 행
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (doc_id, version)
-);
-CREATE UNIQUE INDEX ON document_versions (doc_id, run_id) WHERE run_id IS NOT NULL;
-
-CREATE TABLE document_shares (               -- 보낸 기록. observe의 share 근거
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  doc_id uuid NOT NULL REFERENCES documents(id),
-  version int NOT NULL,
-  channel text NOT NULL CHECK (channel IN ('team','dm')),
-  message_id uuid NOT NULL REFERENCES messages(id),   -- 채널에 올라간 문서 카드 메시지
-  created_at timestamptz NOT NULL DEFAULT now(),
-  FOREIGN KEY (doc_id, version) REFERENCES document_versions(doc_id, version)
-);
-
-CREATE TABLE document_opens (                -- 받은 문서를 연 기록. observe의 open 근거
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  doc_id uuid NOT NULL REFERENCES documents(id),
-  version int NOT NULL,
-  by text NOT NULL DEFAULT 'candidate' CHECK (by IN ('candidate')),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  FOREIGN KEY (doc_id, version) REFERENCES document_versions(doc_id, version)
-);
-
-CREATE TABLE final_document (                -- 최종본 섹션별 내용과 출처
-  session_id uuid PRIMARY KEY REFERENCES sessions(id),
-  sections jsonb NOT NULL DEFAULT '[]'::jsonb,   -- [{part_no, title, content, source_doc_id, source_version, edited}]
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE doc_views (                     -- 회사 문서 열람
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id uuid NOT NULL REFERENCES sessions(id),
-  doc_id text NOT NULL,
-  viewed_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE tasks (                         -- 보드. 시작 시 5행 assignee=null, order=파트 번호
-  session_id uuid NOT NULL REFERENCES sessions(id),
-  part_no int NOT NULL CHECK (part_no BETWEEN 1 AND 5),
-  assignee text CHECK (assignee IN ('candidate','colleague','both')),
-  status text NOT NULL DEFAULT 'todo' CHECK (status IN ('todo','doing','done')),
-  "order" int NOT NULL,
-  due_min int,                              -- 세션 분
-  depends_on int[] NOT NULL DEFAULT '{}',
-  PRIMARY KEY (session_id, part_no)
-);
-
-CREATE TABLE task_events (                   -- 보드 변경. 계획성·적응성 관찰 입력
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id uuid NOT NULL REFERENCES sessions(id),
-  part_no int NOT NULL,
-  by text NOT NULL CHECK (by IN ('candidate','colleague')),
-  field text NOT NULL CHECK (field IN ('assignee','status','order','due_min')),
-  old_value text,
-  new_value text,
-  run_id uuid,                              -- 동료 변경만. 같은 (part_no, field, run_id)는 기존 행
+  phase text NOT NULL CHECK (phase IN ('keyword','problem','solution')),
+  label text NOT NULL,
+  proposer text NOT NULL CHECK (proposer IN ('candidate','p1','p2','p3')),   -- 최초 제안자
+  scenario_option_key text,
+  source_message_id uuid REFERENCES messages(id),
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX ON task_events (session_id, created_at);
-CREATE UNIQUE INDEX ON task_events (session_id, part_no, field, run_id) WHERE run_id IS NOT NULL;
+CREATE UNIQUE INDEX options_scenario_key ON options (session_id, phase, scenario_option_key)
+  WHERE scenario_option_key IS NOT NULL;
+CREATE UNIQUE INDEX options_free_source ON options (session_id, phase, source_message_id)
+  WHERE scenario_option_key IS NULL AND source_message_id IS NOT NULL;
 
-CREATE TABLE document_releases (
+CREATE TABLE message_intents (               -- 지원자 room 메시지마다 1행(메일박스가 분류)
+  message_id uuid PRIMARY KEY REFERENCES messages(id),
   session_id uuid NOT NULL REFERENCES sessions(id),
-  doc_id text NOT NULL,
-  release_at timestamptz NOT NULL,
-  released_at timestamptz,
-  PRIMARY KEY (session_id, doc_id)
+  phase text NOT NULL CHECK (phase IN ('keyword','problem','solution','proposal')),   -- messages.phase
+  intent text NOT NULL CHECK (intent IN ('propose','agree','oppose','question','other')),
+  target_option_id uuid REFERENCES options(id),
+  scenario_option_key text,
+  new_option_label text,
+  confidence text NOT NULL CHECK (confidence IN ('high','low')),
+  addressed_to text[] NOT NULL DEFAULT '{}',
+  fallback boolean NOT NULL DEFAULT false,
+  model text,
+  latency_ms int,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE INDEX message_intents_session ON message_intents (session_id, phase);
 
-CREATE TABLE observations (                  -- 카드 단위 관찰 창
+CREATE TABLE stances (                       -- append-only 입장 이력
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL REFERENCES sessions(id),
-  card_id text NOT NULL,
-  element text NOT NULL,
-  window_start timestamptz NOT NULL,        -- 카드 due_at(planning_division은 세션 시작)
-  window_end timestamptz NOT NULL,
-  metrics jsonb NOT NULL DEFAULT '{}'::jsonb,   -- {<지표>: {value, evidence_ids}}
-  label text,
-  aux jsonb NOT NULL DEFAULT '{}'::jsonb,
-  evidence jsonb NOT NULL DEFAULT '[]'::jsonb,  -- [{type: message|document|share|open|task_event|doc_view|assistant_call, id}]
-  facts jsonb,                              -- 정직 카드의 사실 입력(GET /honesty_facts)
+  phase text NOT NULL CHECK (phase IN ('keyword','problem','solution')),
+  participant text NOT NULL CHECK (participant IN ('candidate','p1','p2','p3')),
+  option_id uuid NOT NULL REFERENCES options(id),
+  stance text NOT NULL CHECK (stance IN ('support','oppose')),
+  source_message_id uuid NOT NULL REFERENCES messages(id),
   run_id uuid,
-  updated_run_id uuid,                      -- 종료 finalize PATCH(metrics_patch) 멱등 키
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (session_id, card_id, window_start)
+  UNIQUE (session_id, source_message_id, participant, option_id)
+);
+CREATE INDEX stances_session_phase ON stances (session_id, phase, created_at);
+
+CREATE TABLE slots (                         -- start에서 keyword·problem·solution 3행(empty). 확정 값은 불변
+  session_id uuid NOT NULL REFERENCES sessions(id),
+  phase text NOT NULL CHECK (phase IN ('keyword','problem','solution')),
+  status text NOT NULL DEFAULT 'empty' CHECK (status IN ('empty','confirmed')),
+  value text,
+  option_id uuid REFERENCES options(id),
+  filled_by text CHECK (filled_by IN ('candidate','p1','p2','p3')),
+  resolution text CHECK (resolution IN ('consensus','timeout')),
+  support jsonb,                            -- 확정 순간 [{option_id, supporters}]
+  confirmed_at timestamptz,
+  run_id uuid,
+  PRIMARY KEY (session_id, phase),
+  CHECK (
+    (status = 'empty' AND value IS NULL AND filled_by IS NULL AND resolution IS NULL)
+    OR (status = 'confirmed' AND value IS NOT NULL AND filled_by IS NOT NULL
+        AND resolution IS NOT NULL AND confirmed_at IS NOT NULL)
+  )
 );
 
-CREATE TABLE connection_gaps (               -- in_progress·reporting 중 WS 연결이 없던 구간. 점수 무관 사실
+CREATE TABLE proposals (
+  session_id uuid PRIMARY KEY REFERENCES sessions(id),
+  sections jsonb NOT NULL DEFAULT '{}'::jsonb,   -- {keyword, problem, solution, rationale, expected_effect, idea_credit}
+  revision int NOT NULL DEFAULT 0,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  submitted jsonb,                          -- 제출본(불변)
+  submitted_at timestamptz,
+  auto_submitted boolean NOT NULL DEFAULT false
+);
+
+CREATE TABLE agent_runs (                    -- 자극 실행 기록이자 메일박스의 영속 사본
+  run_id uuid PRIMARY KEY,
+  session_id uuid NOT NULL REFERENCES sessions(id),
+  graph text NOT NULL CHECK (graph IN ('debate','assistant')),
+  stimulus text CHECK (stimulus IN ('message','phase_started','idle','card_due')),
+  ref_id text,                              -- message_id 또는 card_id
+  generation int,
+  status text NOT NULL DEFAULT 'queued'
+    CHECK (status IN ('queued','started','finished','deferred','skipped','failed')),
+  decision jsonb,                           -- 턴 매니저 결정 스키마
+  usage jsonb NOT NULL DEFAULT '{}'::jsonb, -- llm_calls·retries·tokens_in/out·latency_ms·tool_calls·cost_usd
+  queued_at timestamptz NOT NULL DEFAULT now(),
+  started_at timestamptz,
+  finished_at timestamptz
+);
+CREATE INDEX agent_runs_pending ON agent_runs (session_id) WHERE status IN ('queued','started');
+
+CREATE TABLE connection_gaps (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL REFERENCES sessions(id),
   disconnected_at timestamptz NOT NULL,
   reconnected_at timestamptz
 );
-CREATE INDEX ON connection_gaps (session_id);
+CREATE INDEX connection_gaps_session ON connection_gaps (session_id);
 
-CREATE TABLE assistant_calls (
+CREATE TABLE material_views (                -- 자료 탭 열람(평가하지 않는 사실)
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL REFERENCES sessions(id),
+  material_id text NOT NULL,
+  viewed_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX material_views_session ON material_views (session_id);
+
+CREATE TABLE assistant_calls (               -- AI 활용 사실(평가하지 않음), 세션 60회 한도
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL REFERENCES sessions(id),
   request_message_id uuid NOT NULL REFERENCES messages(id),
   response_message_id uuid REFERENCES messages(id),
-  cited_doc_ids text[] NOT NULL DEFAULT '{}',
+  cited_material_ids text[] NOT NULL DEFAULT '{}',
+  tool_calls jsonb NOT NULL DEFAULT '[]'::jsonb,   -- [{name, query?, material_id?}] 요청당 최대 3
   created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE INDEX assistant_calls_session ON assistant_calls (session_id);
 
-CREATE TABLE assistant_reuse (               -- 제출 시 호출 × 지원자 문서(파트·최종본)별 계산
-  call_id uuid NOT NULL REFERENCES assistant_calls(id),
-  doc_id uuid NOT NULL REFERENCES documents(id),
-  part_no int,                              -- 최종본은 null
-  ratio real NOT NULL,                      -- 내부 값. 응답·리포트에 싣지 않음
-  applied boolean NOT NULL,                 -- ratio >= 0.3
-  computed_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (call_id, doc_id)
-);
-
-CREATE TABLE debrief_surveys (               -- 종료 설문 2문항(natural·fair, 1~5). 한 번만 저장
+CREATE TABLE debrief_surveys (
   session_id uuid PRIMARY KEY REFERENCES sessions(id),
-  answers jsonb NOT NULL,
+  answers jsonb NOT NULL,                   -- [{q, value}] natural·fair 1~5
+  free_comment text CHECK (free_comment IS NULL OR char_length(free_comment) <= 500),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE reports (
+-- 관찰·분석·리포트 -----------------------------------------------------------------
+
+CREATE TABLE session_cards (                 -- 카드 진행 상태(card_due 첫 처리 때 생성)
+  session_id uuid NOT NULL REFERENCES sessions(id),
+  card_id text NOT NULL,
+  locked_option_id uuid REFERENCES options(id),
+  delivered_seats jsonb NOT NULL DEFAULT '[]'::jsonb,
+  locked_at timestamptz,
+  PRIMARY KEY (session_id, card_id)
+);
+
+CREATE TABLE observations (                  -- 카드 관찰 기록(레이블·수준 없음)
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL REFERENCES sessions(id),
+  card_id text NOT NULL,
+  element text NOT NULL,
+  phase text NOT NULL CHECK (phase IN ('keyword','problem','solution','proposal')),
+  fired_at timestamptz NOT NULL,
+  trigger_message_id uuid REFERENCES messages(id),
+  run_id uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (session_id, card_id)
+);
+
+CREATE TABLE evaluation_runs (               -- 평가 실행 1행, evaluations와 한 트랜잭션
+  session_id uuid NOT NULL REFERENCES sessions(id),
+  run_id uuid NOT NULL,
+  rubric_version text NOT NULL,
+  prompt_versions jsonb NOT NULL,           -- {common: 해시, <element>: 해시}
+  model text NOT NULL,
+  elements jsonb NOT NULL,                  -- ElementSummary 5행
+  has_failed boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (session_id, run_id)
+);
+
+CREATE TABLE evaluations (                   -- 평가 에이전트의 차원별 판단
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL REFERENCES sessions(id),
+  run_id uuid NOT NULL,
+  dimension_id text NOT NULL,
+  level int CHECK (level BETWEEN 1 AND 5),
+  no_record_reason text CHECK (no_record_reason IN
+    ('no_activity','evaluate_failed','not_applicable','event_not_fired','auto_submitted_blank')),
+  evidence_refs jsonb NOT NULL DEFAULT '[]'::jsonb,
+  rationale text NOT NULL DEFAULT '',
+  confidence text CHECK (confidence IN ('high','medium','low')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (session_id, run_id) REFERENCES evaluation_runs(session_id, run_id),
+  UNIQUE (session_id, dimension_id, run_id),
+  CHECK ((level IS NULL) <> (no_record_reason IS NULL)),
+  CHECK (no_record_reason IS NULL OR confidence IS NULL)
+);
+
+CREATE TABLE reports (                       -- 총점·합계 컬럼 없음. final은 draft content 그대로
   session_id uuid PRIMARY KEY REFERENCES sessions(id),
   stage text NOT NULL CHECK (stage IN ('draft','final')),
   content jsonb NOT NULL,
-  content_hash text NOT NULL,               -- 정규화 JSON 해시. final은 승인 draft와 같아야 함
+  content_hash text NOT NULL,
+  eval_run_id uuid,                         -- 이 리포트가 읽은 evaluation_runs.run_id
   generated_at timestamptz NOT NULL DEFAULT now(),
   reviewed_at timestamptz,
   attempts int NOT NULL DEFAULT 0,
-  usage jsonb NOT NULL DEFAULT '{}'::jsonb, -- 워커 LLM 사용량
-  auto_met int, auto_unmet int, auto_no_record int,              -- draft 저장 시 api가 content.rubric에서 추출
-  reviewer_met int, reviewer_unmet int, reviewer_no_record int,  -- 검토 완료(approving 전이) 시
-  review_memo text,
+  usage jsonb NOT NULL DEFAULT '{}'::jsonb,
   reviewer_name text
 );
 
-CREATE TABLE rubric_adjustments (            -- 항목별 담당자 조정(append-only). GET report 때 병합
+CREATE TABLE rubric_adjustments (            -- 담당자 차원 단위 조정(append-only, 같은 차원은 마지막 행)
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL REFERENCES sessions(id),
-  element text NOT NULL,
-  card_id text NOT NULL,
-  item_id text NOT NULL,
-  auto_value smallint,
-  reviewer_value smallint,                  -- null 조정 허용(기록 없음으로)
+  dimension_id text NOT NULL,
+  level int CHECK (level BETWEEN 1 AND 5),
+  no_record_reason text CHECK (no_record_reason IN
+    ('no_activity','evaluate_failed','not_applicable','event_not_fired','auto_submitted_blank')),
   memo text NOT NULL,
+  adjusted_by uuid NOT NULL REFERENCES admins(id),
   reviewer_name text NOT NULL,
-  admin_id uuid NOT NULL REFERENCES admins(id),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (session_id, item_id)              -- 검토 완료는 1회라 항목당 조정 1행
+  adjusted_at timestamptz NOT NULL DEFAULT now(),
+  CHECK ((level IS NULL) <> (no_record_reason IS NULL))
 );
-CREATE INDEX ON rubric_adjustments (session_id);
+CREATE INDEX rubric_adjustments_session ON rubric_adjustments (session_id, dimension_id, adjusted_at);
 
-CREATE TABLE report_notes (                  -- 검토 완료 뒤 추가한 메모(값은 바꾸지 않음)
+CREATE TABLE report_notes (                  -- 검토 완료 뒤 메모(값 불변)
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL REFERENCES sessions(id),
   text text NOT NULL,
@@ -312,15 +315,29 @@ CREATE TABLE report_notes (                  -- 검토 완료 뒤 추가한 메�
   admin_id uuid NOT NULL REFERENCES admins(id),
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX ON report_notes (session_id);
+CREATE INDEX report_notes_session ON report_notes (session_id);
 
-CREATE TABLE doc_chunks (                    -- rag-mcp만 접근
+-- 검색 저장소 ------------------------------------------------------------------------
+
+CREATE TABLE materials (                     -- 자료 원문의 버전별 사본(scripts/seed.py가 시드, 이전 버전 유지)
+  catalog_version text NOT NULL,
+  material_id text NOT NULL,
+  keyword_key text NOT NULL,
+  title text NOT NULL,
+  content text NOT NULL,                    -- Markdown
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (catalog_version, material_id)
+);
+
+CREATE TABLE material_chunks (               -- rag-mcp만 접근
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  doc_id text NOT NULL,
+  material_id text NOT NULL,
+  keyword_key text NOT NULL,
   chunk_no int NOT NULL,
   content text NOT NULL,
   embedding vector(1024) NOT NULL,
   model text NOT NULL DEFAULT 'BAAI/bge-m3',
   catalog_version text NOT NULL,
-  UNIQUE (catalog_version, doc_id, chunk_no)
+  UNIQUE (catalog_version, material_id, chunk_no)
 );
+CREATE INDEX material_chunks_filter ON material_chunks (catalog_version, keyword_key);

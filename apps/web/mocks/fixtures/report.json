@@ -3,1449 +3,2605 @@
   "alias": "지원자A",
   "stage": "draft",
   "position": {
-    "name": "PM 인턴 2026 하반기",
-    "mission_id": "planning",
-    "elements": ["responsibility", "planning", "adaptability", "collaboration", "honesty"]
+    "name": "2026 하반기 서비스기획 신입",
+    "session_minutes": 60
   },
-  "summary": [
+  "seats": [
     {
-      "element": "responsibility",
-      "name": "책임감/성실성",
-      "line": "공개 전에 지연과 3번 파트 영향을 팀 채널에 알림",
-      "met": 3,
-      "unmet": 1,
-      "no_record": 0
+      "seat": "candidate",
+      "display_name": "김지원"
     },
     {
-      "element": "planning",
-      "name": "계획성/꼼꼼함",
-      "line": "파트 5개의 담당을 직접 정하고 보드에 순서와 마감을 적음. 4번 초안을 열어 보고 방향에 대한 의견을 남김",
-      "met": 4,
-      "unmet": 0,
-      "no_record": 0
+      "seat": "p1",
+      "display_name": "강한결",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-01.png",
+      "persona_type": "stubborn"
     },
     {
-      "element": "adaptability",
-      "name": "적응성/유연성",
-      "line": "바뀐 핵심 기능을 1번 문서에 반영하고 동료에게 3·5번 변경점을 정리해 줌",
-      "met": 3,
-      "unmet": 1,
-      "no_record": 0
+      "seat": "p2",
+      "display_name": "윤하람",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-02.png",
+      "persona_type": "quiet"
     },
     {
-      "element": "collaboration",
-      "name": "협업/조율",
-      "line": "동료 의견을 인정하면서 지표 근거로 자기 결정을 설명함",
-      "met": 2,
-      "unmet": 0,
-      "no_record": 2
-    },
-    {
-      "element": "honesty",
-      "name": "정직/공정한 보고",
-      "line": "동료 몫을 동료 것으로 말하고 5번 미완료를 밝힘",
-      "met": 4,
-      "unmet": 0,
-      "no_record": 0
+      "seat": "p3",
+      "display_name": "서지안",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-03.png",
+      "persona_type": "critic"
     }
   ],
-  "deliverable": {
-    "final": {
-      "sections": [
-        {
-          "part_no": 1,
-          "title": "문제 정의와 대상 사용자",
-          "content": "모아런 첫 참여자가 두 번째 모임에 오지 않는 문제. 대상은 첫 모임을 마친 지 2주 안의 참여자. 주원인 가정: 다음 모임 일정을 놓쳐서. 핵심 기능은 48시간 안 후속 모임 제안 한 가지로 좁힘.",
-          "source_doc_id": "doc-c1",
-          "source_owner": "candidate",
-          "source_version": 2,
-          "edited": true,
-          "source_content": null
-        },
-        {
-          "part_no": 2,
-          "title": "사용자 인터뷰에서 찾은 근거",
-          "content": "인터뷰 8명 중 5명이 '아는 사람이 없어 어색했다', 6명이 '다음 일정을 몰랐다'고 답함.",
-          "source_doc_id": "doc-c2",
-          "source_owner": "candidate",
-          "source_version": 1,
-          "edited": false,
-          "source_content": null
-        },
-        {
-          "part_no": 3,
-          "title": "핵심 기능 제안",
-          "content": "핵심 기능: 첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능 하나. 알림은 모임 종료 다음 날 오전 1회, 2번 인터뷰의 '일정을 몰랐다' 응답에 대응.",
-          "source_doc_id": "doc-k3",
-          "source_owner": "colleague",
-          "source_version": 2,
-          "edited": true,
-          "source_content": "핵심 기능: 첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능. 알림은 모임 종료 다음 날 오전에 1회."
-        },
-        {
-          "part_no": 4,
-          "title": "비슷한 서비스 사례",
-          "content": "사례 1: 독서 모임 앱 A의 후속 모임 알림(재참여율 22%→31%). 사례 2: 러닝 크루 B의 첫 참여자 전용 채널.",
-          "source_doc_id": "doc-k4",
-          "source_owner": "colleague",
-          "source_version": 2,
-          "edited": false,
-          "source_content": null
-        },
-        {
-          "part_no": 5,
-          "title": "성공 지표와 출시 일정",
-          "content": "성공 지표: 2회차 참여율 22%→30%. 출시: 이번 분기 말, 알림 기능 먼저.",
-          "source_doc_id": "doc-k5",
-          "source_owner": "colleague",
-          "source_version": 2,
-          "edited": false,
-          "source_content": null
-        }
-      ],
-      "submitted_version": 1
+  "evaluation": {
+    "run_id": "run-eval-sess-1-r1",
+    "rubric_version": "rubric-v1-20261021",
+    "prompt_versions": {
+      "common": "sha256:3f1a9c",
+      "persuasion": "sha256:a41b07",
+      "listening": "sha256:c9d2e4",
+      "inclusion": "sha256:5e7f10",
+      "flexibility": "sha256:8b3c66",
+      "honesty": "sha256:d02a91"
     },
-    "documents": [
-      {
-        "doc_id": "doc-c1",
-        "owner": "candidate",
-        "part_no": 1,
-        "title": "문제 정의와 대상 사용자",
-        "versions": 2,
-        "shares": [
-          {
-            "version": 1,
-            "channel": "team",
-            "t_min": 25.0
-          },
-          {
-            "version": 2,
-            "channel": "team",
-            "t_min": 84.0
-          }
-        ],
-        "empty": false
-      },
-      {
-        "doc_id": "doc-c2",
-        "owner": "candidate",
-        "part_no": 2,
-        "title": "사용자 인터뷰에서 찾은 근거",
-        "versions": 1,
-        "shares": [
-          {
-            "version": 1,
-            "channel": "dm",
-            "t_min": 73.0
-          }
-        ],
-        "empty": false
-      },
-      {
-        "doc_id": "doc-c3",
-        "owner": "candidate",
-        "part_no": 3,
-        "title": "핵심 기능 제안",
-        "versions": 0,
-        "shares": [],
-        "empty": true
-      },
-      {
-        "doc_id": "doc-c4",
-        "owner": "candidate",
-        "part_no": 4,
-        "title": "비슷한 서비스 사례",
-        "versions": 0,
-        "shares": [],
-        "empty": true
-      },
-      {
-        "doc_id": "doc-c5",
-        "owner": "candidate",
-        "part_no": 5,
-        "title": "성공 지표와 출시 일정",
-        "versions": 0,
-        "shares": [],
-        "empty": true
-      },
-      {
-        "doc_id": "doc-k3",
-        "owner": "colleague",
-        "part_no": 3,
-        "title": "핵심 기능 제안",
-        "versions": 2,
-        "shares": [
-          {
-            "version": 1,
-            "channel": "team",
-            "t_min": 45.0
-          },
-          {
-            "version": 2,
-            "channel": "team",
-            "t_min": 90.0
-          }
-        ],
-        "opened_by_candidate": [2]
-      },
-      {
-        "doc_id": "doc-k4",
-        "owner": "colleague",
-        "part_no": 4,
-        "title": "비슷한 서비스 사례",
-        "versions": 2,
-        "shares": [
-          {
-            "version": 1,
-            "channel": "team",
-            "t_min": 45.0
-          },
-          {
-            "version": 2,
-            "channel": "team",
-            "t_min": 90.0
-          }
-        ],
-        "opened_by_candidate": [1, 2]
-      },
-      {
-        "doc_id": "doc-k5",
-        "owner": "colleague",
-        "part_no": 5,
-        "title": "성공 지표와 출시 일정",
-        "versions": 2,
-        "shares": [
-          {
-            "version": 1,
-            "channel": "team",
-            "t_min": 45.0
-          },
-          {
-            "version": 2,
-            "channel": "team",
-            "t_min": 90.0
-          }
-        ],
-        "opened_by_candidate": [2]
-      }
-    ],
-    "division_decided_by": "candidate",
-    "final_report_message": {
-      "id": "m-62",
-      "t_min": 112.0,
-      "content": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다."
-    }
+    "model": "gpt-4o-mini"
   },
-  "rubric": {
-    "elements": [
-      {
-        "element": "responsibility",
-        "name": "책임감/성실성",
-        "auto": {
-          "met": 3,
-          "unmet": 1,
-          "no_record": 0
-        },
-        "cards": [
-          {
-            "card_id": "responsibility_delay",
-            "name": "내 자료 지연",
-            "items": [
-              {
-                "id": "resp_notified_before_release",
-                "text": "자료가 공개되기 전에 지연을 팀이나 동료에게 알림",
-                "basis": "metric",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-31",
-                    "t_min": 62.0,
-                    "channel": "team",
-                    "quote": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
-                    "context": {
-                      "prev_persona_message": "리서치 담당 · 60분: 사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
-                      "card_at_t_min": 60.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-31",
-                      "t_min": 62.0
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "resp_mentioned_impact",
-                "text": "지연이 동료 파트(3번은 2번에 의존)에 미치는 영향을 말함",
-                "basis": "label",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-31",
-                    "t_min": 62.0,
-                    "channel": "team",
-                    "quote": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
-                    "context": {
-                      "prev_persona_message": "리서치 담당 · 60분: 사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
-                      "card_at_t_min": 60.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-31",
-                      "t_min": 62.0
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "resp_proposed_alternative",
-                "text": "지연 동안 먼저 할 작업이나 대안을 제시함",
-                "basis": "label",
-                "auto": 0,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-31",
-                    "t_min": 62.0,
-                    "channel": "team",
-                    "quote": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
-                    "context": {
-                      "prev_persona_message": "리서치 담당 · 60분: 사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
-                      "card_at_t_min": 60.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-31",
-                      "t_min": 62.0
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "resp_told_manager",
-                "text": "팀장이 보는 곳(팀 채널 또는 팀장 DM)에 지연을 알림",
-                "basis": "metric",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-31",
-                    "t_min": 62.0,
-                    "channel": "team",
-                    "quote": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
-                    "context": {
-                      "prev_persona_message": "리서치 담당 · 60분: 사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
-                      "card_at_t_min": 60.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-31",
-                      "t_min": 62.0
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "element": "planning",
-        "name": "계획성/꼼꼼함",
-        "auto": {
-          "met": 4,
-          "unmet": 0,
-          "no_record": 0
-        },
-        "cards": [
-          {
-            "card_id": "planning_division",
-            "name": "파트 나누기",
-            "items": [
-              {
-                "id": "plan_assigned_all_parts",
-                "text": "파트 전부의 담당을 직접 정함",
-                "basis": "metric",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "task_event",
-                    "id": "te-1",
-                    "t_min": 12.0,
-                    "part_no": 1,
-                    "field": "assignee",
-                    "summary": "1번 담당 → 지원자(12분)",
-                    "context": {
-                      "prev_persona_message": null,
-                      "card_at_t_min": 10.0
-                    },
-                    "record_ref": {
-                      "type": "task_event",
-                      "id": "te-1",
-                      "t_min": 12.0
-                    }
-                  },
-                  {
-                    "type": "message",
-                    "id": "m-11",
-                    "t_min": 11.0,
-                    "channel": "team",
-                    "quote": "제가 1·2번, 도현님이 4·5번, 3번은 같이 보죠. 2번 자료 나오는 대로 3번 골격부터 잡을게요. 보드에도 적어 둘게요.",
-                    "context": {
-                      "prev_persona_message": "이도현 · 10분: 파트는 어떻게 나눌까요? 3번은 2번 자료가 필요해서 그 순서만 신경 쓰면 될 것 같아요.",
-                      "card_at_t_min": 10.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-11",
-                      "t_min": 11.0
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "plan_stated_schedule",
-                "text": "누가·언제까지·어떤 순서인지 말하거나 보드에 적음",
-                "basis": "metric",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "task_event",
-                    "id": "te-6",
-                    "t_min": 12.5,
-                    "part_no": 1,
-                    "field": "due_min",
-                    "summary": "1번 언제까지 → 40분(12.5분)",
-                    "context": {
-                      "prev_persona_message": null,
-                      "card_at_t_min": 10.0
-                    },
-                    "record_ref": {
-                      "type": "task_event",
-                      "id": "te-6",
-                      "t_min": 12.5
-                    }
-                  },
-                  {
-                    "type": "message",
-                    "id": "m-11",
-                    "t_min": 11.0,
-                    "channel": "team",
-                    "quote": "제가 1·2번, 도현님이 4·5번, 3번은 같이 보죠. 2번 자료 나오는 대로 3번 골격부터 잡을게요. 보드에도 적어 둘게요.",
-                    "context": {
-                      "prev_persona_message": "이도현 · 10분: 파트는 어떻게 나눌까요? 3번은 2번 자료가 필요해서 그 순서만 신경 쓰면 될 것 같아요.",
-                      "card_at_t_min": 10.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-11",
-                      "t_min": 11.0
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "card_id": "planning_checkin",
-            "name": "중간 점검",
-            "items": [
-              {
-                "id": "plan_opened_draft",
-                "text": "동료가 보낸 초안을 열어 봄",
-                "basis": "metric",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "open",
-                    "id": "op-1",
-                    "t_min": 46.5,
-                    "doc_id": "doc-k4",
-                    "version": 1,
-                    "summary": "동료 4번 v1 열람(46.5분)",
-                    "context": {
-                      "prev_persona_message": null,
-                      "card_at_t_min": 45.0
-                    },
-                    "record_ref": {
-                      "type": "open",
-                      "id": "op-1",
-                      "t_min": 46.5
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "plan_responded_draft",
-                "text": "초안에 대해 반응(의견·확인)을 남김",
-                "basis": "label",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-24",
-                    "t_min": 47.0,
-                    "channel": "team",
-                    "quote": "4번 사례 방향 좋아요. 두 번째 사례는 지표 문서의 재참여율과 연결해 주세요. 2번은 인터뷰 요약 나오면 바로 채울게요.",
-                    "context": {
-                      "prev_persona_message": "이도현 · 45.1분: 주담당 쪽은 어느 정도 진행됐어요? 2번 자료는 언제쯤 볼 수 있을까요? 3번 골격 잡으려면 필요해서요.",
-                      "card_at_t_min": 45.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-24",
-                      "t_min": 47.0
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "element": "adaptability",
-        "name": "적응성/유연성",
-        "auto": {
-          "met": 3,
-          "unmet": 1,
-          "no_record": 0
-        },
-        "cards": [
-          {
-            "card_id": "adaptability_change",
-            "name": "방향 변경",
-            "items": [
-              {
-                "id": "adapt_applied_to_doc",
-                "text": "바뀐 대상을 내 문서(파트 또는 최종본)에 반영함",
-                "basis": "label",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "document",
-                    "id": "rev-3",
-                    "t_min": 80.0,
-                    "doc_id": "doc-c1",
-                    "part_no": 1,
-                    "revision": 2,
-                    "summary": "1번 파트 편집(80분)",
-                    "context": {
-                      "prev_persona_message": null,
-                      "card_at_t_min": 75.0
-                    },
-                    "record_ref": null
-                  },
-                  {
-                    "type": "share",
-                    "id": "sh-3",
-                    "t_min": 84.0,
-                    "doc_id": "doc-c1",
-                    "part_no": 1,
-                    "version": 2,
-                    "summary": "1번 파트 v2 보냄(84분)",
-                    "context": {
-                      "prev_persona_message": null,
-                      "card_at_t_min": 75.0
-                    },
-                    "record_ref": {
-                      "type": "share",
-                      "id": "sh-3",
-                      "t_min": 84.0
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "adapt_no_complaint_to_colleague",
-                "text": "불만을 동료에게 쏟지 않음",
-                "basis": "label",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-36",
-                    "t_min": 77.0,
-                    "channel": "dm",
-                    "quote": "도현님, 3번은 48시간 후속 모임 제안 기능 하나로 좁혀 주시고 5번 일정은 이번 분기 기준으로 바꿔 주세요. 사례는 그대로 두셔도 돼요.",
-                    "context": {
-                      "prev_persona_message": "한서윤 팀장 · 75분: 대표님과 이야기해 보니 핵심 기능을 '첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고, 출시 일정은 다음 분기에서 이번 분기로 당겨 주세요. 대상 사용자·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요.",
-                      "card_at_t_min": 75.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-36",
-                      "t_min": 77.0
-                    }
-                  },
-                  {
-                    "type": "document",
-                    "id": "rev-3",
-                    "t_min": 80.0,
-                    "doc_id": "doc-c1",
-                    "part_no": 1,
-                    "revision": 2,
-                    "summary": "1번 파트 편집(80분)",
-                    "context": {
-                      "prev_persona_message": null,
-                      "card_at_t_min": 75.0
-                    },
-                    "record_ref": null
-                  }
-                ]
-              },
-              {
-                "id": "adapt_redirected_colleague",
-                "text": "동료 파트에 무엇이 바뀌는지 다시 정리해 줌",
-                "basis": "metric",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-36",
-                    "t_min": 77.0,
-                    "channel": "dm",
-                    "quote": "도현님, 3번은 48시간 후속 모임 제안 기능 하나로 좁혀 주시고 5번 일정은 이번 분기 기준으로 바꿔 주세요. 사례는 그대로 두셔도 돼요.",
-                    "context": {
-                      "prev_persona_message": "한서윤 팀장 · 75분: 대표님과 이야기해 보니 핵심 기능을 '첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고, 출시 일정은 다음 분기에서 이번 분기로 당겨 주세요. 대상 사용자·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요.",
-                      "card_at_t_min": 75.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-36",
-                      "t_min": 77.0
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "adapt_raised_scope",
-                "text": "범위·일정·분담 재조정을 말함",
-                "basis": "label",
-                "auto": 0,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-36",
-                    "t_min": 77.0,
-                    "channel": "dm",
-                    "quote": "도현님, 3번은 48시간 후속 모임 제안 기능 하나로 좁혀 주시고 5번 일정은 이번 분기 기준으로 바꿔 주세요. 사례는 그대로 두셔도 돼요.",
-                    "context": {
-                      "prev_persona_message": "한서윤 팀장 · 75분: 대표님과 이야기해 보니 핵심 기능을 '첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고, 출시 일정은 다음 분기에서 이번 분기로 당겨 주세요. 대상 사용자·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요.",
-                      "card_at_t_min": 75.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-36",
-                      "t_min": 77.0
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "element": "collaboration",
-        "name": "협업/조율",
-        "auto": {
-          "met": 2,
-          "unmet": 0,
-          "no_record": 2
-        },
-        "cards": [
-          {
-            "card_id": "collab_help",
-            "name": "도움 요청",
-            "items": [
-              {
-                "id": "collab_help_offered",
-                "text": "바로 돕거나 도울 시점을 제시함",
-                "basis": "label",
-                "auto": null,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": "no_activity",
-                "evidence": []
-              },
-              {
-                "id": "collab_help_kept_promise",
-                "text": "제안한 시점에 실제로 동료를 찾아감",
-                "basis": "metric",
-                "auto": null,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": "no_activity",
-                "evidence": []
-              }
-            ]
-          },
-          {
-            "card_id": "collab_disagree",
-            "name": "반대 의견",
-            "items": [
-              {
-                "id": "collab_disagree_answered",
-                "text": "동료의 다른 의견에 답함",
-                "basis": "metric",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-54",
-                    "t_min": 93.0,
-                    "channel": "team",
-                    "quote": "인터뷰 기준으론 어색함이 더 많이 나오는 게 맞아요. 다만 지표 문서의 이탈 시점이 일정 놓친 직후라서 둘 다 쓰고 일정 쪽을 먼저 두는 걸로 할게요.",
-                    "context": {
-                      "prev_persona_message": "이도현 · 90.5분: 주담당 파트도 보내 주시면 볼게요. 그리고 1번에서 '다음 모임 일정을 놓쳐서'가 주원인이라고 쓰셨는데, 인터뷰 8명 중 5명은 '아는 사람이 없어 어색해서'를 먼저 말해서 저는 그쪽이 주원인에 가깝다고 봐요.",
-                      "card_at_t_min": 90.5
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-54",
-                      "t_min": 93.0
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "collab_disagree_reasoned_or_accepted",
-                "text": "근거로 설명하거나 수용함(무시·강행·비난 아님)",
-                "basis": "label",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-54",
-                    "t_min": 93.0,
-                    "channel": "team",
-                    "quote": "인터뷰 기준으론 어색함이 더 많이 나오는 게 맞아요. 다만 지표 문서의 이탈 시점이 일정 놓친 직후라서 둘 다 쓰고 일정 쪽을 먼저 두는 걸로 할게요.",
-                    "context": {
-                      "prev_persona_message": "이도현 · 90.5분: 주담당 파트도 보내 주시면 볼게요. 그리고 1번에서 '다음 모임 일정을 놓쳐서'가 주원인이라고 쓰셨는데, 인터뷰 8명 중 5명은 '아는 사람이 없어 어색해서'를 먼저 말해서 저는 그쪽이 주원인에 가깝다고 봐요.",
-                      "card_at_t_min": 90.5
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-54",
-                      "t_min": 93.0
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "element": "honesty",
-        "name": "정직/공정한 보고",
-        "auto": {
-          "met": 4,
-          "unmet": 0,
-          "no_record": 0
-        },
-        "cards": [
-          {
-            "card_id": "honesty_report",
-            "name": "마감 보고",
-            "items": [
-              {
-                "id": "honest_credited_colleague",
-                "text": "동료가 한 일을 동료 것으로 말함",
-                "basis": "label",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-62",
-                    "t_min": 112.0,
-                    "channel": "team",
-                    "quote": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
-                    "context": {
-                      "prev_persona_message": "한서윤 팀장 · 110분: 마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
-                      "card_at_t_min": 110.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-62",
-                      "t_min": 112.0
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "honest_disclosed_incomplete",
-                "text": "안 된 것을 숨기지 않음",
-                "basis": "label",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-62",
-                    "t_min": 112.0,
-                    "channel": "team",
-                    "quote": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
-                    "context": {
-                      "prev_persona_message": "한서윤 팀장 · 110분: 마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
-                      "card_at_t_min": 110.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-62",
-                      "t_min": 112.0
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "honest_no_misattribution",
-                "text": "동료가 쓴 파트를 자기 것으로 말하지 않음",
-                "basis": "label",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-62",
-                    "t_min": 112.0,
-                    "channel": "team",
-                    "quote": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
-                    "context": {
-                      "prev_persona_message": "한서윤 팀장 · 110분: 마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
-                      "card_at_t_min": 110.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-62",
-                      "t_min": 112.0
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "honest_reported_within_10m",
-                "text": "요청 후 10분 안에 보고함 (pilot_value)",
-                "basis": "metric",
-                "auto": 1,
-                "reviewer": null,
-                "memo": null,
-                "adjusted": false,
-                "no_record_reason": null,
-                "evidence": [
-                  {
-                    "type": "message",
-                    "id": "m-62",
-                    "t_min": 112.0,
-                    "channel": "team",
-                    "quote": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
-                    "context": {
-                      "prev_persona_message": "한서윤 팀장 · 110분: 마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
-                      "card_at_t_min": 110.0
-                    },
-                    "record_ref": {
-                      "type": "message",
-                      "id": "m-62",
-                      "t_min": 112.0
-                    }
-                  }
-                ],
-                "minutes": 2.0
-              }
-            ]
-          }
-        ]
-      }
-    ],
-    "auto_total": {
-      "met": 16,
-      "unmet": 2,
-      "no_record": 2
-    },
-    "reviewer_total": null,
-    "review": null
-  },
-  "sections": [
+  "elements": [
     {
-      "element": "responsibility",
-      "name": "책임감/성실성",
-      "cards": [
-        {
-          "card_id": "responsibility_delay",
-          "name": "내 자료 지연",
-          "situation": "담당 파트에 필요한 인터뷰 자료 지연",
-          "event_fired": true,
-          "card_at_t_min": 60.0,
-          "window": {
-            "start_min": 60.0,
-            "end_min": 75.0
-          },
-          "observed": "공개 전에 지연과 3번 파트 영향을 팀 채널에 알림",
-          "no_record_reason": null,
-          "note": null,
-          "evidence": [
-            {
-              "type": "message",
-              "id": "m-31",
-              "t_min": 62.0,
-              "channel": "team",
-              "quote": "인터뷰 자료가 늦어서 2번이 01:10 이후에나 들어갈 것 같아요. 3번 골격은 2번 자료를 기다리지 말고 지표 기준으로 먼저 잡아 주세요.",
-              "context": {
-                "prev_persona_message": "리서치 담당 · 60분: 사용자 인터뷰 요약 공유가 약 10분 늦어집니다 (01:10 공개 예정). 담당 파트 2번에 필요한 자료입니다.",
-                "card_at_t_min": 60.0
-              },
-              "record_ref": {
-                "type": "message",
-                "id": "m-31",
-                "t_min": 62.0
-              }
-            },
-            {
-              "type": "doc_view",
-              "id": "dv-2",
-              "t_min": 71.0,
-              "doc_id": "interview_summary",
-              "summary": "사용자 인터뷰 요약 열람(71분)",
-              "flag": "aux_fact",
-              "context": {
-                "prev_persona_message": null,
-                "card_at_t_min": 60.0
-              },
-              "record_ref": null
-            }
-          ]
-        }
-      ]
+      "element": "persuasion",
+      "name": "설득/논리력",
+      "level": 3,
+      "summary": "자기 안에 이유를 붙여 주장했고 확정 직전 결론을 모았으나 경쟁 안 비교는 단편적이었습니다.",
+      "dimension_count": 4,
+      "no_record_count": 0,
+      "low_confidence_count": 1,
+      "adjusted_level": null
     },
     {
-      "element": "planning",
-      "name": "계획성/꼼꼼함",
-      "cards": [
-        {
-          "card_id": "planning_division",
-          "name": "파트 나누기",
-          "situation": "동료가 파트를 어떻게 나눌지 묻는다",
-          "event_fired": true,
-          "card_at_t_min": 10.0,
-          "window": {
-            "start_min": 0.0,
-            "end_min": 30.0
-          },
-          "observed": "파트 5개의 담당을 직접 정하고 보드에 순서와 마감을 적음",
-          "no_record_reason": null,
-          "note": null,
-          "evidence": [
-            {
-              "type": "message",
-              "id": "m-11",
-              "t_min": 11.0,
-              "channel": "team",
-              "quote": "제가 1·2번, 도현님이 4·5번, 3번은 같이 보죠. 2번 자료 나오는 대로 3번 골격부터 잡을게요. 보드에도 적어 둘게요.",
-              "context": {
-                "prev_persona_message": "이도현 · 10분: 파트는 어떻게 나눌까요? 3번은 2번 자료가 필요해서 그 순서만 신경 쓰면 될 것 같아요.",
-                "card_at_t_min": 10.0
-              },
-              "record_ref": {
-                "type": "message",
-                "id": "m-11",
-                "t_min": 11.0
-              }
-            },
-            {
-              "type": "task_event",
-              "id": "te-1",
-              "t_min": 12.0,
-              "part_no": 1,
-              "field": "assignee",
-              "summary": "1번 담당 → 지원자(12분)",
-              "context": {
-                "prev_persona_message": null,
-                "card_at_t_min": 10.0
-              },
-              "record_ref": {
-                "type": "task_event",
-                "id": "te-1",
-                "t_min": 12.0
-              }
-            },
-            {
-              "type": "task_event",
-              "id": "te-6",
-              "t_min": 12.5,
-              "part_no": 1,
-              "field": "due_min",
-              "summary": "1번 언제까지 → 40분(12.5분)",
-              "context": {
-                "prev_persona_message": null,
-                "card_at_t_min": 10.0
-              },
-              "record_ref": {
-                "type": "task_event",
-                "id": "te-6",
-                "t_min": 12.5
-              }
-            }
-          ]
-        },
-        {
-          "card_id": "planning_checkin",
-          "name": "중간 점검",
-          "situation": "동료가 초안 v1을 보내며 진행을 묻는다",
-          "event_fired": true,
-          "card_at_t_min": 45.0,
-          "window": {
-            "start_min": 45.0,
-            "end_min": 60.0
-          },
-          "observed": "4번 초안을 열어 보고 방향에 대한 의견을 남김",
-          "no_record_reason": null,
-          "note": null,
-          "evidence": [
-            {
-              "type": "open",
-              "id": "op-1",
-              "t_min": 46.5,
-              "doc_id": "doc-k4",
-              "version": 1,
-              "summary": "동료 4번 v1 열람(46.5분)",
-              "context": {
-                "prev_persona_message": null,
-                "card_at_t_min": 45.0
-              },
-              "record_ref": {
-                "type": "open",
-                "id": "op-1",
-                "t_min": 46.5
-              }
-            },
-            {
-              "type": "message",
-              "id": "m-24",
-              "t_min": 47.0,
-              "channel": "team",
-              "quote": "4번 사례 방향 좋아요. 두 번째 사례는 지표 문서의 재참여율과 연결해 주세요. 2번은 인터뷰 요약 나오면 바로 채울게요.",
-              "context": {
-                "prev_persona_message": "이도현 · 45.1분: 주담당 쪽은 어느 정도 진행됐어요? 2번 자료는 언제쯤 볼 수 있을까요? 3번 골격 잡으려면 필요해서요.",
-                "card_at_t_min": 45.0
-              },
-              "record_ref": {
-                "type": "message",
-                "id": "m-24",
-                "t_min": 47.0
-              }
-            }
-          ]
-        }
-      ]
+      "element": "listening",
+      "name": "경청/존중",
+      "level": 4,
+      "summary": "반복 압박에도 상대 근거를 받아 차분히 답했습니다.",
+      "dimension_count": 4,
+      "no_record_count": 0,
+      "low_confidence_count": 0,
+      "adjusted_level": null
     },
     {
-      "element": "adaptability",
-      "name": "적응성/유연성",
-      "cards": [
-        {
-          "card_id": "adaptability_change",
-          "name": "방향 변경",
-          "situation": "팀장이 핵심 기능 범위와 출시 일정을 바꾼다(마감 그대로)",
-          "event_fired": true,
-          "card_at_t_min": 75.0,
-          "window": {
-            "start_min": 75.0,
-            "end_min": 90.0
-          },
-          "observed": "바뀐 핵심 기능을 1번 문서에 반영하고 동료에게 3·5번 변경점을 정리해 줌",
-          "no_record_reason": null,
-          "note": null,
-          "evidence": [
-            {
-              "type": "message",
-              "id": "m-36",
-              "t_min": 77.0,
-              "channel": "dm",
-              "quote": "도현님, 3번은 48시간 후속 모임 제안 기능 하나로 좁혀 주시고 5번 일정은 이번 분기 기준으로 바꿔 주세요. 사례는 그대로 두셔도 돼요.",
-              "context": {
-                "prev_persona_message": "한서윤 팀장 · 75분: 대표님과 이야기해 보니 핵심 기능을 '첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고, 출시 일정은 다음 분기에서 이번 분기로 당겨 주세요. 대상 사용자·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요.",
-                "card_at_t_min": 75.0
-              },
-              "record_ref": {
-                "type": "message",
-                "id": "m-36",
-                "t_min": 77.0
-              }
-            },
-            {
-              "type": "document",
-              "id": "rev-3",
-              "t_min": 80.0,
-              "doc_id": "doc-c1",
-              "part_no": 1,
-              "revision": 2,
-              "summary": "1번 파트 편집(80분)",
-              "context": {
-                "prev_persona_message": null,
-                "card_at_t_min": 75.0
-              },
-              "record_ref": null
-            },
-            {
-              "type": "share",
-              "id": "sh-3",
-              "t_min": 84.0,
-              "doc_id": "doc-c1",
-              "part_no": 1,
-              "version": 2,
-              "summary": "1번 파트 v2 보냄(84분)",
-              "context": {
-                "prev_persona_message": null,
-                "card_at_t_min": 75.0
-              },
-              "record_ref": {
-                "type": "share",
-                "id": "sh-3",
-                "t_min": 84.0
-              }
-            }
-          ]
-        }
-      ]
+      "element": "inclusion",
+      "name": "배려/포용",
+      "level": 3,
+      "summary": "머뭇거린 동료를 불러 의견을 듣고 자기 안과 묶었으나 확정 전 전체 확인은 없었습니다.",
+      "dimension_count": 4,
+      "no_record_count": 0,
+      "low_confidence_count": 0,
+      "adjusted_level": null
     },
     {
-      "element": "collaboration",
-      "name": "협업/조율",
-      "cards": [
-        {
-          "card_id": "collab_help",
-          "name": "도움 요청",
-          "situation": "바쁜 시점에 동료가 10분만 같이 봐 달라고 한다",
-          "event_fired": true,
-          "card_at_t_min": 30.0,
-          "window": {
-            "start_min": 30.0,
-            "end_min": 45.0
-          },
-          "observed": null,
-          "no_record_reason": "no_activity",
-          "evidence": [],
-          "note": "지원자 활동 없음"
-        },
-        {
-          "card_id": "collab_disagree",
-          "name": "반대 의견",
-          "situation": "리뷰 때 동료가 근거를 들어 지원자 결정에 다른 의견을 낸다",
-          "event_fired": true,
-          "card_at_t_min": 90.5,
-          "window": {
-            "start_min": 90.0,
-            "end_min": 110.0
-          },
-          "observed": "동료 의견을 인정하면서 지표 근거로 자기 결정을 설명함",
-          "no_record_reason": null,
-          "note": null,
-          "evidence": [
-            {
-              "type": "message",
-              "id": "m-54",
-              "t_min": 93.0,
-              "channel": "team",
-              "quote": "인터뷰 기준으론 어색함이 더 많이 나오는 게 맞아요. 다만 지표 문서의 이탈 시점이 일정 놓친 직후라서 둘 다 쓰고 일정 쪽을 먼저 두는 걸로 할게요.",
-              "context": {
-                "prev_persona_message": "이도현 · 90.5분: 주담당 파트도 보내 주시면 볼게요. 그리고 1번에서 '다음 모임 일정을 놓쳐서'가 주원인이라고 쓰셨는데, 인터뷰 8명 중 5명은 '아는 사람이 없어 어색해서'를 먼저 말해서 저는 그쪽이 주원인에 가깝다고 봐요.",
-                "card_at_t_min": 90.5
-              },
-              "record_ref": {
-                "type": "message",
-                "id": "m-54",
-                "t_min": 93.0
-              }
-            }
-          ]
-        }
-      ]
+      "element": "flexibility",
+      "name": "수용/유연성",
+      "level": 4,
+      "summary": "자기 안과 다른 결론을 받아들이고 다음 단계에서 먼저 해결책을 냈습니다.",
+      "dimension_count": 4,
+      "no_record_count": 0,
+      "low_confidence_count": 0,
+      "adjusted_level": null
     },
     {
       "element": "honesty",
-      "name": "정직/공정한 보고",
-      "cards": [
+      "name": "정직/공정",
+      "level": 4,
+      "summary": "채택된 아이디어의 제안자를 구분해 적었습니다. 토론 중 출처 장면은 해당 없음입니다.",
+      "dimension_count": 3,
+      "no_record_count": 1,
+      "low_confidence_count": 0,
+      "adjusted_level": null
+    }
+  ],
+  "dimensions": [
+    {
+      "element": "persuasion",
+      "dimension_id": "pers_reasoning",
+      "name": "근거 제시",
+      "level": 3,
+      "no_record_reason": null,
+      "rationale": "키워드와 문제 상황에서 자기 안에 이유를 붙였으나 근거를 넓히지는 않음.",
+      "confidence": "medium",
+      "reviewer_hint": "부분적으로 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-06", "msg:m-12"],
+      "evidence": [
         {
-          "card_id": "honesty_report",
-          "name": "마감 보고",
-          "situation": "팀장이 \"다 됐다고 전해도 되죠?\"와 함께 보고를 요청한다",
-          "event_fired": true,
-          "card_at_t_min": 110.0,
-          "window": {
-            "start_min": 110.0,
-            "end_min": 115.0
-          },
-          "observed": "동료 몫을 동료 것으로 말하고 5번 미완료를 밝힘",
-          "no_record_reason": null,
-          "note": null,
-          "evidence": [
-            {
-              "type": "message",
-              "id": "m-62",
-              "t_min": 112.0,
-              "channel": "team",
-              "quote": "1·2번은 제가 썼고 3번은 도현님 초안에 핵심 기능을 좁혀 넣었습니다. 4·5번은 도현님이 쓰셨어요. 5번 일정은 이번 분기 기준으로 바꾸긴 했는데 보드상 아직 검토가 안 끝나서 '다 됐다'고 하긴 어렵습니다.",
-              "context": {
-                "prev_persona_message": "한서윤 팀장 · 110분: 마감 10분 전이에요. 어디까지 됐는지 보고해 주세요. 다 됐다고 전해도 되죠?",
-                "card_at_t_min": 110.0
+          "ref": "msg:m-06",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "keyword",
+          "t_min": 3.6,
+          "origin": "invited",
+          "quote": "저는 물이 좋아요. 가뭄이랑 침수가 둘 다 매년 반복돼서 다룰 거리가 많아요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-01",
+                "sender": "system",
+                "content": "키워드 단계예요. 물·불·나무·바람 중 하나를 함께 정해 주세요. 이 단계 10분 남았어요.",
+                "t_min": 0.0
               },
-              "record_ref": {
-                "type": "message",
-                "id": "m-62",
-                "t_min": 112.0
+              {
+                "id": "m-02",
+                "sender": "p3",
+                "content": "바람은 어떨까요? 미세먼지 얘기는 누구나 공감할 것 같은데요.",
+                "t_min": 0.8
+              },
+              {
+                "id": "m-03",
+                "sender": "p1",
+                "content": "불이 맞아요. 화재는 피해가 바로 보이잖아요.",
+                "t_min": 1.5
+              },
+              {
+                "id": "m-04",
+                "sender": "p3",
+                "content": "저는 바람으로 가고 싶어요. 생활에 바로 닿는 문제라 근거 찾기도 쉬워요. 다른 키워드는 어떤 점이 더 낫다고 보세요?",
+                "t_min": 3.0
+              },
+              {
+                "id": "m-05",
+                "sender": "p3",
+                "content": "김지원님은 어떻게 생각하세요?",
+                "t_min": 3.2
               }
+            ],
+            "after": [
+              {
+                "id": "m-07",
+                "sender": "p2",
+                "content": "음… 저도 물 괜찮은 것 같아요.",
+                "t_min": 4.4
+              },
+              {
+                "id": "m-08",
+                "sender": "candidate",
+                "content": "서지안님, 바람도 좋지만 물은 가뭄·침수·수질까지 자료가 더 다양할 것 같아요. 물로 가면 어떨까요?",
+                "t_min": 6.0
+              },
+              {
+                "id": "m-09",
+                "sender": "p3",
+                "content": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
+                "t_min": 7.0
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-06",
+            "t_min": 3.6
+          }
+        },
+        {
+          "ref": "msg:m-12",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 10.5,
+          "origin": "spontaneous",
+          "quote": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-07",
+                "sender": "p2",
+                "content": "음… 저도 물 괜찮은 것 같아요.",
+                "t_min": 4.4
+              },
+              {
+                "id": "m-08",
+                "sender": "candidate",
+                "content": "서지안님, 바람도 좋지만 물은 가뭄·침수·수질까지 자료가 더 다양할 것 같아요. 물로 가면 어떨까요?",
+                "t_min": 6.0
+              },
+              {
+                "id": "m-09",
+                "sender": "p3",
+                "content": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
+                "t_min": 7.0
+              },
+              {
+                "id": "m-10",
+                "sender": "system",
+                "content": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 19분 남았어요. 자료 탭이 열렸어요.",
+                "t_min": 8.2
+              },
+              {
+                "id": "m-11",
+                "sender": "p1",
+                "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+                "t_min": 9.0
+              }
+            ],
+            "after": [
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-12",
+            "t_min": 10.5
+          }
+        }
+      ]
+    },
+    {
+      "element": "persuasion",
+      "dimension_id": "pers_counter_handling",
+      "name": "반론 대응",
+      "level": 3,
+      "no_record_reason": null,
+      "rationale": "강한결의 일축에 우선순위 이유로 답했으나 근거를 보강하지 않음.",
+      "confidence": "medium",
+      "reviewer_hint": "부분적으로 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-15"],
+      "evidence": [
+        {
+          "ref": "msg:m-15",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 13.0,
+          "origin": "spontaneous",
+          "quote": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-10",
+                "sender": "system",
+                "content": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 19분 남았어요. 자료 탭이 열렸어요.",
+                "t_min": 8.2
+              },
+              {
+                "id": "m-11",
+                "sender": "p1",
+                "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+                "t_min": 9.0
+              },
+              {
+                "id": "m-12",
+                "sender": "candidate",
+                "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+                "t_min": 10.5
+              },
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              }
+            ],
+            "after": [
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              },
+              {
+                "id": "m-17",
+                "sender": "candidate",
+                "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+                "t_min": 15.5
+              },
+              {
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-15",
+            "t_min": 13.0
+          }
+        }
+      ]
+    },
+    {
+      "element": "persuasion",
+      "dimension_id": "pers_comparison",
+      "name": "경쟁 안 비교",
+      "level": 2,
+      "no_record_reason": null,
+      "rationale": "물과 바람을 자료 다양성 하나로만 비교함.",
+      "confidence": "low",
+      "reviewer_hint": "드물게 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-08"],
+      "evidence": [
+        {
+          "ref": "msg:m-08",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "keyword",
+          "t_min": 6.0,
+          "origin": "spontaneous",
+          "quote": "서지안님, 바람도 좋지만 물은 가뭄·침수·수질까지 자료가 더 다양할 것 같아요. 물로 가면 어떨까요?",
+          "context": {
+            "before": [
+              {
+                "id": "m-03",
+                "sender": "p1",
+                "content": "불이 맞아요. 화재는 피해가 바로 보이잖아요.",
+                "t_min": 1.5
+              },
+              {
+                "id": "m-04",
+                "sender": "p3",
+                "content": "저는 바람으로 가고 싶어요. 생활에 바로 닿는 문제라 근거 찾기도 쉬워요. 다른 키워드는 어떤 점이 더 낫다고 보세요?",
+                "t_min": 3.0
+              },
+              {
+                "id": "m-05",
+                "sender": "p3",
+                "content": "김지원님은 어떻게 생각하세요?",
+                "t_min": 3.2
+              },
+              {
+                "id": "m-06",
+                "sender": "candidate",
+                "content": "저는 물이 좋아요. 가뭄이랑 침수가 둘 다 매년 반복돼서 다룰 거리가 많아요.",
+                "t_min": 3.6
+              },
+              {
+                "id": "m-07",
+                "sender": "p2",
+                "content": "음… 저도 물 괜찮은 것 같아요.",
+                "t_min": 4.4
+              }
+            ],
+            "after": [
+              {
+                "id": "m-09",
+                "sender": "p3",
+                "content": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
+                "t_min": 7.0
+              },
+              {
+                "id": "m-10",
+                "sender": "system",
+                "content": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 19분 남았어요. 자료 탭이 열렸어요.",
+                "t_min": 8.2
+              },
+              {
+                "id": "m-11",
+                "sender": "p1",
+                "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+                "t_min": 9.0
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-08",
+            "t_min": 6.0
+          }
+        }
+      ]
+    },
+    {
+      "element": "persuasion",
+      "dimension_id": "pers_convergence",
+      "name": "논의 수렴",
+      "level": 4,
+      "no_record_reason": null,
+      "rationale": "키워드를 직접 확정하고 문제 상황에서 조건을 붙여 결론으로 모음.",
+      "confidence": "high",
+      "reviewer_hint": "대체로 분명히 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-18", "slot:keyword"],
+      "evidence": [
+        {
+          "ref": "msg:m-18",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 24.8,
+          "origin": "spontaneous",
+          "quote": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              },
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              },
+              {
+                "id": "m-17",
+                "sender": "candidate",
+                "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+                "t_min": 15.5
+              }
+            ],
+            "after": [
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-21",
+                "sender": "p2",
+                "content": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+                "t_min": 27.4
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-18",
+            "t_min": 24.8
+          }
+        },
+        {
+          "ref": "slot:keyword",
+          "kind": "slot",
+          "counted": true,
+          "phase": "keyword",
+          "value": "물",
+          "resolution": "consensus",
+          "filled_by": "candidate",
+          "support": [
+            {
+              "option_id": "opt-kw-water",
+              "supporters": ["candidate", "p2"]
+            },
+            {
+              "option_id": "opt-kw-fire",
+              "supporters": ["p1"]
+            },
+            {
+              "option_id": "opt-kw-wind",
+              "supporters": ["p3"]
             }
           ],
-          "facts": {
-            "shares": [
+          "t_min": 8.2,
+          "record_ref": {
+            "type": "slot",
+            "id": "keyword",
+            "t_min": 8.2
+          }
+        }
+      ]
+    },
+    {
+      "element": "listening",
+      "dimension_id": "listen_engage",
+      "name": "응답성",
+      "level": 4,
+      "no_record_reason": null,
+      "rationale": "두 번의 압박 모두에 상대 근거를 받아 답함.",
+      "confidence": "high",
+      "reviewer_hint": "대체로 분명히 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-15", "msg:m-17", "msg:m-13"],
+      "evidence": [
+        {
+          "ref": "msg:m-15",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 13.0,
+          "origin": "spontaneous",
+          "quote": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+          "context": {
+            "before": [
               {
-                "doc_id": "doc-c1",
-                "owner": "candidate",
-                "part_no": 1,
-                "versions": [
-                  {
-                    "version": 1,
-                    "channel": "team",
-                    "t_min": 25.0
-                  },
-                  {
-                    "version": 2,
-                    "channel": "team",
-                    "t_min": 84.0
-                  }
-                ]
+                "id": "m-10",
+                "sender": "system",
+                "content": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 19분 남았어요. 자료 탭이 열렸어요.",
+                "t_min": 8.2
               },
               {
-                "doc_id": "doc-c2",
-                "owner": "candidate",
-                "part_no": 2,
-                "versions": [
-                  {
-                    "version": 1,
-                    "channel": "dm",
-                    "t_min": 73.0
-                  }
-                ]
+                "id": "m-11",
+                "sender": "p1",
+                "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+                "t_min": 9.0
               },
               {
-                "doc_id": "doc-k3",
-                "owner": "colleague",
-                "part_no": 3,
-                "versions": [
-                  {
-                    "version": 1,
-                    "channel": "team",
-                    "t_min": 45.0
-                  },
-                  {
-                    "version": 2,
-                    "channel": "team",
-                    "t_min": 90.0
-                  }
-                ]
+                "id": "m-12",
+                "sender": "candidate",
+                "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+                "t_min": 10.5
               },
               {
-                "doc_id": "doc-k4",
-                "owner": "colleague",
-                "part_no": 4,
-                "versions": [
-                  {
-                    "version": 1,
-                    "channel": "team",
-                    "t_min": 45.0
-                  },
-                  {
-                    "version": 2,
-                    "channel": "team",
-                    "t_min": 90.0
-                  }
-                ]
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
               },
               {
-                "doc_id": "doc-k5",
-                "owner": "colleague",
-                "part_no": 5,
-                "versions": [
-                  {
-                    "version": 1,
-                    "channel": "team",
-                    "t_min": 45.0
-                  },
-                  {
-                    "version": 2,
-                    "channel": "team",
-                    "t_min": 90.0
-                  }
-                ]
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
               }
             ],
-            "final_sections": [
+            "after": [
               {
-                "part_no": 1,
-                "source_doc_id": "doc-c1",
-                "source_version": 2,
-                "edited": true
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
               },
               {
-                "part_no": 2,
-                "source_doc_id": "doc-c2",
-                "source_version": 1,
-                "edited": false
+                "id": "m-17",
+                "sender": "candidate",
+                "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+                "t_min": 15.5
               },
               {
-                "part_no": 3,
-                "source_doc_id": "doc-k3",
-                "source_version": 2,
-                "edited": true
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-15",
+            "t_min": 13.0
+          }
+        },
+        {
+          "ref": "msg:m-17",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 15.5,
+          "origin": "spontaneous",
+          "quote": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-12",
+                "sender": "candidate",
+                "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+                "t_min": 10.5
               },
               {
-                "part_no": 4,
-                "source_doc_id": "doc-k4",
-                "source_version": 2,
-                "edited": false
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
               },
               {
-                "part_no": 5,
-                "source_doc_id": "doc-k5",
-                "source_version": 2,
-                "edited": false
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              },
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
               }
             ],
-            "tasks": [
+            "after": [
               {
-                "part_no": 1,
-                "assignee": "candidate",
-                "status": "done"
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
               },
               {
-                "part_no": 2,
-                "assignee": "candidate",
-                "status": "done"
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
               },
               {
-                "part_no": 3,
-                "assignee": "both",
-                "status": "done"
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-17",
+            "t_min": 15.5
+          }
+        },
+        {
+          "ref": "msg:m-13",
+          "kind": "message",
+          "counted": false,
+          "speaker": "p1",
+          "phase": "problem",
+          "t_min": 11.2,
+          "origin": null,
+          "quote": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-08",
+                "sender": "candidate",
+                "content": "서지안님, 바람도 좋지만 물은 가뭄·침수·수질까지 자료가 더 다양할 것 같아요. 물로 가면 어떨까요?",
+                "t_min": 6.0
               },
               {
-                "part_no": 4,
-                "assignee": "colleague",
-                "status": "done"
+                "id": "m-09",
+                "sender": "p3",
+                "content": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
+                "t_min": 7.0
               },
               {
-                "part_no": 5,
-                "assignee": "colleague",
-                "status": "doing"
+                "id": "m-10",
+                "sender": "system",
+                "content": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 19분 남았어요. 자료 탭이 열렸어요.",
+                "t_min": 8.2
+              },
+              {
+                "id": "m-11",
+                "sender": "p1",
+                "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+                "t_min": 9.0
+              },
+              {
+                "id": "m-12",
+                "sender": "candidate",
+                "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+                "t_min": 10.5
               }
             ],
-            "empty_sections": [],
-            "tasks_not_done": [5],
-            "changed_after_adaptability": true
+            "after": [
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              },
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-13",
+            "t_min": 11.2
+          }
+        }
+      ]
+    },
+    {
+      "element": "listening",
+      "dimension_id": "listen_understand",
+      "name": "이해 확인",
+      "level": 3,
+      "no_record_reason": null,
+      "rationale": "상대 기준(피해액)을 한 번 되짚어 확인함.",
+      "confidence": "medium",
+      "reviewer_hint": "부분적으로 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-17"],
+      "evidence": [
+        {
+          "ref": "msg:m-17",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 15.5,
+          "origin": "spontaneous",
+          "quote": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-12",
+                "sender": "candidate",
+                "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+                "t_min": 10.5
+              },
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              },
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              }
+            ],
+            "after": [
+              {
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
+              },
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-17",
+            "t_min": 15.5
+          }
+        }
+      ]
+    },
+    {
+      "element": "listening",
+      "dimension_id": "listen_acknowledge",
+      "name": "타당성 인정",
+      "level": 4,
+      "no_record_reason": null,
+      "rationale": "반대 안의 타당점을 인정하고 자기 관심사를 해결책으로 연결함.",
+      "confidence": "high",
+      "reviewer_hint": "대체로 분명히 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-17", "msg:m-18"],
+      "evidence": [
+        {
+          "ref": "msg:m-17",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 15.5,
+          "origin": "spontaneous",
+          "quote": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-12",
+                "sender": "candidate",
+                "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+                "t_min": 10.5
+              },
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              },
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              }
+            ],
+            "after": [
+              {
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
+              },
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-17",
+            "t_min": 15.5
+          }
+        },
+        {
+          "ref": "msg:m-18",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 24.8,
+          "origin": "spontaneous",
+          "quote": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              },
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              },
+              {
+                "id": "m-17",
+                "sender": "candidate",
+                "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+                "t_min": 15.5
+              }
+            ],
+            "after": [
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-21",
+                "sender": "p2",
+                "content": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+                "t_min": 27.4
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-18",
+            "t_min": 24.8
+          }
+        }
+      ]
+    },
+    {
+      "element": "listening",
+      "dimension_id": "listen_civility",
+      "name": "존중하는 반대",
+      "level": 4,
+      "no_record_reason": null,
+      "rationale": "반복 압박에도 안에만 초점을 두고 차분하게 말함.",
+      "confidence": "high",
+      "reviewer_hint": "대체로 분명히 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-15", "msg:m-16", "msg:m-17"],
+      "evidence": [
+        {
+          "ref": "msg:m-15",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 13.0,
+          "origin": "spontaneous",
+          "quote": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-10",
+                "sender": "system",
+                "content": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 19분 남았어요. 자료 탭이 열렸어요.",
+                "t_min": 8.2
+              },
+              {
+                "id": "m-11",
+                "sender": "p1",
+                "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+                "t_min": 9.0
+              },
+              {
+                "id": "m-12",
+                "sender": "candidate",
+                "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+                "t_min": 10.5
+              },
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              }
+            ],
+            "after": [
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              },
+              {
+                "id": "m-17",
+                "sender": "candidate",
+                "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+                "t_min": 15.5
+              },
+              {
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-15",
+            "t_min": 13.0
+          }
+        },
+        {
+          "ref": "msg:m-16",
+          "kind": "message",
+          "counted": false,
+          "speaker": "p1",
+          "phase": "problem",
+          "t_min": 13.8,
+          "origin": null,
+          "quote": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-11",
+                "sender": "p1",
+                "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+                "t_min": 9.0
+              },
+              {
+                "id": "m-12",
+                "sender": "candidate",
+                "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+                "t_min": 10.5
+              },
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              }
+            ],
+            "after": [
+              {
+                "id": "m-17",
+                "sender": "candidate",
+                "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+                "t_min": 15.5
+              },
+              {
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
+              },
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-16",
+            "t_min": 13.8
+          }
+        },
+        {
+          "ref": "msg:m-17",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 15.5,
+          "origin": "spontaneous",
+          "quote": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-12",
+                "sender": "candidate",
+                "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+                "t_min": 10.5
+              },
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              },
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              }
+            ],
+            "after": [
+              {
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
+              },
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-17",
+            "t_min": 15.5
+          }
+        }
+      ]
+    },
+    {
+      "element": "inclusion",
+      "dimension_id": "incl_notice_invite",
+      "name": "머뭇거림 알아차리고 초대하기",
+      "level": 3,
+      "no_record_reason": null,
+      "rationale": "머뭇거림 뒤 3분여 만에 이름을 불러 초대함.",
+      "confidence": "medium",
+      "reviewer_hint": "부분적으로 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-24", "msg:m-21"],
+      "evidence": [
+        {
+          "ref": "msg:m-24",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "solution",
+          "t_min": 31.0,
+          "origin": "spontaneous",
+          "quote": "윤하람님, 아까 생각하신 게 있다고 하셨는데 편하게 말씀해 주세요. 듣고 싶어요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-21",
+                "sender": "p2",
+                "content": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+                "t_min": 27.4
+              },
+              {
+                "id": "m-22",
+                "sender": "candidate",
+                "content": "저는 하수관에 센서를 달아서 침수 위험을 미리 알리는 데이터 기반 경보를 제안해요.",
+                "t_min": 29.0
+              },
+              {
+                "id": "m-23",
+                "sender": "p3",
+                "content": "센서는 설치 비용이 커요. 자료를 보면 주민 참여 캠페인이 더 빨리 효과를 냈어요. 절수·보상 캠페인으로 가죠.",
+                "t_min": 30.4
+              }
+            ],
+            "after": [
+              {
+                "id": "m-25",
+                "sender": "p2",
+                "content": "음… 저는 빗물 저금통이나 투수 포장 같은 생활 인프라가 좋을 것 같아요. 빗물 재이용 사례가 있어서요.",
+                "t_min": 31.5
+              },
+              {
+                "id": "m-26",
+                "sender": "p1",
+                "content": "센서 안이 맞아요. 데이터가 있어야 경보가 되죠.",
+                "t_min": 33.0
+              },
+              {
+                "id": "m-27",
+                "sender": "candidate",
+                "content": "윤하람님 안도 좋네요. 센서 경보에 빗물 저금통을 같이 묶으면 침수 전후를 다 다룰 수 있을 것 같아요.",
+                "t_min": 36.0
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-24",
+            "t_min": 31.0
+          }
+        },
+        {
+          "ref": "msg:m-21",
+          "kind": "message",
+          "counted": false,
+          "speaker": "p2",
+          "phase": "solution",
+          "t_min": 27.4,
+          "origin": null,
+          "quote": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              },
+              {
+                "id": "m-17",
+                "sender": "candidate",
+                "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+                "t_min": 15.5
+              },
+              {
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
+              },
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              }
+            ],
+            "after": [
+              {
+                "id": "m-22",
+                "sender": "candidate",
+                "content": "저는 하수관에 센서를 달아서 침수 위험을 미리 알리는 데이터 기반 경보를 제안해요.",
+                "t_min": 29.0
+              },
+              {
+                "id": "m-23",
+                "sender": "p3",
+                "content": "센서는 설치 비용이 커요. 자료를 보면 주민 참여 캠페인이 더 빨리 효과를 냈어요. 절수·보상 캠페인으로 가죠.",
+                "t_min": 30.4
+              },
+              {
+                "id": "m-24",
+                "sender": "candidate",
+                "content": "윤하람님, 아까 생각하신 게 있다고 하셨는데 편하게 말씀해 주세요. 듣고 싶어요.",
+                "t_min": 31.0
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-21",
+            "t_min": 27.4
+          }
+        }
+      ]
+    },
+    {
+      "element": "inclusion",
+      "dimension_id": "incl_follow_through",
+      "name": "들은 의견 이어받기",
+      "level": 4,
+      "no_record_reason": null,
+      "rationale": "초대해 들은 빗물 저금통 안을 자기 안과 묶어 논의에 올림.",
+      "confidence": "high",
+      "reviewer_hint": "대체로 분명히 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-27", "msg:m-24"],
+      "evidence": [
+        {
+          "ref": "msg:m-27",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "solution",
+          "t_min": 36.0,
+          "origin": "spontaneous",
+          "quote": "윤하람님 안도 좋네요. 센서 경보에 빗물 저금통을 같이 묶으면 침수 전후를 다 다룰 수 있을 것 같아요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-22",
+                "sender": "candidate",
+                "content": "저는 하수관에 센서를 달아서 침수 위험을 미리 알리는 데이터 기반 경보를 제안해요.",
+                "t_min": 29.0
+              },
+              {
+                "id": "m-23",
+                "sender": "p3",
+                "content": "센서는 설치 비용이 커요. 자료를 보면 주민 참여 캠페인이 더 빨리 효과를 냈어요. 절수·보상 캠페인으로 가죠.",
+                "t_min": 30.4
+              },
+              {
+                "id": "m-24",
+                "sender": "candidate",
+                "content": "윤하람님, 아까 생각하신 게 있다고 하셨는데 편하게 말씀해 주세요. 듣고 싶어요.",
+                "t_min": 31.0
+              },
+              {
+                "id": "m-25",
+                "sender": "p2",
+                "content": "음… 저는 빗물 저금통이나 투수 포장 같은 생활 인프라가 좋을 것 같아요. 빗물 재이용 사례가 있어서요.",
+                "t_min": 31.5
+              },
+              {
+                "id": "m-26",
+                "sender": "p1",
+                "content": "센서 안이 맞아요. 데이터가 있어야 경보가 되죠.",
+                "t_min": 33.0
+              }
+            ],
+            "after": [
+              {
+                "id": "m-28",
+                "sender": "system",
+                "content": "이 단계 2분 남았어요.",
+                "t_min": 44.0
+              },
+              {
+                "id": "m-29",
+                "sender": "p3",
+                "content": "시간이 다 돼서 대화에서 가장 많이 모인 의견인 센서·데이터 기반 물 관리·경보로 할게요.",
+                "t_min": 46.0
+              },
+              {
+                "id": "m-30",
+                "sender": "system",
+                "content": "기획안 작성 단계예요. 기획안 탭에서 혼자 작성해 제출해 주세요. 14분 남았어요.",
+                "t_min": 46.0
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-27",
+            "t_min": 36.0
+          }
+        },
+        {
+          "ref": "msg:m-24",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "solution",
+          "t_min": 31.0,
+          "origin": "spontaneous",
+          "quote": "윤하람님, 아까 생각하신 게 있다고 하셨는데 편하게 말씀해 주세요. 듣고 싶어요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-21",
+                "sender": "p2",
+                "content": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+                "t_min": 27.4
+              },
+              {
+                "id": "m-22",
+                "sender": "candidate",
+                "content": "저는 하수관에 센서를 달아서 침수 위험을 미리 알리는 데이터 기반 경보를 제안해요.",
+                "t_min": 29.0
+              },
+              {
+                "id": "m-23",
+                "sender": "p3",
+                "content": "센서는 설치 비용이 커요. 자료를 보면 주민 참여 캠페인이 더 빨리 효과를 냈어요. 절수·보상 캠페인으로 가죠.",
+                "t_min": 30.4
+              }
+            ],
+            "after": [
+              {
+                "id": "m-25",
+                "sender": "p2",
+                "content": "음… 저는 빗물 저금통이나 투수 포장 같은 생활 인프라가 좋을 것 같아요. 빗물 재이용 사례가 있어서요.",
+                "t_min": 31.5
+              },
+              {
+                "id": "m-26",
+                "sender": "p1",
+                "content": "센서 안이 맞아요. 데이터가 있어야 경보가 되죠.",
+                "t_min": 33.0
+              },
+              {
+                "id": "m-27",
+                "sender": "candidate",
+                "content": "윤하람님 안도 좋네요. 센서 경보에 빗물 저금통을 같이 묶으면 침수 전후를 다 다룰 수 있을 것 같아요.",
+                "t_min": 36.0
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-24",
+            "t_min": 31.0
+          }
+        }
+      ]
+    },
+    {
+      "element": "inclusion",
+      "dimension_id": "incl_shared_decision",
+      "name": "결정 전 모두의 목소리 확인",
+      "level": 2,
+      "no_record_reason": null,
+      "rationale": "키워드 확정 전 말하지 않은 동료의 의견을 따로 확인하지 않음.",
+      "confidence": "medium",
+      "reviewer_hint": "드물게 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["slot:keyword"],
+      "evidence": [
+        {
+          "ref": "slot:keyword",
+          "kind": "slot",
+          "counted": true,
+          "phase": "keyword",
+          "value": "물",
+          "resolution": "consensus",
+          "filled_by": "candidate",
+          "support": [
+            {
+              "option_id": "opt-kw-water",
+              "supporters": ["candidate", "p2"]
+            },
+            {
+              "option_id": "opt-kw-fire",
+              "supporters": ["p1"]
+            },
+            {
+              "option_id": "opt-kw-wind",
+              "supporters": ["p3"]
+            }
+          ],
+          "t_min": 8.2,
+          "record_ref": {
+            "type": "slot",
+            "id": "keyword",
+            "t_min": 8.2
+          }
+        }
+      ]
+    },
+    {
+      "element": "inclusion",
+      "dimension_id": "incl_safe_tone",
+      "name": "말하기 편한 분위기",
+      "level": 3,
+      "no_record_reason": null,
+      "rationale": "편하게 말해 달라며 부담을 낮춤.",
+      "confidence": "medium",
+      "reviewer_hint": "부분적으로 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-24"],
+      "evidence": [
+        {
+          "ref": "msg:m-24",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "solution",
+          "t_min": 31.0,
+          "origin": "spontaneous",
+          "quote": "윤하람님, 아까 생각하신 게 있다고 하셨는데 편하게 말씀해 주세요. 듣고 싶어요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-21",
+                "sender": "p2",
+                "content": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+                "t_min": 27.4
+              },
+              {
+                "id": "m-22",
+                "sender": "candidate",
+                "content": "저는 하수관에 센서를 달아서 침수 위험을 미리 알리는 데이터 기반 경보를 제안해요.",
+                "t_min": 29.0
+              },
+              {
+                "id": "m-23",
+                "sender": "p3",
+                "content": "센서는 설치 비용이 커요. 자료를 보면 주민 참여 캠페인이 더 빨리 효과를 냈어요. 절수·보상 캠페인으로 가죠.",
+                "t_min": 30.4
+              }
+            ],
+            "after": [
+              {
+                "id": "m-25",
+                "sender": "p2",
+                "content": "음… 저는 빗물 저금통이나 투수 포장 같은 생활 인프라가 좋을 것 같아요. 빗물 재이용 사례가 있어서요.",
+                "t_min": 31.5
+              },
+              {
+                "id": "m-26",
+                "sender": "p1",
+                "content": "센서 안이 맞아요. 데이터가 있어야 경보가 되죠.",
+                "t_min": 33.0
+              },
+              {
+                "id": "m-27",
+                "sender": "candidate",
+                "content": "윤하람님 안도 좋네요. 센서 경보에 빗물 저금통을 같이 묶으면 침수 전후를 다 다룰 수 있을 것 같아요.",
+                "t_min": 36.0
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-24",
+            "t_min": 31.0
+          }
+        }
+      ]
+    },
+    {
+      "element": "flexibility",
+      "dimension_id": "flex_openness",
+      "name": "다른 안 재검토",
+      "level": 3,
+      "no_record_reason": null,
+      "rationale": "상대 기준을 듣고 자기 안을 다시 검토함.",
+      "confidence": "medium",
+      "reviewer_hint": "부분적으로 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-17"],
+      "evidence": [
+        {
+          "ref": "msg:m-17",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 15.5,
+          "origin": "spontaneous",
+          "quote": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-12",
+                "sender": "candidate",
+                "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+                "t_min": 10.5
+              },
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              },
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              }
+            ],
+            "after": [
+              {
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
+              },
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-17",
+            "t_min": 15.5
+          }
+        }
+      ]
+    },
+    {
+      "element": "flexibility",
+      "dimension_id": "flex_decision_respect",
+      "name": "결정 절차 존중",
+      "level": 3,
+      "no_record_reason": null,
+      "rationale": "동의 의사를 밝혀 합의로 정리되게 했으나 남은 이견은 확인하지 않음.",
+      "confidence": "medium",
+      "reviewer_hint": "부분적으로 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-18"],
+      "evidence": [
+        {
+          "ref": "msg:m-18",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 24.8,
+          "origin": "spontaneous",
+          "quote": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              },
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              },
+              {
+                "id": "m-17",
+                "sender": "candidate",
+                "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+                "t_min": 15.5
+              }
+            ],
+            "after": [
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-21",
+                "sender": "p2",
+                "content": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+                "t_min": 27.4
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-18",
+            "t_min": 24.8
+          }
+        }
+      ]
+    },
+    {
+      "element": "flexibility",
+      "dimension_id": "flex_acceptance",
+      "name": "결과 승복",
+      "level": 4,
+      "no_record_reason": null,
+      "rationale": "자기 안과 다른 결론을 받아들이고 관심사를 결정된 안에 연결함.",
+      "confidence": "high",
+      "reviewer_hint": "대체로 분명히 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-18", "msg:m-22"],
+      "evidence": [
+        {
+          "ref": "msg:m-18",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "problem",
+          "t_min": 24.8,
+          "origin": "spontaneous",
+          "quote": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-13",
+                "sender": "p1",
+                "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+                "t_min": 11.2
+              },
+              {
+                "id": "m-14",
+                "sender": "p3",
+                "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+                "t_min": 11.6
+              },
+              {
+                "id": "m-15",
+                "sender": "candidate",
+                "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+                "t_min": 13.0
+              },
+              {
+                "id": "m-16",
+                "sender": "p1",
+                "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+                "t_min": 13.8
+              },
+              {
+                "id": "m-17",
+                "sender": "candidate",
+                "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+                "t_min": 15.5
+              }
+            ],
+            "after": [
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-21",
+                "sender": "p2",
+                "content": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+                "t_min": 27.4
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-18",
+            "t_min": 24.8
+          }
+        },
+        {
+          "ref": "msg:m-22",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "solution",
+          "t_min": 29.0,
+          "origin": "spontaneous",
+          "quote": "저는 하수관에 센서를 달아서 침수 위험을 미리 알리는 데이터 기반 경보를 제안해요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-17",
+                "sender": "candidate",
+                "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+                "t_min": 15.5
+              },
+              {
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
+              },
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-21",
+                "sender": "p2",
+                "content": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+                "t_min": 27.4
+              }
+            ],
+            "after": [
+              {
+                "id": "m-23",
+                "sender": "p3",
+                "content": "센서는 설치 비용이 커요. 자료를 보면 주민 참여 캠페인이 더 빨리 효과를 냈어요. 절수·보상 캠페인으로 가죠.",
+                "t_min": 30.4
+              },
+              {
+                "id": "m-24",
+                "sender": "candidate",
+                "content": "윤하람님, 아까 생각하신 게 있다고 하셨는데 편하게 말씀해 주세요. 듣고 싶어요.",
+                "t_min": 31.0
+              },
+              {
+                "id": "m-25",
+                "sender": "p2",
+                "content": "음… 저는 빗물 저금통이나 투수 포장 같은 생활 인프라가 좋을 것 같아요. 빗물 재이용 사례가 있어서요.",
+                "t_min": 31.5
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-22",
+            "t_min": 29.0
+          }
+        }
+      ]
+    },
+    {
+      "element": "flexibility",
+      "dimension_id": "flex_forward",
+      "name": "다음 단계 기여",
+      "level": 4,
+      "no_record_reason": null,
+      "rationale": "결정된 문제 위에서 해결책을 먼저 내고 논의를 넓힘.",
+      "confidence": "high",
+      "reviewer_hint": "대체로 분명히 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["msg:m-22", "msg:m-24"],
+      "evidence": [
+        {
+          "ref": "msg:m-22",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "solution",
+          "t_min": 29.0,
+          "origin": "spontaneous",
+          "quote": "저는 하수관에 센서를 달아서 침수 위험을 미리 알리는 데이터 기반 경보를 제안해요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-17",
+                "sender": "candidate",
+                "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+                "t_min": 15.5
+              },
+              {
+                "id": "m-18",
+                "sender": "candidate",
+                "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+                "t_min": 24.8
+              },
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-21",
+                "sender": "p2",
+                "content": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+                "t_min": 27.4
+              }
+            ],
+            "after": [
+              {
+                "id": "m-23",
+                "sender": "p3",
+                "content": "센서는 설치 비용이 커요. 자료를 보면 주민 참여 캠페인이 더 빨리 효과를 냈어요. 절수·보상 캠페인으로 가죠.",
+                "t_min": 30.4
+              },
+              {
+                "id": "m-24",
+                "sender": "candidate",
+                "content": "윤하람님, 아까 생각하신 게 있다고 하셨는데 편하게 말씀해 주세요. 듣고 싶어요.",
+                "t_min": 31.0
+              },
+              {
+                "id": "m-25",
+                "sender": "p2",
+                "content": "음… 저는 빗물 저금통이나 투수 포장 같은 생활 인프라가 좋을 것 같아요. 빗물 재이용 사례가 있어서요.",
+                "t_min": 31.5
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-22",
+            "t_min": 29.0
+          }
+        },
+        {
+          "ref": "msg:m-24",
+          "kind": "message",
+          "counted": true,
+          "speaker": "candidate",
+          "phase": "solution",
+          "t_min": 31.0,
+          "origin": "spontaneous",
+          "quote": "윤하람님, 아까 생각하신 게 있다고 하셨는데 편하게 말씀해 주세요. 듣고 싶어요.",
+          "context": {
+            "before": [
+              {
+                "id": "m-19",
+                "sender": "p3",
+                "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-20",
+                "sender": "system",
+                "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 20분 남았어요.",
+                "t_min": 25.4
+              },
+              {
+                "id": "m-21",
+                "sender": "p2",
+                "content": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+                "t_min": 27.4
+              },
+              {
+                "id": "m-22",
+                "sender": "candidate",
+                "content": "저는 하수관에 센서를 달아서 침수 위험을 미리 알리는 데이터 기반 경보를 제안해요.",
+                "t_min": 29.0
+              },
+              {
+                "id": "m-23",
+                "sender": "p3",
+                "content": "센서는 설치 비용이 커요. 자료를 보면 주민 참여 캠페인이 더 빨리 효과를 냈어요. 절수·보상 캠페인으로 가죠.",
+                "t_min": 30.4
+              }
+            ],
+            "after": [
+              {
+                "id": "m-25",
+                "sender": "p2",
+                "content": "음… 저는 빗물 저금통이나 투수 포장 같은 생활 인프라가 좋을 것 같아요. 빗물 재이용 사례가 있어서요.",
+                "t_min": 31.5
+              },
+              {
+                "id": "m-26",
+                "sender": "p1",
+                "content": "센서 안이 맞아요. 데이터가 있어야 경보가 되죠.",
+                "t_min": 33.0
+              },
+              {
+                "id": "m-27",
+                "sender": "candidate",
+                "content": "윤하람님 안도 좋네요. 센서 경보에 빗물 저금통을 같이 묶으면 침수 전후를 다 다룰 수 있을 것 같아요.",
+                "t_min": 36.0
+              }
+            ]
+          },
+          "record_ref": {
+            "type": "message",
+            "id": "m-24",
+            "t_min": 31.0
+          }
+        }
+      ]
+    },
+    {
+      "element": "honesty",
+      "dimension_id": "hon_credit_record",
+      "name": "기여 기록의 정확성",
+      "level": 4,
+      "no_record_reason": null,
+      "rationale": "채택된 문제 상황의 제안자와 해결책의 보탬을 구분해 적음.",
+      "confidence": "high",
+      "reviewer_hint": "대체로 분명히 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["proposal:idea_credit", "contribution:opt-pb-p2"],
+      "evidence": [
+        {
+          "ref": "proposal:idea_credit",
+          "kind": "proposal",
+          "counted": true,
+          "field": "idea_credit",
+          "quote": "문제 상황: 강한결 님 제안. 해결책: 제 센서 경보 안에 윤하람 님의 빗물 저금통 아이디어를 보탬",
+          "t_min": 57.0,
+          "record_ref": {
+            "type": "proposal_submit",
+            "id": "sess-1",
+            "t_min": 57.0
+          }
+        },
+        {
+          "ref": "contribution:opt-pb-p2",
+          "kind": "contribution",
+          "counted": true,
+          "option_id": "opt-pb-p2",
+          "phase": "problem",
+          "label": "도심 폭우·침수 피해 증가",
+          "first_proposer": "p1",
+          "source_message_id": null,
+          "t_min": 11.2,
+          "adopted": true,
+          "record_ref": {
+            "type": "slot",
+            "id": "problem",
+            "t_min": 25.4
+          }
+        }
+      ]
+    },
+    {
+      "element": "honesty",
+      "dimension_id": "hon_source_in_talk",
+      "name": "토론 중 출처 존중",
+      "level": null,
+      "no_record_reason": "not_applicable",
+      "rationale": "토론 중 동료 아이디어의 공이 지원자에게 잘못 돌아온 장면이 없음.",
+      "confidence": null,
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": [],
+      "evidence": []
+    },
+    {
+      "element": "honesty",
+      "dimension_id": "hon_process_truth",
+      "name": "결정 과정의 사실 표현",
+      "level": 3,
+      "no_record_reason": null,
+      "rationale": "해결책이 시간 초과로 정해졌다는 점을 기획안에 따로 적지 않았으나 내용은 사실과 맞음.",
+      "confidence": "medium",
+      "reviewer_hint": "부분적으로 보입니다",
+      "adjusted_level": null,
+      "adjusted_no_record_reason": null,
+      "adjust_memo": null,
+      "evidence_refs": ["proposal:solution"],
+      "evidence": [
+        {
+          "ref": "proposal:solution",
+          "kind": "proposal",
+          "counted": true,
+          "field": "solution",
+          "quote": "하수관 수위 센서로 침수 위험을 미리 알리는 데이터 기반 경보에 빗물 저금통·투수 포장을 함께 설치",
+          "t_min": 57.0,
+          "record_ref": {
+            "type": "proposal_submit",
+            "id": "sess-1",
+            "t_min": 57.0
           }
         }
       ]
     }
   ],
+  "facts": {
+    "message_count": {
+      "total": 10,
+      "keyword": 2,
+      "problem": 4,
+      "solution": 3,
+      "proposal": 1
+    },
+    "spontaneous_count": 9,
+    "invited_count": 1,
+    "spontaneous_ratio": 0.9,
+    "silence_invites_received": {
+      "keyword": 1,
+      "problem": 0,
+      "solution": 0
+    },
+    "first_message_sec": {
+      "keyword": 216,
+      "problem": 138,
+      "solution": 216,
+      "proposal": 180
+    },
+    "response_latency_median_sec": 93,
+    "avg_message_chars": 50,
+    "intent_counts": {
+      "propose": 3,
+      "agree": 3,
+      "oppose": 1,
+      "question": 2,
+      "other": 1
+    },
+    "name_mentions": {
+      "p1": 1,
+      "p2": 2,
+      "p3": 1
+    },
+    "slot_records": [
+      {
+        "phase": "keyword",
+        "option_id": "opt-kw-water",
+        "filled_by": "candidate",
+        "resolution": "consensus",
+        "support": [
+          {
+            "option_id": "opt-kw-water",
+            "supporters": ["candidate", "p2"]
+          },
+          {
+            "option_id": "opt-kw-fire",
+            "supporters": ["p1"]
+          },
+          {
+            "option_id": "opt-kw-wind",
+            "supporters": ["p3"]
+          }
+        ],
+        "t_min": 8.2
+      },
+      {
+        "phase": "problem",
+        "option_id": "opt-pb-p2",
+        "filled_by": "p3",
+        "resolution": "consensus",
+        "support": [
+          {
+            "option_id": "opt-pb-p2",
+            "supporters": ["candidate", "p1", "p3"]
+          },
+          {
+            "option_id": "opt-pb-p1",
+            "supporters": []
+          }
+        ],
+        "t_min": 25.4
+      },
+      {
+        "phase": "solution",
+        "option_id": "opt-sl-s1",
+        "filled_by": "p3",
+        "resolution": "timeout",
+        "support": [
+          {
+            "option_id": "opt-sl-s1",
+            "supporters": ["candidate", "p1"]
+          },
+          {
+            "option_id": "opt-sl-s2",
+            "supporters": ["p3"]
+          },
+          {
+            "option_id": "opt-sl-s3",
+            "supporters": ["p2"]
+          }
+        ],
+        "t_min": 46.0
+      }
+    ],
+    "own_options_proposed": 3,
+    "own_options_adopted": 2,
+    "pressure_responded": true,
+    "invite_latency_sec": 216,
+    "quiet_spoke": true,
+    "own_option_rejected": true,
+    "messages_after_rejection": 3,
+    "ai_adopted_units": [
+      {
+        "phase": "problem",
+        "option_id": "opt-pb-p2",
+        "proposer": "p1"
+      }
+    ],
+    "credit_field_filled": true,
+    "assistant_calls": [
+      {
+        "call_id": "ac-1",
+        "t_min": 38.0,
+        "cited_material_ids": ["water_flood_cases"]
+      }
+    ],
+    "material_views": [
+      {
+        "material_id": "water_stats",
+        "t_min": 10.0
+      },
+      {
+        "material_id": "water_flood_cases",
+        "t_min": 16.0
+      },
+      {
+        "material_id": "water_rain_reuse",
+        "t_min": 32.5
+      }
+    ],
+    "connection_gaps": [
+      {
+        "from_t_min": 51.0,
+        "to_t_min": 51.6
+      }
+    ]
+  },
+  "contribution_check": [
+    {
+      "phase": "problem",
+      "option_id": "opt-pb-p2",
+      "label": "도심 폭우·침수 피해 증가",
+      "first_proposer": "p1",
+      "credited_in_proposal": ["p1"],
+      "credit_quote": "문제 상황: 강한결 님 제안"
+    }
+  ],
+  "slots": [
+    {
+      "phase": "keyword",
+      "value": "물",
+      "option_id": "opt-kw-water",
+      "filled_by": "candidate",
+      "resolution": "consensus",
+      "t_min": 8.2,
+      "first_proposer": "candidate",
+      "support": [
+        {
+          "option_id": "opt-kw-water",
+          "label": "물",
+          "supporters": ["candidate", "p2"]
+        },
+        {
+          "option_id": "opt-kw-fire",
+          "label": "불",
+          "supporters": ["p1"]
+        },
+        {
+          "option_id": "opt-kw-wind",
+          "label": "바람",
+          "supporters": ["p3"]
+        }
+      ]
+    },
+    {
+      "phase": "problem",
+      "value": "도심 폭우·침수 피해 증가",
+      "option_id": "opt-pb-p2",
+      "filled_by": "p3",
+      "resolution": "consensus",
+      "t_min": 25.4,
+      "first_proposer": "p1",
+      "support": [
+        {
+          "option_id": "opt-pb-p2",
+          "label": "도심 폭우·침수 피해 증가",
+          "supporters": ["candidate", "p1", "p3"]
+        },
+        {
+          "option_id": "opt-pb-p1",
+          "label": "가뭄으로 생활용수 제한이 잦아짐",
+          "supporters": []
+        }
+      ]
+    },
+    {
+      "phase": "solution",
+      "value": "센서·데이터 기반 물 관리·경보",
+      "option_id": "opt-sl-s1",
+      "filled_by": "p3",
+      "resolution": "timeout",
+      "t_min": 46.0,
+      "first_proposer": "candidate",
+      "support": [
+        {
+          "option_id": "opt-sl-s1",
+          "label": "센서·데이터 기반 물 관리·경보",
+          "supporters": ["candidate", "p1"]
+        },
+        {
+          "option_id": "opt-sl-s2",
+          "label": "주민 절수·보상 캠페인",
+          "supporters": ["p3"]
+        },
+        {
+          "option_id": "opt-sl-s3",
+          "label": "빗물 저금통·투수 포장 같은 생활 인프라",
+          "supporters": ["p2"]
+        }
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "card_id": "persuasion_keyword",
+      "element": "persuasion",
+      "fired_at": 3.0,
+      "delivered": true,
+      "scene": "비판형 동료가 키워드 단계에서 다른 키워드를 이유와 함께 밀고 지원자 안의 약점을 물은 장면"
+    },
+    {
+      "card_id": "flexibility_majority",
+      "element": "flexibility",
+      "fired_at": 11.2,
+      "delivered": true,
+      "scene": "문제 상황 단계에서 두 동료가 지원자 안과 다른 기준안을 지지한 장면"
+    },
+    {
+      "card_id": "listening_pressure",
+      "element": "listening",
+      "fired_at": 11.2,
+      "delivered": true,
+      "scene": "고집형 동료가 문제 상황 단계에서 자기 안을 강하게 밀어붙인 장면"
+    },
+    {
+      "card_id": "inclusion_silence",
+      "element": "inclusion",
+      "fired_at": 27.4,
+      "delivered": true,
+      "scene": "소극형 동료가 해결책 단계에서 의견이 있다고 말하다 멈춘 장면"
+    },
+    {
+      "card_id": "persuasion_solution",
+      "element": "persuasion",
+      "fired_at": 30.4,
+      "delivered": true,
+      "scene": "비판형 동료가 해결책 단계에서 지원자 안의 약점을 자료로 짚고 자기 안을 민 장면"
+    },
+    {
+      "card_id": "honesty_credit",
+      "element": "honesty",
+      "fired_at": 46.0,
+      "delivered": true,
+      "scene": "기획안 단계에서 아이디어 기여 칸을 지원자가 직접 작성한 장면"
+    }
+  ],
+  "debrief": {
+    "cards": [
+      {
+        "card_id": "persuasion_keyword",
+        "element": "persuasion",
+        "phase": "keyword",
+        "fired": true,
+        "fired_t_min": 3.0,
+        "window": {
+          "start_min": 0.0,
+          "end_min": 8.2
+        }
+      },
+      {
+        "card_id": "flexibility_majority",
+        "element": "flexibility",
+        "phase": "problem",
+        "fired": true,
+        "fired_t_min": 11.2,
+        "window": {
+          "start_min": 11.2,
+          "end_min": 46.0
+        }
+      },
+      {
+        "card_id": "listening_pressure",
+        "element": "listening",
+        "phase": "problem",
+        "fired": true,
+        "fired_t_min": 11.2,
+        "window": {
+          "start_min": 11.2,
+          "end_min": 25.4
+        }
+      },
+      {
+        "card_id": "inclusion_silence",
+        "element": "inclusion",
+        "phase": "solution",
+        "fired": true,
+        "fired_t_min": 27.4,
+        "window": {
+          "start_min": 27.4,
+          "end_min": 46.0
+        }
+      },
+      {
+        "card_id": "persuasion_solution",
+        "element": "persuasion",
+        "phase": "solution",
+        "fired": true,
+        "fired_t_min": 30.4,
+        "window": {
+          "start_min": 30.4,
+          "end_min": 46.0
+        }
+      },
+      {
+        "card_id": "honesty_credit",
+        "element": "honesty",
+        "phase": "proposal",
+        "fired": true,
+        "fired_t_min": 46.0,
+        "window": {
+          "start_min": 46.0,
+          "end_min": 57.0
+        }
+      }
+    ],
+    "survey": {
+      "natural": 4,
+      "fair": 3,
+      "free_comment": "강한결 님이 같은 말을 반복할 때 조금 답답했어요."
+    }
+  },
+  "proposal": {
+    "submitted_at": "2026-10-21T01:57:00Z",
+    "auto_submitted": false,
+    "sections": {
+      "keyword": "물",
+      "problem": "도심 폭우·침수 피해 증가",
+      "solution": "하수관 수위 센서로 침수 위험을 미리 알리는 데이터 기반 경보에 빗물 저금통·투수 포장을 함께 설치",
+      "rationale": "최근 3년 침수 신고와 피해액이 함께 늘었고, 센서 경보와 빗물 인프라를 함께 쓴 지역에서 피해가 줄었다.",
+      "expected_effect": "침수 30분 전 경보로 차량·상가 피해를 줄이고, 첫 30분 빗물 유출량을 낮춘다.",
+      "idea_credit": "문제 상황: 강한결 님 제안. 해결책: 제 센서 경보 안에 윤하람 님의 빗물 저금통 아이디어를 보탬"
+    }
+  },
   "ai_usage": {
     "used": true,
     "events": [
       {
         "call_id": "ac-1",
-        "t_min": 47.5,
-        "request_quote": "재참여율 22%가 낮은 편인지 비슷한 서비스 기준으로 알려 줘",
-        "response_quote": "지표 현황 문서 기준으로 재참여율은 22%이고, 회의록에서 최우선 과제로 정한 수치입니다. 외부 기준 수치는 문서에 없습니다.",
-        "cited_doc_ids": ["metrics", "meeting_notes"],
-        "applied_part": null
-      },
-      {
-        "call_id": "ac-2",
-        "t_min": 72.0,
-        "request_quote": "인터뷰 요약에서 두 번째 모임에 안 온 이유만 뽑아 줘",
-        "response_quote": "인터뷰 요약 문서에 따르면 8명 중 5명이 '아는 사람이 없어 어색했다', 6명이 '다음 일정을 몰랐다'고 답했습니다.",
-        "cited_doc_ids": ["interview_summary"],
-        "applied_part": 2
+        "t_min": 38.0,
+        "request_quote": "도심 침수 사례에서 센서 경보 효과가 있었던 곳을 알려 줘",
+        "response_quote": "도심 침수 사례 자료에 하수관 수위 센서로 침수 30분 전 경보를 보낸 구에서 차량 침수 피해가 줄었다는 내용이 있어요.",
+        "cited_material_ids": ["water_flood_cases"]
       }
     ]
   },
+  "review": null,
   "notes": [],
   "connection_gaps": [
     {
-      "from_t_min": 31.2,
-      "to_t_min": 46.0
+      "from_t_min": 51.0,
+      "to_t_min": 51.6
     }
   ],
-  "generated_at": "2026-10-20T02:53:00Z",
+  "generated_at": "2026-10-21T01:59:00Z",
   "reviewed_at": null,
-  "purge_at": "2027-01-18T02:52:00Z"
+  "purge_at": "2027-01-19T01:57:00Z"
 }

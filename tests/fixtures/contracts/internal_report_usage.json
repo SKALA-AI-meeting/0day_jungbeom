@@ -1,9 +1,0 @@
-{
-  "model": "gpt-4o-mini",
-  "llm_calls": 6,
-  "retries": 1,
-  "tokens_in": 18420,
-  "tokens_out": 3110,
-  "latency_ms": 24800,
-  "fallback_used": false
-}

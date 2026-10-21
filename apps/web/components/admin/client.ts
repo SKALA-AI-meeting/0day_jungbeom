@@ -6,14 +6,16 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { api } from "@/lib/api";
 
 import type {
-  Adjustment,
   Candidate,
   Catalog,
   InviteResult,
   Note,
   Position,
+  PositionCreated,
   RecordEntry,
   Report,
+  ReviewBody,
+  SessionMinutes,
 } from "./types";
 
 const TOKEN_KEY = "dayzero.admin.token";
@@ -32,7 +34,7 @@ export function setToken(token: string | null) {
     if (token) window.localStorage.setItem(TOKEN_KEY, token);
     else window.localStorage.removeItem(TOKEN_KEY);
   } catch {
-    // 저장소를 못 쓰면 이번 방문 동안만 메모리에 두는 대신 로그인 화면으로 돌아온다
+    // 저장소를 못 쓰면 로그인 화면으로 돌아온다
   }
   window.dispatchEvent(new Event(TOKEN_EVENT));
 }
@@ -54,13 +56,11 @@ export function useToken(): string | null {
 const ERROR_TEXT: Record<string, string> = {
   conflict: "이미 사용 중이거나 지금 상태에서는 할 수 없는 요청입니다.",
   unauthorized: "이메일 또는 비밀번호가 맞지 않습니다.",
-  invalid_elements: "요소는 1개 이상 5개 이하로 중복 없이 골라 주세요.",
-  invalid_mission: "없는 미션입니다.",
-  invalid_previous_session: "실패·만료·취소된 세션만 이어서 다시 초대할 수 있습니다.",
+  invalid_previous_session: "세션 실패·취소된 지원자만 재응시 초대할 수 있습니다.",
   invalid_input: "필수 입력을 확인해 주세요.",
-  memo_required: "값을 바꾼 항목에는 메모를 적어야 합니다.",
-  invalid_item: "이 채용 건의 평가표에 없는 항목입니다.",
-  duplicate_item: "같은 항목이 두 번 들어 있습니다.",
+  memo_required: "조정한 차원에는 메모를 적어야 합니다.",
+  invalid_dimension: "평가표에 없는 차원입니다.",
+  duplicate_dimension: "같은 차원이 두 번 들어 있습니다.",
   already_reviewed:
     "이미 다른 내용으로 검토가 제출되었습니다. 화면을 새로 고쳐 확정된 값을 확인하세요.",
 };
@@ -84,22 +84,17 @@ export const adminApi = {
     api<{ token: string }>("/admin/auth/login", { method: "POST", body }),
   catalog: (token: string) => api<Catalog>("/admin/catalog", { token }),
   positions: (token: string) => api<Position[]>("/admin/positions", { token }),
-  createPosition: (
-    token: string,
-    body: { name: string; elements: string[]; mission_id?: string },
-  ) =>
-    api<{ id: string; name: string; elements: string[] }>("/admin/positions", {
-      method: "POST",
-      token,
-      body,
-    }),
+  createPosition: (token: string, body: { name: string; session_minutes: SessionMinutes }) =>
+    api<PositionCreated>("/admin/positions", { method: "POST", token, body }),
   candidates: (token: string, positionId: string) =>
     api<Candidate[]>(`/admin/positions/${positionId}/candidates`, { token }),
   invite: (
     token: string,
     positionId: string,
-    body: { alias: string; email: string; previous_session_id?: string },
+    body: { alias?: string; email: string; previous_session_id?: string },
   ) => api<InviteResult>(`/admin/positions/${positionId}/invites`, { method: "POST", token, body }),
+  reissue: (token: string, sessionId: string) =>
+    api<InviteResult>(`/admin/sessions/${sessionId}/reissue`, { method: "POST", token }),
   cancel: (token: string, sessionId: string) =>
     api<{ status: string }>(`/admin/sessions/${sessionId}/cancel`, { method: "POST", token }),
   regenerate: (token: string, sessionId: string) =>
@@ -109,11 +104,7 @@ export const adminApi = {
     }),
   report: (token: string, sessionId: string) =>
     api<Report>(`/admin/sessions/${sessionId}/report`, { token }),
-  review: (
-    token: string,
-    sessionId: string,
-    body: { adjustments: Adjustment[]; memo?: string; reviewer_name: string },
-  ) =>
+  review: (token: string, sessionId: string, body: ReviewBody) =>
     api<{ status: string }>(`/admin/sessions/${sessionId}/review`, {
       method: "POST",
       token,
@@ -132,6 +123,8 @@ export const adminApi = {
 export type Loaded<T> = {
   data: T | null;
   error: string | null;
+  /** 마지막 실패의 api 오류 코드(없으면 null) */
+  code: string | null;
   /** 연속 실패 횟수(성공하면 0) */
   failures: number;
   reload: () => void;
@@ -144,9 +137,15 @@ export type Loaded<T> = {
 export function useLoad<T>(load: (token: string) => Promise<T>, key = ""): Loaded<T> {
   const token = useToken();
   const loadRef = useRef(load);
-  const [state, setState] = useState<{ data: T | null; error: string | null; failures: number }>({
+  const [state, setState] = useState<{
+    data: T | null;
+    error: string | null;
+    code: string | null;
+    failures: number;
+  }>({
     data: null,
     error: null,
+    code: null,
     failures: 0,
   });
   const [tick, setTick] = useState(0);
@@ -159,12 +158,13 @@ export function useLoad<T>(load: (token: string) => Promise<T>, key = ""): Loade
     if (!token) return;
     let live = true;
     loadRef.current(token).then(
-      (data) => live && setState({ data, error: null, failures: 0 }),
+      (data) => live && setState({ data, error: null, code: null, failures: 0 }),
       (error) =>
         live &&
         setState((prev) => ({
           data: prev.data,
           error: errorMessage(error),
+          code: errorCode(error),
           failures: prev.failures + 1,
         })),
     );

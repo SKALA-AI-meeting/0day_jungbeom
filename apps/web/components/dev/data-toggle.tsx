@@ -2,7 +2,7 @@
 
 // break-ui 점검용 Demo / Worst case 전환(NEXT_PUBLIC_MOCK=1에서만). 주소의 ?data=worst로 남겨 새로고침해도 유지된다.
 // mock 서버 상태가 모듈 안에 있으므로 전체 새로고침으로 바꾼다.
-// 화면 오른쪽 아래 접힘 칩으로 두어 아무것도 덮지 않는다. 오피스(/s/)는 "mock 조작" 패널 안에 같은 전환이 있다.
+// 화면 오른쪽 아래 접힘 칩으로 두어 아무것도 덮지 않는다. 지원자 화면(/s/)은 "mock 조작" 패널 안에 같은 전환이 있다.
 import { usePathname } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 

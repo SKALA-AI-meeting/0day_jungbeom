@@ -1,0 +1,16 @@
+{
+  "sender": "p1",
+  "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+  "run_id": "run-card-pb",
+  "seq": 0,
+  "expected_generation": 5,
+  "is_invite": false,
+  "card_ids": ["flexibility_majority", "listening_pressure"],
+  "cited_material_ids": ["water_flood_cases"],
+  "meta": {
+    "stance_check": "pass",
+    "model": "gpt-4o-mini",
+    "latency_ms": 1240,
+    "cost_usd": 0.0004
+  }
+}

@@ -1,257 +1,876 @@
 {
   "id": "sess-1",
-  "status": "completed",
+  "status": "in_progress",
+  "phase": "problem",
+  "alias": "지원자A",
+  "display_name": "김지원",
   "position": {
-    "mission_id": "planning",
-    "elements": [
-      "responsibility",
-      "planning",
-      "adaptability",
-      "collaboration",
-      "honesty"
-    ],
+    "name": "서비스 기획",
+    "mission_id": "debate",
+    "session_minutes": 60,
     "scenario": {
-      "mission_id": "planning",
-      "session_minutes": 120,
-      "cards": [
+      "mission_id": "debate",
+      "catalog_version": "cat-debate-20261021-a1b2c3",
+      "session_minutes": 60,
+      "elements": ["persuasion", "listening", "inclusion", "flexibility", "honesty"],
+      "seats": [
         {
-          "card_id": "kickoff",
-          "at_min": 0,
-          "flow": true
+          "seat": "p1",
+          "persona_type": "stubborn",
+          "name": "강한결",
+          "avatar": "avatar-01.png"
         },
         {
-          "card_id": "planning_division",
-          "element": "planning",
-          "at_min": 10,
-          "window_start_min": 0
+          "seat": "p2",
+          "persona_type": "quiet",
+          "name": "윤하람",
+          "avatar": "avatar-02.png"
         },
         {
-          "card_id": "collab_help",
-          "element": "collaboration",
-          "at_min": 30
-        },
-        {
-          "card_id": "planning_checkin",
-          "element": "planning",
-          "at_min": 45,
-          "sends_document": {
-            "parts": "colleague_all",
-            "version": 1
-          }
-        },
-        {
-          "card_id": "responsibility_delay",
-          "element": "responsibility",
-          "at_min": 60,
-          "effects": {
-            "release_document": "interview_summary",
-            "release_at_min": 70
-          }
-        },
-        {
-          "card_id": "adaptability_change",
-          "element": "adaptability",
-          "at_min": 75
-        },
-        {
-          "card_id": "review",
-          "at_min": 90,
-          "flow": true,
-          "sends_document": {
-            "parts": "colleague_all",
-            "version": 2
-          }
-        },
-        {
-          "card_id": "collab_disagree",
-          "element": "collaboration",
-          "at_min": 90,
-          "attach_to": "review"
-        },
-        {
-          "card_id": "honesty_report",
-          "element": "honesty",
-          "at_min": 110,
-          "or_on_submit": true
+          "seat": "p3",
+          "persona_type": "critic",
+          "name": "서지안",
+          "avatar": "avatar-03.png"
         }
       ],
-      "parts": {
-        "1": {
-          "title": "문제 정의와 대상 사용자"
+      "stages": [
+        {
+          "stage_id": "keyword",
+          "deadline_min": 10,
+          "slot": "keyword"
         },
-        "2": {
-          "title": "사용자 인터뷰에서 찾은 근거"
+        {
+          "stage_id": "problem",
+          "deadline_min": 28,
+          "slot": "problem"
         },
-        "3": {
-          "title": "핵심 기능 제안",
-          "depends_on": [
-            2
-          ]
+        {
+          "stage_id": "solution",
+          "deadline_min": 46,
+          "slot": "solution"
         },
-        "4": {
-          "title": "비슷한 서비스 사례"
-        },
-        "5": {
-          "title": "성공 지표와 출시 일정"
+        {
+          "stage_id": "proposal",
+          "deadline_min": 60,
+          "slot": null
         }
-      },
-      "division_min": {
-        "2": [
-          "candidate"
-        ],
-        "3": [
-          "colleague",
-          "both"
-        ],
-        "any_colleague_only": [
-          4,
-          5
+      ],
+      "cards": [
+        {
+          "card_id": "persuasion_keyword",
+          "element": "persuasion",
+          "stage_id": "keyword",
+          "actor": ["critic", "stubborn"],
+          "offset_min": 3,
+          "report_template": "비판형 동료가 키워드 단계에서 다른 키워드를 이유와 함께 밀고 지원자 안의 약점을 물은 장면"
+        },
+        {
+          "card_id": "flexibility_majority",
+          "element": "flexibility",
+          "stage_id": "problem",
+          "actor": ["stubborn", "critic"],
+          "offset_min": 3,
+          "report_template": "문제 상황 단계에서 두 동료가 지원자 안과 다른 기준안을 지지한 장면"
+        },
+        {
+          "card_id": "listening_pressure",
+          "element": "listening",
+          "stage_id": "problem",
+          "actor": "stubborn",
+          "offset_min": 3,
+          "report_template": "고집형 동료가 문제 상황 단계에서 자기 안을 강하게 밀어붙인 장면"
+        },
+        {
+          "card_id": "inclusion_silence",
+          "element": "inclusion",
+          "stage_id": "solution",
+          "actor": "quiet",
+          "offset_min": 2,
+          "report_template": "소극형 동료가 해결책 단계에서 의견이 있다고 말하다 멈춘 장면"
+        },
+        {
+          "card_id": "persuasion_solution",
+          "element": "persuasion",
+          "stage_id": "solution",
+          "actor": ["critic", "stubborn"],
+          "offset_min": 5,
+          "report_template": "비판형 동료가 해결책 단계에서 지원자 안의 약점을 자료로 짚고 자기 안을 민 장면"
+        },
+        {
+          "card_id": "honesty_credit",
+          "element": "honesty",
+          "stage_id": "proposal",
+          "actor": null,
+          "offset_min": null,
+          "report_template": "기획안 단계에서 아이디어 기여 칸을 지원자가 직접 작성한 장면"
+        }
+      ],
+      "rubric": {
+        "rubric_version": "rubric-v1-20261021",
+        "elements": [
+          {
+            "element": "persuasion",
+            "name": "설득/논리력",
+            "dimensions": [
+              {
+                "dimension_id": "pers_reasoning",
+                "name": "근거 제시",
+                "definition": "자기 안에 이유·사례·자료를 붙이고 그 이유가 주장과 연결되는가",
+                "core_cards": ["persuasion_keyword", "persuasion_solution"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "근거 제시 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "근거 제시 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "근거 제시 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "근거 제시 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "근거 제시 수준 5 행동 기술",
+                    "reviewer_hint": "두 장면 모두에서 주장마다 구체적인 이유를 붙였습니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "pers_counter_handling",
+                "name": "반론 대응",
+                "definition": "자기 안에 온 반론·약점 질문에 그 논점으로 답하는가",
+                "core_cards": ["persuasion_keyword", "persuasion_solution"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "반론 대응 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "반론 대응 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "반론 대응 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "반론 대응 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "반론 대응 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "pers_comparison",
+                "name": "경쟁 안 비교",
+                "definition": "경쟁하는 안들의 장단점을 기준을 세워 비교하는가",
+                "core_cards": ["persuasion_keyword", "persuasion_solution"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "경쟁 안 비교 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "경쟁 안 비교 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "경쟁 안 비교 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "경쟁 안 비교 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "경쟁 안 비교 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "pers_convergence",
+                "name": "논의 수렴",
+                "definition": "논점을 정리하고 결론 쪽으로 논의를 모으는가",
+                "core_cards": ["persuasion_keyword", "persuasion_solution"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "논의 수렴 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "논의 수렴 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "논의 수렴 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "논의 수렴 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "논의 수렴 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "element": "listening",
+            "name": "경청/존중",
+            "dimensions": [
+              {
+                "dimension_id": "listen_engage",
+                "name": "응답성",
+                "definition": "상대 발언에 내용으로 직접 답하는가",
+                "core_cards": ["listening_pressure"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "응답성 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "응답성 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "응답성 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "응답성 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "응답성 수준 5 행동 기술",
+                    "reviewer_hint": "반복 압박에도 매번 상대 말에 직접 답하며 대화를 넓혔습니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "listen_understand",
+                "name": "이해 확인",
+                "definition": "상대 주장을 요약하거나 질문해 이해를 확인하는가",
+                "core_cards": ["listening_pressure"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "이해 확인 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "이해 확인 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "이해 확인 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "이해 확인 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "이해 확인 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "listen_acknowledge",
+                "name": "타당성 인정",
+                "definition": "반대 의견의 타당한 점을 인정하는가",
+                "core_cards": ["listening_pressure"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "타당성 인정 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "타당성 인정 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "타당성 인정 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "타당성 인정 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "타당성 인정 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "listen_civility",
+                "name": "존중하는 반대",
+                "definition": "압박 속에서도 사람이 아닌 안에 초점을 두고 반대하는가",
+                "core_cards": ["listening_pressure"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "존중하는 반대 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "존중하는 반대 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "존중하는 반대 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "존중하는 반대 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "존중하는 반대 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "element": "inclusion",
+            "name": "배려/포용",
+            "dimensions": [
+              {
+                "dimension_id": "incl_notice_invite",
+                "name": "머뭇거림 알아차리고 초대하기",
+                "definition": "머뭇거리는 동료를 알아차리고 말할 자리를 만드는가",
+                "core_cards": ["inclusion_silence"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "머뭇거림 알아차리고 초대하기 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "머뭇거림 알아차리고 초대하기 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "머뭇거림 알아차리고 초대하기 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "머뭇거림 알아차리고 초대하기 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "머뭇거림 알아차리고 초대하기 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "incl_follow_through",
+                "name": "들은 의견 이어받기",
+                "definition": "초대해 들은 의견을 되짚고 논의에 올리는가",
+                "core_cards": ["inclusion_silence"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "들은 의견 이어받기 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "들은 의견 이어받기 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "들은 의견 이어받기 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "들은 의견 이어받기 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "들은 의견 이어받기 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "incl_shared_decision",
+                "name": "결정 전 모두의 목소리 확인",
+                "definition": "확정 전에 말하지 않은 사람의 의견을 확인하는가",
+                "core_cards": ["inclusion_silence"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "결정 전 모두의 목소리 확인 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "결정 전 모두의 목소리 확인 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "결정 전 모두의 목소리 확인 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "결정 전 모두의 목소리 확인 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "결정 전 모두의 목소리 확인 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "incl_safe_tone",
+                "name": "말하기 편한 분위기",
+                "definition": "부담을 낮춰 다시 말하기 쉬운 분위기를 만드는가",
+                "core_cards": ["inclusion_silence"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "말하기 편한 분위기 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "말하기 편한 분위기 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "말하기 편한 분위기 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "말하기 편한 분위기 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "말하기 편한 분위기 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "element": "flexibility",
+            "name": "수용/유연성",
+            "dimensions": [
+              {
+                "dimension_id": "flex_openness",
+                "name": "다른 안 재검토",
+                "definition": "다른 안의 근거를 듣고 자기 안을 다시 검토하는가",
+                "core_cards": ["flexibility_majority"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "다른 안 재검토 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "다른 안 재검토 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "다른 안 재검토 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "다른 안 재검토 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "다른 안 재검토 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "flex_decision_respect",
+                "name": "결정 절차 존중",
+                "definition": "결정 방법과 남은 반대를 확인하고 정리하는가",
+                "core_cards": ["flexibility_majority"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "결정 절차 존중 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "결정 절차 존중 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "결정 절차 존중 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "결정 절차 존중 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "결정 절차 존중 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "flex_acceptance",
+                "name": "결과 승복",
+                "definition": "자기 안과 다른 결과를 받아들이는가",
+                "core_cards": ["flexibility_majority"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "결과 승복 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "결과 승복 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "결과 승복 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "결과 승복 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "결과 승복 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "flex_forward",
+                "name": "다음 단계 기여",
+                "definition": "결정된 결과 위에서 다음 단계 논의에 기여하는가",
+                "core_cards": ["flexibility_majority"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "다음 단계 기여 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "다음 단계 기여 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "다음 단계 기여 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "다음 단계 기여 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "다음 단계 기여 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "element": "honesty",
+            "name": "정직/공정",
+            "dimensions": [
+              {
+                "dimension_id": "hon_credit_record",
+                "name": "기여 기록의 정확성",
+                "definition": "기획안에 채택된 아이디어의 제안자를 사실대로 적는가",
+                "core_cards": ["honesty_credit"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "기여 기록의 정확성 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "기여 기록의 정확성 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "기여 기록의 정확성 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "기여 기록의 정확성 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "기여 기록의 정확성 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "hon_source_in_talk",
+                "name": "토론 중 출처 존중",
+                "definition": "토론 중 동료 아이디어의 출처를 밝히는가",
+                "core_cards": ["honesty_credit"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "토론 중 출처 존중 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "토론 중 출처 존중 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "토론 중 출처 존중 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "토론 중 출처 존중 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "토론 중 출처 존중 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              },
+              {
+                "dimension_id": "hon_process_truth",
+                "name": "결정 과정의 사실 표현",
+                "definition": "합의·이견·시간 초과 같은 결정 과정을 사실대로 표현하는가",
+                "core_cards": ["honesty_credit"],
+                "levels": [
+                  {
+                    "level": 1,
+                    "anchor": "결정 과정의 사실 표현 수준 1 행동 기술",
+                    "reviewer_hint": "근거가 거의 보이지 않습니다"
+                  },
+                  {
+                    "level": 2,
+                    "anchor": "결정 과정의 사실 표현 수준 2 행동 기술",
+                    "reviewer_hint": "드물게 보입니다"
+                  },
+                  {
+                    "level": 3,
+                    "anchor": "결정 과정의 사실 표현 수준 3 행동 기술",
+                    "reviewer_hint": "부분적으로 보입니다"
+                  },
+                  {
+                    "level": 4,
+                    "anchor": "결정 과정의 사실 표현 수준 4 행동 기술",
+                    "reviewer_hint": "대체로 분명히 보입니다"
+                  },
+                  {
+                    "level": 5,
+                    "anchor": "결정 과정의 사실 표현 수준 5 행동 기술",
+                    "reviewer_hint": "일관되게 분명히 보입니다"
+                  }
+                ]
+              }
+            ]
+          }
         ]
       },
-      "final_template": {
-        "sections": [
-          {
-            "part_no": 1,
-            "title": "문제 정의와 대상 사용자"
-          },
-          {
-            "part_no": 2,
-            "title": "사용자 인터뷰에서 찾은 근거"
-          },
-          {
-            "part_no": 3,
-            "title": "핵심 기능 제안"
-          },
-          {
-            "part_no": 4,
-            "title": "비슷한 서비스 사례"
-          },
-          {
-            "part_no": 5,
-            "title": "성공 지표와 출시 일정"
-          }
-        ],
-        "length": "섹션당 5~10줄, 1~2쪽"
+      "silence_inviter": "critic",
+      "fill_priority": ["critic", "quiet", "stubborn"],
+      "keywords": {
+        "water": {
+          "problems": ["water_p1", "water_p2", "water_p3"],
+          "solutions": ["water_s1", "water_s2", "water_s3"],
+          "materials": ["water_stats", "water_flood_cases", "water_tap_survey", "water_rain_reuse"]
+        },
+        "fire": {
+          "problems": ["fire_p1", "fire_p2", "fire_p3"],
+          "solutions": ["fire_s1", "fire_s2", "fire_s3"],
+          "materials": [
+            "fire_stats",
+            "fire_wildfire_trend",
+            "fire_battery_cases",
+            "fire_detector_cases"
+          ]
+        },
+        "tree": {
+          "problems": ["tree_p1", "tree_p2", "tree_p3"],
+          "solutions": ["tree_s1", "tree_s2", "tree_s3"],
+          "materials": [
+            "tree_green_ratio",
+            "tree_heat_island",
+            "tree_street_status",
+            "tree_urban_forest"
+          ]
+        },
+        "wind": {
+          "problems": ["wind_p1", "wind_p2", "wind_p3"],
+          "solutions": ["wind_s1", "wind_s2", "wind_s3"],
+          "materials": [
+            "wind_pm_stats",
+            "wind_corridor_cases",
+            "wind_typhoon_records",
+            "wind_benefit_sharing"
+          ]
+        }
       },
-      "vars": {
-        "interview_expected_time": "01:00",
-        "release_time": "01:10"
-      },
-      "releases_at_start": [
-        "company_intro",
-        "metrics",
-        "policy",
-        "meeting_notes"
-      ]
+      "default_keyword": "water",
+      "proposal_template": [
+        "keyword",
+        "problem",
+        "solution",
+        "rationale",
+        "expected_effect",
+        "idea_credit"
+      ],
+      "office_clock": {
+        "start": "09:00",
+        "end": "10:00"
+      }
     },
-    "catalog_version": "a3f9c2e1d4b5"
+    "catalog_version": "cat-debate-20261021-a1b2c3"
   },
-  "division": {
-    "parts": {
-      "1": "candidate",
-      "2": "candidate",
-      "3": "both",
-      "4": "colleague",
-      "5": "colleague"
-    },
-    "decided_by": "candidate",
-    "decided_at": "2026-10-20T01:12:12Z"
-  },
-  "started_at": "2026-10-20T01:00:00Z",
-  "ends_at": "2026-10-20T03:00:00Z",
-  "submitted_at": "2026-10-20T02:51:00Z",
-  "reported_at": "2026-10-20T02:52:00Z",
-  "completed_at": "2026-10-20T02:52:00Z",
-  "deadline_at": "2026-10-20T02:56:00Z",
-  "t_min_now": 112.0,
-  "current_card": null,
-  "connection_gaps": [
+  "seats": [
     {
-      "from_t_min": 31.2,
-      "to_t_min": 46.0
+      "seat": "candidate",
+      "display_name": "김지원"
+    },
+    {
+      "seat": "p1",
+      "display_name": "강한결",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-01.png",
+      "persona_type": "stubborn"
+    },
+    {
+      "seat": "p2",
+      "display_name": "윤하람",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-02.png",
+      "persona_type": "quiet"
+    },
+    {
+      "seat": "p3",
+      "display_name": "서지안",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-03.png",
+      "persona_type": "critic"
     }
   ],
-  "events": [
+  "started_at": "2026-10-21T01:00:00Z",
+  "ends_at": "2026-10-21T02:00:00Z",
+  "phase_started_at": "2026-10-21T01:08:12Z",
+  "phase_deadline_at": "2026-10-21T01:28:00Z",
+  "completed_at": null,
+  "ended_at": null,
+  "t_min_now": 14.0,
+  "generation": 6,
+  "invite_delivered_phases": ["keyword"],
+  "card_progress": [
     {
-      "id": "ev-1",
-      "card_id": "kickoff",
-      "element": null,
-      "status": "done",
-      "due_at": "2026-10-20T01:00:00Z",
-      "fired_at": "2026-10-20T01:00:00Z",
-      "document_missing": false
+      "card_id": "persuasion_keyword",
+      "locked_option_id": null,
+      "delivered": ["p3"]
     },
     {
-      "id": "ev-2",
-      "card_id": "planning_division",
-      "element": "planning",
-      "status": "done",
-      "due_at": "2026-10-20T01:10:00Z",
-      "fired_at": "2026-10-20T01:10:00Z",
-      "document_missing": false
+      "card_id": "flexibility_majority",
+      "locked_option_id": "opt-pb-p2",
+      "delivered": ["p1", "p3"]
     },
     {
-      "id": "ev-3",
-      "card_id": "collab_help",
-      "element": "collaboration",
-      "status": "done",
-      "due_at": "2026-10-20T01:30:00Z",
-      "fired_at": "2026-10-20T01:30:00Z",
-      "document_missing": false
-    },
-    {
-      "id": "ev-4",
-      "card_id": "planning_checkin",
-      "element": "planning",
-      "status": "done",
-      "due_at": "2026-10-20T01:45:00Z",
-      "fired_at": "2026-10-20T01:45:00Z",
-      "document_missing": false
-    },
-    {
-      "id": "ev-5",
-      "card_id": "responsibility_delay",
-      "element": "responsibility",
-      "status": "done",
-      "due_at": "2026-10-20T02:00:00Z",
-      "fired_at": "2026-10-20T02:00:00Z",
-      "document_missing": false
-    },
-    {
-      "id": "ev-6",
-      "card_id": "adaptability_change",
-      "element": "adaptability",
-      "status": "done",
-      "due_at": "2026-10-20T02:15:00Z",
-      "fired_at": "2026-10-20T02:15:00Z",
-      "document_missing": false
-    },
-    {
-      "id": "ev-7",
-      "card_id": "review",
-      "element": null,
-      "status": "done",
-      "due_at": "2026-10-20T02:30:00Z",
-      "fired_at": "2026-10-20T02:30:00Z",
-      "document_missing": false
-    },
-    {
-      "id": "ev-8",
-      "card_id": "collab_disagree",
-      "element": "collaboration",
-      "status": "done",
-      "due_at": "2026-10-20T02:30:00Z",
-      "fired_at": "2026-10-20T02:30:00Z",
-      "document_missing": false
-    },
-    {
-      "id": "ev-9",
-      "card_id": "honesty_report",
-      "element": "honesty",
-      "status": "done",
-      "due_at": "2026-10-20T02:50:00Z",
-      "fired_at": "2026-10-20T02:50:00Z",
-      "document_missing": false
+      "card_id": "listening_pressure",
+      "locked_option_id": "opt-pb-p2",
+      "delivered": ["p1"]
     }
-  ]
+  ],
+  "connection_gaps": []
 }

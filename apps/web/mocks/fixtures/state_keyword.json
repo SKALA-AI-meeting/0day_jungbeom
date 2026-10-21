@@ -1,0 +1,162 @@
+{
+  "session": {
+    "id": "sess-1",
+    "alias": "지원자A",
+    "status": "in_progress",
+    "phase": "keyword",
+    "started_at": "2026-10-21T01:00:00Z",
+    "ends_at": "2026-10-21T02:00:00Z",
+    "session_minutes": 60,
+    "phase_started_at": "2026-10-21T01:00:00Z",
+    "phase_deadline_at": "2026-10-21T01:10:00Z",
+    "phase_remaining_seconds": 504,
+    "session_remaining_seconds": 3504,
+    "office_start": "09:00",
+    "office_end": "10:00",
+    "completed_at": null
+  },
+  "keyword_options": [
+    {
+      "option_key": "water",
+      "label": "물"
+    },
+    {
+      "option_key": "fire",
+      "label": "불"
+    },
+    {
+      "option_key": "tree",
+      "label": "나무"
+    },
+    {
+      "option_key": "wind",
+      "label": "바람"
+    }
+  ],
+  "phases": [
+    {
+      "phase": "keyword",
+      "budget_min": 10,
+      "deadline_t_min": 10
+    },
+    {
+      "phase": "problem",
+      "budget_min": 18,
+      "deadline_t_min": 28
+    },
+    {
+      "phase": "solution",
+      "budget_min": 18,
+      "deadline_t_min": 46
+    },
+    {
+      "phase": "proposal",
+      "budget_min": 14,
+      "deadline_t_min": 60
+    }
+  ],
+  "participants": [
+    {
+      "id": "candidate",
+      "display_name": "김지원"
+    },
+    {
+      "id": "p1",
+      "display_name": "강한결",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-01.png"
+    },
+    {
+      "id": "p2",
+      "display_name": "윤하람",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-02.png"
+    },
+    {
+      "id": "p3",
+      "display_name": "서지안",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-03.png"
+    }
+  ],
+  "slots": [
+    {
+      "phase": "keyword",
+      "status": "empty",
+      "value": null,
+      "filled_by": null,
+      "resolution": null,
+      "t_min": null
+    },
+    {
+      "phase": "problem",
+      "status": "empty",
+      "value": null,
+      "filled_by": null,
+      "resolution": null,
+      "t_min": null
+    },
+    {
+      "phase": "solution",
+      "status": "empty",
+      "value": null,
+      "filled_by": null,
+      "resolution": null,
+      "t_min": null
+    }
+  ],
+  "messages": [
+    {
+      "id": "m-01",
+      "sender": "system",
+      "content": "키워드 단계예요. 물·불·나무·바람 중 하나를 함께 정해 주세요. 이 단계 10분 남았어요.",
+      "phase": "keyword",
+      "is_invite": false,
+      "t_min": 0.0,
+      "created_at": "2026-10-21T01:00:00Z"
+    },
+    {
+      "id": "m-02",
+      "sender": "p3",
+      "content": "바람은 어떨까요? 미세먼지 얘기는 누구나 공감할 것 같은데요.",
+      "phase": "keyword",
+      "is_invite": false,
+      "t_min": 0.8,
+      "created_at": "2026-10-21T01:00:48Z"
+    },
+    {
+      "id": "m-03",
+      "sender": "p1",
+      "content": "불이 맞아요. 화재는 피해가 바로 보이잖아요.",
+      "phase": "keyword",
+      "is_invite": false,
+      "t_min": 1.5,
+      "created_at": "2026-10-21T01:01:30Z"
+    }
+  ],
+  "materials": {
+    "locked": true,
+    "keyword": null,
+    "materials": []
+  },
+  "proposal": {
+    "sections": {
+      "keyword": "",
+      "problem": "",
+      "solution": "",
+      "rationale": "",
+      "expected_effect": "",
+      "idea_credit": ""
+    },
+    "revision": 0,
+    "updated_at": "2026-10-21T01:00:00Z",
+    "submitted_at": null
+  },
+  "assistant": [],
+  "typing": [],
+  "active_runs": [
+    {
+      "run_id": "run-idle-kw-0",
+      "stimulus": "idle"
+    }
+  ],
+  "connection_gaps": [],
+  "ws_seq": 7
+}

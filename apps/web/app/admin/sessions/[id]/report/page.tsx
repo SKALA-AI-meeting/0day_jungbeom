@@ -1,29 +1,39 @@
 "use client";
 
 // 리포트 화면. 검토 제출 뒤에는 final이 될 때까지 폴링하고, 오래 끝나지 않으면 같은 본문으로 확정만 다시 시도한다.
+// 주소에 ?print=1이면 인쇄 미리보기(차원 전부 펼침)로 그린다.
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 import { adminApi, errorMessage, useLoad, useToken } from "@/components/admin/client";
 import { ReportView } from "@/components/admin/report-view";
-import { docTitlesOf, phaseOf, recordAnchor, reviewBodyFrom } from "@/components/admin/review";
-import type { Adjustment } from "@/components/admin/types";
+import {
+  phaseOf,
+  recordAnchor,
+  REPORT_POLL_MS,
+  reportNotReady,
+  reviewBodyFrom,
+} from "@/components/admin/review";
+import type { ReviewBody } from "@/components/admin/types";
 import { Button, Toaster } from "@/components/ui";
 
 const POLL_MS = 2000;
-// 이만큼 폴링해도 확정 중이면 "확정만 다시 시도"를 보인다
+// 이만큼 폴링해도 확정 중이면 "확정 다시 시도"를 보인다
 const STALL_POLLS = 5;
-// 연속 조회 실패가 이 횟수에 이르면 폴링을 멈추고 수동 "다시 불러오기"를 보인다
 const MAX_FAILURES = 5;
 
-type ReviewBody = { adjustments: Adjustment[]; memo?: string; reviewer_name: string };
-
-export default function ReportPage() {
+function ReportPageBody() {
   const { id } = useParams<{ id: string }>();
+  const printing = useSearchParams().get("print") === "1";
   const token = useToken();
-  const { data: report, error, failures, reload } = useLoad((t) => adminApi.report(t, id), id);
-  const { data: catalog } = useLoad(adminApi.catalog);
+  const {
+    data: report,
+    error,
+    code,
+    failures,
+    reload,
+  } = useLoad((t) => adminApi.report(t, id), id);
   const [pending, setPending] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [polls, setPolls] = useState(0);
@@ -40,6 +50,14 @@ export default function ReportPage() {
     return () => clearInterval(timer);
   }, [polling, reload]);
 
+  // 리포트가 아직 없으면(draft 생성 전) 안내를 보이고 5초마다 다시 읽는다
+  const notReady = !report && reportNotReady(code);
+  useEffect(() => {
+    if (!notReady) return;
+    const timer = setInterval(reload, REPORT_POLL_MS);
+    return () => clearInterval(timer);
+  }, [notReady, reload]);
+
   async function review(body: ReviewBody) {
     if (!token) return;
     setPending(true);
@@ -51,6 +69,8 @@ export default function ReportPage() {
       reload();
     } catch (e) {
       setReviewError(errorMessage(e));
+      // 409 already_reviewed면 최신 리포트를 다시 읽는다
+      reload();
     } finally {
       setPending(false);
     }
@@ -58,7 +78,7 @@ export default function ReportPage() {
 
   return (
     <>
-      <div className="no-print flex items-center gap-3 text-sm text-muted">
+      <div className="no-print mx-auto flex w-full max-w-3xl items-center gap-3 text-sm text-muted">
         <Link href="/admin/positions" className="hover:underline">
           ← 채용 건 목록
         </Link>
@@ -66,7 +86,12 @@ export default function ReportPage() {
           전체 기록 보기
         </Link>
       </div>
-      {error && (
+      {notReady && (
+        <p role="status" className="mx-auto w-full max-w-3xl text-muted">
+          리포트를 만드는 중입니다. 준비되면 이 화면에 바로 나타납니다.
+        </p>
+      )}
+      {error && !notReady && (
         <div role="alert" className="flex items-center gap-3 text-danger">
           <span>{error}</span>
           {failures >= MAX_FAILURES && (
@@ -79,16 +104,13 @@ export default function ReportPage() {
       {report && (
         <ReportView
           report={report}
-          recordHref={(ref, card) =>
-            `/admin/sessions/${id}/record${card ? `?card=${card}` : ""}#${recordAnchor(ref)}`
-          }
-          docTitles={docTitlesOf(catalog, report.position.mission_id)}
+          printing={printing}
+          recordHref={(ref) => `/admin/sessions/${id}/record#${recordAnchor(ref)}`}
           pending={pending}
           error={reviewError}
           stalled={approving && polls >= STALL_POLLS}
           onReview={review}
           onRetry={() => {
-            // 이 화면에서 제출하지 않았으면(재진입) 서버가 저장한 조정·메모·검토자로 같은 본문을 만든다
             const body = lastBody.current ?? reviewBodyFrom(report);
             if (body) void review(body);
           }}
@@ -101,5 +123,13 @@ export default function ReportPage() {
       )}
       <Toaster />
     </>
+  );
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense>
+      <ReportPageBody />
+    </Suspense>
   );
 }

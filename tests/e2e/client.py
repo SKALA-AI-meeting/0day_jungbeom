@@ -1,20 +1,36 @@
 """러너가 api를 부르는 길: REST(공개·내부)와 WebSocket. 오간 것은 전부 transcript에 남긴다.
 
 토큰 값(세션 JWT·관리자 JWT·내부 토큰)은 기록하지 않는다. 응답 본문의 토큰 필드는 가린다.
+mock 테스트는 `transports`(httpx)와 `connector`(WS)를 갈아 끼워 같은 러너를 가짜 api에 붙인다.
 """
 
 import asyncio
 import json
+import os
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import httpx
 import websockets
+from dotenv import dotenv_values
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SECRET_FIELDS = {"token", "session_token", "debrief_token"}
+
+
+def env() -> dict[str, str]:
+    """infra/.env → infra/.env.local 순(나중 것이 이김), 환경변수가 가장 우선."""
+    values: dict[str, str] = {}
+    for name in (".env", ".env.local"):
+        path = REPO_ROOT / "infra" / name
+        if path.is_file():
+            values.update({k: v for k, v in dotenv_values(path).items() if v is not None})
+    values.update(os.environ)
+    return values
 
 
 def _redact(body: Any) -> Any:
@@ -45,10 +61,24 @@ class Target:
     internal_url: str
     internal_token: str
     database_url: str | None = None
+    jwt_secret: str | None = None
+    assessment_mcp_url: str | None = None
 
     def ws_url(self, session_id: str, token: str) -> str:
         base = self.public_url.replace("http://", "ws://").replace("https://", "wss://")
         return f"{base}/ws/sessions/{session_id}?token={token}"
+
+    @classmethod
+    def from_env(cls) -> "Target":
+        values = env()
+        return cls(
+            public_url=values.get("E2E_PUBLIC_URL", "http://localhost:8000"),
+            internal_url=values.get("E2E_INTERNAL_URL", "http://localhost:8001"),
+            internal_token=values.get("INTERNAL_TOKEN", ""),
+            database_url=values.get("E2E_DATABASE_URL") or values.get("DATABASE_URL"),
+            jwt_secret=values.get("JWT_SECRET"),
+            assessment_mcp_url=values.get("E2E_ASSESSMENT_MCP_URL", "http://localhost:9103/mcp"),
+        )
 
 
 class Api:
@@ -87,12 +117,15 @@ class Api:
         internal: bool = False,
         json_body: Any = None,
         headers: dict[str, str] | None = None,
+        use_internal_token: bool = True,
         log: bool = True,
     ) -> httpx.Response:
         client = self.internal if internal else self.public
         headers = dict(headers or {})
         if token:
             headers["Authorization"] = f"Bearer {token}"
+        if internal and not use_internal_token:
+            headers["X-Internal-Token"] = ""
         started = time.time()
         response = await client.request(method, path, json=json_body, headers=headers)
         if log:
@@ -112,21 +145,49 @@ class Api:
             )
         return response
 
+    async def json(self, method: str, path: str, **kwargs: Any) -> Any:
+        """2xx 본문. 아니면 어느 호출이 왜 실패했는지 알 수 있게 예외로 올린다."""
+        response = await self.call(method, path, **kwargs)
+        if response.status_code >= 300:
+            raise ApiError(method, path, response.status_code, response.text[:300])
+        return response.json()
+
+
+class ApiError(Exception):
+    def __init__(self, method: str, path: str, status: int, body: str) -> None:
+        super().__init__(f"{method} {path} -> {status} {body}")
+        self.status = status
+
+
+Connector = Callable[[str], Awaitable[Any]]
+
+
+async def _websockets_connect(url: str) -> Any:
+    return await websockets.connect(url, max_size=None)
+
 
 class Socket:
-    """WS 하나. 받은 프레임은 frames에 쌓고 wait_for로 조건을 기다린다."""
+    """WS 하나. 받은 프레임은 frames에 쌓고 wait_for로 조건을 기다린다.
 
-    def __init__(self, transcript: Transcript) -> None:
+    connector(url) -> 연결 객체(send·close·close_code·비동기 반복). 기본은 websockets.
+    """
+
+    def __init__(self, transcript: Transcript, connector: Connector | None = None) -> None:
         self.transcript = transcript
+        self.connector = connector or _websockets_connect
         self.frames: list[dict[str, Any]] = []
         self.close_code: int | None = None
         self._ws: Any = None
         self._reader: asyncio.Task | None = None
         self._changed = asyncio.Condition()
-        self._seq = 0
+        self._counter = 0
+
+    @property
+    def open(self) -> bool:
+        return self._ws is not None and self.close_code is None
 
     async def connect(self, url: str) -> None:
-        self._ws = await websockets.connect(url, max_size=None)
+        self._ws = await self.connector(url)
         self.close_code = None
         self.transcript.add("ws_open")
         self._reader = asyncio.create_task(self._read(self._ws))
@@ -143,8 +204,8 @@ class Socket:
         except websockets.ConnectionClosed:
             pass
         finally:
-            self.close_code = ws.close_code
-            self.transcript.add("ws_close", code=ws.close_code)
+            self.close_code = ws.close_code if ws.close_code is not None else 1006
+            self.transcript.add("ws_close", code=self.close_code)
             async with self._changed:
                 self._changed.notify_all()
 
@@ -173,25 +234,30 @@ class Socket:
         except TimeoutError:
             return found()
 
-    async def send_message(
-        self, channel: str, content: str, reply_to_doc: dict[str, Any] | None = None
-    ) -> dict[str, Any] | None:
-        """message.send 후 ack payload(없으면 None)."""
-        self._seq += 1
-        client_msg_id = f"e2e-{self._seq}-{int(time.time() * 1000)}"
-        payload = {"client_msg_id": client_msg_id, "channel": channel, "content": content}
-        if reply_to_doc:
-            payload["reply_to_doc"] = reply_to_doc
-        since = len(self.frames)
-        frame = {"type": "message.send", "payload": payload}
+    async def _send(self, frame: dict[str, Any]) -> None:
         self.transcript.add("ws_out", frame=frame)
         await self._ws.send(json.dumps(frame, ensure_ascii=False))
+
+    async def typing(self, state: str) -> None:
+        await self._send({"type": "typing", "payload": {"state": state}})
+
+    async def send_message(self, content: str, timeout: float = 30) -> dict[str, Any] | None:
+        """message.send 후 ack payload(없으면 None)."""
+        self._counter += 1
+        client_msg_id = f"e2e-{self._counter}-{int(time.time() * 1000)}"
+        since = len(self.frames)
+        await self._send(
+            {
+                "type": "message.send",
+                "payload": {"client_msg_id": client_msg_id, "content": content},
+            }
+        )
         ack = await self.wait_for(
             lambda f: (
                 (f["type"] == "message.ack" and f["payload"].get("client_msg_id") == client_msg_id)
                 or f["type"] == "error"
             ),
-            timeout=30,
+            timeout=timeout,
             since=since,
         )
         return ack["payload"] if ack and ack["type"] == "message.ack" else None

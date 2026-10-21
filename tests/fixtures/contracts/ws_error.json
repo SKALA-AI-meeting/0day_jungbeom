@@ -1,7 +1,8 @@
 {
   "type": "error",
+  "seq": 61,
   "payload": {
-    "code": "invalid_input",
-    "message": "reply_to_doc must point to a shared version"
+    "code": "session_ending",
+    "message": "제출된 세션이에요."
   }
 }

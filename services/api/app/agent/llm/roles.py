@@ -1,28 +1,57 @@
-"""역할별 모델·키 선택(docs/decisions.md 2026-10-20 "역할별 모델과 상향 규칙"). 규칙은 여기 한 곳.
+"""역할별 모델·키 선택과 호출 설정(docs/agent/design.md "역할별 모델"). G-F 동결.
 
-- 역할 5개는 env `MODEL_<역할>`을 읽고 비어 있으면 `OPENAI_MODEL`(기본 gpt-4o-mini)을 쓴다.
-- 키는 모델 id로 고른다: gpt-4o-mini → OPENAI_API_KEY(제한 키),
-  그 외 gpt-* → OPENAI_API_KEY_PERSONAL, gemini-* → GEMINI_API_KEY(Google의 OpenAI 호환
-  엔드포인트라 같은 클라이언트를 쓴다).
-- 재시도 2회 후 LLMUnavailable(규칙 폴백)은 모델과 무관하게 BaseLLM이 그대로 한다. 대체 모델 없음.
+규칙은 여기 한 곳이다.
+
+- 역할 5개는 env `MODEL_INTENT`·`MODEL_TURN`·`MODEL_PERSONA`·`MODEL_ASSISTANT`·`MODEL_EVALUATOR`를
+  읽고 비어 있으면 `OPENAI_MODEL`(기본 gpt-4o-mini)을 쓴다. 옛 `MODEL_COLLEAGUE`·`MODEL_MANAGER`·
+  `MODEL_OBSERVE`·`MODEL_REPORT`는 읽지 않는다.
+- 키는 모델 id로 고른다: gpt-4o-mini → OPENAI_API_KEY(제한 키), 그 외 gpt-* →
+  OPENAI_API_KEY_PERSONAL, gemini-* → GEMINI_API_KEY(OpenAI 호환 엔드포인트). 대체 모델 없음.
+- 재시도는 역할 표의 횟수(기본 2회, 의도 분류는 0회) 뒤 LLMUnavailable → 호출한 노드의 규칙 폴백.
+  report-worker는 같은 규칙의 사본을 쓴다(평가 역할 `evaluator`).
+- env `LLM_FAKE=1`이면 키·모델을 고르지 않고 역할별 DeterministicLLM을 준다(결정적 LLM 모드).
 """
 
 import os
 from collections.abc import Mapping
+from dataclasses import dataclass
 
-from app.agent.llm.base import MODEL, BaseLLM
+from app.agent.llm.base import MODEL, RETRY_DELAYS, BaseLLM
+from app.agent.llm.fake import DeterministicLLM
 from app.agent.llm.openai import OpenAILLM
 from app.config import get_settings
 
-ROLES = ("colleague", "manager", "observe", "assistant", "report")
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 
-def model_for(role: str, env: Mapping[str, str] | None = None) -> str:
-    if role not in ROLES:
+@dataclass(frozen=True)
+class RoleConfig:
+    env: str
+    timeout: float  # 초. 호출 한 번의 상한
+    retries: int  # 최초 호출 뒤 재시도 횟수
+    temperature: float
+
+
+ROLE_CONFIG: dict[str, RoleConfig] = {
+    "intent": RoleConfig("MODEL_INTENT", timeout=10.0, retries=0, temperature=0.0),
+    "turn": RoleConfig("MODEL_TURN", timeout=15.0, retries=2, temperature=0.0),
+    "persona": RoleConfig("MODEL_PERSONA", timeout=20.0, retries=2, temperature=0.7),
+    "assistant": RoleConfig("MODEL_ASSISTANT", timeout=30.0, retries=2, temperature=0.3),
+    "evaluator": RoleConfig("MODEL_EVALUATOR", timeout=60.0, retries=2, temperature=0.1),
+}
+ROLES = tuple(ROLE_CONFIG)
+
+
+def role_config(role: str) -> RoleConfig:
+    if role not in ROLE_CONFIG:
         raise ValueError(f"unknown llm role: {role}")
+    return ROLE_CONFIG[role]
+
+
+def model_for(role: str, env: Mapping[str, str] | None = None) -> str:
+    config = role_config(role)
     env = _env(env)
-    return env.get(f"MODEL_{role.upper()}") or env.get("OPENAI_MODEL") or MODEL
+    return env.get(config.env) or env.get("OPENAI_MODEL") or MODEL
 
 
 def key_for(model: str, env: Mapping[str, str] | None = None) -> tuple[str, str | None]:
@@ -43,10 +72,27 @@ def key_for(model: str, env: Mapping[str, str] | None = None) -> tuple[str, str 
 
 
 def make_llm(role: str, env: Mapping[str, str] | None = None) -> BaseLLM:
-    """그 역할의 LLM 래퍼. env를 주지 않으면 infra/.env.local·.env를 읽은 프로세스 환경을 쓴다."""
+    """그 역할의 LLM 래퍼(역할 표의 타임아웃·재시도·temperature).
+
+    env를 주지 않으면 infra/.env를 읽은 프로세스 환경을 쓴다.
+    """
+    config = role_config(role)
+    env = _env(env)
+    if env.get("LLM_FAKE") == "1":
+        return DeterministicLLM(role, temperature=config.temperature, retries=config.retries)
     model = model_for(role, env)
     key, base_url = key_for(model, env)
-    return OpenAILLM(key, model, base_url=base_url)
+    delays = tuple(RETRY_DELAYS[: config.retries])
+    llm = OpenAILLM(
+        key,
+        model,
+        timeout=config.timeout,
+        retry_delays=delays,
+        base_url=base_url,
+        temperature=config.temperature,
+    )
+    llm.role = role
+    return llm
 
 
 def _env(env: Mapping[str, str] | None) -> Mapping[str, str]:

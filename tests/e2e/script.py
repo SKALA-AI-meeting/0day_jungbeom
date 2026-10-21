@@ -8,29 +8,20 @@ import yaml
 E2E_DIR = Path(__file__).resolve().parents[2] / "scenarios" / "e2e"
 
 # 한 step에 여러 키가 있으면 이 순서로 실행한다(README 표 순서)
-ACTIONS = (
-    "board",
-    "say",
-    "write",
-    "share",
-    "open",
-    "import",
-    "view",
-    "assistant",
-    "submit",
-    "restart",
-    "disconnect",
-    "inject",
-)
-STEP_KEYS = {"at", "capture_as", *ACTIONS}
+ACTIONS = ("say", "confirm", "material", "assistant", "proposal", "restart", "submit")
+STEP_KEYS = {"at", *ACTIONS}
+TOP_KEYS = {"name", "priority", "minutes", "expect", "review", "steps"}
 
 
 def load(name_or_path: str | Path) -> dict[str, Any]:
-    """대본 이름(all_five) 또는 경로. 모르는 step 키는 오타일 수 있어 바로 실패시킨다."""
+    """대본 이름(all_five) 또는 경로. 모르는 키는 오타일 수 있어 바로 실패시킨다."""
     path = Path(name_or_path)
     if not path.suffix:
         path = E2E_DIR / f"{name_or_path}.yaml"
     script = yaml.safe_load(path.read_text("utf-8"))
+    unknown = set(script) - TOP_KEYS
+    if unknown:
+        raise ValueError(f"{path.name}: unknown keys {sorted(unknown)}")
     for index, step in enumerate(script["steps"]):
         unknown = set(step) - STEP_KEYS
         if unknown or "at" not in step:

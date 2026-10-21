@@ -1,9 +1,16 @@
 {
   "call_id": "ac-1",
-  "message_id": "m-26",
-  "content": "지표 현황 문서 기준으로 재참여율은 22%이고, 회의록에서 최우선 과제로 정한 수치입니다. 외부 기준 수치는 문서에 없습니다.",
-  "cited_docs": [
-    "metrics",
-    "meeting_notes"
+  "message_id": "ma-2",
+  "content": "도심 침수 사례 자료에 하수관 수위 센서로 침수 30분 전 경보를 보낸 구에서 차량 침수 피해가 줄었다는 내용이 있어요.",
+  "cited_material_ids": ["water_flood_cases"],
+  "tool_calls": [
+    {
+      "name": "search_materials",
+      "query": "침수 센서 경보 효과"
+    },
+    {
+      "name": "get_material",
+      "material_id": "water_flood_cases"
+    }
   ]
 }

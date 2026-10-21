@@ -1,4 +1,7 @@
-# Day Zero 로컬 구성. 공개 포트는 web(3000), api(8000), rabbitmq 관리 UI(127.0.0.1 전용)뿐이다. 나머지는 compose 네트워크 안.
+# Day Zero 전체 구성(8개 서비스, docs/worker-infra/design.md "Docker Compose").
+# 공개 포트는 web(3000), api(8000), rabbitmq 관리 UI(127.0.0.1 전용)뿐이다. MCP 3개와 api 내부 8001은 compose 네트워크 안.
+# 공개 포트 번호는 env(WEB_PORT·API_PORT·RABBITMQ_UI_PORT)로 바꿀 수 있다(같은 기계에서 스택 두 개를 띄울 때).
+# 서비스 간 주소는 아래 environment가 정하므로 .env의 같은 키보다 우선한다.
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -18,7 +21,7 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - "127.0.0.1:15672:15672"   # 관리 UI, 로컬에서만
+      - "127.0.0.1:${RABBITMQ_UI_PORT:-15672}:15672"   # 관리 UI, 로컬에서만
     volumes:
       - rabbitdata:/var/lib/rabbitmq
     healthcheck:
@@ -30,8 +33,12 @@ services:
   api:
     build: ../services/api
     env_file: .env
+    environment:
+      DEBATE_MCP_URL: http://debate-mcp:9101/mcp
+      RAG_MCP_URL: http://rag-mcp:9102/mcp
+      ASSESSMENT_MCP_URL: http://assessment-mcp:9103/mcp
     ports:
-      - "8000:8000"        # 공개 API. 내부 API 8001은 공개하지 않는다
+      - "${API_PORT:-8000}:8000"   # 공개 API. 내부 API 8001은 공개하지 않는다
     expose: ["8001"]
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8000/health || exit 1"]
@@ -41,14 +48,17 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
-      business-mcp: { condition: service_healthy }
+      debate-mcp: { condition: service_healthy }
       rag-mcp: { condition: service_healthy }
+      assessment-mcp: { condition: service_healthy }
     volumes:
       - ../scenarios:/scenarios:ro
 
-  business-mcp:
-    build: ../services/business-mcp
+  debate-mcp:
+    build: ../services/debate-mcp
     env_file: .env
+    environment:
+      API_INTERNAL_URL: http://api:8001
     expose: ["9101"]
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:9101/health || exit 1"]
@@ -59,6 +69,8 @@ services:
   rag-mcp:
     build: ../services/rag-mcp
     env_file: .env
+    environment:
+      API_INTERNAL_URL: http://api:8001
     expose: ["9102"]
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:9102/health || exit 1"]
@@ -75,9 +87,26 @@ services:
         limits:
           memory: 3g
 
+  assessment-mcp:
+    build: ../services/assessment-mcp
+    env_file: .env
+    environment:
+      API_INTERNAL_URL: http://api:8001
+    expose: ["9103"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9103/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
   report-worker:
     build: ../services/report-worker
     env_file: .env
+    environment:
+      API_INTERNAL_URL: http://api:8001
+      ASSESSMENT_MCP_URL: http://assessment-mcp:9103/mcp
+    volumes:
+      - ../scenarios:/scenarios:ro
     healthcheck:   # 워커가 30초마다 갱신하는 heartbeat 파일
       test: ["CMD-SHELL", "test -f /tmp/heartbeat && test $(( $(date +%s) - $(stat -c %Y /tmp/heartbeat) )) -lt 90"]
       interval: 15s
@@ -87,12 +116,13 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       api: { condition: service_healthy }
+      assessment-mcp: { condition: service_healthy }
 
   web:
     build: ../apps/web
     env_file: .env
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health >/dev/null || exit 1"]
       interval: 10s

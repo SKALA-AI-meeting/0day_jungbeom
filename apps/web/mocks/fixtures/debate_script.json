@@ -1,0 +1,1167 @@
+{
+  "_about": "15분 데모 재생 대본(web 전용, mock-candidate). 계약 ws_events.json 한 세션을 15분 비율로 줄였다. t_min은 15분 세션 기준 분, phase는 그 프레임이 나가기 전 진행 중인 단계, anchor=deadline은 단계 마감(누적 고정)에 묶인 프레임. 그 밖의 프레임은 단계 시작 기준 상대 시각으로 재생해, 지원자가 일찍 정하면 다음 단계 대본이 그 시점부터 이어진다. keywords는 카탈로그(scenarios/missions/debate/keywords.yaml·materials/)의 후보 4개와 자료 본문 복사본.",
+  "session_minutes": 15,
+  "phase_deadlines": {
+    "keyword": 2.5,
+    "problem": 7.0,
+    "solution": 11.5,
+    "proposal": 15.0
+  },
+  "stage_start": {
+    "keyword": "키워드 단계예요. 물·불·나무·바람 중 하나를 함께 정해 주세요. 이 단계 {remaining} 남았어요.",
+    "problem": "문제 상황 단계예요. {keyword}과 관련된 문제 상황 하나를 정해 주세요. 이 단계 {remaining} 남았어요. 자료 탭이 열렸어요.",
+    "solution": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 {remaining} 남았어요.",
+    "proposal": "기획안 작성 단계예요. 기획안 탭에서 혼자 작성해 제출해 주세요. {remaining} 남았어요."
+  },
+  "fixed_phrases": {
+    "consensus_fill": "그럼 {option}로 정리할게요.",
+    "timeout_fill": "시간이 다 돼서 대화에서 가장 많이 모인 의견인 {option}로 할게요."
+  },
+  "keywords": [
+    {
+      "key": "water",
+      "label": "물",
+      "materials": [
+        {
+          "material_id": "water_stats",
+          "title": "지역별 물 부족 통계",
+          "content": "# 지역별 물 부족 통계\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 생활용수 제한 횟수\n\n| 연도 | 제한 급수 일수 | 영향 가구(만) |\n|---|---|---|\n| 2021 | 6 | 1.2 |\n| 2022 | 11 | 2.0 |\n| 2023 | 9 | 1.8 |\n| 2024 | 17 | 3.1 |\n| 2025 | 21 | 3.6 |\n\n- 최근 5년 동안 제한 급수 일수가 세 배 넘게 늘었다. 봄 가뭄이 길어진 해에 제한이 몰린다.\n- 저수율이 40% 아래로 내려가면 제한 급수를 검토한다. 2025년에는 4월에 처음 40% 아래로 내려갔다.\n- 가구당 하루 물 사용량은 평균 280리터이고, 상위 10% 가구가 전체 사용량의 22%를 쓴다.\n\n## 관리 현황\n\n- 상수도 누수율은 11%로, 노후 관로가 많은 구도심이 18%로 가장 높다.\n- 사용량을 실시간으로 보여 주는 스마트 계량기는 전체 가구의 9%에만 설치되어 있다.\n"
+        },
+        {
+          "material_id": "water_flood_cases",
+          "title": "도심 침수 사례",
+          "content": "# 도심 침수 사례\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 최근 침수 피해\n\n| 연도 | 시간당 최대 강수량(mm) | 침수 가구 | 복구비(억 원) |\n|---|---|---|---|\n| 2021 | 48 | 120 | 9 |\n| 2023 | 71 | 410 | 34 |\n| 2025 | 86 | 640 | 52 |\n\n- 5년 사이 침수 가구가 다섯 배 넘게 늘었다. 반지하 주택과 저지대 상가에 피해가 집중됐다.\n- 피해의 70%가 비가 시작되고 1시간 안에 생겼다. 주민들은 \"경보가 왔을 때는 이미 물이 들어오고 있었다\"고 답했다.\n\n## 원인과 대응\n\n- 도심 면적의 62%가 아스팔트·콘크리트로 덮여 빗물이 땅에 스미지 못한다.\n- 하수관 수위 센서를 시범 설치한 두 동네는 경보를 평균 25분 앞당겼다.\n- 반지하 가구 물막이판 설치 지원은 신청 가구의 38%만 받았다.\n"
+        },
+        {
+          "material_id": "water_tap_survey",
+          "title": "수돗물 음용률 조사",
+          "content": "# 수돗물 음용률 조사\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 조사 결과(주민 1,000명)\n\n| 항목 | 응답 비율 |\n|---|---|\n| 수돗물을 그대로 마신다 | 14% |\n| 끓이거나 정수기를 거쳐 마신다 | 41% |\n| 주로 생수를 사 마신다 | 45% |\n\n- 생수를 사는 이유는 \"냄새·녹물 걱정\"(52%), \"관리 정보를 믿기 어려워서\"(31%) 순이었다.\n- 생수를 사는 가구는 한 달 평균 페트병 48개를 버린다. 지역 플라스틱 배출량의 약 8%로 추산된다.\n\n## 참고\n\n- 수질 검사 결과는 매달 공개되지만 \"본 적 있다\"는 응답은 12%였다.\n- 아파트 저수조 청소 일정을 알림으로 받은 단지는 수돗물 음용 응답이 9%포인트 높았다.\n"
+        },
+        {
+          "material_id": "water_rain_reuse",
+          "title": "빗물 재이용 사례",
+          "content": "# 빗물 재이용 사례\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 다른 도시 사례\n\n- A시는 주택·학교에 빗물 저금통(1톤) 3,000개를 보급했다. 한 개가 한 해에 약 40톤을 모아 화단·청소에 쓴다.\n- B구는 보도 일부를 투수 포장으로 바꿔 같은 비에서 도로 물고임 신고가 35% 줄었다.\n- C시는 빗물 저금통 설치비의 80%를 지원하고, 설치 가구가 사용량을 앱에 기록하면 수도요금을 깎아 주는 제도를 함께 운영했다.\n\n## 비용과 기간\n\n| 시설 | 설치비(개당) | 설치 기간 |\n|---|---|---|\n| 가정용 빗물 저금통 | 약 60만 원 | 하루 |\n| 투수 포장(100㎡) | 약 1,500만 원 | 2주 |\n| 공공건물 빗물 저류조 | 약 3억 원 | 3개월 |\n\n- 빗물 저금통은 설치가 빠르지만 가구가 직접 관리해야 해서 2년 뒤 사용률이 60%로 떨어진 사례가 있다.\n"
+        }
+      ]
+    },
+    {
+      "key": "fire",
+      "label": "불",
+      "materials": [
+        {
+          "material_id": "fire_stats",
+          "title": "화재 발생 통계",
+          "content": "# 화재 발생 통계\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 장소별 화재(최근 3년 합계)\n\n| 장소 | 건수 | 인명 피해 |\n|---|---|---|\n| 노후 단독·다가구 주택 | 312 | 41 |\n| 전통시장·상가 | 87 | 6 |\n| 아파트 | 205 | 18 |\n| 야외·임야 | 143 | 2 |\n\n- 노후 주택 화재의 절반 이상이 전기 배선·멀티탭에서 시작됐다.\n- 전통시장 화재 한 건의 평균 재산 피해는 주택 화재의 7배다. 점포가 붙어 있어 불이 빨리 번진다.\n- 밤 10시~새벽 4시 화재는 전체의 23%지만 인명 피해의 48%를 차지한다. 늦게 발견되기 때문이다.\n\n## 설비 현황\n\n- 노후 주택의 주택용 소방시설(감지기·소화기) 설치율은 46%다.\n"
+        },
+        {
+          "material_id": "fire_wildfire_trend",
+          "title": "산불 피해 추이",
+          "content": "# 산불 피해 추이\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 연도별 산불\n\n| 연도 | 건수 | 피해 면적(ha) |\n|---|---|---|\n| 2021 | 14 | 22 |\n| 2023 | 21 | 61 |\n| 2025 | 29 | 140 |\n\n- 봄철 건조 일수가 늘면서 피해 면적이 4년 사이 여섯 배가 됐다.\n- 원인은 입산자 실화(38%), 논밭 태우기(24%), 담배꽁초(12%) 순이다.\n- 산과 맞닿은 마을 17곳 가운데 대피 경로를 주민이 알고 있다고 답한 곳은 5곳뿐이었다.\n\n## 대응\n\n- 감시 카메라는 주요 등산로 6곳에만 있다. 신고에서 진화대 도착까지 평균 38분 걸린다.\n- 마을 단위 대피 훈련을 한 해 한 번 한 지역은 실제 산불 때 대피 완료 시간이 절반으로 줄었다.\n"
+        },
+        {
+          "material_id": "fire_battery_cases",
+          "title": "배터리 화재 사례",
+          "content": "# 배터리 화재 사례\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 전동킥보드·전기자전거 화재\n\n| 연도 | 건수 | 주요 장소 |\n|---|---|---|\n| 2022 | 9 | 주택 내부 |\n| 2024 | 23 | 주택 내부·현관 |\n| 2025 | 31 | 공동 현관·복도 |\n\n- 화재의 64%가 충전 중에 났고, 그중 절반이 밤사이 집 안에서 충전하던 경우였다.\n- 리튬 배터리 화재는 일반 소화기로 잘 꺼지지 않고 다시 불이 붙는 일이 잦다.\n\n## 대응 사례\n\n- D구는 아파트 단지에 불연재 충전 보관함을 설치하고 실내 충전을 줄였다. 설치 단지의 배터리 화재 신고가 1년 동안 0건이었다.\n- 충전 보관함 한 대는 약 400만 원이고 8대를 함께 충전할 수 있다.\n"
+        },
+        {
+          "material_id": "fire_detector_cases",
+          "title": "화재 감지기 보급 사례",
+          "content": "# 화재 감지기 보급 사례\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## IoT 감지기 시범 사업\n\n- E시는 노후 주택 1,200가구에 연기·열 감지 IoT 감지기를 달았다. 불이 나면 가족 휴대폰과 관제센터로 바로 알림이 간다.\n- 시범 2년 동안 초기 화재 37건을 알림으로 발견했고, 그중 33건이 소방차 도착 전에 꺼졌다.\n- 감지기 한 대는 설치비 포함 약 9만 원, 통신비는 한 달 1,000원이다.\n\n## 한계\n\n- 혼자 사는 노인 가구는 알림을 받아도 대응이 어려워 관제센터 연계가 필요했다.\n- 배터리 교체를 잊어 1년 뒤 꺼져 있던 감지기가 14%였다.\n\n## 교육과 함께한 경우\n\n- 감지기 설치와 함께 주민 대피 교육을 한 동네는 \"불이 나면 무엇을 할지 안다\"는 응답이 31%에서 74%로 올랐다.\n"
+        }
+      ]
+    },
+    {
+      "key": "tree",
+      "label": "나무",
+      "materials": [
+        {
+          "material_id": "tree_green_stats",
+          "title": "도시 녹지율 통계",
+          "content": "# 도시 녹지율 통계\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 동네별 녹지\n\n| 구역 | 1인당 녹지(㎡) | 걸어서 10분 안에 공원이 있는 가구 |\n|---|---|---|\n| 구도심 | 3.1 | 41% |\n| 신도시 | 11.8 | 88% |\n| 산업단지 주변 | 2.4 | 29% |\n\n- 권장 기준(1인당 9㎡)에 못 미치는 구역이 전체 면적의 46%다.\n- 구도심은 빈 땅이 없어 새 공원을 만들기 어렵고, 옥상 면적은 넓다(구도심 건물 옥상 합계 약 38만㎡).\n\n## 변화\n\n- 지난 10년 동안 재개발로 녹지 약 52ha가 줄었다. 그중 31ha가 오래된 숲이었다.\n"
+        },
+        {
+          "material_id": "tree_heat_island",
+          "title": "열섬 측정 자료",
+          "content": "# 열섬 측정 자료\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 한여름 낮 기온 비교(같은 날 오후 3시)\n\n| 지점 | 기온(℃) |\n|---|---|\n| 도심 교차로 | 38.4 |\n| 구도심 주택가 | 36.9 |\n| 하천변 공원 | 33.2 |\n| 도시 숲 안 | 31.5 |\n\n- 도심과 도시 숲의 기온 차이가 최대 7℃ 가까이 났다.\n- 폭염 특보 일수는 2015년 8일에서 2025년 27일로 늘었다. 온열질환자의 60%가 구도심에서 나왔다.\n\n## 측정 방법의 한계\n\n- 기온 측정소는 시 전체에 4곳뿐이라 골목 단위 차이는 알기 어렵다.\n- 위성 열화상 자료를 쓰면 건물 단위로 뜨거운 지점을 찾을 수 있다는 연구가 있다.\n"
+        },
+        {
+          "material_id": "tree_street_trees",
+          "title": "가로수 관리 현황",
+          "content": "# 가로수 관리 현황\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 가로수 상태 조사\n\n| 상태 | 비율 |\n|---|---|\n| 건강 | 61% |\n| 쇠약(가지 마름·병해) | 27% |\n| 고사·제거 필요 | 12% |\n\n- 해마다 약 900그루가 말라 죽어 다시 심는다. 다시 심는 비용은 그루당 약 50만 원이다.\n- 고사 원인은 가뭄 때 물 부족(41%), 뿌리 공간 부족(33%), 과도한 가지치기(15%) 순이다.\n\n## 관리 인력\n\n- 관리 인력 1명이 가로수 약 6,000그루를 맡는다.\n- F시는 주민이 가로수를 입양해 물 주기와 상태 신고를 맡는 제도를 운영했다. 입양된 나무의 고사율은 4%로, 입양되지 않은 나무(13%)보다 낮았다.\n"
+        },
+        {
+          "material_id": "tree_urban_forest",
+          "title": "도시 숲 조성 사례",
+          "content": "# 도시 숲 조성 사례\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 사례\n\n- G시는 버려진 철도 부지 2km에 도시 숲을 만들었다. 주변 여름 기온이 평균 2.3℃ 낮아졌고 산책 이용자가 하루 6,000명이다.\n- H구는 공공건물 옥상 40곳을 녹화했다. 건물 냉방 에너지가 평균 16% 줄었다.\n- I시는 드론과 위성 영상으로 녹지 변화를 분기마다 지도로 공개했다. 불법 벌목 신고가 두 배로 늘고 처리 기간이 줄었다.\n\n## 비용\n\n| 방식 | 비용 | 걸리는 시간 |\n|---|---|---|\n| 도시 숲(1ha) | 약 15억 원 | 2~3년 |\n| 옥상 녹화(500㎡) | 약 1억 원 | 2개월 |\n| 벽면 녹화(100㎡) | 약 3,000만 원 | 1개월 |\n| 위성·드론 모니터링(연간) | 약 2억 원 | 3개월 준비 |\n"
+        }
+      ]
+    },
+    {
+      "key": "wind",
+      "label": "바람",
+      "materials": [
+        {
+          "material_id": "wind_dust_stats",
+          "title": "미세먼지 농도 통계",
+          "content": "# 미세먼지 농도 통계\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 초미세먼지(PM2.5) 나쁨 일수\n\n| 연도 | 나쁨 일수 | 바람이 약한 날 비율 |\n|---|---|---|\n| 2021 | 38 | 52% |\n| 2023 | 44 | 58% |\n| 2025 | 51 | 63% |\n\n- 나쁨 일수의 80%가 풍속 초속 2m 이하인 날에 나왔다. 바람이 약하면 먼지가 흩어지지 못하고 머문다.\n- 하천 쪽에서 들어오던 바람길에 고층 건물이 늘어선 뒤, 구도심의 평균 풍속이 10년 사이 18% 줄었다.\n\n## 측정망\n\n- 대기 측정소는 6곳이고, 학교 주변 측정 지점은 없다.\n- 실시간 농도를 알림으로 받는 주민은 23%였다.\n"
+        },
+        {
+          "material_id": "wind_corridor_cases",
+          "title": "바람길 숲 사례",
+          "content": "# 바람길 숲 사례\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 사례\n\n- J시는 외곽 산에서 도심으로 이어지는 하천변 5km에 바람길 숲을 만들었다. 밤 시간 도심 풍속이 평균 0.6m/s 빨라지고 여름 밤 기온이 1.2℃ 내려갔다.\n- K시는 바람길 지도를 만들어 새 건물이 바람길을 막지 않도록 높이와 배치를 심의했다.\n- L구는 대기 센서 200개를 골목에 달고 농도가 높은 길을 피해 가는 통학로 알림을 학부모에게 보냈다.\n\n## 비용과 기간\n\n| 방식 | 비용 | 기간 |\n|---|---|---|\n| 바람길 숲(1km) | 약 40억 원 | 3년 |\n| 바람길·대기 데이터 지도 | 약 3억 원 | 6개월 |\n| 골목 대기 센서(200개) | 약 2억 원 | 3개월 |\n"
+        },
+        {
+          "material_id": "wind_typhoon_records",
+          "title": "태풍 피해 기록",
+          "content": "# 태풍 피해 기록\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 최근 태풍·강풍 피해\n\n| 연도 | 최대 순간 풍속(m/s) | 피해 신고 | 주요 피해 |\n|---|---|---|---|\n| 2020 | 31 | 210 | 간판 추락, 가로수 쓰러짐 |\n| 2022 | 38 | 530 | 비닐하우스 파손, 정전 |\n| 2025 | 42 | 870 | 공사장 가림막 붕괴, 창문 파손 |\n\n- 피해의 45%가 간판·가림막·지붕재처럼 고정이 약한 시설물에서 나왔다.\n- 강풍 경보 문자를 받은 뒤 \"무엇을 해야 할지 몰랐다\"는 응답이 57%였다.\n\n## 대응 사례\n\n- M시는 해안 쪽에 방풍림을 조성해 뒤쪽 마을의 강풍 피해 신고가 40% 줄었다.\n- N구는 주민이 위험 간판을 신고하면 점검하는 제도를 운영해 한 해 동안 위험 간판 320개를 정비했다.\n"
+        },
+        {
+          "material_id": "wind_benefit_sharing",
+          "title": "풍력 이익 공유 사례",
+          "content": "# 풍력 이익 공유 사례\n\n> 토론용으로 만든 가상의 지역 자료입니다.\n\n## 갈등 현황\n\n- 지역 외곽 풍력 발전 단지 계획 3곳 가운데 2곳이 주민 반대로 3년 넘게 멈춰 있다.\n- 반대 이유는 소음·경관(44%), 이익이 지역에 돌아오지 않음(37%), 결정 과정에서 소외(19%) 순이다.\n\n## 이익 공유 사례\n\n- O군은 주민이 발전소 지분의 30%를 갖는 협동조합 방식을 택했다. 가구당 연평균 약 60만 원의 배당이 돌아가고 찬성률이 31%에서 72%로 올랐다.\n- P시는 계획 단계부터 주민 협의회를 열어 터빈 위치를 함께 정했다. 착공까지 걸린 기간이 이웃 지역보다 1년 짧았다.\n\n## 참고\n\n- 소음은 터빈에서 500m 떨어지면 일상 대화 수준 아래로 떨어진다는 측정 결과가 있다.\n"
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "phase": "keyword",
+      "t_min": 0.0,
+      "type": "phase.changed",
+      "seq": 1,
+      "payload": {
+        "phase": "keyword",
+        "previous_phase": null,
+        "reason": "start",
+        "phase_started_at": "2026-10-21T01:00:00Z",
+        "phase_deadline_at": "2026-10-21T01:02:30Z",
+        "t_min": 0.0
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.0,
+      "type": "timer",
+      "seq": 2,
+      "payload": {
+        "phase": "keyword",
+        "phase_deadline_at": "2026-10-21T01:02:30Z",
+        "phase_remaining_seconds": 150,
+        "session_remaining_seconds": 900
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.0,
+      "type": "message.new",
+      "seq": 3,
+      "payload": {
+        "id": "m-01",
+        "sender": "system",
+        "content": "키워드 단계예요. 물·불·나무·바람 중 하나를 함께 정해 주세요. 이 단계 2분 30초 남았어요.",
+        "phase": "keyword",
+        "is_invite": false,
+        "t_min": 0.0,
+        "created_at": "2026-10-21T01:00:00Z"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.1,
+      "type": "typing",
+      "seq": 4,
+      "payload": {
+        "participant": "p3",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.2,
+      "type": "message.new",
+      "seq": 5,
+      "payload": {
+        "id": "m-02",
+        "sender": "p3",
+        "content": "바람은 어떨까요? 미세먼지 얘기는 누구나 공감할 것 같은데요.",
+        "phase": "keyword",
+        "is_invite": false,
+        "t_min": 0.2,
+        "created_at": "2026-10-21T01:00:12Z"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.2,
+      "type": "typing",
+      "seq": 6,
+      "payload": {
+        "participant": "p3",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.275,
+      "type": "typing",
+      "seq": 7,
+      "payload": {
+        "participant": "p1",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.375,
+      "type": "message.new",
+      "seq": 8,
+      "payload": {
+        "id": "m-03",
+        "sender": "p1",
+        "content": "불이 맞아요. 화재는 피해가 바로 보이잖아요.",
+        "phase": "keyword",
+        "is_invite": false,
+        "t_min": 0.375,
+        "created_at": "2026-10-21T01:00:22Z"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.375,
+      "type": "typing",
+      "seq": 9,
+      "payload": {
+        "participant": "p1",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.65,
+      "type": "typing",
+      "seq": 10,
+      "payload": {
+        "participant": "p3",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.75,
+      "type": "message.new",
+      "seq": 11,
+      "payload": {
+        "id": "m-04",
+        "sender": "p3",
+        "content": "저는 바람으로 가고 싶어요. 생활에 바로 닿는 문제라 근거 찾기도 쉬워요. 다른 키워드는 어떤 점이 더 낫다고 보세요?",
+        "phase": "keyword",
+        "is_invite": false,
+        "t_min": 0.75,
+        "created_at": "2026-10-21T01:00:45Z"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.75,
+      "type": "typing",
+      "seq": 12,
+      "payload": {
+        "participant": "p3",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.8,
+      "type": "message.new",
+      "seq": 13,
+      "payload": {
+        "id": "m-05",
+        "sender": "p3",
+        "content": "김지원님은 어떻게 생각하세요?",
+        "phase": "keyword",
+        "is_invite": true,
+        "t_min": 0.8,
+        "created_at": "2026-10-21T01:00:48Z"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.9,
+      "type": "message.ack",
+      "seq": 14,
+      "payload": {
+        "client_msg_id": "c-01",
+        "message_id": "m-06",
+        "run_id": "run-msg-06"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 0.9,
+      "type": "message.new",
+      "seq": 15,
+      "payload": {
+        "id": "m-06",
+        "sender": "candidate",
+        "content": "저는 물이 좋아요. 가뭄이랑 침수가 둘 다 매년 반복돼서 다룰 거리가 많아요.",
+        "phase": "keyword",
+        "is_invite": false,
+        "t_min": 0.9,
+        "created_at": "2026-10-21T01:00:54Z"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 1.0,
+      "type": "typing",
+      "seq": 16,
+      "payload": {
+        "participant": "p2",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 1.1,
+      "type": "message.new",
+      "seq": 17,
+      "payload": {
+        "id": "m-07",
+        "sender": "p2",
+        "content": "음… 저도 물 괜찮은 것 같아요.",
+        "phase": "keyword",
+        "is_invite": false,
+        "t_min": 1.1,
+        "created_at": "2026-10-21T01:01:06Z"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 1.1,
+      "type": "typing",
+      "seq": 18,
+      "payload": {
+        "participant": "p2",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 1.5,
+      "type": "message.ack",
+      "seq": 19,
+      "payload": {
+        "client_msg_id": "c-02",
+        "message_id": "m-08",
+        "run_id": "run-msg-08"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 1.5,
+      "type": "message.new",
+      "seq": 20,
+      "payload": {
+        "id": "m-08",
+        "sender": "candidate",
+        "content": "서지안님, 바람도 좋지만 물은 가뭄·침수·수질까지 자료가 더 다양할 것 같아요. 물로 가면 어떨까요?",
+        "phase": "keyword",
+        "is_invite": false,
+        "t_min": 1.5,
+        "created_at": "2026-10-21T01:01:30Z"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 1.65,
+      "type": "typing",
+      "seq": 21,
+      "payload": {
+        "participant": "p3",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 1.75,
+      "type": "message.new",
+      "seq": 22,
+      "payload": {
+        "id": "m-09",
+        "sender": "p3",
+        "content": "물도 자료는 많겠네요. 그래도 저는 바람이 더 생활에 가깝다고 봐요.",
+        "phase": "keyword",
+        "is_invite": false,
+        "t_min": 1.75,
+        "created_at": "2026-10-21T01:01:45Z"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 1.75,
+      "type": "typing",
+      "seq": 23,
+      "payload": {
+        "participant": "p3",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 2.05,
+      "type": "slot.confirmed",
+      "seq": 24,
+      "payload": {
+        "phase": "keyword",
+        "value": "물",
+        "filled_by": "candidate",
+        "resolution": "consensus",
+        "t_min": 2.05
+      }
+    },
+    {
+      "phase": "keyword",
+      "t_min": 2.05,
+      "type": "phase.changed",
+      "seq": 25,
+      "payload": {
+        "phase": "problem",
+        "previous_phase": "keyword",
+        "reason": "confirmed",
+        "phase_started_at": "2026-10-21T01:02:03Z",
+        "phase_deadline_at": "2026-10-21T01:07:00Z",
+        "t_min": 2.05
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.05,
+      "type": "timer",
+      "seq": 26,
+      "payload": {
+        "phase": "problem",
+        "phase_deadline_at": "2026-10-21T01:07:00Z",
+        "phase_remaining_seconds": 297,
+        "session_remaining_seconds": 777
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.05,
+      "type": "materials.opened",
+      "seq": 27,
+      "payload": {
+        "keyword": "물",
+        "materials": [
+          {
+            "material_id": "water_stats",
+            "title": "지역별 물 부족 통계"
+          },
+          {
+            "material_id": "water_flood_cases",
+            "title": "도심 침수 사례"
+          },
+          {
+            "material_id": "water_tap_survey",
+            "title": "수돗물 음용률 조사"
+          },
+          {
+            "material_id": "water_rain_reuse",
+            "title": "빗물 재이용 사례"
+          }
+        ]
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.05,
+      "type": "message.new",
+      "seq": 28,
+      "payload": {
+        "id": "m-10",
+        "sender": "system",
+        "content": "문제 상황 단계예요. 물과 관련된 문제 상황 하나를 정해 주세요. 이 단계 5분 남았어요. 자료 탭이 열렸어요.",
+        "phase": "problem",
+        "is_invite": false,
+        "t_min": 2.05,
+        "created_at": "2026-10-21T01:02:03Z"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.15,
+      "type": "typing",
+      "seq": 29,
+      "payload": {
+        "participant": "p1",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.25,
+      "type": "message.new",
+      "seq": 30,
+      "payload": {
+        "id": "m-11",
+        "sender": "p1",
+        "content": "자료 탭에 물 부족 통계랑 침수 사례가 열렸네요. 먼저 같이 보죠.",
+        "phase": "problem",
+        "is_invite": false,
+        "t_min": 2.25,
+        "created_at": "2026-10-21T01:02:15Z"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.25,
+      "type": "typing",
+      "seq": 31,
+      "payload": {
+        "participant": "p1",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.625,
+      "type": "message.ack",
+      "seq": 32,
+      "payload": {
+        "client_msg_id": "c-03",
+        "message_id": "m-12",
+        "run_id": "run-msg-12"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.625,
+      "type": "message.new",
+      "seq": 33,
+      "payload": {
+        "id": "m-12",
+        "sender": "candidate",
+        "content": "저는 가뭄으로 생활용수 제한이 잦아지는 문제가 제일 크다고 봐요. 통계를 보면 제한 일수가 매년 늘고 있어요.",
+        "phase": "problem",
+        "is_invite": false,
+        "t_min": 2.625,
+        "created_at": "2026-10-21T01:02:37Z"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.725,
+      "type": "typing",
+      "seq": 34,
+      "payload": {
+        "participant": "p1",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.8,
+      "type": "message.new",
+      "seq": 35,
+      "payload": {
+        "id": "m-13",
+        "sender": "p1",
+        "content": "도심 폭우·침수 피해가 핵심이에요. 가뭄은 핵심이 아니에요. 침수는 해마다 피해액이 커지고 있어요.",
+        "phase": "problem",
+        "is_invite": false,
+        "t_min": 2.8,
+        "created_at": "2026-10-21T01:02:48Z"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.8,
+      "type": "typing",
+      "seq": 36,
+      "payload": {
+        "participant": "p1",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.825,
+      "type": "typing",
+      "seq": 37,
+      "payload": {
+        "participant": "p3",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.9,
+      "type": "message.new",
+      "seq": 38,
+      "payload": {
+        "id": "m-14",
+        "sender": "p3",
+        "content": "저도 도심 침수 쪽이 더 급하다고 봐요. 피해 사례가 훨씬 구체적이에요.",
+        "phase": "problem",
+        "is_invite": false,
+        "t_min": 2.9,
+        "created_at": "2026-10-21T01:02:54Z"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 2.9,
+      "type": "typing",
+      "seq": 39,
+      "payload": {
+        "participant": "p3",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 3.25,
+      "type": "message.ack",
+      "seq": 40,
+      "payload": {
+        "client_msg_id": "c-04",
+        "message_id": "m-15",
+        "run_id": "run-msg-15"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 3.25,
+      "type": "message.new",
+      "seq": 41,
+      "payload": {
+        "id": "m-15",
+        "sender": "candidate",
+        "content": "침수도 중요하지만 가뭄은 생활 전체에 영향을 줘서 우선순위가 더 높다고 생각해요.",
+        "phase": "problem",
+        "is_invite": false,
+        "t_min": 3.25,
+        "created_at": "2026-10-21T01:03:15Z"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 3.35,
+      "type": "typing",
+      "seq": 42,
+      "payload": {
+        "participant": "p1",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 3.45,
+      "type": "message.new",
+      "seq": 43,
+      "payload": {
+        "id": "m-16",
+        "sender": "p1",
+        "content": "그건 핵심이 아니에요. 침수 피해액이 더 크다니까요.",
+        "phase": "problem",
+        "is_invite": false,
+        "t_min": 3.45,
+        "created_at": "2026-10-21T01:03:27Z"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 3.45,
+      "type": "typing",
+      "seq": 44,
+      "payload": {
+        "participant": "p1",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 3.875,
+      "type": "message.ack",
+      "seq": 45,
+      "payload": {
+        "client_msg_id": "c-05",
+        "message_id": "m-17",
+        "run_id": "run-msg-17"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 3.875,
+      "type": "message.new",
+      "seq": 46,
+      "payload": {
+        "id": "m-17",
+        "sender": "candidate",
+        "content": "강한결님 말씀처럼 피해액 기준이면 침수가 더 클 수도 있겠네요. 침수 사례 자료를 같이 볼게요.",
+        "phase": "problem",
+        "is_invite": false,
+        "t_min": 3.875,
+        "created_at": "2026-10-21T01:03:52Z"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 6.2,
+      "type": "message.ack",
+      "seq": 47,
+      "payload": {
+        "client_msg_id": "c-06",
+        "message_id": "m-18",
+        "run_id": "run-msg-18"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 6.2,
+      "type": "message.new",
+      "seq": 48,
+      "payload": {
+        "id": "m-18",
+        "sender": "candidate",
+        "content": "좋아요, 침수 피해 증가로 가는 데 동의해요. 대신 해결책에서 물 부족 데이터도 같이 보면 좋겠어요.",
+        "phase": "problem",
+        "is_invite": false,
+        "t_min": 6.2,
+        "created_at": "2026-10-21T01:06:12Z"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 6.25,
+      "type": "typing",
+      "seq": 49,
+      "payload": {
+        "participant": "p3",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 6.35,
+      "type": "message.new",
+      "seq": 50,
+      "payload": {
+        "id": "m-19",
+        "sender": "p3",
+        "content": "그럼 도심 폭우·침수 피해 증가로 정리할게요.",
+        "phase": "problem",
+        "is_invite": false,
+        "t_min": 6.35,
+        "created_at": "2026-10-21T01:06:21Z"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 6.35,
+      "type": "typing",
+      "seq": 51,
+      "payload": {
+        "participant": "p3",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 6.35,
+      "type": "slot.confirmed",
+      "seq": 52,
+      "payload": {
+        "phase": "problem",
+        "value": "도심 폭우·침수 피해 증가",
+        "filled_by": "p3",
+        "resolution": "consensus",
+        "t_min": 6.35
+      }
+    },
+    {
+      "phase": "problem",
+      "t_min": 6.35,
+      "type": "phase.changed",
+      "seq": 53,
+      "payload": {
+        "phase": "solution",
+        "previous_phase": "problem",
+        "reason": "confirmed",
+        "phase_started_at": "2026-10-21T01:06:21Z",
+        "phase_deadline_at": "2026-10-21T01:11:30Z",
+        "t_min": 6.35
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 6.35,
+      "type": "timer",
+      "seq": 54,
+      "payload": {
+        "phase": "solution",
+        "phase_deadline_at": "2026-10-21T01:11:30Z",
+        "phase_remaining_seconds": 309,
+        "session_remaining_seconds": 519
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 6.35,
+      "type": "message.new",
+      "seq": 55,
+      "payload": {
+        "id": "m-20",
+        "sender": "system",
+        "content": "해결책 단계예요. 이 문제의 해결 방향 하나를 정해 주세요. 이 단계 5분 남았어요.",
+        "phase": "solution",
+        "is_invite": false,
+        "t_min": 6.35,
+        "created_at": "2026-10-21T01:06:21Z"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 6.7,
+      "type": "typing",
+      "seq": 56,
+      "payload": {
+        "participant": "p2",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 6.85,
+      "type": "message.new",
+      "seq": 57,
+      "payload": {
+        "id": "m-21",
+        "sender": "p2",
+        "content": "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요.",
+        "phase": "solution",
+        "is_invite": false,
+        "t_min": 6.85,
+        "created_at": "2026-10-21T01:06:51Z"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 6.85,
+      "type": "typing",
+      "seq": 58,
+      "payload": {
+        "participant": "p2",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 7.25,
+      "type": "message.ack",
+      "seq": 59,
+      "payload": {
+        "client_msg_id": "c-07",
+        "message_id": "m-22",
+        "run_id": "run-msg-22"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 7.25,
+      "type": "message.new",
+      "seq": 60,
+      "payload": {
+        "id": "m-22",
+        "sender": "candidate",
+        "content": "저는 하수관에 센서를 달아서 침수 위험을 미리 알리는 데이터 기반 경보를 제안해요.",
+        "phase": "solution",
+        "is_invite": false,
+        "t_min": 7.25,
+        "created_at": "2026-10-21T01:07:15Z"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 7.45,
+      "type": "typing",
+      "seq": 61,
+      "payload": {
+        "participant": "p3",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 7.6,
+      "type": "message.new",
+      "seq": 62,
+      "payload": {
+        "id": "m-23",
+        "sender": "p3",
+        "content": "센서는 설치 비용이 커요. 자료를 보면 주민 참여 캠페인이 더 빨리 효과를 냈어요. 절수·보상 캠페인으로 가죠.",
+        "phase": "solution",
+        "is_invite": false,
+        "t_min": 7.6,
+        "created_at": "2026-10-21T01:07:36Z"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 7.6,
+      "type": "typing",
+      "seq": 63,
+      "payload": {
+        "participant": "p3",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 7.75,
+      "type": "message.ack",
+      "seq": 64,
+      "payload": {
+        "client_msg_id": "c-08",
+        "message_id": "m-24",
+        "run_id": "run-msg-24"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 7.75,
+      "type": "message.new",
+      "seq": 65,
+      "payload": {
+        "id": "m-24",
+        "sender": "candidate",
+        "content": "윤하람님, 아까 생각하신 게 있다고 하셨는데 편하게 말씀해 주세요. 듣고 싶어요.",
+        "phase": "solution",
+        "is_invite": false,
+        "t_min": 7.75,
+        "created_at": "2026-10-21T01:07:45Z"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 7.775,
+      "type": "typing",
+      "seq": 66,
+      "payload": {
+        "participant": "p2",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 7.8,
+      "type": "typing",
+      "seq": 67,
+      "payload": {
+        "participant": "p1",
+        "state": "start"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 7.875,
+      "type": "message.new",
+      "seq": 68,
+      "payload": {
+        "id": "m-25",
+        "sender": "p2",
+        "content": "음… 저는 빗물 저금통이나 투수 포장 같은 생활 인프라가 좋을 것 같아요. 빗물 재이용 사례가 있어서요.",
+        "phase": "solution",
+        "is_invite": false,
+        "t_min": 7.875,
+        "created_at": "2026-10-21T01:07:52Z"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 7.875,
+      "type": "typing",
+      "seq": 69,
+      "payload": {
+        "participant": "p2",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 8.25,
+      "type": "message.new",
+      "seq": 70,
+      "payload": {
+        "id": "m-26",
+        "sender": "p1",
+        "content": "센서 안이 맞아요. 데이터가 있어야 경보가 되죠.",
+        "phase": "solution",
+        "is_invite": false,
+        "t_min": 8.25,
+        "created_at": "2026-10-21T01:08:15Z"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 8.25,
+      "type": "typing",
+      "seq": 71,
+      "payload": {
+        "participant": "p1",
+        "state": "stop"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 9.0,
+      "type": "message.ack",
+      "seq": 72,
+      "payload": {
+        "client_msg_id": "c-09",
+        "message_id": "m-27",
+        "run_id": "run-msg-27"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 9.0,
+      "type": "message.new",
+      "seq": 73,
+      "payload": {
+        "id": "m-27",
+        "sender": "candidate",
+        "content": "윤하람님 안도 좋네요. 센서 경보에 빗물 저금통을 같이 묶으면 침수 전후를 다 다룰 수 있을 것 같아요.",
+        "phase": "solution",
+        "is_invite": false,
+        "t_min": 9.0,
+        "created_at": "2026-10-21T01:09:00Z"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 11.0,
+      "anchor": "deadline",
+      "type": "message.new",
+      "seq": 74,
+      "payload": {
+        "id": "m-28",
+        "sender": "system",
+        "content": "이 단계 30초 남았어요.",
+        "phase": "solution",
+        "is_invite": false,
+        "t_min": 11.0,
+        "created_at": "2026-10-21T01:11:00Z"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 11.5,
+      "anchor": "deadline",
+      "type": "message.new",
+      "seq": 75,
+      "payload": {
+        "id": "m-29",
+        "sender": "p3",
+        "content": "시간이 다 돼서 대화에서 가장 많이 모인 의견인 센서·데이터 기반 물 관리·경보로 할게요.",
+        "phase": "solution",
+        "is_invite": false,
+        "t_min": 11.5,
+        "created_at": "2026-10-21T01:11:30Z"
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 11.5,
+      "anchor": "deadline",
+      "type": "slot.confirmed",
+      "seq": 76,
+      "payload": {
+        "phase": "solution",
+        "value": "센서·데이터 기반 물 관리·경보",
+        "filled_by": "p3",
+        "resolution": "timeout",
+        "t_min": 11.5
+      }
+    },
+    {
+      "phase": "solution",
+      "t_min": 11.5,
+      "anchor": "deadline",
+      "type": "phase.changed",
+      "seq": 77,
+      "payload": {
+        "phase": "proposal",
+        "previous_phase": "solution",
+        "reason": "timeout",
+        "phase_started_at": "2026-10-21T01:11:30Z",
+        "phase_deadline_at": "2026-10-21T01:15:00Z",
+        "t_min": 11.5
+      }
+    },
+    {
+      "phase": "proposal",
+      "t_min": 11.5,
+      "type": "timer",
+      "seq": 78,
+      "payload": {
+        "phase": "proposal",
+        "phase_deadline_at": "2026-10-21T01:15:00Z",
+        "phase_remaining_seconds": 210,
+        "session_remaining_seconds": 210
+      }
+    },
+    {
+      "phase": "proposal",
+      "t_min": 11.5,
+      "type": "message.new",
+      "seq": 79,
+      "payload": {
+        "id": "m-30",
+        "sender": "system",
+        "content": "기획안 작성 단계예요. 기획안 탭에서 혼자 작성해 제출해 주세요. 3분 30초 남았어요.",
+        "phase": "proposal",
+        "is_invite": false,
+        "t_min": 11.5,
+        "created_at": "2026-10-21T01:11:30Z"
+      }
+    },
+    {
+      "phase": "proposal",
+      "t_min": 12.25,
+      "type": "message.ack",
+      "seq": 80,
+      "payload": {
+        "client_msg_id": "c-10",
+        "message_id": "m-31",
+        "run_id": "run-msg-31"
+      }
+    },
+    {
+      "phase": "proposal",
+      "t_min": 12.25,
+      "type": "message.new",
+      "seq": 81,
+      "payload": {
+        "id": "m-31",
+        "sender": "candidate",
+        "content": "기획안 쓰면서 침수 사례 자료를 다시 봤어요. 근거 정리는 제가 해 볼게요.",
+        "phase": "proposal",
+        "is_invite": false,
+        "t_min": 12.25,
+        "created_at": "2026-10-21T01:12:15Z"
+      }
+    },
+    {
+      "phase": "proposal",
+      "t_min": 15.0,
+      "anchor": "deadline",
+      "type": "session.ended",
+      "seq": 82,
+      "payload": {
+        "reason": "timeout"
+      }
+    }
+  ]
+}

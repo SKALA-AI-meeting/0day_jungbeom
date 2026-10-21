@@ -1,182 +1,495 @@
-"""에이전트 연결 테스트 픽스처.
+"""agent 단위 테스트 공용 가짜: 가짜 debate·rag·assessment MCP(메모리 상태), 가짜
+hub(FakeSessionPorts).
 
-- business-mcp·rag-mcp를 각 서비스 가상환경의 하위 프로세스로 띄운다
-  (Streamable HTTP, 실제 서버 코드).
-  rag는 결정적 임베딩, DB는 이 실행의 임시 DB(doc_chunks 포함)를 쓴다.
-- api 공개·내부 앱을 이 테스트 루프 안의 uvicorn으로 띄운다. MCP 서버는 내부 앱을, 테스트는
-  공개 앱의 WebSocket을 부른다. 앱은 테스트마다 새 AppContext로 바꿔 끼운다.
-- runner는 SessionAgentRunner + FakeLLM(테스트가 script를 채운다). 체크포인터는 임시 DB.
-- live가 아닌 실행에서는 LangSmith 트레이싱을 끈다(테스트 데이터를 보내지 않게).
+LLM은 FakeLLM, DB·네트워크는 쓰지 않는다. 가짜 서버는 contracts.md의 도구 입출력과 409 세부 코드
+(stale_generation·no_consensus·slot_confirmed·phase_not_open)를 같은 형식으로 흉내 낸다.
 """
 
-import asyncio
-import os
-import socket
-import subprocess
-import sys
-from dataclasses import dataclass
-from pathlib import Path
+import uuid
+from contextlib import asynccontextmanager
+from typing import Any
 
-import httpx
 import pytest
-import uvicorn
-from app.agent.llm import BaseLLM, FakeLLM
-from app.agent.mcp_client import BUSINESS, RAG, McpClient
-from app.agent.session.runner import SessionAgentRunner
-from app.agent.session.store import DbAgentStore
-from app.config import REPO_ROOT, get_settings
-from app.db import make_session_factory
-from app.hub import Hub
-from app.main import create_internal_app, create_public_app
-from app.services.context import AppContext
-from app.services.locks import SessionLocks
+from app.agent import intent as intent_mod
+from app.agent.catalog import SEATS, Catalog
+from app.agent.debate import DebateGraphRunner, DebateLLMs
+from app.agent.llm import FakeLLM
+from app.agent.mcp_client import (
+    ASSESSMENT_TOOLS,
+    RunTools,
+    fail,
+    function_spec,
+    ok,
+)
+from app.agent.runner import Stimulus
+from app.config import REPO_ROOT
+from app.ports import FakeSessionPorts
 
-from tests.conftest import FakePublisher
-
-SERVICES = REPO_ROOT / "services"
-LAUNCHER = Path(__file__).with_name("mcp_server.py")
-STARTUP_SECONDS = 180  # 새 worktree에서는 uv가 서비스 가상환경을 처음 만든다
-
-
-@pytest.fixture(scope="session", autouse=True)
-def tracing_off(request):
-    if "live" not in (request.config.option.markexpr or "").replace("not live", ""):
-        os.environ["LANGCHAIN_TRACING_V2"] = "false"
-        os.environ["LANGSMITH_TRACING"] = "false"
-
-
-def free_port() -> int:
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
-
-
-class Swappable:
-    """테스트마다 대상 ASGI 앱을 바꿔 끼우는 래퍼(uvicorn 서버는 세션 동안 하나)."""
-
-    def __init__(self) -> None:
-        self.app = None
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "lifespan":
-            while True:
-                message = await receive()
-                if message["type"] == "lifespan.startup":
-                    await send({"type": "lifespan.startup.complete"})
-                elif message["type"] == "lifespan.shutdown":
-                    await send({"type": "lifespan.shutdown.complete"})
-                    return
-        await self.app(scope, receive, send)
-
-
-@dataclass
-class Servers:
-    public: Swappable
-    internal: Swappable
-    public_port: int
-    mcp_urls: dict[str, str]
-
-
-async def _wait_health(url: str, process: subprocess.Popen) -> None:
-    async with httpx.AsyncClient() as client:
-        for _ in range(STARTUP_SECONDS * 4):
-            if process.poll() is not None:
-                raise RuntimeError(f"{url} exited with {process.returncode}")
-            try:
-                if (await client.get(url)).status_code == 200:
-                    return
-            except httpx.TransportError:
-                pass
-            await asyncio.sleep(0.25)
-    raise TimeoutError(url)
+MISSION_DIR = REPO_ROOT / "scenarios" / "missions" / "debate"
+PHASES = ("keyword", "problem", "solution", "proposal")
 
 
 @pytest.fixture(scope="session")
-async def servers(database_url):
-    public, internal = Swappable(), Swappable()
-    public_port, internal_port = free_port(), free_port()
-    uvicorn_servers = [
-        uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
-        for app, port in ((public, public_port), (internal, internal_port))
-    ]
-    tasks = [asyncio.create_task(s.serve()) for s in uvicorn_servers]
+def catalog() -> Catalog:
+    return Catalog.from_dir(MISSION_DIR)
 
-    env = {
-        **os.environ,
-        "API_INTERNAL_URL": f"http://127.0.0.1:{internal_port}",
-        "INTERNAL_TOKEN": get_settings().internal_token,
-        "DATABASE_URL": database_url,
-        "SCENARIOS_DIR": str(REPO_ROOT / "scenarios"),
-        "EMBEDDING_MODEL": "test-bigram",
-    }
-    env.pop("VIRTUAL_ENV", None)  # api 가상환경이 아니라 각 서비스의 것을 쓰게
-    processes, urls = [], {}
-    for name, folder in ((BUSINESS, "business-mcp"), (RAG, "rag-mcp")):
-        port = free_port()
-        cwd = SERVICES / folder
-        process = subprocess.Popen(
-            ["uv", "run", "--quiet", "python", str(LAUNCHER), name, str(port)],
-            cwd=cwd,
-            env={**env, "PYTHONPATH": str(cwd)},
-            stdout=sys.stderr,
-            stderr=sys.stderr,
+
+class FakeServer:
+    """debate-mcp + rag-mcp 가짜(메모리). assessment 도구는 서버에 없다(클라이언트 분리)."""
+
+    def __init__(self, catalog: Catalog, ports: FakeSessionPorts, phase: str = "keyword") -> None:
+        self.catalog = catalog
+        self.ports = ports
+        self.phase = phase
+        self.keyword: str | None = None
+        self.options: list[dict[str, Any]] = []
+        self.support: dict[str, str | None] = {p: None for p in ("candidate", *SEATS)}
+        self.opposers: dict[str, set[str]] = {}
+        self.slots: dict[str, dict[str, Any]] = {}
+        self.cards: dict[str, dict[str, Any]] = {}
+        self.invites: set[str] = set()
+        self.messages: list[dict[str, Any]] = []
+        self.observations: dict[str, dict[str, Any]] = {}
+        self.cost_left = 2.0
+        self.remaining = 600
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+        self.fail_tools: set[str] = set()
+        self.materials = {
+            "water_flood_cases": ("도심 침수 사례", "water", "하수관 수위 센서로 30분 전 경보."),
+            "water_stats": ("지역별 물 부족 통계", "water", "제한 급수 일수 증가."),
+        }
+
+    # ---- 시나리오 준비 ----------------------------------------------------------------------
+    def confirm_keyword(self, key: str = "water") -> None:
+        self.keyword = key
+        label = self.catalog.label_of(key)
+        self.slots["keyword"] = {
+            "phase": "keyword",
+            "status": "confirmed",
+            "value": label,
+            "option_id": f"opt-{key}",
+            "resolution": "consensus",
+            "filled_by": "candidate",
+        }
+
+    def add_option(self, key: str | None, proposer: str, label: str | None = None) -> str:
+        oid = f"opt-{key or uuid.uuid4().hex[:6]}"
+        self.options.append(
+            {
+                "option_id": oid,
+                "phase": self.phase,
+                "label": label or self.catalog.label_of(key or "") or key,
+                "proposer": proposer,
+                "scenario_option_key": key,
+                "created_at": "t",
+            }
         )
-        processes.append(process)
-        urls[name] = f"http://127.0.0.1:{port}/mcp"
-    try:
-        for url, process in zip(urls.values(), processes, strict=True):
-            await _wait_health(url.removesuffix("/mcp") + "/health", process)
-        yield Servers(public, internal, public_port, urls)
-    finally:
-        for process in processes:
-            process.terminate()
-        for process in processes:
-            process.wait(timeout=10)
-        for server in uvicorn_servers:
-            server.should_exit = True
-        await asyncio.gather(*tasks, return_exceptions=True)
+        return oid
+
+    def set_support(self, participant: str, option_id: str | None) -> None:
+        self.support[participant] = option_id
+
+    def candidate_says(self, content: str) -> str:
+        mid = str(uuid.uuid4())
+        self.messages.append(
+            {
+                "id": mid,
+                "sender": "candidate",
+                "content": content,
+                "phase": self.phase,
+                "is_invite": False,
+                "t_min": 1.0,
+            }
+        )
+        self.ports.generation += 1
+        return mid
+
+    def system_says(self, content: str) -> str:
+        mid = str(uuid.uuid4())
+        self.messages.append(
+            {
+                "id": mid,
+                "sender": "system",
+                "content": content,
+                "phase": self.phase,
+                "is_invite": False,
+                "t_min": 1.0,
+            }
+        )
+        return mid
+
+    def apply_candidate(self, result: dict[str, Any]) -> None:
+        """api 메일박스의 의도 반영(contracts.md): 안 행은 confidence와 무관, 입장은 high만."""
+        target = result.get("target_option_id")
+        key = result.get("scenario_option_key")
+        if result["intent"] == "propose" and key:
+            found = next((o for o in self.phase_options() if o["scenario_option_key"] == key), None)
+            target = found["option_id"] if found else self.add_option(key, "candidate")
+        if result.get("confidence") != "high" or not target:
+            return
+        if result["intent"] in ("propose", "agree"):
+            self.support["candidate"] = target
+        elif result["intent"] == "oppose":
+            self.opposers.setdefault(target, set()).add("candidate")
+            if self.support.get("candidate") == target:
+                self.support["candidate"] = None
+
+    def lock(self, card_id: str, option_id: str) -> None:
+        """api가 card_due 첫 처리에서 기준안을 잠근 상태."""
+        row = self.cards.setdefault(
+            card_id, {"card_id": card_id, "locked_option_id": None, "delivered": []}
+        )
+        row["locked_option_id"] = option_id
+
+    # ---- 판정 -------------------------------------------------------------------------------
+    def phase_options(self) -> list[dict[str, Any]]:
+        return [o for o in self.options if o["phase"] == self.phase]
+
+    def consensus(self) -> str | None:
+        cand = self.support.get("candidate")
+        if not cand:
+            return None
+        count = sum(1 for p, o in self.support.items() if o == cand)
+        return cand if count >= 3 else None
+
+    def debate_state(self) -> dict[str, Any]:
+        opts = []
+        for o in self.phase_options():
+            opts.append(
+                {
+                    **o,
+                    "supporters": [p for p, s in self.support.items() if s == o["option_id"]],
+                    "opposers": sorted(self.opposers.get(o["option_id"], set())),
+                }
+            )
+        spoken = {o["scenario_option_key"] for o in opts}
+        catalog_options = [
+            {**c, "spoken": c["scenario_option_key"] in spoken}
+            for c in self.catalog.catalog_options(self.phase, self.keyword)
+        ]
+        slot = self.slots.get(self.phase) or {"phase": self.phase, "status": "empty", "value": None}
+        return {
+            "phase": self.phase,
+            "generation": self.ports.generation,
+            "phase_remaining_seconds": self.remaining,
+            "slot": {k: slot.get(k) for k in ("phase", "status", "value")},
+            "options": opts,
+            "catalog_options": catalog_options,
+            "current_support": {
+                p: s if s in {o["option_id"] for o in opts} else None
+                for p, s in self.support.items()
+            },
+            "consensus_option_id": self.consensus() if slot["status"] == "empty" else None,
+            "timeout_option_id": None,
+            "candidate": {"spoke_in_phase": True, "last_message_t_min": 1.0, "typing": False},
+            "invite_delivered": self.phase in self.invites,
+            "last_room_message_t_min": 1.0,
+            "confirmed": [s for s in self.slots.values() if s["status"] == "confirmed"],
+            "card_progress": list(self.cards.values()),
+            "cost_left": self.cost_left,
+            "seats": [{"seat": "candidate", "display_name": "김지원"}]
+            + [
+                {"seat": s, "display_name": self.catalog.name_of(s), "avatar_url": f"/a/{s}.png"}
+                for s in SEATS
+            ],
+        }
+
+    def room(self, sender: str | None = None) -> list[dict[str, Any]]:
+        return [m for m in self.messages if sender is None or m["sender"] == sender]
+
+    # ---- 도구 -------------------------------------------------------------------------------
+    async def _call(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
+        self.calls.append((name, args))
+        if name in self.fail_tools:
+            return fail("upstream_unavailable", "down", True)
+        if name in ASSESSMENT_TOOLS:
+            return fail("upstream_unavailable", "assessment-mcp: not configured", True)
+        handler = getattr(self, f"t_{name}", None)
+        if handler is None:
+            return fail("not_found", name)
+        return handler(**args)
+
+    async def _all_specs(self) -> dict[str, dict[str, Any]]:
+        schema = {"type": "object", "properties": {"query": {"type": "string"}}}
+        return {
+            n: function_spec(n, n, schema)
+            for n in (
+                "get_transcript",
+                "get_draft",
+                "search_materials",
+                "get_material",
+                "get_debate_state",
+                "post_message",
+            )
+        }
+
+    def t_get_debate_state(self) -> dict[str, Any]:
+        return ok(self.debate_state())
+
+    def t_get_transcript(self, phase: str | None = None, limit: int = 30, **_: Any):
+        rows = [m for m in self.messages if phase is None or m["phase"] == phase]
+        return ok(
+            [
+                {k: m[k] for k in ("id", "sender", "content", "phase", "is_invite", "t_min")}
+                for m in rows[-limit:]
+            ]
+        )
+
+    def t_get_draft(self) -> dict[str, Any]:
+        return ok({"sections": {}, "revision": 0, "updated_at": None})
+
+    def t_post_message(
+        self,
+        sender,
+        content,
+        run_id,
+        seq,
+        expected_generation=None,
+        is_invite=False,
+        card_ids=None,
+        cited_material_ids=None,
+        meta=None,
+    ):
+        for m in self.messages:
+            if m.get("run_id") == run_id and m.get("seq") == seq:
+                return ok(m)
+        if expected_generation is not None and expected_generation != self.ports.generation:
+            return fail("conflict", "stale_generation")
+        if is_invite:
+            if self.phase in self.invites:
+                return fail("conflict", "conflict")
+            self.invites.add(self.phase)
+        message = {
+            "id": str(uuid.uuid4()),
+            "sender": sender,
+            "content": content,
+            "phase": self.phase,
+            "is_invite": bool(is_invite),
+            "t_min": 2.0,
+            "run_id": run_id,
+            "seq": seq,
+            "card_ids": list(card_ids or []),
+            "meta": meta,
+        }
+        self.messages.append(message)
+        for card_id in card_ids or []:
+            row = self.cards.setdefault(
+                card_id, {"card_id": card_id, "locked_option_id": None, "delivered": []}
+            )
+            if sender not in row["delivered"]:
+                row["delivered"].append(sender)
+        return ok(message)
+
+    def t_propose_option(
+        self, phase, label, proposer, source_message_id, run_id, scenario_option_key=None
+    ):
+        if phase != self.phase:
+            return fail("conflict", "phase_not_open")
+        for o in self.phase_options():
+            if scenario_option_key and o["scenario_option_key"] == scenario_option_key:
+                return ok({**o, "existing": True})
+        oid = self.add_option(scenario_option_key, proposer, label)
+        self.support[proposer] = oid
+        return ok({**self.options[-1], "existing": False, "option_id": oid})
+
+    def t_set_stance(self, participant, option_id, stance, source_message_id, run_id):
+        if stance == "support":
+            self.support[participant] = option_id
+            self.opposers.get(option_id, set()).discard(participant)
+        else:
+            self.opposers.setdefault(option_id, set()).add(participant)
+            if self.support.get(participant) == option_id:
+                self.support[participant] = None
+        return ok({"stance_id": f"st-{len(self.calls)}"})
+
+    def t_fill_slot(self, option_id, seat, content, run_id):
+        for slot in self.slots.values():
+            if slot.get("run_id") == run_id:
+                return ok({"slot": slot, "message": slot["message"], "phase": self.phase})
+        option = next((o for o in self.options if o["option_id"] == option_id), None)
+        if option is None or option["phase"] != self.phase:
+            return fail("conflict", "phase_not_open")
+        if (self.slots.get(self.phase) or {}).get("status") == "confirmed":
+            return fail("conflict", "slot_confirmed")
+        if self.consensus() != option_id:
+            return fail("conflict", "no_consensus")
+        message = {
+            "id": str(uuid.uuid4()),
+            "sender": seat,
+            "content": content,
+            "phase": self.phase,
+            "is_invite": False,
+            "t_min": 3.0,
+            "run_id": run_id,
+            "seq": 5,
+            "meta": {"kind": "consensus_fill"},
+        }
+        self.messages.append(message)
+        slot = {
+            "phase": self.phase,
+            "status": "confirmed",
+            "value": option["label"],
+            "option_id": option_id,
+            "resolution": "consensus",
+            "filled_by": seat,
+            "run_id": run_id,
+            "message": message,
+        }
+        self.slots[self.phase] = slot
+        self.phase = PHASES[PHASES.index(self.phase) + 1]
+        self.ports.generation += 1
+        return ok({"slot": slot, "message": message, "phase": self.phase})
+
+    def t_search_materials(self, query: str = "", top_k: int = 3):
+        if self.keyword is None:
+            return fail("not_released", "materials locked")
+        rows = [
+            {"material_id": m, "title": t, "chunk": c, "score": 0.9}
+            for m, (t, k, c) in self.materials.items()
+            if k == self.keyword
+        ]
+        return ok(rows[:top_k])
+
+    def t_get_material(self, material_id: str):
+        if self.keyword is None or material_id not in self.materials:
+            return fail("not_released", "materials locked")
+        title, _, content = self.materials[material_id]
+        return ok({"material_id": material_id, "title": title, "content": content})
+
+    def record_observation(self, card_id, phase, run_id, trigger_message_id=None):
+        if card_id not in self.observations:
+            self.observations[card_id] = {
+                "card_id": card_id,
+                "phase": phase,
+                "trigger_message_id": trigger_message_id,
+            }
+        return ok({"observation_id": f"ob-{card_id}", "fired_at": "t", "t_min": 1.0})
 
 
-@dataclass
-class Stack:
-    ctx: AppContext
-    runner: SessionAgentRunner
-    llm: FakeLLM
-    hub: Hub
-    servers: Servers
+class FakeAssessment:
+    """assessment-mcp 가짜(토큰 있는 별도 클라이언트 자리)."""
 
-    def use_llm(self, llm: BaseLLM) -> None:
-        self.runner.llm = llm
+    def __init__(self, server: FakeServer) -> None:
+        self.server = server
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    async def _call(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
+        self.calls.append((name, args))
+        if name != "record_observation":
+            return fail("forbidden", name)
+        return self.server.record_observation(**args)
+
+    async def _all_specs(self) -> dict[str, dict[str, Any]]:
+        return {}
+
+
+class Harness:
+    """가짜 서버 + 포트 + FakeLLM 3개로 DebateGraphRunner를 돌린다."""
+
+    def __init__(self, catalog: Catalog, phase: str = "keyword", persona=(), turn=(), intent=()):
+        self.session_id = uuid.uuid4()
+        self.ports = FakeSessionPorts(self.session_id, generation=1)
+        self.server = FakeServer(catalog, self.ports, phase)
+        self.assessment = FakeAssessment(self.server)
+        self.persona = FakeLLM(
+            persona,
+            default={"content": "네, 그 얘기 더 해 봐요.", "proposes": None, "stance": None},
+        )
+        self.turn = FakeLLM(turn, default='{"speakers": [], "reason": "없음"}')
+        self.intent = FakeLLM(intent, default="not json")
+        self.slept: list[float] = []
+        self.snapshots: list[dict[str, Any]] = []
+        self.tools_seen: list[RunTools] = []
+
+        async def sleep(seconds: float) -> None:
+            self.slept.append(seconds)
+
+        @asynccontextmanager
+        async def tools(_sid):
+            run_tools = RunTools(self.server, self.assessment)
+            self.tools_seen.append(run_tools)
+            yield run_tools
+
+        async def scenario(_sid):
+            return {
+                "mission_id": "debate",
+                "seats": catalog.seats,
+                "prompts": catalog.prompts,
+                "catalog": {
+                    "mission": catalog.mission,
+                    "personas": catalog.personas,
+                    "cards": catalog.cards,
+                    "keywords": catalog.keywords,
+                },
+            }
+
+        self.runner = DebateGraphRunner(
+            llms=DebateLLMs(persona=self.persona, turn=self.turn, intent=self.intent),
+            tools=tools,
+            scenario=scenario,
+            ports_for=lambda _sid: self.ports,
+            sleep=sleep,
+        )
+        self.runner.snapshots = self.snapshots
+
+    async def run(
+        self,
+        kind: str,
+        *,
+        message_id: str | None = None,
+        card_id: str | None = None,
+        generation: int | None = None,
+        run_id: uuid.UUID | None = None,
+    ):
+        stimulus = Stimulus(
+            type=kind,
+            phase=self.server.phase,
+            generation=self.ports.generation if generation is None else generation,
+            message_id=uuid.UUID(message_id) if message_id else None,
+            card_id=card_id,
+        )
+        return await self.runner.run(self.session_id, stimulus, run_id or uuid.uuid4())
+
+    def candidate(self, content: str, result: dict[str, Any] | None = None) -> str:
+        """지원자 메시지 저장(generation +1) + 메일박스의 의도 분류 결과 반영."""
+        mid = self.server.candidate_says(content)
+        if result is not None:
+            intent_mod.remember(mid, result)
+            self.server.apply_candidate(result)
+        return mid
+
+    def posted(self, sender: str | None = None) -> list[dict[str, Any]]:
+        return [m for m in self.server.room(sender) if m["sender"] in SEATS and m.get("seq") != 5]
+
+    def tool_names(self) -> list[str]:
+        return [n for n, _ in self.server.calls]
+
+
+def intent_of(
+    kind: str,
+    *,
+    option_id: str | None = None,
+    key: str | None = None,
+    to: tuple[str, ...] = (),
+    confidence: str = "high",
+) -> dict[str, Any]:
+    return {
+        "intent": kind,
+        "target_option_id": option_id,
+        "scenario_option_key": key,
+        "new_option_label": None,
+        "confidence": confidence,
+        "addressed_to": list(to),
+    }
+
+
+def say(content: str, stance: dict | None = None, proposes: dict | None = None) -> dict:
+    return {"content": content, "proposes": proposes, "stance": stance}
 
 
 @pytest.fixture
-async def stack(servers, db, engine, database_url):
-    """이 테스트의 AppContext(SessionAgentRunner)를 서버에 끼우고 rag 색인을 만든다."""
-    factory = make_session_factory(engine)
-    hub = Hub()
-    llm = FakeLLM()
-    runner = SessionAgentRunner(
-        llm=llm,
-        mcp_urls=servers.mcp_urls,
-        store=DbAgentStore(factory),
-        database_url=database_url,
-        broadcast=hub.broadcast,
-    )
-    ctx = AppContext(
-        settings=get_settings(),
-        engine=engine,
-        session_factory=factory,
-        hub=hub,
-        locks=SessionLocks(),
-        publisher=FakePublisher(),
-        runner=runner,
-    )
-    servers.public.app = create_public_app(ctx)
-    servers.internal.app = create_internal_app(ctx)
-    async with McpClient({RAG: servers.mcp_urls[RAG]}, "-") as rag:
-        indexed = await rag.scope(frozenset({"reindex_documents"})).call("reindex_documents")
-    assert indexed["ok"], indexed
-    # 체크포인터 테이블·인덱스(CREATE INDEX CONCURRENTLY)를 열린 트랜잭션이 없을 때 미리 만든다
-    await runner.graph()
-    yield Stack(ctx, runner, llm, hub, servers)
-    await runner.aclose()
+def harness(catalog):
+    def make(phase: str = "keyword", **scripts) -> Harness:
+        return Harness(catalog, phase, **scripts)
+
+    return make

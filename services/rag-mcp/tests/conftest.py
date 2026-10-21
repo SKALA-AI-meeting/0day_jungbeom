@@ -2,11 +2,13 @@
 
 - api 내부 앱은 httpx MockTransport로 흉내 낸다(실제 api를 띄우지 않는다).
 - 임베딩은 FakeEmbedder(텍스트 해시로 만든 1024차원 결정적 단위 벡터). 같은 텍스트면 코사인 1.
-- DB는 `make infra-up`으로 띄운 postgres에 실행마다 임시 DB(rag_test_<랜덤>)를 만들고
-  infra/db/schema.sql을 적용한 뒤 끝나면 지운다. 다른 worktree와 겹치지 않는다.
+- DB는 `make infra-up`으로 띄운 postgres(env `TEST_DATABASE_URL`, 기본 localhost)에 실행마다 임시 DB
+  (rag_test_<랜덤>)를 만들고 infra/db/schema.sql을 적용한 뒤 끝나면 지운다. 다른 worktree와 겹치지
+  않는다. postgres가 없으면 DB 테스트만 건너뛴다.
 """
 
 import hashlib
+import os
 import uuid
 
 import asyncpg
@@ -15,12 +17,13 @@ import numpy as np
 import pytest
 from fastmcp import Client
 from rag_mcp import client, tools  # noqa: F401  (도구 등록)
-from rag_mcp.config import REPO_ROOT, Settings, load_settings
+from rag_mcp.config import REPO_ROOT, Settings
 from rag_mcp.embedder import DIM, set_embedder
 from rag_mcp.server import mcp
 
 SCHEMA = REPO_ROOT / "infra" / "db" / "schema.sql"
 SCENARIOS = REPO_ROOT / "scenarios"
+DEFAULT_TEST_DATABASE_URL = "postgresql://dayzero:dayzero@localhost:5432/dayzero"
 
 
 class FakeEmbedder:
@@ -45,9 +48,14 @@ def fake_embedder():
 
 @pytest.fixture(scope="session")
 async def database_url():
-    base = load_settings().database_url
+    base = os.environ.get("TEST_DATABASE_URL", DEFAULT_TEST_DATABASE_URL).replace(
+        "postgresql+asyncpg://", "postgresql://"
+    )
     name = f"rag_test_{uuid.uuid4().hex[:8]}"
-    admin = await asyncpg.connect(base)
+    try:
+        admin = await asyncpg.connect(base, timeout=3)
+    except (OSError, asyncpg.PostgresError) as exc:
+        pytest.skip(f"postgres 없음(make infra-up): {type(exc).__name__}")
     try:
         await admin.execute(f'CREATE DATABASE "{name}"')
     finally:
@@ -68,11 +76,11 @@ async def database_url():
 
 @pytest.fixture
 async def db(api, database_url):
-    """도구가 임시 DB를 쓰게 설정하고 asyncpg 연결을 돌려준다. 끝나면 doc_chunks를 비운다."""
+    """도구가 임시 DB를 쓰게 설정하고 asyncpg 연결을 돌려준다. 끝나면 material_chunks를 비운다."""
     api.configure(make_settings(database_url))
     conn = await asyncpg.connect(database_url)
     yield conn
-    await conn.execute("TRUNCATE doc_chunks")
+    await conn.execute("TRUNCATE material_chunks")
     await conn.close()
 
 

@@ -1,0 +1,75 @@
+# 키워드 세트(scenario-model.md 2.4). [초안 전체]
+# 옵션 키(scenario_option_key): 키워드 = 키워드 id, 문제 = <keyword>_p1~p3, 해결책 = <keyword>_s1~s3. 지원자 새 안은 cand_<n>(코드가 만든다).
+# problems 순서 = P1·P2·P3(기준안 계산 순서). solutions는 키워드 단위 해결 방향(S1 데이터 · S2 참여 · S3 인프라)이라
+# 그 키워드의 어느 문제에도 붙는다(문제마다 따로 두지 않음, R7).
+# materials는 키워드 확정 뒤에만 열린다(D9). file은 materials/ 기준 경로.
+draft: true
+solution_directions:
+  s1: data
+  s2: participation
+  s3: infra
+
+keywords:
+  - key: water
+    label: 물
+    problems:
+      - { key: water_p1, label: 가뭄으로 생활용수 제한이 잦아짐 }
+      - { key: water_p2, label: 도심 폭우·침수 피해 증가 }
+      - { key: water_p3, label: 수돗물 불신으로 생수 플라스틱 증가 }
+    solutions:
+      - { key: water_s1, direction: data, label: 센서·데이터 기반 물 관리·경보 }
+      - { key: water_s2, direction: participation, label: 주민 절수·보상 캠페인 }
+      - { key: water_s3, direction: infra, label: 빗물 저금통·투수 포장 같은 생활 인프라 }
+    materials:
+      - { material_id: water_stats, title: 지역별 물 부족 통계, file: water/water_stats.md }
+      - { material_id: water_flood_cases, title: 도심 침수 사례, file: water/water_flood_cases.md }
+      - { material_id: water_tap_survey, title: 수돗물 음용률 조사, file: water/water_tap_survey.md }
+      - { material_id: water_rain_reuse, title: 빗물 재이용 사례, file: water/water_rain_reuse.md }
+
+  - key: fire
+    label: 불
+    problems:
+      - { key: fire_p1, label: 노후 주택·전통시장 화재 }
+      - { key: fire_p2, label: 기후 변화로 산불 증가 }
+      - { key: fire_p3, label: 전동킥보드·배터리 화재 }
+    solutions:
+      - { key: fire_s1, direction: data, label: IoT 화재 감지·알림 데이터 }
+      - { key: fire_s2, direction: participation, label: 주민 대피 훈련·교육 참여 }
+      - { key: fire_s3, direction: infra, label: 노후 시설 소방 설비·충전 보관함 보강 }
+    materials:
+      - { material_id: fire_stats, title: 화재 발생 통계, file: fire/fire_stats.md }
+      - { material_id: fire_wildfire_trend, title: 산불 피해 추이, file: fire/fire_wildfire_trend.md }
+      - { material_id: fire_battery_cases, title: 배터리 화재 사례, file: fire/fire_battery_cases.md }
+      - { material_id: fire_detector_cases, title: 화재 감지기 보급 사례, file: fire/fire_detector_cases.md }
+
+  - key: tree
+    label: 나무
+    problems:
+      - { key: tree_p1, label: 도시 열섬과 녹지 부족 }
+      - { key: tree_p2, label: 가로수 관리 부실·고사 }
+      - { key: tree_p3, label: 개발로 인한 숲 훼손 }
+    solutions:
+      - { key: tree_s1, direction: data, label: 위성·드론 녹지 모니터링 데이터 }
+      - { key: tree_s2, direction: participation, label: 시민 나무 입양·관리 참여 }
+      - { key: tree_s3, direction: infra, label: 옥상·벽면 녹화 인프라 }
+    materials:
+      - { material_id: tree_green_stats, title: 도시 녹지율 통계, file: tree/tree_green_stats.md }
+      - { material_id: tree_heat_island, title: 열섬 측정 자료, file: tree/tree_heat_island.md }
+      - { material_id: tree_street_trees, title: 가로수 관리 현황, file: tree/tree_street_trees.md }
+      - { material_id: tree_urban_forest, title: 도시 숲 조성 사례, file: tree/tree_urban_forest.md }
+
+  - key: wind
+    label: 바람
+    problems:
+      - { key: wind_p1, label: 바람길이 막혀 미세먼지가 정체됨 }
+      - { key: wind_p2, label: 태풍·강풍 피해 }
+      - { key: wind_p3, label: 풍력 발전소 주민 갈등 }
+    solutions:
+      - { key: wind_s1, direction: data, label: 바람길·대기 데이터 지도와 위험 알림 }
+      - { key: wind_s2, direction: participation, label: 주민 이익 공유형 협의 참여 }
+      - { key: wind_s3, direction: infra, label: 바람길 숲·방풍 시설 조성 }
+    materials:
+      - { material_id: wind_dust_stats, title: 미세먼지 농도 통계, file: wind/wind_dust_stats.md }
+      - { material_id: wind_corridor_cases, title: 바람길 숲 사례, file: wind/wind_corridor_cases.md }
+      - { material_id: wind_typhoon_records, title: 태풍 피해 기록, file: wind/wind_typhoon_records.md }
+      - { material_id: wind_benefit_sharing, title: 풍력 이익 공유 사례, file: wind/wind_benefit_sharing.md }

@@ -1,11 +1,16 @@
 {
   "adjustments": [
     {
-      "item_id": "resp_proposed_alternative",
-      "value": 1,
-      "memo": "62분 메시지의 '3번 골격을 지표 기준으로 먼저' 제안을 대안으로 봄"
+      "dimension_id": "pers_comparison",
+      "level": 3,
+      "memo": "09:06 발언 앞뒤에서 자료 다양성 외에 실현 가능성도 언급해 한 단계 올림"
+    },
+    {
+      "dimension_id": "incl_shared_decision",
+      "level": null,
+      "no_record_reason": "not_applicable",
+      "memo": "키워드 단계에서 윤하람도 이미 의견을 밝혀 따로 확인할 사람이 없었음"
     }
   ],
-  "memo": "전반적으로 자동 서술과 일치",
-  "reviewer_name": "김담당"
+  "reviewer_name": "박채용"
 }

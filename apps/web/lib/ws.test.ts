@@ -1,11 +1,12 @@
-// 완료 기준: 재연결 후 상태 복원. 끊기면 3초 뒤 다시 붙고 /state 스냅샷으로 진행 표시까지 되살린다.
-// 4401은 /resume 재발급 후 재연결, 4000(session.replaced)은 멈춘다.
+// 완료 기준: 재연결과 seq 누락 시 /state 복원. 끊기면 3초 뒤 다시 붙고, 4401은 재발급 후 재연결, 4000은 멈춘다.
+// 화면 reducer는 seq가 비면 적용을 멈추고(needsResync) /state 스냅샷으로 이어 간다.
 import { expect, test, vi } from "vitest";
 
-import { fetchSnapshot } from "@/components/office/flow";
-import { initialState, progressLabels, reduce } from "@/components/office/reducer";
-import type { ServerFrame, StateSnapshot } from "@/components/office/types";
-import state from "@/mocks/fixtures/state.json";
+import { initialView, reduce } from "@/components/debate/reducer";
+import type { ServerFrame, StateSnapshot } from "@/components/debate/types";
+import problem from "@/mocks/fixtures/state_problem.json";
+import solution from "@/mocks/fixtures/state_solution.json";
+import events from "@/mocks/fixtures/ws_events.json";
 
 import { SessionSocket, type SocketLike } from "./ws";
 
@@ -26,14 +27,14 @@ function fakeSockets() {
   return { made, create };
 }
 
-test("재연결: 3초 뒤 다시 붙어 /state로 메시지와 진행 중 실행을 복원하고, 4401은 재발급, 4000은 멈춘다", async () => {
+test("재연결: 3초 뒤 다시 붙어 onOpen(reconnected)을 알리고, 4401은 재발급, 4000은 멈춘다", async () => {
   vi.useFakeTimers();
   const { made, create } = fakeSockets();
   const statuses: string[] = [];
   const opens: boolean[] = [];
   let token = "jwt-1";
   const socket = new SessionSocket({
-    sessionId: "s-1",
+    sessionId: "sess-1",
     getToken: () => token,
     refreshToken: async () => (token = "jwt-2"),
     onFrame: () => {},
@@ -41,10 +42,6 @@ test("재연결: 3초 뒤 다시 붙어 /state로 메시지와 진행 중 실행
     onOpen: ({ reconnected }) => opens.push(reconnected),
     createSocket: create,
   });
-
-  // 처음 연결 뒤 진행 중이던 것이 없는 화면
-  const snapshot = state as unknown as StateSnapshot;
-  let view = initialState({ ...snapshot, messages: [], active_runs: [] });
   socket.connect();
   made[0].onopen!();
   expect(opens).toEqual([false]);
@@ -58,55 +55,6 @@ test("재연결: 3초 뒤 다시 붙어 /state로 메시지와 진행 중 실행
   made[1].onopen!();
   expect(opens).toEqual([false, true]);
 
-  // 다시 열리면 /state를 받는다. 첫 조회가 실패해도 3초 뒤 다시 시도한다
-  let calls = 0;
-  const loading = fetchSnapshot(
-    async () => {
-      calls += 1;
-      if (calls === 1) throw new Error("503");
-      return snapshot;
-    },
-    () => true,
-  );
-  await vi.advanceTimersByTimeAsync(3000);
-  const fetched = (await loading)!;
-  expect(calls).toBe(2);
-
-  // 조회하는 동안 도착해 이미 화면에 반영한 프레임은 모아 두었다가 스냅샷 뒤에 다시 얹는다
-  const during: ServerFrame[] = [
-    {
-      type: "message.new",
-      payload: { ...snapshot.messages[0], id: "late-1", channel: "dm", sender: "colleague" },
-    },
-    {
-      type: "task.updated",
-      payload: {
-        part_no: 2,
-        assignee: "candidate",
-        status: "doing",
-        order: 2,
-        due_min: 70,
-        by: "candidate",
-      },
-    },
-  ];
-  for (const frame of during) view = reduce(view, { type: "frame", frame });
-  expect(view.unread.dm).toBe(1);
-  view = reduce(view, { type: "snapshot", state: fetched, frames: during });
-  expect(view.snap.messages.map((m) => m.id)).toEqual([
-    ...snapshot.messages.map((m) => m.id),
-    "late-1",
-  ]);
-  expect(view.unread.dm).toBe(1);
-  expect(view.snap.tasks.find((t) => t.part_no === 2)).toMatchObject({
-    status: "doing",
-    due_min: 70,
-  });
-  // 끊긴 사이 시작된 실행은 active_runs로, 끊긴 구간은 connection_gaps로 복원. 타이머는 ends_at 기준
-  expect(progressLabels(view)).toEqual(["이도현님이 입력 중…"]);
-  expect(view.snap.connection_gaps).toEqual([{ from_t_min: 31.2, to_t_min: 46.0 }]);
-  expect(view.snap.session.ends_at).toBe(snapshot.session.ends_at);
-
   made[1].onclose!({ code: 4401 });
   await vi.advanceTimersByTimeAsync(0);
   expect(made).toHaveLength(3);
@@ -118,4 +66,37 @@ test("재연결: 3초 뒤 다시 붙어 /state로 메시지와 진행 중 실행
   expect(made).toHaveLength(3);
   expect(statuses.at(-1)).toBe("replaced");
   vi.useRealTimers();
+});
+
+test("seq 공백이면 적용을 멈추고 /state 스냅샷으로 칸·메시지·입력 중을 복원한 뒤 이어서 적용한다", () => {
+  const frames = events as unknown as ServerFrame[];
+  const start = problem as unknown as StateSnapshot;
+  let view = initialView(start, 0);
+
+  // 스냅샷 뒤 프레임을 순서대로 적용
+  const next = frames.find((f) => f.seq === start.ws_seq + 1)!;
+  view = reduce(view, { type: "frame", frame: next, now: 1 });
+  expect(view.snap.ws_seq).toBe(next.seq);
+
+  // 하나를 건너뛴 프레임이 오면 멈춘다
+  const skipped = frames.find((f) => f.seq === view.snap.ws_seq + 2)!;
+  const before = view.snap;
+  view = reduce(view, { type: "frame", frame: skipped, now: 2 });
+  expect(view.needsResync).toBe(true);
+  expect(view.snap).toBe(before);
+
+  // /state 재조회: 해결책 단계 스냅샷으로 결정 사항·메시지·입력 중이 복원된다
+  const fresh = solution as unknown as StateSnapshot;
+  view = reduce(view, { type: "snapshot", snap: fresh, now: 3 });
+  expect(view.needsResync).toBe(false);
+  expect(view.snap.slots.find((s) => s.phase === "problem")?.status).toBe("confirmed");
+  expect(view.snap.messages).toHaveLength(fresh.messages.length);
+  expect(Object.keys(view.typingSince)).toEqual(fresh.typing);
+
+  // 스냅샷 ws_seq 이하는 버리고 그다음부터 이어 간다
+  const old = frames.find((f) => f.seq === fresh.ws_seq)!;
+  expect(reduce(view, { type: "frame", frame: old, now: 4 })).toBe(view);
+  const after = frames.find((f) => f.seq === fresh.ws_seq + 1)!;
+  view = reduce(view, { type: "frame", frame: after, now: 4 });
+  expect(view.snap.ws_seq).toBe(fresh.ws_seq + 1);
 });

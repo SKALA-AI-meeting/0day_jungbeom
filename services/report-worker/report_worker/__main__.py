@@ -2,15 +2,17 @@
 
 import asyncio
 import logging
+import os
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from report_worker import heartbeat
 from report_worker.api import InternalApi
+from report_worker.assessment import AssessmentClient
 from report_worker.config import load_settings
 from report_worker.consumer import RabbitConsumer, ReportWorker
-from report_worker.graph import build_graph
-from report_worker.llm import OpenAILLM
+from report_worker.graph import Deps, build_graph
+from report_worker.llm import FakeEvaluatorLLM, OpenAILLM
 
 
 async def main() -> None:
@@ -21,14 +23,22 @@ async def main() -> None:
     log.info("heartbeat at %s", heartbeat.heartbeat_path())
 
     api = InternalApi(settings.api_internal_url, settings.internal_token)
+    deps = Deps(
+        api=api,
+        assessment=AssessmentClient(settings.assessment_mcp_url, settings.assessment_mcp_token),
+        llm=FakeEvaluatorLLM()
+        if os.environ.get("LLM_FAKE") == "1"
+        else OpenAILLM(settings.model_evaluator, os.environ),
+        scenarios_dir=settings.scenarios_dir,
+    )
     consumer = RabbitConsumer(settings.rabbitmq_url)
-    # 워커는 thread report:{session_id}만 접근한다. 테이블은 api 에이전트 모듈과 같은 기본 테이블
+    # 워커는 thread report:{session_id}:{eval_round}만 접근한다
     async with AsyncPostgresSaver.from_conn_string(settings.database_url) as saver:
         await saver.setup()
-        graph = build_graph(api, OpenAILLM(settings.openai_model), saver)
+        graph = build_graph(deps, saver)
         await consumer.connect()
         await consumer.consume(ReportWorker(graph, api, consumer.publish))
-        log.info("consuming report.generate, report.approve, report.dlq")
+        log.info("consuming report.generate, report.approve, report.dlq (model %s)", deps.llm.model)
         try:
             await beating  # heartbeat는 끝나지 않는다. 소비는 aio-pika 콜백으로 돈다
         finally:

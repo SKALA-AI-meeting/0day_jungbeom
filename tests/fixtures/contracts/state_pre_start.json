@@ -1,0 +1,129 @@
+{
+  "session": {
+    "id": "sess-1",
+    "alias": "지원자A",
+    "status": "invited",
+    "phase": null,
+    "started_at": null,
+    "ends_at": null,
+    "session_minutes": 60,
+    "phase_started_at": null,
+    "phase_deadline_at": null,
+    "phase_remaining_seconds": null,
+    "session_remaining_seconds": null,
+    "office_start": "09:00",
+    "office_end": "10:00",
+    "completed_at": null
+  },
+  "keyword_options": [
+    {
+      "option_key": "water",
+      "label": "물"
+    },
+    {
+      "option_key": "fire",
+      "label": "불"
+    },
+    {
+      "option_key": "tree",
+      "label": "나무"
+    },
+    {
+      "option_key": "wind",
+      "label": "바람"
+    }
+  ],
+  "phases": [
+    {
+      "phase": "keyword",
+      "budget_min": 10,
+      "deadline_t_min": 10
+    },
+    {
+      "phase": "problem",
+      "budget_min": 18,
+      "deadline_t_min": 28
+    },
+    {
+      "phase": "solution",
+      "budget_min": 18,
+      "deadline_t_min": 46
+    },
+    {
+      "phase": "proposal",
+      "budget_min": 14,
+      "deadline_t_min": 60
+    }
+  ],
+  "participants": [
+    {
+      "id": "candidate",
+      "display_name": "김지원"
+    },
+    {
+      "id": "p1",
+      "display_name": "강한결",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-01.png"
+    },
+    {
+      "id": "p2",
+      "display_name": "윤하람",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-02.png"
+    },
+    {
+      "id": "p3",
+      "display_name": "서지안",
+      "avatar_url": "/assets/missions/debate/avatars/avatar-03.png"
+    }
+  ],
+  "slots": [
+    {
+      "phase": "keyword",
+      "status": "empty",
+      "value": null,
+      "filled_by": null,
+      "resolution": null,
+      "t_min": null
+    },
+    {
+      "phase": "problem",
+      "status": "empty",
+      "value": null,
+      "filled_by": null,
+      "resolution": null,
+      "t_min": null
+    },
+    {
+      "phase": "solution",
+      "status": "empty",
+      "value": null,
+      "filled_by": null,
+      "resolution": null,
+      "t_min": null
+    }
+  ],
+  "messages": [],
+  "materials": {
+    "locked": true,
+    "keyword": null,
+    "materials": []
+  },
+  "proposal": {
+    "sections": {
+      "keyword": "",
+      "problem": "",
+      "solution": "",
+      "rationale": "",
+      "expected_effect": "",
+      "idea_credit": ""
+    },
+    "revision": 0,
+    "updated_at": null,
+    "submitted_at": null
+  },
+  "assistant": [],
+  "typing": [],
+  "active_runs": [],
+  "connection_gaps": [],
+  "ws_seq": 0
+}

@@ -1,0 +1,123 @@
+"""서비스 공용: 오류, 커밋 뒤 효과(WS·자극·큐), 시각 변환, 직렬화, 조회 도우미."""
+
+import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Invite, Message, Position, Session, Slot
+
+if TYPE_CHECKING:
+    from app.agent.runner import Stimulus
+
+ENDED_STATUSES = frozenset(
+    {"completed", "report_ready", "approving", "reviewed", "failed", "cancelled"}
+)
+RETENTION = timedelta(days=90)
+
+
+class ServiceError(Exception):
+    """계약 오류 `{"error": {code, message}}`와 HTTP 상태."""
+
+    def __init__(self, status: int, code: str, message: str | None = None) -> None:
+        super().__init__(message or code)
+        self.status, self.code, self.message = status, code, message or code
+
+
+def conflict(code: str = "conflict", message: str | None = None) -> ServiceError:
+    return ServiceError(409, code, message)
+
+
+def not_found(message: str = "not found") -> ServiceError:
+    return ServiceError(404, "not_found", message)
+
+
+def invalid(code: str = "invalid_input", message: str | None = None) -> ServiceError:
+    return ServiceError(422, code, message)
+
+
+@dataclass
+class Effects:
+    """한 트랜잭션이 커밋된 뒤에 할 일. 커밋 전에는 아무것도 보내지 않는다."""
+
+    events: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    stimuli: list[tuple["Stimulus", uuid.UUID]] = field(default_factory=list)
+    publish: list[str] = field(default_factory=list)
+    generation: int | None = None
+
+    def emit(self, type_: str, payload: dict[str, Any]) -> None:
+        self.events.append((type_, payload))
+
+
+def iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def t_min(session: Session, at: datetime | None) -> float | None:
+    if at is None or session.started_at is None:
+        return None
+    return round(max((at - session.started_at).total_seconds(), 0) / 60, 2)
+
+
+def purge_at(session: Session) -> str | None:
+    return iso(session.ended_at + RETENTION) if session.ended_at else None
+
+
+async def load_session(db: AsyncSession, session_id: uuid.UUID, lock: bool = False) -> Session:
+    query = select(Session).where(Session.id == session_id)
+    if lock:
+        query = query.with_for_update()
+    session = await db.scalar(query)
+    if session is None:
+        raise not_found("session not found")
+    return session
+
+
+async def load_context(
+    db: AsyncSession, session_id: uuid.UUID, lock: bool = False
+) -> tuple[Session, Position, Invite]:
+    session = await load_session(db, session_id, lock)
+    invite = await db.get(Invite, session.invite_id)
+    position = await db.get(Position, invite.position_id)
+    return session, position, invite
+
+
+def serialize_message(session: Session, m: Message) -> dict[str, Any]:
+    return {
+        "id": str(m.id),
+        "sender": m.sender,
+        "content": m.content,
+        "phase": m.phase,
+        "is_invite": m.is_invite,
+        "t_min": t_min(session, m.created_at) or 0.0,
+        "created_at": iso(m.created_at),
+    }
+
+
+def slot_public(session: Session, slot: Slot) -> dict[str, Any]:
+    return {
+        "phase": slot.phase,
+        "status": slot.status,
+        "value": slot.value,
+        "filled_by": slot.filled_by,
+        "resolution": slot.resolution,
+        "t_min": t_min(session, slot.confirmed_at),
+    }
+
+
+def slot_full(session: Session, slot: Slot) -> dict[str, Any]:
+    return {
+        **slot_public(session, slot),
+        "option_id": str(slot.option_id) if slot.option_id else None,
+        "support": slot.support,
+        "confirmed_at": iso(slot.confirmed_at),
+    }
+
+
+def empty_sections(template: list[str]) -> dict[str, str]:
+    return {f: "" for f in template}

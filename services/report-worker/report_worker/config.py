@@ -1,6 +1,11 @@
-"""환경 설정. compose는 env_file로 주입하고, 로컬은 infra/.env.local → infra/.env 순으로 읽는다."""
+"""환경 설정. compose는 env_file로 주입하고, 로컬은 infra/.env.local → infra/.env 순으로 읽는다.
+
+평가 모델·키 선택은 api `app/agent/llm/roles.py`의 평가 역할(`evaluator`) 규칙 사본이다:
+`MODEL_EVALUATOR`가 비면 `OPENAI_MODEL`(기본 gpt-4o-mini), 키는 모델 id로 고른다.
+"""
 
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,6 +14,13 @@ from dotenv import load_dotenv
 # 로컬은 <repo>/services/report-worker/report_worker/config.py. 컨테이너에는 저장소 루트가 없다.
 _parents = Path(__file__).resolve().parents
 REPO_ROOT = _parents[3] if len(_parents) > 3 else _parents[-1]
+
+MODEL = "gpt-4o-mini"
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+# roles.py ROLE_CONFIG["evaluator"]와 같은 값
+EVALUATOR_TIMEOUT = 60.0
+EVALUATOR_RETRY_DELAYS = (1.0, 3.0)
+EVALUATOR_TEMPERATURE = 0.1
 
 
 def _load_env_files() -> None:
@@ -23,9 +35,12 @@ def _load_env_files() -> None:
 class Settings:
     api_internal_url: str
     internal_token: str
+    assessment_mcp_url: str
+    assessment_mcp_token: str
     database_url: str
     rabbitmq_url: str
-    openai_model: str
+    model_evaluator: str
+    scenarios_dir: Path
 
 
 def checkpoint_url(database_url: str) -> str:
@@ -33,18 +48,39 @@ def checkpoint_url(database_url: str) -> str:
     return database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 
 
-MODEL = "gpt-4o-mini"  # 고정 제약(AGENTS.md). 대체 모델 없음
+def evaluator_model(env: Mapping[str, str]) -> str:
+    return env.get("MODEL_EVALUATOR") or env.get("OPENAI_MODEL") or MODEL
+
+
+def key_for(model: str, env: Mapping[str, str]) -> tuple[str, str | None]:
+    """(api_key, base_url). 키가 비어 있으면 설정 오류로 멈춘다(다른 키로 몰래 바꾸지 않는다)."""
+    if model == MODEL:
+        name, base_url = "OPENAI_API_KEY", None
+    elif model.startswith("gpt-"):
+        name, base_url = "OPENAI_API_KEY_PERSONAL", None
+    elif model.startswith("gemini-"):
+        name, base_url = "GEMINI_API_KEY", GEMINI_BASE_URL
+    else:
+        raise ValueError(f"no key rule for model: {model}")
+    key = env.get(name, "")
+    if not key:
+        raise ValueError(f"{name} is required for model {model}")
+    return key, base_url
 
 
 def load_settings() -> Settings:
     _load_env_files()
-    model = os.environ.get("OPENAI_MODEL", MODEL)
-    if model != MODEL:
-        raise RuntimeError(f"OPENAI_MODEL must be {MODEL}, got {model!r}")
+    env = os.environ
+    scenarios = env.get("SCENARIOS_DIR") or str(REPO_ROOT / "scenarios")
+    if not Path(scenarios).is_dir():  # 로컬 실행에서 .env의 컨테이너 경로(/scenarios)가 없을 때
+        scenarios = str(REPO_ROOT / "scenarios")
     return Settings(
-        api_internal_url=os.environ.get("API_INTERNAL_URL", "http://api:8001").rstrip("/"),
-        internal_token=os.environ.get("INTERNAL_TOKEN", "change-me-internal"),
-        database_url=checkpoint_url(os.environ.get("DATABASE_URL", "")),
-        rabbitmq_url=os.environ.get("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/"),
-        openai_model=model,
+        api_internal_url=env.get("API_INTERNAL_URL", "http://api:8001").rstrip("/"),
+        internal_token=env.get("INTERNAL_TOKEN", "change-me-internal"),
+        assessment_mcp_url=env.get("ASSESSMENT_MCP_URL", "http://assessment-mcp:9103/mcp"),
+        assessment_mcp_token=env.get("ASSESSMENT_MCP_TOKEN", ""),
+        database_url=checkpoint_url(env.get("DATABASE_URL", "")),
+        rabbitmq_url=env.get("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/"),
+        model_evaluator=evaluator_model(env),
+        scenarios_dir=Path(scenarios),
     )

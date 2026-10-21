@@ -12,7 +12,7 @@ export type CardProps = {
 
 export function Card({ title, actions, className, children }: CardProps) {
   return (
-    <section className={cn("rounded-lg border border-line bg-surface p-5", className)}>
+    <section className={cn("rounded-lg border border-line bg-surface p-6", className)}>
       {(title || actions) && (
         <header className="mb-3 flex items-center justify-between gap-3">
           {title && <h2 className="text-lg font-semibold">{title}</h2>}

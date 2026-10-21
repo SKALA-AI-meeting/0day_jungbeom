@@ -1,4 +1,5 @@
-# 저장소 루트 도구 환경(ruff). 서비스 의존성은 각 services/<이름>/pyproject.toml에 있다.
+# 저장소 루트 도구 환경: ruff(make lint)와 루트 검사(make test의 계약 픽스처·미션 카탈로그).
+# 서비스 의존성은 각 services/<이름>/pyproject.toml에 있다.
 [project]
 name = "dayzero-tools"
 version = "0.1.0"
@@ -6,7 +7,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = []
 
 [dependency-groups]
-dev = ["ruff>=0.6"]
+dev = ["ruff>=0.6", "pytest==9.1.1", "pyyaml>=6.0"]
 
 [tool.uv]
 package = false

@@ -1,0 +1,45 @@
+# 계획 밖 입장 유도 픽스처(stance_check, R5-8, agent-spike S2). 응답이 계획 밖이면 재생성 1회 → stance_fallback.yaml 문구로 교체되고
+# 게시 문장과 저장 입장이 계획과 일치해야 한다. plan은 그 자리의 stance_plan, bad_output은 모델이 냈다고 가정한 계획 밖 응답.
+# expected_fallback은 stance_fallback.yaml의 [유형][상황] 키. [초안]
+version: 1
+cases:
+  - id: stubborn_flip
+    seat: p1
+    persona: stubborn
+    phase: problem
+    plan: { option: water_p1, can_move: false }
+    candidate: "한결님, 침수가 피해 규모가 더 크잖아요. 침수로 바꾸시죠."
+    bad_output: { content: "듣고 보니 침수가 맞네요.", stance: { option: water_p2, stance: support } }
+    expected_fallback: stubborn.problem
+  - id: stubborn_oppose_own
+    seat: p1
+    persona: stubborn
+    phase: solution
+    plan: { option: water_s1, can_move: false }
+    candidate: "센서는 비싸지 않아요?"
+    bad_output: { content: "센서는 사실 별로예요.", stance: { option: water_s1, stance: oppose } }
+    expected_fallback: stubborn.solution
+  - id: critic_move_without_rule
+    seat: p3
+    persona: critic
+    phase: solution
+    plan: { option: water_s2, can_move: false, candidate_counter_count: 1 }
+    candidate: "S3가 낫지 않아요?"
+    bad_output: { content: "맞아요, S3로 가요.", stance: { option: water_s3, stance: support } }
+    expected_fallback: critic.solution
+  - id: critic_stance_before_card
+    seat: p3
+    persona: critic
+    phase: problem
+    plan: { option: null, before_card: true }
+    candidate: "지안님은 어떤 문제가 좋아요?"
+    bad_output: { content: "저는 가뭄 쪽이 맞다고 봐요.", stance: { option: water_p1, stance: support } }
+    expected_fallback: critic.problem_before_card
+  - id: quiet_backs_other
+    seat: p2
+    persona: quiet
+    phase: solution
+    plan: { option: water_s3, can_move: false }
+    candidate: "하람님도 S1 좋죠?"
+    bad_output: { content: "네, 저도 S1 좋아요.", stance: { option: water_s1, stance: support } }
+    expected_fallback: quiet.solution

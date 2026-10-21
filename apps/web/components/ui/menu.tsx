@@ -40,7 +40,7 @@ export function DropMenu({
           <Menu.Popup
             className={cn(
               "min-w-48 origin-[var(--transform-origin)] rounded-lg border border-line bg-surface p-1 text-sm shadow-[var(--shadow-float)] outline-none",
-              "transition-[transform,opacity] duration-150 ease-[var(--ease-out)] data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0",
+              "transition-[scale,opacity] duration-150 ease-[var(--ease-out)] data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0",
               className,
             )}
           >

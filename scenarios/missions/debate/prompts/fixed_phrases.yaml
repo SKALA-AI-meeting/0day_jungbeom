@@ -1,0 +1,41 @@
+# 고정 문장. LLM을 거치지 않고 코드가 치환만 해서 게시한다.
+# 치환 변수: {option} 안 라벨, {candidate} 지원자 표시 이름, {stage} 단계 이름, {remaining} 남은 시간 문자열("2분", "30초"),
+#            {keywords} 키워드 후보 라벨 나열("물·불·나무·바람").
+# 조사 처리(로/으로 등)는 코드가 라벨 끝 글자로 고른다. 문서 골격의 "X로"는 {option}로 적는다.
+# 문서가 확정한 문장: consensus_fill(agent/design.md·contracts.md), timeout_fill(R7), time_warning 골격, silence_invite 골격,
+# invalid_keyword, assistant_locked. 나머지는 [초안].
+version: 1
+
+# 칸 채우기 공지(합의, 지지자 중 우선순위 자리 이름으로 fill_slot이 저장)
+consensus_fill: 그럼 {option}로 정리할게요.
+
+# 시간 초과 공지(api가 우선순위 첫 자리 이름으로 게시, 지지자가 아니어도 됨)
+timeout_fill: 시간이 다 돼서 대화에서 가장 많이 모인 의견인 {option}로 할게요.
+
+# 침묵 초대(서지안). 골격만 고정이고 실제 문장은 페르소나가 만들 수 있다
+silence_invite: "{candidate}님은 어떻게 생각하세요?"
+
+# 시스템 안내
+time_warning: 이 단계 {remaining} 남았어요.
+stage_start:                         # [초안] 단계 이름·할 일·남은 시간
+  keyword: "키워드 단계예요. 후보 {keywords} 중 하나를 함께 정해 주세요. 이 단계 {remaining} 남았어요."
+  problem: "문제 상황 단계예요. 정한 키워드와 관련된 문제 상황 하나를 함께 정해 주세요. 이 단계 {remaining} 남았어요."
+  solution: "해결책 단계예요. 정한 문제의 해결 방향 하나를 함께 정해 주세요. 이 단계 {remaining} 남았어요."
+  proposal: "기획안 작성 단계예요. 오른쪽 기획안 탭이 열렸어요. 직접 기획안을 쓰고 제출해 주세요. 남은 시간 {remaining}."
+
+# 후보 밖 키워드를 채팅에서 말했을 때 AI 동료의 받는 말 골격([초안] scenario-model.md 1.4)
+invalid_keyword: 이번엔 네 개 중에서 골라야 해요.
+
+# 칸 확정 뒤 고집형의 받는 말(personas.yaml on_confirmed와 같은 문장)
+stubborn_on_confirmed: 정해졌으니 따를게요.
+
+# 어시스턴트: 키워드 확정 전 자료 질문
+assistant_locked: 키워드가 정해지면 자료를 찾을 수 있어요.
+
+# 평가·연출 질문에 대한 공통 안내(common_rules.md와 guard 치환 안내문이 함께 쓴다)
+notices:
+  evaluation: 평가 방식은 시작 전 안내 화면에 나온 내용이 전부예요. 자세한 내용은 끝난 뒤 디브리핑에서 볼 수 있어요.
+  staging: 저는 지금 같이 토론하는 팀원으로 이야기하고 있어요. 우리 할 일은 남은 시간 안에 같이 정하는 거예요.
+  future: 앞으로 어떤 얘기가 나올지는 저도 미리 알 수 없어요. 지금 정할 것부터 같이 봐요.
+  identity: 네, 저는 AI 동료예요. 하던 얘기 이어서 해요.
+  credit: 기획안은 직접 정리해서 쓰시면 돼요. 토론에서 나온 얘기가 궁금하면 같이 다시 볼게요.

@@ -1,0 +1,34 @@
+# 단계 시드: 문법은 docs/common/testing.md "단계 시드". 시간(at)은 15분 세션 기준 분이고 60분이면 같은 값으로 재생한다.
+# at은 15분 세션 기준이다. 60분 세션에서는 카드 예정 시각보다 앞서 페르소나 before_card 입장과 어긋날 수 있어 60분 시드는 지원하지 않는다.
+# ended: 기획안을 쓰고 제출한 completed 세션(디브리핑·관리자 리포트 확인용).
+steps:
+  - at: 0.3
+    say: "저는 물이 좋겠어요. 누구에게나 가까운 문제라서요."
+    intent: { intent: propose, scenario_option_key: water, confidence: high }
+  - at: +0.2
+    ai: { seat: p1, content: "불이 더 급하다고 봅니다. 화재는 한 번 나면 되돌릴 수 없어요.", propose: fire }
+  - at: +0.2
+    ai: { seat: p3, content: "불은 이미 피해가 난 뒤의 대응이라 근거가 약하다고 봐요.", oppose: fire }
+  - at: 1.5
+    confirm: { phase: keyword, option_key: water }
+  - at: 3.0
+    say: "도심 침수 피해가 제일 크다고 생각해요. 매년 반복되니까요."
+    intent: { intent: propose, scenario_option_key: water_p2, confidence: high }
+  - at: +0.2
+    ai: { seat: p1, content: "가뭄으로 생활용수가 끊기는 쪽이 더 심각합니다.", propose: water_p1 }
+  - at: 5.5
+    confirm: { phase: problem, value: "도심 폭우·침수 피해 증가", option_key: water_p2 }
+  - at: 7.2
+    say: "해결책은 센서로 침수를 미리 알리는 쪽이 좋겠어요."
+    intent: { intent: propose, scenario_option_key: water_s1, confidence: high }
+  - at: +0.2
+    ai: { seat: p3, content: "저는 주민이 직접 참여하는 캠페인이 더 낫다고 봐요.", propose: water_s2 }
+  - at: 10.5
+    confirm: { phase: solution, value: "센서·데이터 기반 물 관리·경보", option_key: water_s1 }
+  - at: 12.0
+    proposal:
+      rationale: "침수는 매년 반복되고, 센서 경보는 주민이 대피할 시간을 벌어 줍니다."
+      expected_effect: "침수 경보를 받은 주민의 사전 대피 비율이 늘어납니다."
+      idea_credit: "키워드와 문제 상황, 해결책은 제가 제안했습니다. 서지안님이 주민 참여 캠페인을 다른 안으로 냈습니다."
+  - at: +0.5
+    submit: true

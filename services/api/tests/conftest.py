@@ -1,31 +1,24 @@
-"""api 단위 테스트 공용 픽스처.
+"""api 단위 테스트 공용 픽스처(G-F 기반).
 
-DB는 `make infra-up`으로 띄운 postgres를 쓴다. 실행마다 임시 DB(dayzero_test_<랜덤>)를 만들어
-infra/db/schema.sql을 적용하고 끝나면 지운다. 여러 worktree가 같은 postgres를 써도 겹치지 않는다.
-LLM·MCP·RabbitMQ는 쓰지 않는다(FakeAgentRunner, FakePublisher).
+DB 테스트는 `make infra-up`으로 띄운 postgres(127.0.0.1:5432)를 쓴다. 실행마다 임시 DB
+(dayzero_test_<랜덤>)를 만들어 infra/db/schema.sql을 적용하고 끝나면 지운다. 여러 worktree가 같은
+postgres를 써도 겹치지 않는다. 접속 주소는 env `TEST_DATABASE_URL`(기본 localhost),
+postgres가 없으면 DB 테스트만 건너뛴다.
+LLM·MCP·RabbitMQ는 쓰지 않는다(FakeAgentRunner, FakeSessionPorts).
 """
 
+import os
 import uuid
-from typing import Any
 
 import asyncpg
 import pytest
-from app.agent.runner import FakeAgentRunner
-from app.config import REPO_ROOT, get_settings
+from app.config import REPO_ROOT
 from app.db import make_engine, make_session_factory
-from app.hub import Hub
-from app.models import Company, Position
-from app.queue import PublishNotConfirmed
-from app.services.locks import SessionLocks
-from app.services.messages import save_internal_message
-from app.services.scenario import build_scenario
-from app.services.session import SessionService
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
-from sqlalchemy.ext.asyncio import AsyncSession
 
 SCHEMA = REPO_ROOT / "infra" / "db" / "schema.sql"
-SCENARIOS = REPO_ROOT / "scenarios"
+DEFAULT_TEST_DATABASE_URL = "postgresql+asyncpg://dayzero:dayzero@localhost:5432/dayzero"
 
 
 def _asyncpg_dsn(url) -> str:
@@ -34,9 +27,12 @@ def _asyncpg_dsn(url) -> str:
 
 @pytest.fixture(scope="session")
 async def database_url():
-    base = make_url(get_settings().database_url)
+    base = make_url(os.environ.get("TEST_DATABASE_URL", DEFAULT_TEST_DATABASE_URL))
     name = f"dayzero_test_{uuid.uuid4().hex[:8]}"
-    admin = await asyncpg.connect(_asyncpg_dsn(base))
+    try:
+        admin = await asyncpg.connect(_asyncpg_dsn(base), timeout=3)
+    except (OSError, asyncpg.PostgresError) as exc:
+        pytest.skip(f"postgres 없음(make infra-up): {type(exc).__name__}")
     try:
         await admin.execute(f'CREATE DATABASE "{name}"')
     finally:
@@ -64,6 +60,7 @@ async def engine(database_url):
 
 @pytest.fixture
 async def db(engine):
+    """테스트마다 새 AsyncSession. 끝나면 모든 테이블을 비운다."""
     factory = make_session_factory(engine)
     async with factory() as session:
         yield session
@@ -74,110 +71,44 @@ async def db(engine):
         await conn.execute(text(f"TRUNCATE {', '.join(tables)} CASCADE"))
 
 
-class FakeSocket:
-    """hub에 붙이는 가짜 WebSocket. 받은 프레임을 순서대로 모은다."""
-
-    def __init__(self) -> None:
-        self.frames: list[dict[str, Any]] = []
-        self.closed: int | None = None
-
-    async def send_json(self, data: Any) -> None:
-        self.frames.append(data)
-
-    async def close(self, code: int = 1000) -> None:
-        self.closed = code
-
-    def types(self) -> list[str]:
-        return [f["type"] for f in self.frames]
-
-
-class FakePublisher:
-    """fail=True면 브로커 미확인(PublishNotConfirmed)처럼 예외를 낸다."""
-
-    def __init__(self) -> None:
-        self.published: list[tuple[str, dict[str, Any]]] = []
-        self.fail = False
-
-    async def publish(self, routing_key: str, body: dict[str, Any]) -> None:
-        if self.fail:
-            raise PublishNotConfirmed(routing_key)
-        self.published.append((routing_key, body))
+# ---- api 트랙: 가짜 시계·메모리 큐·기록 runner로 띄운 AppContext와 HTTP 클라이언트(tests/kit.py) -
 
 
 @pytest.fixture
-def hub() -> Hub:
-    return Hub()
+def clock():
+    from app.services.clock import FakeClock
+
+    return FakeClock()
 
 
 @pytest.fixture
-def publisher() -> FakePublisher:
-    return FakePublisher()
+def runner():
+    from kit import RecordingRunner
+
+    return RecordingRunner()
 
 
 @pytest.fixture
-def locks() -> SessionLocks:
-    return SessionLocks()
+def classifier():
+    from kit import FakeClassifier
+
+    return FakeClassifier()
 
 
 @pytest.fixture
-def runner(engine, hub) -> FakeAgentRunner:
-    factory = make_session_factory(engine)
+async def ctx(engine, db, clock, runner, classifier):
+    """db를 먼저 잡아 두어 테스트 뒤 메일박스를 비운 다음 테이블을 비운다."""
+    from kit import make_ctx
 
-    async def post_message(**kwargs):
-        async with factory() as session:
-            message, _ = await save_internal_message(session, hub, **kwargs)
-            return message
-
-    return FakeAgentRunner(post_message, hub.broadcast)
-
-
-@pytest.fixture
-def service(db, hub, runner, publisher, locks) -> SessionService:
-    return SessionService(db, hub=hub, runner=runner, publisher=publisher, locks=locks)
-
-
-ALL_FIVE = ["responsibility", "planning", "adaptability", "collaboration", "honesty"]
+    context = make_ctx(engine, clock, runner, classifier)
+    yield context
+    await context.mailboxes.drain()
+    await context.mailboxes.close()
 
 
 @pytest.fixture
-def make_position(db: AsyncSession):
-    async def factory(elements: list[str] = ALL_FIVE, session_minutes: int = 120) -> Position:
-        scenario, version = build_scenario(SCENARIOS, elements, session_minutes)
-        company = Company(name="테스트 회사")
-        db.add(company)
-        await db.flush()
-        position = Position(
-            company_id=company.id,
-            name="프로덕트 기획",
-            mission_id=scenario["mission_id"],
-            elements=elements,
-            session_minutes=session_minutes,
-            catalog_version=version,
-            scenario=scenario,
-        )
-        db.add(position)
-        await db.commit()
-        return position
+async def api(ctx):
+    from kit import Api
 
-    return factory
-
-
-@pytest.fixture
-def started_session(service, make_position):
-    """초대 → 동의 → 시작까지 진행한 세션(in_progress)."""
-
-    async def factory(elements: list[str] = ALL_FIVE, session_minutes: int = 120):
-        position = await make_position(elements, session_minutes)
-        session, _, _ = await service.create_for_invite(position.id, "지원자A", "a@example.com")
-        await service.consent(session.id)
-        return await service.start(session.id)
-
-    return factory
-
-
-async def to_completed(service: SessionService, session_id) -> None:
-    """제출(reporting) → 보고 없이 종료(completed). 보고 대기 상한을 기다리지 않고 complete를 바로
-    부른다.
-    """
-    await service.submit(session_id)
-    await service.complete(session_id, "submitted")
+    async with Api(ctx) as client:
+        yield client

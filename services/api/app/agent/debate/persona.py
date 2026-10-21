@@ -1,0 +1,304 @@
+"""페르소나 에이전트 respond: 컨텍스트 조립, 도구 루프, guard·stance_check 판정과 고정 문구.
+
+docs/agent/design.md "페르소나 에이전트"·"계획 밖 입장", harness.md Context.
+페르소나 입력에 넣지 않는 것: card_progress·cost_left·관찰·평가표·카드 이름·요소 이름·다른 자리 성향
+이름·어시스턴트 대화. DebateState는 load가 걸러 미리 넣으므로 get_debate_state는 바인딩하지 않는다.
+"""
+
+import json
+import logging
+from dataclasses import dataclass, field
+from typing import Any
+
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
+
+from app.agent.catalog import SEATS, Catalog, render
+from app.agent.debate.rules import StancePlan, option_by_id, option_by_key
+from app.agent.llm import BaseLLM, Trace, Usage, parse_json_object
+from app.agent.mcp_client import ToolScope, for_model
+
+log = logging.getLogger(__name__)
+
+MAX_TOOL_CALLS = 3  # 응답당(harness.md Tools)
+RECENT_MESSAGES = 30
+PHASE_NAMES = {
+    "keyword": "키워드",
+    "problem": "문제 상황",
+    "solution": "해결책",
+    "proposal": "기획안 작성",
+}
+PURPOSE_TEXT = {
+    "respond": "지원자에게 답한다",
+    "push_option": "[내 입장 계획]의 안을 주장한다",
+    "react": "앞선 동료 발언에 짧게 반응한다",
+    "invite": '지원자에게 의견을 묻는다(짧게, "{name}님은 어떻게 생각하세요?" 골격)',
+    "card": "[카드 지시]를 이번 발언에서 자연스럽게 말한다",
+}
+OUTPUT_RULE = (
+    '출력은 JSON 객체 하나다: {"content": "게시할 1~3문장", "proposes": null 또는 '
+    '{"scenario_option_key": "키", "label": "라벨"}, "stance": null 또는 '
+    '{"option_id": "안 id 또는 키", "stance": "support" 또는 "oppose"}}. '
+    "입장을 표현하지 않는 발언이면 stance는 null이다. "
+    "proposes·stance는 [내 입장 계획]의 안만 쓸 수 있다."
+)
+# 페르소나 컨텍스트에서 빼는 DebateState 필드(contracts.md DebateState)
+HIDDEN_STATE_KEYS = ("card_progress", "cost_left")
+
+
+@dataclass
+class Draft:
+    content: str
+    proposes: dict[str, Any] | None = None
+    stance: dict[str, Any] | None = None
+    meta: dict[str, Any] = field(default_factory=dict)
+    fixed: bool = False  # LLM 없이 만든 고정 문장
+
+
+def visible_state(ds: dict[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in ds.items() if k not in HIDDEN_STATE_KEYS}
+
+
+def _remaining(seconds: Any) -> str:
+    try:
+        total = int(seconds)
+    except (TypeError, ValueError):
+        return "알 수 없음"
+    if total >= 60:
+        return f"약 {round(total / 60)}분"
+    return f"{max(total, 0)}초"
+
+
+def _name(seat: str, names: dict[str, str]) -> str:
+    return names.get(seat, seat)
+
+
+def build_messages(
+    *,
+    catalog: Catalog,
+    seat: str,
+    purpose: str,
+    plan: StancePlan,
+    ds: dict[str, Any],
+    names: dict[str, str],
+    transcript: list[dict[str, Any]],
+    card_text: str | None,
+    bans: list[str],
+    violation: str | None = None,
+) -> list[BaseMessage]:
+    """자리별 컨텍스트(common_rules.md "코드가 붙이는 블록" 순서)."""
+    state = visible_state(ds)
+    system = "\n\n".join(
+        part.strip()
+        for part in (
+            catalog.prompts.get("common_rules.md", ""),
+            catalog.persona_prompt(seat),
+            OUTPUT_RULE,
+        )
+        if part.strip()
+    )
+    candidate = names.get("candidate", "지원자")
+    lines = [f"- 지원자: {candidate}님"]
+    for other in SEATS:
+        marker = " (나)" if other == seat else ""
+        lines.append(f"- {other}: {_name(other, names)}{marker}")
+    blocks = ["[참여자]\n" + "\n".join(lines)]
+
+    phase = state.get("phase", plan.phase)
+    status = [
+        f"- 단계: {PHASE_NAMES.get(phase, phase)}",
+        f"- 단계 남은 시간: {_remaining(state.get('phase_remaining_seconds'))}",
+    ]
+    for slot in state.get("confirmed") or []:
+        name = PHASE_NAMES.get(slot.get("phase"), slot.get("phase"))
+        status.append(f"- 확정된 칸 {name}: {slot.get('value')}")
+    for option in state.get("options") or []:
+        supporters = ", ".join(_display(p, names) for p in option.get("supporters") or []) or "없음"
+        opposers = ", ".join(_display(p, names) for p in option.get("opposers") or []) or "없음"
+        key = option.get("scenario_option_key")
+        status.append(
+            f"- 안 {option['option_id']}{f' ({key})' if key else ''}: {option.get('label')}"
+            f" / 지지: {supporters} / 반대: {opposers}"
+        )
+    unspoken = [c for c in state.get("catalog_options") or [] if not c.get("spoken")]
+    if unspoken:
+        status.append(
+            "- 아직 나오지 않은 후보: "
+            + ", ".join(f"{c['label']} ({c['scenario_option_key']})" for c in unspoken)
+        )
+    blocks.append("[토론 상태]\n" + "\n".join(status))
+
+    if plan.declared:
+        ident = plan.option_id or plan.key
+        move = " 지원자 안으로 옮김." if plan.moved else ""
+        lock = " 지지를 바꾸지 않는다." if not plan.can_move else ""
+        blocks.append(f"[내 입장 계획]\n이번 단계에서 미는 안: {plan.label} ({ident}).{move}{lock}")
+    else:
+        blocks.append(
+            "[내 입장 계획]\n아직 입장을 밝히지 않음. 어떤 안도 지지하거나 반대하지 않는다."
+        )
+
+    goal = PURPOSE_TEXT.get(purpose, purpose).replace("{name}", candidate)
+    blocks.append(f"[이번 목적]\n{purpose}: {goal}")
+    if card_text:
+        blocks.append(f"[카드 지시]\n{card_text}")
+    if bans:
+        blocks.append("[지킬 것]\n" + "\n".join(f"- {b}" for b in bans))
+    mine = [m["content"] for m in transcript if m.get("sender") == seat][-3:]
+    if mine:
+        blocks.append("[내 기억]\n" + "\n".join(f"- 내가 한 말: {c}" for c in mine))
+    recent = transcript[-RECENT_MESSAGES:]
+    talk = "\n".join(f"{_display(m.get('sender'), names)}: {m.get('content')}" for m in recent)
+    blocks.append("[최근 대화]\n" + (talk or "(아직 없음)"))
+    if violation:
+        blocks.append(
+            f"[다시 쓰기]\n앞 응답은 쓸 수 없다: {violation}. 규칙에 맞게 처음부터 다시 쓴다."
+        )
+    return [SystemMessage(system), HumanMessage("\n\n".join(blocks))]
+
+
+def _display(participant: Any, names: dict[str, str]) -> str:
+    if participant == "candidate":
+        return f"{names.get('candidate', '지원자')}(지원자)"
+    if participant == "system":
+        return "시스템"
+    return names.get(str(participant), str(participant))
+
+
+async def generate(
+    *,
+    llm: BaseLLM,
+    messages: list[BaseMessage],
+    tools: ToolScope | None,
+    usage: Usage,
+    trace: Trace,
+) -> tuple[Draft, list[dict[str, Any]]]:
+    """도구 루프(응답당 최대 3회) → 구조화 출력. LLMUnavailable은 호출자에게 올린다.
+
+    반환 (초안, 도구 호출 기록).
+    """
+    specs = await tools.specs() if tools is not None else []
+    history = list(messages)
+    calls: list[dict[str, Any]] = []
+    while True:
+        bind = specs if specs and len(calls) < MAX_TOOL_CALLS else None
+        message = await llm.ainvoke(history, usage=usage, trace=trace, tools=bind, json_mode=True)
+        if message.tool_calls and bind:
+            history.append(message)
+            for call in message.tool_calls:
+                if len(calls) >= MAX_TOOL_CALLS:
+                    result = {"ok": False, "error": {"code": "forbidden", "message": "tool limit"}}
+                else:
+                    result = await tools.call(call["name"], dict(call.get("args") or {}))
+                    usage.tool_calls += 1
+                calls.append(
+                    {"name": call["name"], "args": call.get("args"), "ok": result.get("ok")}
+                )
+                history.append(ToolMessage(for_model(result), tool_call_id=call["id"]))
+            continue
+        return parse_draft(message), calls
+
+
+def parse_draft(message: AIMessage) -> Draft:
+    text = str(message.content or "").strip()
+    try:
+        data = parse_json_object(text)
+    except ValueError:
+        return Draft(content=text)
+    proposes = data.get("proposes")
+    stance = data.get("stance")
+    return Draft(
+        content=str(data.get("content") or "").strip(),
+        proposes=proposes if isinstance(proposes, dict) and any(proposes.values()) else None,
+        stance=stance if isinstance(stance, dict) and stance.get("stance") else None,
+    )
+
+
+# ---- stance_check ----------------------------------------------------------------------------
+def resolve_target(ds: dict[str, Any], value: Any) -> set[str]:
+    """출력이 가리키는 안을 {option_id, key} 집합으로(id·키·라벨 어느 것이든)."""
+    if not isinstance(value, str) or not value:
+        return set()
+    option = option_by_id(ds, value) or option_by_key(ds, value)
+    if option is None:
+        option = next((o for o in ds.get("options") or [] if o.get("label") == value), None)
+    if option is None:
+        # 아직 행이 없는 카탈로그 안을 라벨로 가리킨 경우(실 모델이 proposes.label만 채움)
+        found = next((c for c in ds.get("catalog_options") or [] if c.get("label") == value), None)
+        return {found["scenario_option_key"]} if found else {value}
+    return {v for v in (option["option_id"], option.get("scenario_option_key")) if v}
+
+
+def plan_violation(draft: Draft, plan: StancePlan, ds: dict[str, Any]) -> str | None:
+    """구조화 출력이 계획 밖인지(자기 계획 안 oppose 포함, agent-spike S2)."""
+    proposes = draft.proposes or {}
+    proposed = resolve_target(ds, proposes.get("scenario_option_key") or proposes.get("label"))
+    stance = draft.stance or {}
+    target = resolve_target(ds, stance.get("option_id"))
+    kind = stance.get("stance")
+    if not plan.declared:
+        if proposed or kind:
+            return "아직 입장을 밝히지 않아야 하는데 안을 지지·반대함"
+        return None
+    if proposed and not proposed & plan.targets:
+        return f"계획 밖 안 제안({sorted(proposed)})"
+    if kind == "support" and target and not target & plan.targets:
+        return f"계획 밖 안 지지({sorted(target)})"
+    if kind == "oppose" and (not target or target & plan.targets):
+        return "자기 계획 안에 반대함"
+    return None
+
+
+def sentence_violation(judged: dict[str, Any] | None, plan: StancePlan) -> str | None:
+    """문장 판정(의도 분류 형식)이 계획과 다른 입장을 말하는지."""
+    if not judged or judged.get("confidence") != "high":
+        return None
+    intent = judged.get("intent")
+    target = {v for v in (judged.get("target_option_id"), judged.get("scenario_option_key")) if v}
+    if intent in ("propose", "agree"):
+        if not plan.declared and (target or judged.get("new_option_label")):
+            return "문장이 입장을 밝힘"
+        if plan.declared and (
+            judged.get("new_option_label") or (target and not target & plan.targets)
+        ):
+            return "문장이 계획과 다른 안을 지지함"
+    if intent == "oppose" and plan.declared and target & plan.targets:
+        return "문장이 자기 계획 안에 반대함"
+    return None
+
+
+def sentence_supports_plan(judged: dict[str, Any] | None, plan: StancePlan) -> bool:
+    if not judged or judged.get("confidence") != "high" or not plan.declared:
+        return False
+    target = {v for v in (judged.get("target_option_id"), judged.get("scenario_option_key")) if v}
+    return judged.get("intent") in ("propose", "agree") and bool(target & plan.targets)
+
+
+def stance_fallback(catalog: Catalog, seat: str, plan: StancePlan) -> Draft:
+    """계획과 맞는 자리별 고정 문구(stance_fallback.yaml)와 그 입장."""
+    table = catalog.stance_fallback.get(catalog.type_of(seat)) or {}
+    entry = table.get(plan.fallback_key) or table.get(plan.phase) or {}
+    text = render(str(entry.get("text") or catalog.safe_phrase(seat)), option=plan.label or "")
+    stance = None
+    if entry.get("stance") == "support" and plan.declared:
+        stance = {"option_id": plan.option_id or plan.key, "stance": "support"}
+    proposes = None
+    if stance and plan.option_id is None and plan.key:
+        proposes = {"scenario_option_key": plan.key, "label": plan.label}
+    return Draft(content=text, proposes=proposes, stance=stance, fixed=True)
+
+
+def safe_draft(catalog: Catalog, seat: str) -> Draft:
+    return Draft(content=catalog.safe_phrase(seat), fixed=True)
+
+
+def to_json(draft: Draft) -> str:
+    return json.dumps(
+        {"content": draft.content, "proposes": draft.proposes, "stance": draft.stance},
+        ensure_ascii=False,
+    )

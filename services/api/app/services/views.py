@@ -1,175 +1,291 @@
-"""여러 라우터가 같은 형태로 내는 조회: 회사 문서 공개 목록, 접속 끊김 구간, 전체 기록 타임라인.
+"""지원자 쪽 읽기 모델: State 스냅샷, 자료, 디브리핑, 참여자. 페르소나 유형은 여기서 내보내지 않는다
+(디브리핑 seats만 예외, C8)."""
 
-전체 기록(GET /admin/sessions/{id}/record)의 ref {type, id, t_min}는 리포트 근거의 record_ref와 같은
-값이다.
-"""
-
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
+    AgentRun,
     AssistantCall,
     ConnectionGap,
-    Document,
-    DocumentOpen,
-    DocumentRelease,
-    DocumentShare,
+    DebriefSurvey,
+    Invite,
+    Material,
     Message,
+    Observation,
+    Position,
+    Proposal,
     Session,
-    TaskEvent,
+    Slot,
 )
-from app.services.messages import t_min_at
+from app.services import proposal as proposal_service
+from app.services import scenario as sc
+from app.services.common import iso, serialize_message, slot_public, t_min
+from app.services.phases import keyword_key
+
+DEBRIEF_DAYS = 7
 
 
-async def company_documents(
-    db: AsyncSession, session: Session, scenario: dict[str, Any]
-) -> list[dict[str, Any]]:
-    """회사 문서 목록. release_at_min은 아직 공개 전인 지연 공개만(공개됐거나 시작 공개면 null)."""
-    rows = {
-        r.doc_id: r
-        for r in (
-            await db.execute(
-                select(DocumentRelease).where(DocumentRelease.session_id == session.id)
-            )
-        ).scalars()
-    }
-    out = []
-    for d in scenario["documents"]:
-        row = rows.get(d["doc_id"])
-        released = row is not None and row.released_at is not None
-        out.append(
-            {
-                "doc_id": d["doc_id"],
-                "title": d["title"],
-                "released": released,
-                "release_at_min": (
-                    None if released or row is None else t_min_at(row.release_at, session)
-                ),
-            }
-        )
-    return out
+def display_name(session: Session, invite: Invite) -> str:
+    return session.display_name or invite.alias
 
 
-async def gap_rows(db: AsyncSession, session: Session) -> list[ConnectionGap]:
-    rows = await db.execute(
+def participants(scenario: dict, session: Session, invite: Invite) -> list[dict[str, Any]]:
+    return [{"id": "candidate", "display_name": display_name(session, invite)}] + [
+        {"id": s["seat"], "display_name": s["name"], "avatar_url": sc.avatar_url(scenario, s)}
+        for s in scenario["seats"]
+    ]
+
+
+def seats_typed(scenario: dict, session: Session, invite: Invite) -> list[dict[str, Any]]:
+    """관리자·내부·리포트용 자리 목록(유형 포함)."""
+    return [{"seat": "candidate", "display_name": display_name(session, invite)}] + [
+        {
+            "seat": s["seat"],
+            "display_name": s["name"],
+            "avatar_url": sc.avatar_url(scenario, s),
+            "persona_type": s["persona_type"],
+        }
+        for s in scenario["seats"]
+    ]
+
+
+async def gaps(db: AsyncSession, session: Session) -> list[dict[str, Any]]:
+    rows = await db.scalars(
         select(ConnectionGap)
         .where(ConnectionGap.session_id == session.id)
         .order_by(ConnectionGap.disconnected_at)
     )
-    return list(rows.scalars())
-
-
-async def connection_gaps(db: AsyncSession, session: Session) -> list[dict[str, Any]]:
     return [
         {
-            "from_t_min": t_min_at(g.disconnected_at, session),
-            "to_t_min": t_min_at(g.reconnected_at, session),
+            "from_t_min": t_min(session, g.disconnected_at) or 0.0,
+            "to_t_min": t_min(session, g.reconnected_at),
         }
-        for g in await gap_rows(db, session)
+        for g in rows
     ]
 
 
-def _clock(t_min: float | None) -> str:
-    if t_min is None:
-        return "종료"
-    total = int(t_min)
-    return f"{total // 60:02d}:{total % 60:02d}"
+async def materials(db: AsyncSession, session: Session, position: Position) -> dict[str, Any]:
+    kw = await keyword_key(db, session.id)
+    if kw is None:
+        return {"locked": True, "keyword": None, "materials": []}
+    info = position.scenario["keywords"][kw]
+    return {"locked": False, "keyword": info["label"], "materials": info["materials"]}
 
 
-def _num(value: float | None) -> str:
-    """12.0 → "12", 12.5 → "12.5"(요약 문장의 분 표기)."""
-    return "" if value is None else f"{value:g}"
+async def material(
+    db: AsyncSession, session: Session, position: Position, material_id: str
+) -> Material | None:
+    """열린 자료(확정 키워드)의 채용 건 catalog_version 본문. 아니면 None(423)."""
+    kw = await keyword_key(db, session.id)
+    if kw is None:
+        return None
+    row = await db.get(Material, (position.catalog_version, material_id))
+    if row is None or row.keyword_key != kw:
+        return None
+    return row
 
 
-# 보드 변경 요약의 필드·값 한국어 표기(contracts.md "n번 <필드> → <새 값>(t분)").
-_FIELD_NAMES = {"assignee": "담당", "status": "상태", "order": "순서", "due_min": "언제까지"}
-_VALUE_NAMES = {
-    "candidate": "지원자",
-    "colleague": "동료",
-    "both": "함께",
-    "todo": "할 일",
-    "doing": "진행 중",
-    "done": "완료",
-}
-
-
-def _task_summary(part_no: int, field: str, new_value: str | None, t_min: float | None) -> str:
-    """ "1번 담당 → 지원자(12분)", "1번 언제까지 → 40분(15분)". 값이 비면 "없음"."""
-    if new_value is None:
-        value = "없음"
-    elif field == "due_min":
-        value = f"{new_value}분"
-    else:
-        value = _VALUE_NAMES.get(new_value, new_value)
-    return f"{part_no}번 {_FIELD_NAMES.get(field, field)} → {value}({_num(t_min)}분)"
-
-
-def _entry(t_min, type_, by, summary, ref_type, ref_id, channel=None) -> dict[str, Any]:
-    entry = {"t_min": t_min, "type": type_}
-    if channel is not None:
-        entry["channel"] = channel
-    entry.update(
-        {"by": by, "summary": summary, "ref": {"type": ref_type, "id": str(ref_id), "t_min": t_min}}
-    )
-    return entry
-
-
-async def record(db: AsyncSession, session: Session) -> list[dict[str, Any]]:
-    """대화(채널별, 카드 메시지 포함)·문서 보내기/열기·보드 변경·어시스턴트 호출·알림·접속 끊김을
-    t_min 순으로.
-    """
-    out: list[dict[str, Any]] = []
-    messages = await db.execute(
-        select(Message)
-        .where(Message.session_id == session.id, Message.channel != "assistant")
-        .order_by(Message.created_at, Message.seq)
-    )
-    for m in messages.scalars():
-        t = t_min_at(m.created_at, session)
-        type_ = "notice" if m.channel == "notice" else "message"
-        out.append(_entry(t, type_, m.sender, m.content, "message", m.id, m.channel))
-
-    docs = {
-        d.id: d
-        for d in (
-            await db.execute(select(Document).where(Document.session_id == session.id))
-        ).scalars()
+async def state(
+    db: AsyncSession,
+    session: Session,
+    position: Position,
+    invite: Invite,
+    now: datetime,
+    typing: list[str],
+    ws_seq: int,
+) -> dict[str, Any]:
+    scenario = position.scenario
+    started = session.started_at is not None
+    phase = session.phase if session.phase != "completed" else "proposal"
+    live = session.status == "in_progress"
+    slots = {
+        s.phase: s
+        for s in (await db.scalars(select(Slot).where(Slot.session_id == session.id))).all()
     }
-    shares = await db.execute(select(DocumentShare).where(DocumentShare.doc_id.in_(list(docs))))
-    for s in shares.scalars():
-        doc = docs[s.doc_id]
-        t = t_min_at(s.created_at, session)
-        prefix = "동료 " if doc.owner == "colleague" else ""
-        summary = f"{prefix}{doc.part_no}번 파트 v{s.version} 보냄({_num(t)}분)"
-        out.append(_entry(t, "share", doc.owner, summary, "share", s.id, s.channel))
-    opens = await db.execute(select(DocumentOpen).where(DocumentOpen.doc_id.in_(list(docs))))
-    for o in opens.scalars():
-        doc = docs[o.doc_id]
-        t = t_min_at(o.created_at, session)
-        summary = f"동료 {doc.part_no}번 v{o.version} 열람({_num(t)}분)"
-        out.append(_entry(t, "open", "candidate", summary, "open", o.id))
+    messages = (
+        await db.scalars(
+            select(Message)
+            .where(Message.session_id == session.id, Message.channel == "room")
+            .order_by(Message.created_at, Message.seq)
+        )
+    ).all()
+    calls = (
+        await db.scalars(
+            select(AssistantCall)
+            .where(AssistantCall.session_id == session.id)
+            .order_by(AssistantCall.created_at)
+        )
+    ).all()
+    by_id = {
+        m.id: m
+        for m in (
+            await db.scalars(
+                select(Message).where(
+                    Message.session_id == session.id, Message.channel == "assistant"
+                )
+            )
+        ).all()
+    }
+    runs = (
+        await db.scalars(
+            select(AgentRun).where(
+                AgentRun.session_id == session.id, AgentRun.status.in_(("queued", "started"))
+            )
+        )
+    ).all()
+    proposal = await db.get(Proposal, session.id)
+    return {
+        "session": {
+            "id": str(session.id),
+            "alias": invite.alias,
+            "status": session.status,
+            "phase": phase,
+            "started_at": iso(session.started_at),
+            "ends_at": iso(session.ends_at),
+            "session_minutes": position.session_minutes,
+            "phase_started_at": iso(session.phase_started_at),
+            "phase_deadline_at": iso(session.phase_deadline_at),
+            "phase_remaining_seconds": _remaining(session.phase_deadline_at, now) if live else None,
+            "session_remaining_seconds": _remaining(session.ends_at, now) if live else None,
+            "office_start": scenario["office_clock"]["start"],
+            "office_end": scenario["office_clock"]["end"],
+            "completed_at": iso(session.completed_at),
+        },
+        "phases": [
+            {
+                "phase": s["stage_id"],
+                "budget_min": s["budget_min"],
+                "deadline_t_min": s["deadline_min"],
+            }
+            for s in scenario["stages"]
+        ],
+        "participants": participants(scenario, session, invite),
+        "keyword_options": sc.keyword_options(scenario),
+        "slots": [
+            slot_public(session, slots[p])
+            if p in slots
+            else {
+                "phase": p,
+                "status": "empty",
+                "value": None,
+                "filled_by": None,
+                "resolution": None,
+                "t_min": None,
+            }
+            for p in sc.DEBATE_PHASES
+        ],
+        "messages": [serialize_message(session, m) for m in messages] if started else [],
+        "materials": await materials(db, session, position),
+        "proposal": proposal_service.serialize(proposal, scenario["proposal_template"]),
+        "assistant": [
+            {
+                "call_id": str(c.id),
+                "request": by_id[c.request_message_id].content,
+                "response": by_id[c.response_message_id].content if c.response_message_id else "",
+                "cited_material_ids": list(c.cited_material_ids),
+                "t_min": t_min(session, c.created_at) or 0.0,
+            }
+            for c in calls
+        ],
+        "typing": typing,
+        "active_runs": [{"run_id": str(r.run_id), "stimulus": r.stimulus} for r in runs],
+        "connection_gaps": await gaps(db, session),
+        "ws_seq": ws_seq,
+    }
 
-    events = await db.execute(select(TaskEvent).where(TaskEvent.session_id == session.id))
-    for e in events.scalars():
-        t = t_min_at(e.created_at, session)
-        summary = _task_summary(e.part_no, e.field, e.new_value, t)
-        out.append(_entry(t, "task_event", e.by, summary, "task_event", e.id))
 
-    calls = await db.execute(
-        select(AssistantCall, Message.content)
-        .join(Message, Message.id == AssistantCall.request_message_id)
-        .where(AssistantCall.session_id == session.id)
-    )
-    for call, request in calls.all():
-        t = t_min_at(call.created_at, session)
-        out.append(_entry(t, "assistant_call", "candidate", request, "assistant_call", call.id))
+def _remaining(at: datetime | None, now: datetime) -> int | None:
+    return None if at is None else max(int((at - now).total_seconds()), 0)
 
-    for g in await gap_rows(db, session):
-        start, end = t_min_at(g.disconnected_at, session), t_min_at(g.reconnected_at, session)
-        summary = f"{_clock(start)}~{_clock(end)} 연결 끊김"
-        out.append(_entry(start, "connection_gap", "system", summary, "connection_gap", g.id))
 
-    out.sort(key=lambda e: (e["t_min"] is None, e["t_min"] or 0))
-    return out
+def debrief_until(session: Session) -> datetime | None:
+    return session.ended_at + timedelta(days=DEBRIEF_DAYS) if session.ended_at else None
+
+
+async def debrief(
+    db: AsyncSession, session: Session, position: Position, invite: Invite, contact: str
+) -> dict[str, Any]:
+    scenario = position.scenario
+    texts = scenario["debrief"]
+    survey_row = await db.get(DebriefSurvey, session.id)
+    base = {
+        "intro_notice": f"{texts['intro_notice']} {texts.get('persona_note', '')}".strip(),
+        "scoring_notice": texts["scoring_notice"],
+        "appeal_contact": f"{texts['appeal_notice']} 문의: {contact}",
+        "connection_gaps": await gaps(db, session),
+        "retention_notice": texts["retention_notice"].format(days=texts["retention_days"]),
+        "contact_email": contact,
+        "view_until": iso(debrief_until(session)),
+        "survey": {
+            "submitted": survey_row is not None,
+            "questions": [
+                {"q": q["q"], "text": q["text"], "kind": q["kind"]} for q in texts["survey"]
+            ],
+        },
+    }
+    if session.status == "failed" and session.failed_stage == "session":
+        return {**base, "intro_notice": texts["failed_notice"], "failed_stage": "session"}
+    fired = (
+        await db.scalars(select(Observation.card_id).where(Observation.session_id == session.id))
+    ).all()
+    elements = {e["id"]: e for e in scenario["element_info"]}
+    cards = [c for c in scenario["cards"] if c["card_id"] in set(fired)]
+    mine = (
+        await db.scalars(
+            select(Message)
+            .where(
+                Message.session_id == session.id,
+                Message.sender == "candidate",
+                Message.channel == "room",
+            )
+            .order_by(Message.created_at)
+        )
+    ).all()
+    my_messages = []
+    for phase in sc.DEBATE_PHASES:
+        in_phase = [m for m in mine if m.phase == phase]
+        if in_phase:
+            m = max(in_phase, key=lambda x: len(x.content))  # 같은 길이면 먼저 쓴 것
+            my_messages.append(
+                {
+                    "id": str(m.id),
+                    "content": m.content,
+                    "phase": phase,
+                    "t_min": t_min(session, m.created_at) or 0.0,
+                }
+            )
+    proposal = await db.get(Proposal, session.id)
+    personas = {p["seat"]: p for p in scenario["seats"]}
+    return {
+        **base,
+        "elements": [
+            {"element": e, "name": elements[e]["name"], "how_we_see": elements[e]["how_we_see"]}
+            for e in scenario["elements"]
+        ],
+        "cards": [
+            {
+                "card_id": c["card_id"],
+                "element": c["element"],
+                "name": c.get("name", c["card_id"]),
+                "description": c.get("debrief", ""),
+            }
+            for c in cards
+        ],
+        "seats": [{"seat": "candidate", "display_name": display_name(session, invite)}]
+        + [
+            {
+                "seat": seat,
+                "display_name": p["name"],
+                "avatar_url": sc.avatar_url(scenario, p),
+                "persona_type": p["persona_type"],
+                "persona_description": p.get("persona_description", ""),
+            }
+            for seat, p in personas.items()
+        ],
+        "my_messages": my_messages[:3],
+        "proposal": {"sections": proposal.submitted} if proposal and proposal.submitted else None,
+    }

@@ -1,21 +1,11 @@
 [
   {
     "id": "ac-1",
-    "request_message_id": "m-25",
-    "response_message_id": "m-26",
-    "cited_doc_ids": [
-      "metrics",
-      "meeting_notes"
-    ],
-    "created_at": "2026-10-20T01:47:30Z"
-  },
-  {
-    "id": "ac-2",
-    "request_message_id": "m-27",
-    "response_message_id": "m-28",
-    "cited_doc_ids": [
-      "interview_summary"
-    ],
-    "created_at": "2026-10-20T02:12:00Z"
+    "request_message_id": "ma-1",
+    "response_message_id": "ma-2",
+    "request": "도심 침수 사례에서 센서 경보 효과를 알려 줘",
+    "response": "자료에 센서 경보로 피해가 줄었다는 내용이 있어요.",
+    "cited_material_ids": ["water_flood_cases"],
+    "created_at": "2026-10-21T01:38:00Z"
   }
 ]

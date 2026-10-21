@@ -31,7 +31,17 @@ export type RequestOptions = {
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = options.method ?? "GET";
-  if (MOCK) return mockRequest<T>(method, path, options.body);
+  if (MOCK) {
+    try {
+      return await mockRequest<T>(method, path, options.body);
+    } catch (error) {
+      // mock 서버의 오류({status, code})도 실제 응답과 같은 ApiError로 바꾼다
+      const e = error as { status?: number; code?: string; message?: string };
+      if (typeof e.status === "number")
+        throw new ApiError(e.status, e.code ?? "http_error", e.message ?? "");
+      throw error;
+    }
+  }
 
   const headers: Record<string, string> = { Accept: "application/json" };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
@@ -55,6 +65,14 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   }
   return data as T;
 }
+
+/** 계약의 /assets/... 경로(avatar_url)는 api 서버가 서빙한다. 웹 출처와 다르니 api 주소를 붙인다 */
+export const assetUrl = (url: string) =>
+  !url.startsWith("/assets/")
+    ? url
+    : MOCK
+      ? url.replace(/^\/assets\/missions\/[^/]+\/avatars\//, "/mock-avatars/") // mocks/debate.ts와 같은 규칙
+      : `${API_URL}${url}`;
 
 /** WS 주소: /ws/sessions/{id}?token=<세션 JWT> */
 export function sessionSocketUrl(sessionId: string, token: string) {

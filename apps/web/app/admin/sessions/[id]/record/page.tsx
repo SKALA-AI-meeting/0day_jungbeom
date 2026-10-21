@@ -1,6 +1,7 @@
 "use client";
 
 // 전체 기록 화면(읽기 전용). 리포트 근거의 "기록에서 보기"가 #앵커로 이 화면의 해당 줄을 가리킨다.
+// 참여자 이름·프로필과 세션 길이는 리포트에서 읽는다(기록 응답에는 없다).
 import { useParams } from "next/navigation";
 
 import { adminApi, useLoad } from "@/components/admin/client";
@@ -8,16 +9,28 @@ import { RecordView } from "@/components/admin/record-view";
 
 export default function RecordPage() {
   const { id } = useParams<{ id: string }>();
-  const { data, error } = useLoad((t) => adminApi.record(t, id), id);
+  const { data, error } = useLoad(async (t) => {
+    const [entries, report] = await Promise.all([adminApi.record(t, id), adminApi.report(t, id)]);
+    return { entries, report };
+  }, id);
   return (
-    <>
-      <h1 className="text-2xl font-semibold">전체 기록</h1>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <h1 className="text-title1 font-bold">
+        전체 기록{data && <span className="text-muted"> · {data.report.alias}</span>}
+      </h1>
       {error && (
         <p role="alert" className="text-danger">
           {error}
         </p>
       )}
-      {data && <RecordView entries={data} backHref={`/admin/sessions/${id}/report`} />}
-    </>
+      {data && (
+        <RecordView
+          entries={data.entries}
+          seats={data.report.seats}
+          sessionMinutes={data.report.position.session_minutes}
+          backHref={`/admin/sessions/${id}/report`}
+        />
+      )}
+    </div>
   );
 }

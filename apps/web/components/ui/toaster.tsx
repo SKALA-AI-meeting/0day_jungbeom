@@ -6,10 +6,10 @@ import { Toaster as Sonner, toast } from "sonner";
 export function Toaster() {
   return (
     <Sonner
-      position="bottom-right"
+      position="bottom-center"
       toastOptions={{
         className:
-          "!rounded-lg !border !border-line !bg-surface !text-ink !shadow-[var(--shadow-float)]",
+          "!rounded-lg !border !border-line !bg-surface !font-sans !text-ink !shadow-[var(--shadow-float)]",
       }}
     />
   );

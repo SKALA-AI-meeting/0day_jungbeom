@@ -11,7 +11,7 @@ publish()가 예외 없이 끝나면 브로커가 받은 것이다.
 import json
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any, Protocol
 
 import aio_pika
@@ -79,13 +79,29 @@ async def declare_topology(channel: aio_pika.abc.AbstractChannel) -> aio_pika.ab
     return exchange
 
 
-def report_body(session_id: uuid.UUID, attempt: int = 1) -> dict[str, Any]:
-    """첫 발행은 attempt=1. 워커는 실패 시 attempt+1로 재발행하고 3에 이르면 DLQ로 보낸다."""
-    return {"session_id": str(session_id), "attempt": attempt}
+def report_body(session_id: uuid.UUID, eval_round: int, attempt: int = 1) -> dict[str, Any]:
+    """contracts.md 큐 메시지 {session_id, attempt, eval_round}. 첫 발행은 attempt=1.
+
+    워커는 실패 시 attempt+1로 재발행하고 3에 이르면 DLQ로 보낸다.
+    """
+    return {"session_id": str(session_id), "attempt": attempt, "eval_round": eval_round}
+
+
+class MemoryPublisher:
+    """테스트·개발용. 발행한 (routing_key, body)를 기록한다. fail=True면 발행 실패를 흉내 낸다."""
+
+    def __init__(self) -> None:
+        self.published: list[tuple[str, dict[str, Any]]] = []
+        self.fail = False
+
+    async def publish(self, routing_key: str, body: dict[str, Any]) -> None:
+        if self.fail:
+            raise ConnectionError("publisher down")
+        self.published.append((routing_key, body))
 
 
 async def publish_report(
-    db: AsyncSession, publisher: Publisher, session: Session, routing_key: str
+    db: AsyncSession, publisher: Publisher, session: Session, routing_key: str, now: datetime
 ) -> bool:
     """발행하고 브로커 확인 뒤에만 enqueued_at을 기록·커밋한다.
 
@@ -93,16 +109,16 @@ async def publish_report(
     """
     column = "report_enqueued_at" if routing_key == GENERATE else "approve_enqueued_at"
     try:
-        await publisher.publish(routing_key, report_body(session.id))
+        await publisher.publish(routing_key, report_body(session.id, session.eval_round))
     except Exception:
         log.warning("publish %s failed for session %s", routing_key, session.id, exc_info=True)
         return False
-    setattr(session, column, datetime.now(UTC))
+    setattr(session, column, now)
     await db.commit()
     return True
 
 
-async def republish_pending(db: AsyncSession, publisher: Publisher) -> int:
+async def republish_pending(db: AsyncSession, publisher: Publisher, now: datetime) -> int:
     """outbox 재탐색. 미발행 세션을 다시 발행한다.
 
     completed인데 report_enqueued_at 없음 → generate.
@@ -116,5 +132,5 @@ async def republish_pending(db: AsyncSession, publisher: Publisher) -> int:
     for routing_key, *conditions in targets:
         rows = (await db.execute(select(Session).where(*conditions))).scalars().all()
         for session in rows:
-            published += await publish_report(db, publisher, session, routing_key)
+            published += await publish_report(db, publisher, session, routing_key, now)
     return published

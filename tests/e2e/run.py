@@ -1,99 +1,80 @@
 """e2e 러너: 실제 서비스를 상대로 대본을 끝까지 돌리고 단언·기록을 남긴다.
 
-형식과 단언은 docs/common/testing.md e2e 절.
+형식과 단언은 docs/common/testing.md e2e 절, step 키는 scenarios/e2e/README.md.
 
-    uv run --project services/api python tests/e2e/run.py --script all_five
-    uv run --project services/api python tests/e2e/run.py --concurrent      # 단언 7
-    uv run --project services/api python tests/e2e/run.py --auth            # 단언 8
-    uv run --project services/api python tests/e2e/run.py --faults all      # 단언 6(러너가 앱 기동)
+    uv run --project services/api python tests/e2e/run.py --script all_five      # 벽시계 15분
+    uv run --project services/api python tests/e2e/run.py --script timeout_all --clock fake
+    uv run --project services/api python tests/e2e/run.py --auth                # 단언 8
+    uv run --project services/api python tests/e2e/run.py --faults all          # 단언 10
 
-흐름: 세션 조립(make_session) → 동의·시작 → WS 연결 → step마다 시각까지 기다려 실행 → 제출·보고 →
-종료 대기 → report_ready 대기 → 관리자 draft·검토(2a)·final·전체 기록 → 내부 API·DB에서 결과 수집 →
-단언(asserts.py) → 기록(records.py).
+흐름: 관리자 가입·로그인 → 채용 건(15분)·초대 → 입장·동의·시작 전 /state·시작 → WS 연결 →
+step 진행 → 제출·자동 제출 → session.ended → report_ready 대기 → 관리자 draft·검토(단언 6)·
+final·전체 기록 → 내부 API·DB에서 결과 수집 → 단언(asserts.py) → 기록(records.py).
 
-시각: Clock이 "세션 분"을 다룬다. 실 스택은 벽시계(WallClock)로 기다리고, 테스트는 DB 시각을 당기는
-시계를 끼운다(tests/e2e/conftest.py). 카드 step은 그 카드의 message.new(event_id)를 받은 시각을
-기준으로 삼는다. 실패한 step은 멈추지 않고 step_errors에 남긴다(러너는 결함을 가리지 않는다).
+시계: `real`은 벽시계로 기다리고(실 스택 15분), `fake`는 내부 테스트 API `advance`로 시간을
+당긴다. 실패한 step은 멈추지 않고 step_errors에 남긴다(러너는 결함을 가리지 않는다).
 """
 
 import argparse
 import asyncio
 import contextlib
-import re
+import os
+import subprocess
 import sys
 import time
-from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
-import httpx
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
-
-# 저장소 루트(scripts)와 tests/(e2e 패키지). 최상위 이름 tests는 api 테스트 패키지가 쓴다
-sys.path[:0] = [str(Path(__file__).resolve().parents[2]), str(Path(__file__).resolve().parents[1])]
-from e2e import asserts, records  # noqa: E402
+# `python tests/e2e/run.py`로 실행할 때도 e2e 패키지를 찾도록 tests/를 경로에 넣는다
+sys.path[:0] = [str(Path(__file__).resolve().parents[1])]
+from e2e import asserts, catalog, records  # noqa: E402
 from e2e import script as scripts  # noqa: E402
-from e2e.client import Api, Socket, Target, Transcript, parse_time  # noqa: E402
-from e2e.faults import Faults  # noqa: E402
-from scripts import make_session  # noqa: E402
+from e2e.client import (  # noqa: E402
+    Api,
+    ApiError,
+    Connector,
+    Socket,
+    Target,
+    Transcript,
+    env,
+    parse_time,
+)
+from e2e.db import Db, NullDb, PgDb  # noqa: E402
 
-EPSILON = 0.01  # 카드 due_at을 살짝 지나서 본다(분)
-CARD_WAIT_SECONDS = 105  # 카드 메시지 90초(운영 목표) + 여유
 REPORT_WAIT_SECONDS = 120
-ENDED = {"completed", "report_ready", "approving", "reviewed", "failed", "cancelled"}
+CARD_WAIT_SECONDS = 60  # 가짜 시계: 카드를 당긴 뒤 관찰이 생기기까지
+SETTLE_SECONDS = 40
+TYPING_HOLD_SECONDS = 3.0
+RECONNECT_SECONDS = 90
+PASSWORD = "e2e-password-1234"
 
 
-class Clock(Protocol):
-    """세션 분 단위 시계. 실 스택은 벽시계, 테스트는 DB 시각 이동."""
+class RealClock:
+    fake = False
 
-    card_wait_seconds: float
-
-    async def now(self) -> float: ...
-    async def advance_to(self, minute: float) -> None: ...
-    async def settle(self) -> None: ...
-    async def idle(self) -> None: ...
-
-
-class WallClock:
-    card_wait_seconds = CARD_WAIT_SECONDS
-
-    def __init__(self, started_at: datetime) -> None:
-        self.started_at = started_at
-
-    async def now(self) -> float:
-        return (datetime.now(UTC) - self.started_at).total_seconds() / 60
-
-    async def advance_to(self, minute: float) -> None:
-        wait = (minute - await self.now()) * 60
-        if wait > 0:
-            await asyncio.sleep(wait)
-
-    async def settle(self) -> None:
+    async def advance(self, runner: "Runner", *, to: str | None = None, seconds: float = 0) -> None:
         return None
 
-    async def idle(self) -> None:
-        await asyncio.sleep(2)
+    async def wait_minute(self, runner: "Runner", minute: float) -> None:
+        while (now := await runner.t_min()) < minute:
+            await asyncio.sleep(min(max((minute - now) * 60, 0.05), 1.0))
 
 
-ClockFactory = Callable[[str, str, datetime], Awaitable[Clock]]
+class FakeClock:
+    fake = True
 
+    async def advance(self, runner: "Runner", *, to: str | None = None, seconds: float = 0) -> None:
+        body = {"to": to} if to else {"seconds": max(int(seconds), 1)}
+        result = await runner.api.json(
+            "POST", f"/internal/test/sessions/{runner.sid}/advance", internal=True, json_body=body
+        )
+        runner.advances.append({"at": time.time(), "seconds": result["shifted_seconds"]})
 
-async def wall_clock(session_id: str, invite_token: str, started_at: datetime) -> Clock:
-    return WallClock(started_at)
-
-
-class StackControl(Protocol):
-    """프로세스 제어(재시작·종료). stack.LocalStack이 구현, 없으면 restart step이 실패로 남는다."""
-
-    async def restart_api(self) -> None: ...
-    async def kill_api(self) -> None: ...
-    async def start_api(self) -> None: ...
-
-
-class StepError(Exception):
-    pass
+    async def wait_minute(self, runner: "Runner", minute: float) -> None:
+        now = await runner.t_min()
+        if minute > now:
+            await self.advance(runner, seconds=(minute - now) * 60)
 
 
 class Runner:
@@ -102,581 +83,551 @@ class Runner:
         script: dict[str, Any],
         target: Target,
         *,
-        clock_factory: ClockFactory = wall_clock,
-        stack: StackControl | None = None,
-        faults: Faults | None = None,
-        transports: dict[str, httpx.AsyncBaseTransport] | None = None,
-        admin: make_session.Admin | None = None,
-        alias: str = "e2e",
+        clock: str = "real",
+        stack: Any = None,
+        transports: dict[str, Any] | None = None,
+        connector: Connector | None = None,
+        db: Db | None = None,
+        llm_fake: bool = True,
+        report_wait: float = REPORT_WAIT_SECONDS,
+        regenerate_on_failure: bool = False,
+        typing_hold: float = TYPING_HOLD_SECONDS,
+        poll: float = 0.5,
+        admin_email: str | None = None,
     ) -> None:
         self.script = script
         self.target = target
-        self.clock_factory = clock_factory
+        self.clock = FakeClock() if clock == "fake" else RealClock()
         self.stack = stack
-        self.faults = faults
-        self.admin_account = admin
-        self.alias = alias
+        self.llm_fake = llm_fake
+        self.report_wait = report_wait
+        self.regenerate_on_failure = regenerate_on_failure
+        self.typing_hold = typing_hold
+        self.poll = poll
+        self.admin_email = admin_email or env().get(
+            "E2E_ADMIN_EMAIL", f"e2e-{int(time.time())}@example.com"
+        )
+        self.db: Db = db or (PgDb(target.database_url) if target.database_url else NullDb())
         self.transcript = Transcript()
         self.api = Api(target, self.transcript, transports=transports)
-        self.socket = Socket(self.transcript)
-        self.vars: dict[str, str] = {}
-        self.b: dict[str, Any] = {
-            "script": script,
-            "name": script["name"],
-            "elements": script["elements"],
-            "step_errors": [],
-            "steps": [],
-            "says": [],
-            "writes": [],
-            "shares": [],
-            "opens": [],
-            "imports": [],
-            "resumes": [],
-            "submit": None,
-            "restart": None,
-            "injects": [],
-            "review": {},
-            "db": {},
+        self.sock = Socket(self.transcript, connector)
+        self.segments: list[int] = []  # WS 연결마다 sock.frames 시작 위치(seq는 연결마다 다시 센다)
+        self.sid = ""
+        self.invite_token = ""
+        self.jwt = ""
+        self.admin_token = ""
+        self.position: dict[str, Any] = {}
+        self.entry: dict[str, Any] = {}
+        self.started: dict[str, Any] = {}
+        self.states: dict[str, Any] = {}
+        self.advances: list[dict[str, Any]] = []
+        self.typing_intervals: list[tuple[float, float]] = []
+        self.step_errors: list[str] = []
+        self.unfired: set[str] = set()
+        self.restarts: list[dict[str, Any]] = []
+        self.review_result: dict[str, Any] = {}
+        self.regenerated = False
+        self.failed_seen = False
+        self.eval_before_regen: dict[str, Any] | None = None
+        self.last_t = 0.0
+        self.step_marks: list[int] = []
+        self.materials_before: dict[str, Any] = {}
+        self.started_wall = time.time()
+
+    # ---- 준비 -----------------------------------------------------------------------------
+
+    async def admin_login(self) -> None:
+        body = {
+            "email": self.admin_email,
+            "password": PASSWORD,
+            "company_name": "e2e-company",
         }
-        self.last_at = 0.0
-        self.report_wait_seconds = REPORT_WAIT_SECONDS
-        self.regenerate_on_failure = (
-            False  # 장애 주입 report_3fail: failed(report)면 regenerate 1회
+        response = await self.api.call("POST", "/admin/auth/signup", json_body=body)
+        if response.status_code == 409:
+            response = await self.api.call("POST", "/admin/auth/login", json_body=body)
+        response.raise_for_status()
+        self.admin_token = response.json()["token"]
+
+    async def create_session(self) -> None:
+        minutes = self.script.get("minutes", 15)
+        self.position = await self.api.json(
+            "POST",
+            "/admin/positions",
+            token=self.admin_token,
+            json_body={"name": f"e2e-{self.script['name']}", "session_minutes": minutes},
         )
-
-    # ───────────── 진행 ─────────────
-
-    async def run(self) -> dict[str, Any]:
-        watcher = None
-        try:
-            await self.open_session()
-            watcher = asyncio.create_task(self.watch_events())
-            for index, step in enumerate(self.script["steps"]):
-                await self.run_step(index, step)
-            await self.wait_ended()
-            await self.report_phase()
-            await self.collect()
-        finally:
-            if watcher is not None:
-                watcher.cancel()
-            await self.socket.close()
-            await self.api.aclose()
-        self.b["transcript"] = self.transcript.lines
-        self.b["frames"] = self.socket.frames
-        return self.b
-
-    async def open_session(self) -> None:
-        made = await make_session.make(
-            self.api.public,
-            self.api.internal,
-            self.script["elements"],
-            self.script["minutes"],
-            admin=self.admin_account,
-            alias=self.alias,
+        invite = await self.api.json(
+            "POST",
+            f"/admin/positions/{self.position['id']}/invites",
+            token=self.admin_token,
+            json_body={"alias": f"e2e-{int(time.time() * 1000)}", "email": "e2e@example.com"},
         )
-        self.made = made
-        self.b["session_id"] = self.sid = made.session_id
-        self.b["admin_email"] = made.admin.email
-        r = await self.api.call("POST", f"/s/{made.invite_token}/consent")
-        r.raise_for_status()
-        self.token = r.json()["session_token"]
-        r = await self.api.call("POST", f"/s/{made.invite_token}/start", token=self.token)
-        r.raise_for_status()
-        started_at = parse_time(r.json()["started_at"])
-        self.clock = await self.clock_factory(self.sid, made.invite_token, started_at)
-        self.b["state_start"] = (await self.get("/state")).json()
-        await self.socket.connect(self.target.ws_url(self.sid, self.token))
-        # 화면처럼 연결 뒤 /state로 따라잡는다: 연결 전에 나온 카드 메시지(킥오프)는 여기서만 보인다
-        caught_up = (await self.get("/state")).json()["messages"]
-        self.caught_up = {m["event_id"]: m for m in caught_up if m["event_id"]}
-        self.b["caught_up_event_ids"] = sorted(self.caught_up)
-        await self.refresh_events()
+        self.sid = invite["session_id"]
+        self.invite_token = invite["invite_url"].rstrip("/").split("/")[-1]
 
-    async def watch_events(self) -> None:
-        """카드 행의 (status, document_missing) 변화를 시간순으로 남긴다. C5처럼 재실행으로 지워지는
-        중간 상태(document_missing=true)를 보려면 끝 상태가 아니라 이력이 필요하다."""
-        last: dict[str, tuple] = {}
-        history = self.b["event_history"] = []
-        while True:
+    async def enter(self) -> None:
+        self.entry = await self.api.json("GET", f"/s/{self.invite_token}")
+        consent = await self.api.json(
+            "POST",
+            f"/s/{self.invite_token}/consent",
+            json_body={"display_name": self.entry.get("default_display_name") or "지원자"},
+        )
+        self.jwt = consent["session_token"]
+        self.states["pre_start"] = await self.state()
+        self.started = await self.api.json("POST", f"/s/{self.invite_token}/start", token=self.jwt)
+        self.materials_before = await self.api.json(
+            "GET", f"/sessions/{self.sid}/materials", token=self.jwt
+        )
+        await self.connect()
+
+    async def connect(self) -> None:
+        self.segments.append(len(self.sock.frames))
+        await self.sock.connect(self.target.ws_url(self.sid, self.jwt))
+
+    async def reconnect(self, timeout: float = RECONNECT_SECONDS) -> bool:
+        """resume(새 JWT) → /state → WS 다시 연결. 시간 안에 못 하면 False."""
+        end = time.time() + timeout
+        while time.time() < end:
             with contextlib.suppress(Exception):
-                r = await self.api.call(
-                    "GET", f"/internal/sessions/{self.sid}", internal=True, log=False
-                )
-                for e in r.json()["events"]:
-                    now = (e["status"], e["document_missing"])
-                    if last.get(e["card_id"]) != now:
-                        last[e["card_id"]] = now
-                        history.append(
-                            {
-                                "at": time.time(),
-                                "card_id": e["card_id"],
-                                "status": now[0],
-                                "document_missing": now[1],
-                            }
-                        )
-            await asyncio.sleep(0.5)
+                resumed = await self.api.json("POST", f"/s/{self.invite_token}/resume")
+                self.jwt = resumed["session_token"]
+                self.states["after_reconnect"] = await self.state()
+                await self.connect()
+                return True
+            await asyncio.sleep(self.poll * 2)
+        return False
 
-    async def refresh_events(self) -> dict[str, Any]:
-        r = await self.api.call("GET", f"/internal/sessions/{self.sid}", internal=True, log=False)
-        r.raise_for_status()
-        session = r.json()
-        started = parse_time(session["started_at"])
-        self.events = {
-            e["card_id"]: {**e, "due_min": (parse_time(e["due_at"]) - started).total_seconds() / 60}
-            for e in session["events"]
+    # ---- 조회 -----------------------------------------------------------------------------
+
+    async def state(self) -> dict[str, Any]:
+        return await self.api.json("GET", f"/sessions/{self.sid}/state", token=self.jwt, log=False)
+
+    async def internal(self, path: str = "", **params: Any) -> Any:
+        query = "&".join(f"{k}={v}" for k, v in params.items())
+        suffix = f"?{query}" if query else ""
+        return await self.api.json(
+            "GET", f"/internal/sessions/{self.sid}{path}{suffix}", internal=True, log=False
+        )
+
+    async def t_min(self) -> float:
+        return (await self.internal())["t_min_now"]
+
+    def frames(self, *types: str) -> list[dict[str, Any]]:
+        return [f for f in self.sock.frames if not types or f["type"] in types]
+
+    def phase_now(self) -> str | None:
+        changed = self.frames("phase.changed")
+        if self.frames("session.ended"):
+            return "completed"
+        # 시작 직후의 phase.changed(reason=start)는 WS 연결 전에 나갈 수 있어 start 응답을 쓴다
+        return changed[-1]["payload"]["phase"] if changed else self.started.get("phase")
+
+    def ended(self) -> bool:
+        return bool(self.frames("session.ended"))
+
+    async def observed_cards(self) -> set[str]:
+        return {o["card_id"] for o in await self.internal("/observations")}
+
+    async def settle(self) -> None:
+        """진행 중 그래프 실행과 AI 입력 중 표시가 가라앉을 때까지."""
+        end = time.time() + SETTLE_SECONDS
+        await asyncio.sleep(self.poll)  # ack 뒤 AI 프레임이 도착할 틈
+        while time.time() < end:
+            state = await self.state()
+            if not state.get("active_runs") and not state.get("typing"):
+                return
+            await asyncio.sleep(self.poll)
+
+    # ---- 동작 -----------------------------------------------------------------------------
+
+    async def say(self, text: str) -> None:
+        if not self.sock.open:
+            await self.reconnect()
+        started = time.time()
+        end = started + self.typing_hold
+        await self.sock.typing("start")
+        while (left := end - time.time()) > 0:
+            await asyncio.sleep(min(left, 5.0))
+            if end - time.time() > 0:
+                await self.sock.typing("start")  # 5초마다 갱신
+        await self.sock.typing("stop")  # 전송하면 입력 중이 끝난다
+        self.typing_intervals.append((started, time.time()))
+        ack = await self.sock.send_message(text)
+        if ack is None:
+            self.step_errors.append(f"say: no ack for {text[:30]!r}")
+        await self.settle()
+
+    async def confirm(self, spec: dict[str, Any]) -> None:
+        phase = spec.get("phase") or self.phase_now()
+        body = {
+            **({"value": spec["value"]} if "value" in spec else {}),  # keyword는 option_key만
+            **({"option_key": spec["option_key"]} if "option_key" in spec else {}),
         }
-        return session
-
-    async def run_step(self, index: int, step: dict[str, Any]) -> None:
-        at = step["at"]
-        planned = None
-        if isinstance(at, str) and at.startswith("+"):
-            target = self.last_at + float(at[1:])
-        elif isinstance(at, int | float):
-            target = float(at)
-        else:
-            target = None
-        if target is not None:
-            await self.clock.advance_to(target)
-            self.last_at = target
-        else:
-            planned, actual = await self.wait_card(at)
-            self.last_at = actual if actual is not None else planned
-        self.b["steps"].append(
-            {"index": index, "at": at, "planned": planned, "t_min": round(self.last_at, 3)}
+        await self.api.json(
+            "POST", f"/sessions/{self.sid}/slots/{phase}/confirm", token=self.jwt, json_body=body
         )
-        for action in scripts.actions(step):
-            try:
-                await getattr(self, f"do_{action}")(step[action], step)
-            except StepError as exc:
-                self.b["step_errors"].append(
-                    {"index": index, "at": at, "action": action, "error": str(exc)}
-                )
-        await self.clock.settle()
+        await self.settle()
 
-    async def wait_card(self, card_id: str) -> tuple[float, float | None]:
-        """그 카드의 due 시각까지 기다린 뒤 카드 메시지(message.new.event_id)를 받은 세션 분."""
-        if card_id not in self.events:
-            await self.refresh_events()
-        event = self.events.get(card_id)
-        if event is None:
-            self.b["step_errors"].append({"at": card_id, "error": "card not in session_events"})
-            return await self.clock.now(), None
-        if event["id"] in self.caught_up:
-            return event["due_min"], self.caught_up[event["id"]]["t_min"]
-        await self.clock.advance_to(event["due_min"] + EPSILON)
-        frame = await self.socket.wait_for(
-            lambda f: f["type"] == "message.new" and f["payload"].get("event_id") == event["id"],
-            timeout=self.clock.card_wait_seconds,
-        )
-        if frame is None:
-            self.b["step_errors"].append({"at": card_id, "error": "card message not received"})
-            return event["due_min"], None
-        await self.clock.settle()
-        return event["due_min"], frame["payload"]["t_min"]
-
-    async def wait_ended(self) -> None:
-        """세션이 completed 이후가 될 때까지(보고 메시지 또는 deadline). 상한은 ends_at+5분+여유."""
-        limit = self.script["minutes"] + 7
-        while True:
-            session = await self.refresh_events()
-            if session["status"] in ENDED:
-                self.b["ended_status"] = session["status"]
+    async def proposal(self, fields: dict[str, str]) -> None:
+        for _ in range(2):
+            current = await self.api.json("GET", f"/sessions/{self.sid}/proposal", token=self.jwt)
+            sections = {**current["sections"], **fields}
+            response = await self.api.call(
+                "PUT",
+                f"/sessions/{self.sid}/proposal",
+                token=self.jwt,
+                json_body={"sections": sections, "revision": current["revision"]},
+            )
+            if response.status_code == 200:
                 return
-            if await self.clock.now() > limit:
-                self.b["step_errors"].append(
-                    {"at": "end", "error": f"not ended: {session['status']}"}
-                )
-                return
-            await self.clock.idle()
+            if response.status_code != 409:  # 409는 다른 탭 덮어쓰기 방지: 다시 읽고 한 번 더
+                response.raise_for_status()
 
-    # ───────────── 지원자 행동 ─────────────
-
-    def sub(self, value: str) -> str:
-        return re.sub(r"\{(\w+)\}", lambda m: self.vars.get(m.group(1), m.group(0)), value)
-
-    async def get(self, suffix: str) -> httpx.Response:
-        return await self.api.call("GET", f"/sessions/{self.sid}{suffix}", token=self.token)
-
-    async def send(self, method: str, suffix: str, body: Any = None, ok=(200,)) -> Any:
-        r = await self.api.call(
-            method, f"/sessions/{self.sid}{suffix}", token=self.token, json_body=body
-        )
-        if r.status_code not in ok:
-            raise StepError(f"{method} {suffix} → {r.status_code} {r.text[:200]}")
-        return r.json()
-
-    async def my_documents(self) -> dict[str, Any]:
-        return (await self.get("/my-documents")).json()
-
-    async def received_doc(self, part_no: int) -> str:
-        found = [
-            d["doc_id"] for d in (await self.my_documents())["received"] if d["part_no"] == part_no
-        ]
-        if not found:
-            raise StepError(f"colleague part {part_no} not received at {self.last_at:.2f}")
-        return found[0]
-
-    async def do_board(self, items: list[dict[str, Any]], step) -> None:
-        for item in items:
-            body = {k: v for k, v in item.items() if k not in ("part_no", "expect")}
-            await self.send("PUT", f"/tasks/{item['part_no']}", body, ok=(item.get("expect", 200),))
-
-    async def do_say(self, say: dict[str, Any], step) -> None:
-        reply = None
-        if say.get("reply_to_doc"):
-            ref = say["reply_to_doc"]
-            reply = {"doc_id": await self.received_doc(ref["part_no"]), "version": ref["version"]}
-        content = self.sub(say["content"])
-        sent_at = time.time()
-        ack = await self.socket.send_message(say["channel"], content, reply)
-        self.b["says"].append(
+    async def restart(self) -> None:
+        before = {m["id"] for m in (await self.state())["messages"]}
+        started = time.time()
+        if self.stack is not None:
+            await self.stack.restart_api()
+        elif cmd := env().get("E2E_RESTART_CMD"):
+            subprocess.run(cmd, shell=True, check=True)  # noqa: S602 - 운영자가 정한 명령
+        else:
+            raise RuntimeError("restart needs a managed stack or E2E_RESTART_CMD")
+        ok = await self.reconnect()
+        after = {m["id"] for m in self.states.get("after_reconnect", {}).get("messages", [])}
+        self.restarts.append(
             {
-                "t_min": self.last_at,
-                "channel": say["channel"],
-                "content": content,
-                "run_id": ack and ack["run_id"],
-                "message_id": ack and ack["message_id"],
-                "sent_at": sent_at,
+                "reconnected": ok,
+                "seconds": round(time.time() - started, 1),
+                "ids_before": sorted(before),
+                "ids_after": sorted(after),
             }
         )
-        if ack is None:
-            raise StepError(f"no ack for {content[:30]}")
 
-    async def do_write(self, write: dict[str, Any], step) -> None:
-        part = write["part_no"]
-        if part == "final":
-            body = {"sections": write["content"]}
+    # ---- 시각·사건 기다리기 ---------------------------------------------------------------
+
+    async def wait_at(self, at: Any) -> None:
+        if isinstance(at, (int, float)):
+            await self.clock.wait_minute(self, float(at))
+        elif isinstance(at, str) and at.startswith("+"):
+            await self.clock.wait_minute(self, self.last_t + float(at[1:]))
+        elif at.startswith("card:"):
+            await self.wait_card(at.split(":", 1)[1])
+        elif at.startswith("phase:"):
+            await self.wait_phase(at.split(":", 1)[1])
+        elif at.startswith("msg:"):
+            await self.wait_message(at.split(":", 1)[1])
+        elif at == "ended":
+            await self.wait_ended()
         else:
-            body = {"content": self.sub(write["content"])}
-        before = None
-        if part != "final":
-            before = next(
-                d["revision"]
-                for d in (await self.my_documents())["documents"]
-                if d["part_no"] == part
-            )
-        saved = await self.send("PUT", f"/my-documents/{part}", body)
-        self.b["writes"].append({"part_no": part, "before": before, "after": saved["revision"]})
+            raise ValueError(f"unknown at {at!r}")
 
-    async def do_share(self, share: dict[str, Any], step) -> None:
-        since = len(self.socket.frames)
-        result = await self.send(
-            "POST", f"/my-documents/{share['part_no']}/share", {"channel": share["channel"]}
-        )
-        shared = await self.socket.wait_for(
-            lambda f: (
-                f["type"] == "document.shared"
-                and f["payload"].get("message_id") == result["message_id"]
-            ),
-            timeout=10,
+    async def wait_phase(self, phase: str) -> None:
+        order = catalog.PHASES
+        if self.ended() or self.phase_now() in (phase, "completed"):
+            return
+        while self.phase_now() != phase and not self.ended():
+            if order.index(self.phase_now() or "keyword") > order.index(phase):
+                return
+            since = len(self.sock.frames)
+            if self.clock.fake:
+                await self.clock.advance(self, to="deadline")
+            frame = await self.sock.wait_for(
+                lambda f: f["type"] in ("phase.changed", "session.ended"),
+                timeout=await self._phase_wait_seconds(),
+                since=since,
+            )
+            if frame is None:
+                self.step_errors.append(f"wait phase:{phase} timed out")
+                return
+
+    async def _phase_wait_seconds(self) -> float:
+        if self.clock.fake:
+            return 30.0
+        session = await self.internal()
+        deadline = parse_time(session["phase_deadline_at"])
+        return max((deadline - datetime.now(UTC)).total_seconds(), 0) + 30
+
+    async def wait_card(self, card_id: str) -> None:
+        card_phase = catalog.cards()[card_id]["stage_id"]
+        if card_id in await self.observed_cards():
+            return
+        if self.clock.fake and self.phase_now() == card_phase:
+            await self.clock.advance(self, to=f"card:{card_id}")
+        patience = CARD_WAIT_SECONDS
+        end = time.time() + (patience if self.clock.fake else 3600 * 2)
+        while time.time() < end:
+            if card_id in await self.observed_cards():
+                await self.settle()
+                return
+            phase = self.phase_now()
+            if phase == "completed" or (
+                phase and catalog.PHASES.index(phase) > catalog.PHASES.index(card_phase)
+            ):
+                self.unfired.add(card_id)  # 단계가 예정 시각 전에 끝남: 미발생
+                return
+            await asyncio.sleep(self.poll)
+        self.step_errors.append(f"wait card:{card_id} timed out")
+
+    async def wait_message(self, seat: str) -> None:
+        """직전 step을 시작한 뒤로 그 자리의 새 메시지가 올 때까지(이미 왔으면 바로)."""
+        since = self.step_marks[-1] if self.step_marks else 0
+        frame = await self.sock.wait_for(
+            lambda f: f["type"] == "message.new" and f["payload"]["sender"] == seat,
+            timeout=60,
             since=since,
         )
-        self.b["shares"].append({**share, **result, "ws_shared": shared is not None})
+        if frame is None:
+            self.step_errors.append(f"wait msg:{seat} timed out")
+        else:
+            await self.settle()
 
-    async def do_open(self, item: dict[str, Any], step) -> None:
-        doc_id = await self.received_doc(item["part_no"])
-        await self.send("POST", f"/documents/{doc_id}/open", {"version": item["version"]})
-        self.b["opens"].append({**item, "doc_id": doc_id})
-
-    async def do_import(self, items: list[dict[str, Any]], step) -> None:
-        for item in items:
-            if item["from"] == "colleague":
-                source = await self.received_doc(item["part_no"])
-            else:
-                docs = (await self.my_documents())["documents"]
-                source = next(d["doc_id"] for d in docs if d["part_no"] == item["part_no"])
-            section = await self.send(
-                "PUT",
-                f"/final/sections/{item['part_no']}/import",
-                {"source_doc_id": source, "version": item["version"]},
+    async def wait_ended(self) -> None:
+        end = time.time() + (60 if self.clock.fake else 3600 * 2)
+        while not self.ended() and time.time() < end:
+            since = len(self.sock.frames)
+            in_progress = (await self.internal())["status"] == "in_progress"
+            if self.clock.fake and in_progress:
+                await self.clock.advance(self, to="deadline")
+            await self.sock.wait_for(
+                lambda f: f["type"] in ("phase.changed", "session.ended"),
+                timeout=30 if self.clock.fake or not in_progress else 60,
+                since=since,
             )
-            self.b["imports"].append({**item, "source_doc_id": source, "section": section})
+        if not self.ended():
+            self.step_errors.append("wait ended timed out")
 
-    async def do_view(self, doc_id: str, step) -> None:
-        await self.send("GET", f"/documents/{doc_id}")
+    # ---- 진행 -----------------------------------------------------------------------------
 
-    async def do_assistant(self, prompt: str, step) -> None:
-        result = await self.send("POST", "/assistant", {"prompt": self.sub(prompt)})
-        if step.get("capture_as"):
-            self.vars[step["capture_as"]] = result["content"]
-        self.b.setdefault("assistant_calls", []).append(result["call_id"])
-
-    async def do_submit(self, _: Any, step) -> None:
-        since = len(self.socket.frames)
-        result = await self.send("POST", "/submit")
-        self.b["submit"] = {"t_min": self.last_at, "response": result, "frame_index": since}
-
-    async def do_restart(self, what: str, step) -> None:
-        """api 프로세스 재시작 → resume·state가 90초 안에 되는지 잰다(단언 5)."""
-        if self.stack is None:
-            raise StepError("restart needs --manage-stack")
-        before = await self.refresh_events()
-        await self.socket.close()
-        started = time.time()
-        await self.stack.restart_api()
-        restored = await self.reconnect(started)
-        self.b["restart"] = {"events_before": before["events"], "restored_seconds": restored}
-        if restored is None:
-            raise StepError("state not restored within 120s")
-
-    async def reconnect(self, started: float | None = None) -> float | None:
-        """api가 다시 뜬 뒤 resume(새 JWT) → /state → WS 재연결. /state까지 걸린 초(실패면 None)."""
-        started = started or time.time()
-        await self.socket.close()
-        while time.time() - started < 120:
-            with contextlib.suppress(httpx.TransportError):
-                r = await self.api.call("POST", f"/s/{self.made.invite_token}/resume")
-                if r.status_code == 200:
-                    self.token = r.json()["session_token"]
-                    if (await self.get("/state")).status_code == 200:
-                        restored = time.time() - started
-                        await self.socket.connect(self.target.ws_url(self.sid, self.token))
-                        return restored
-            await asyncio.sleep(1)
-        return None
-
-    async def do_disconnect(self, seconds: float, step) -> None:
-        """WS를 실제로 끊고 seconds 뒤 resume(새 JWT) → state → 재연결."""
-        await self.socket.close()
-        await self.clock.advance_to(await self.clock.now() + seconds / 60)
-        old = self.token
-        r = await self.api.call("POST", f"/s/{self.made.invite_token}/resume")
-        if r.status_code != 200:
-            raise StepError(f"resume → {r.status_code}")
-        self.token = r.json()["session_token"]
-        state = (await self.get("/state")).json()
-        self.b["resumes"].append(
-            {
-                "status": state["session"]["status"],
-                "deadline_at": state["session"]["deadline_at"],
-                "new_token": self.token != old,
-            }
-        )
-        await self.socket.connect(self.target.ws_url(self.sid, self.token))
-
-    async def do_inject(self, inject: dict[str, Any], step) -> None:
-        if self.faults is None:
-            raise StepError("inject needs the fault proxy (--manage-stack)")
-        self.faults.fail_tool(inject["tool"], inject["fail_times"])
-        self.b["injects"].append(inject)
-        if inject["tool"] == "send_document":
-            self.b["fault"] = {"name": "doc_fail"}  # 단언 6의 동료 문서 보내기 실패(C5)
-
-    # ───────────── 리포트·검토 ─────────────
-
-    async def admin(self, method: str, suffix: str, body: Any = None) -> httpx.Response:
-        return await self.api.call(
-            method,
-            f"/admin/sessions/{self.sid}{suffix}",
-            token=self.made.admin.token,
-            json_body=body,
-        )
-
-    async def wait_report(self, stage: str) -> dict[str, Any] | None:
-        started = time.time()
-        while time.time() - started < self.report_wait_seconds:
-            r = await self.admin("GET", "/report")
-            if r.status_code == 200 and r.json()["stage"] == stage:
-                return r.json()
-            session = await self.refresh_events()
-            if session["status"] == "failed":
-                if not self.regenerate_on_failure or self.b.get("regenerated") is not None:
-                    return None
-                self.b["regenerated"] = (await self.admin("POST", "/report/regenerate")).status_code
-            await asyncio.sleep(1)
-        return None
-
-    async def report_phase(self) -> None:
-        draft = await self.wait_report("draft")
-        self.b["report_draft"] = draft
-        if draft is None:
-            self.b["step_errors"].append({"at": "report", "error": "report_ready not reached"})
-            return
-        self.b["db"]["hash_draft"] = await self.report_hash()
-        item, value = pick_adjustment(draft)
-        review = self.b["review"]
-        review["item"] = {"id": item["id"], "auto": item["auto"], "value": value}
-        no_memo = {"adjustments": [{"item_id": item["id"], "value": value}], "reviewer_name": "e2e"}
-        review["no_memo_status"] = (await self.admin("POST", "/review", no_memo)).status_code
-        body = {
-            "adjustments": [{"item_id": item["id"], "value": value, "memo": "e2e 조정 메모"}],
-            "memo": "e2e 검토",
-            "reviewer_name": "e2e 검토자",
-        }
-        first = await self.admin("POST", "/review", body)
-        again = await self.admin("POST", "/review", body)
-        review["status"], review["again"] = first.status_code, again.status_code
-        review["again_body"] = again.json() if again.status_code == 200 else None
-        final = await self.wait_report("final")
-        self.b["report_final"] = final
-        if final is None:
-            self.b["step_errors"].append({"at": "report", "error": "final not reached"})
-            return
-        self.b["db"]["hash_final"] = await self.report_hash()
-        changed = {
-            **body,
-            "adjustments": [{**body["adjustments"][0], "value": item["auto"], "memo": "재조정"}],
-        }
-        review["readjust_status"] = (await self.admin("POST", "/review", changed)).status_code
-        note = {"text": "e2e 메모", "reviewer_name": "e2e 검토자"}
-        review["notes_status"] = (await self.admin("POST", "/report/notes", note)).status_code
-        self.b["record"] = (await self.admin("GET", "/record")).json()
-
-    # ───────────── 수집 ─────────────
-
-    async def internal(self, suffix: str) -> Any:
-        r = await self.api.call(
-            "GET", f"/internal/sessions/{self.sid}{suffix}", internal=True, log=False
-        )
-        r.raise_for_status()
-        return r.json()
-
-    async def collect(self) -> None:
-        b = self.b
-        b["session"] = await self.internal("")
-        b["scenario"] = b["session"]["position"]["scenario"]
-        messages, offset = [], 0
-        while True:
-            page = await self.internal(f"/messages?limit=500&offset={offset}")
-            messages += page
-            if len(page) < 500:
-                break
-            offset += 500
-        b["messages"] = messages
-        for key, suffix in (
-            ("observations", "/observations"),
-            ("docs", "/docs"),
-            ("task_events", "/task_events"),
-            ("doc_views", "/doc_views"),
-            ("assistant_calls_internal", "/assistant_calls"),
-            ("assistant_reuse", "/assistant_reuse"),
-            ("revisions", "/document_revisions"),
-        ):
-            b[key] = await self.internal(suffix)
-        r = await self.get("/state")
-        b["state_end"] = r.json() if r.status_code == 200 else None
-        await self.collect_db()
-
-    async def sql(self, query: str, **params: Any) -> list[dict[str, Any]]:
-        if not self.target.database_url:
-            return []
-        engine = create_async_engine(self.target.database_url)
+    async def run_step(self, index: int, step: dict[str, Any]) -> None:
+        mark = len(self.sock.frames)
         try:
-            async with engine.connect() as conn:
-                rows = await conn.execute(text(query), params)
-                return [dict(r._mapping) for r in rows]
-        finally:
-            await engine.dispose()
-
-    async def report_hash(self) -> str | None:
-        rows = await self.sql("SELECT content_hash FROM reports WHERE session_id = :s", s=self.sid)
-        return rows[0]["content_hash"] if rows else None
-
-    async def collect_db(self) -> None:
-        """API에 없는 측정값: 실행별 사용량, 메시지 seq, 문서 버전 run_id, 리포트 사용량."""
-        db = self.b["db"]
-        db["agent_runs"] = await self.sql(
-            "SELECT run_id::text, stimulus, status, usage FROM agent_runs WHERE session_id = :s "
-            "ORDER BY started_at",
-            s=self.sid,
-        )
-        db["message_keys"] = await self.sql(
-            "SELECT id::text, run_id::text, seq, event_id::text FROM messages "
-            "WHERE session_id = :s",
-            s=self.sid,
-        )
-        db["versions"] = await self.sql(
-            "SELECT v.doc_id::text, v.version, v.run_id::text FROM document_versions v "
-            "JOIN documents d ON d.id = v.doc_id WHERE d.session_id = :s",
-            s=self.sid,
-        )
-        rows = await self.sql("SELECT usage FROM reports WHERE session_id = :s", s=self.sid)
-        db["report_usage"] = rows[0]["usage"] if rows else None
+            await self.wait_at(step["at"])
+            if "say" in step:
+                await self.say(step["say"])
+            if "confirm" in step:
+                await self.confirm(step["confirm"])
+            if "material" in step:
+                await self.api.json(
+                    "GET", f"/sessions/{self.sid}/materials/{step['material']}", token=self.jwt
+                )
+            if "assistant" in step:
+                await self.api.json(
+                    "POST",
+                    f"/sessions/{self.sid}/assistant",
+                    token=self.jwt,
+                    json_body={"prompt": step["assistant"]},
+                )
+            if "proposal" in step:
+                await self.proposal(step["proposal"])
+            if "restart" in step:
+                await self.restart()
+            if "submit" in step:
+                await self.api.json(
+                    "POST", f"/sessions/{self.sid}/proposal/submit", token=self.jwt, json_body={}
+                )
+                await self.wait_ended()
+        except Exception as error:  # noqa: BLE001 - step 실패는 기록하고 다음으로
+            self.step_errors.append(f"step {index} {step.get('at')}: {error!r}")
+        self.step_marks.append(mark)
         with contextlib.suppress(Exception):
-            rows = await self.sql(
-                "SELECT count(*) AS n FROM checkpoints WHERE thread_id = :t", t=f"report:{self.sid}"
+            self.last_t = await self.t_min()
+
+    # ---- 리포트·검토 ----------------------------------------------------------------------
+
+    async def admin(self, method: str, path: str, **kwargs: Any) -> Any:
+        return await self.api.call(
+            method, f"/admin/sessions/{self.sid}{path}", token=self.admin_token, **kwargs
+        )
+
+    async def wait_report(self, stage: str = "draft") -> dict[str, Any] | None:
+        end = time.time() + self.report_wait
+        while time.time() < end:
+            response = await self.admin("GET", "/report", log=False)
+            if response.status_code == 200 and response.json().get("stage") == stage:
+                report = response.json()
+                self.transcript.add("report", stage=stage)
+                return report
+            if self.regenerate_on_failure and not self.regenerated:
+                entry = await self.api.json("GET", f"/s/{self.invite_token}", log=False)
+                if entry.get("failed_stage") == "report":
+                    self.failed_seen = True
+                    self.eval_before_regen = await self.internal("/evaluations")
+                    self.regenerated = True
+                    await self.admin("POST", "/report/regenerate")
+            await asyncio.sleep(self.poll)
+        return None
+
+    async def review(self, draft: dict[str, Any]) -> dict[str, Any]:
+        spec = self.script["review"]
+        adjust = spec["adjust"]
+        name = spec["reviewer_name"]
+        item = {
+            "dimension_id": adjust["dimension_id"],
+            "level": adjust["level"],
+            "memo": adjust["memo"],
+        }
+        out: dict[str, Any] = {"dimension_id": adjust["dimension_id"], "level": adjust["level"]}
+
+        async def post(adjustments: list[dict[str, Any]]) -> Any:
+            return await self.admin(
+                "POST", "/review", json_body={"adjustments": adjustments, "reviewer_name": name}
             )
-            db["report_checkpoints"] = rows[0]["n"] if rows else None
+
+        out["no_memo"] = (await post([{**item, "memo": ""}])).status_code
+        out["no_record_without_reason"] = (await post([{**item, "level": None}])).status_code
+        out["approve"] = (await post([item])).status_code
+        out["readjust"] = (await post([{**item, "level": 2}])).status_code
+        out["same_body"] = (await post([item])).status_code
+        notes = await self.admin(
+            "POST", "/report/notes", json_body={"text": "원문 확인함", "reviewer_name": name}
+        )
+        out["notes"] = notes.status_code
+        out["final"] = await self.wait_report("final")
+        out["merged"] = (await self.admin("GET", "/report", log=False)).json()
+        return out
+
+    # ---- 수집 -----------------------------------------------------------------------------
+
+    async def collect(self, draft: dict[str, Any] | None) -> dict[str, Any]:
+        async def get(path: str, **params: Any) -> Any:
+            try:
+                return await self.internal(path, **params)
+            except ApiError:
+                return None
+
+        record = await self.admin("GET", "/record", log=False)
+        return {
+            "name": self.script["name"],
+            "script": self.script,
+            "minutes": self.script.get("minutes", 15),
+            "session_id": self.sid,
+            "llm_fake": self.llm_fake,
+            "clock": "fake" if self.clock.fake else "real",
+            "entry": self.entry,
+            "started": self.started,
+            "states": {**self.states, "final": await self.state()},
+            "materials_before": self.materials_before,
+            "frames": self.sock.frames,
+            "segments": self.segments,
+            "advances": self.advances,
+            "typing_intervals": self.typing_intervals,
+            "step_errors": self.step_errors,
+            "unfired_cards": sorted(self.unfired),
+            "restarts": self.restarts,
+            "session": await get(""),
+            "messages": await get("/messages", limit=1000),
+            "observations": await get("/observations"),
+            "slots": await get("/slots"),
+            "facts": await get("/facts"),
+            "contributions": await get("/contributions"),
+            "rubric": await get("/rubric"),
+            "proposal": await get("/proposal"),
+            "assistant_calls": await get("/assistant_calls"),
+            "evaluations": await get("/evaluations"),
+            "debate_state": await get("/debate_state"),
+            "draft": draft,
+            "final": self.review_result.get("final"),
+            "report": self.review_result.get("merged"),
+            "review": {k: v for k, v in self.review_result.items() if k not in ("final", "merged")},
+            "record": record.json() if record.status_code == 200 else None,
+            "runs": await self.db.agent_runs(self.sid),
+            "costs": await self.db.costs(self.sid),
+            "intent_latency_ms": await self.db.intent_latency_ms(self.sid),
+            "regenerated": self.regenerated,
+            "failed_seen": self.failed_seen,
+            "eval_before_regen": self.eval_before_regen,
+            "langsmith_project": env().get("LANGCHAIN_PROJECT")
+            if env().get("LANGCHAIN_TRACING_V2") == "true"
+            else None,
+            "transcript": self.transcript.lines,
+        }
+
+    async def setup(self) -> None:
+        await self.admin_login()
+        await self.create_session()
+        await self.enter()
+
+    async def play(self) -> None:
+        """대본 step을 끝까지 돌리고 세션이 끝날 때까지 기다린다."""
+        for index, step in enumerate(self.script["steps"]):
+            await self.run_step(index, step)
+        if not self.ended():
+            await self.wait_ended()
+
+    async def finish(self) -> dict[str, Any]:
+        """리포트 대기 → (검토) → 수집. 소켓·클라이언트를 닫는다."""
+        try:
+            draft = await self.wait_report("draft")
+            if draft is None:
+                self.step_errors.append("report draft not ready")
+            elif "review" in self.script:
+                self.review_result = await self.review(draft)
+            return await self.collect(draft)
+        finally:
+            with contextlib.suppress(Exception):
+                await self.sock.close()
+            await self.api.aclose()
+            await self.db.close()
+
+    async def run(self) -> dict[str, Any]:
+        await self.setup()
+        await self.play()
+        return await self.finish()
 
 
-def pick_adjustment(report: dict[str, Any]) -> tuple[dict[str, Any], int | None]:
-    """2a: 자동 0인 항목을 1로. 없으면 1→0, 그것도 없으면 기록 없음→1."""
-    items = [i for e in report["rubric"]["elements"] for c in e["cards"] for i in c["items"]]
-    for auto, value in ((0, 1), (1, 0), (None, 1)):
-        for item in items:
-            if item["auto"] == auto:
-                return item, value
-    raise ValueError("report has no rubric items")
+def detect_llm_fake(live: bool) -> tuple[bool, str]:
+    """스택이 결정적 LLM 모드(LLM_FAKE=1)인지와 판별 근거. --live가 우선, 아니면 env의 LLM_FAKE."""
+    if live:
+        return False, "--live 옵션"
+    value = env().get("LLM_FAKE")
+    if value is None:
+        return True, "LLM_FAKE 없음(기본: 결정적 모드로 가정)"
+    return value.strip().lower() in ("1", "true", "yes"), f"env LLM_FAKE={value}"
 
 
-# ───────────── CLI ─────────────
-
-
-def target_from_env() -> Target:
-    values = make_session.env()
-    return Target(
-        public_url=values.get("E2E_PUBLIC_URL", "http://localhost:8000"),
-        internal_url=values.get("E2E_INTERNAL_URL", "http://localhost:8001"),
-        internal_token=values.get("INTERNAL_TOKEN", ""),
-        database_url=values.get("E2E_DATABASE_URL") or values.get("DATABASE_URL"),
-    )
-
-
-async def run_one(name: str, target: Target, out: Path, **kwargs: Any) -> dict[str, Any]:
+async def run_script(name: str, target: Target, out: Path, clock: str, live: bool) -> bool:
     script = scripts.load(name)
-    bundle = await Runner(script, target, **kwargs).run()
+    fake, source = detect_llm_fake(live)
+    bundle = await Runner(script, target, clock=clock, llm_fake=fake).run()
+    bundle["llm_mode_source"] = source
     bundle["results"] = asserts.check(bundle)
     records.write(bundle, out)
-    return bundle
-
-
-async def run_concurrent(target: Target, out: Path) -> list[dict[str, Any]]:
-    """단언 7: all_five×3, one_element, no_assistant를 함께."""
-    names = ["all_five", "all_five", "all_five", "one_element", "no_assistant"]
-    runners = [Runner(scripts.load(name), target, alias=f"e2e-{i}") for i, name in enumerate(names)]
-    bundles = await asyncio.gather(*(r.run() for r in runners))
-    for bundle in bundles:
-        bundle["results"] = asserts.check(bundle)
-    records.write_concurrent(bundles, out)
-    return bundles
+    return asserts.passed(bundle["results"])
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--script", default="all_five")
-    parser.add_argument("--concurrent", action="store_true")
-    parser.add_argument("--auth", action="store_true")
-    parser.add_argument("--faults", help="장애 주입 이름 또는 all")
-    parser.add_argument(
-        "--manage-stack", action="store_true", help="api·mcp·worker를 러너가 띄운다"
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument("--out", default=str(records.RECORDS))
+    parser.add_argument(
+        "--script", help="대본 이름 또는 경로 (all_five·timeout_all·honesty_claim·restart)"
+    )
+    parser.add_argument("--clock", choices=["real", "fake"], default="real")
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="실제 LLM 스택으로 강제(env LLM_FAKE보다 우선, 수준 값 기대를 건너뜀)",
+    )
+    parser.add_argument("--auth", action="store_true", help="단언 8 인증 경계")
+    parser.add_argument("--faults", help="장애 주입: dlq, llm_timeout, all (러너가 앱을 띄움)")
+    parser.add_argument("--out", type=Path, default=records.RECORDS)
     args = parser.parse_args()
-    target = target_from_env()
-    out = Path(args.out)
+    target = Target.from_env()
+    if args.auth:
+        from e2e import auth
 
-    async def go() -> bool:
-        if args.auth:
-            from e2e import auth
+        ok = asyncio.run(auth.run(target, args.out))
+    elif args.faults:
+        from e2e import faults
 
-            return await auth.run(target, out)
-        if args.faults:
-            from e2e import stack as stacks
-
-            return await stacks.run_faults(args.faults, out)
-        if args.manage_stack:
-            from e2e import stack as stacks
-
-            return await stacks.run_managed(args.script, out)
-        if args.concurrent:
-            bundles = await run_concurrent(target, out)
-            return all(asserts.passed(b["results"], only=("1", "2")) for b in bundles)
-        bundle = await run_one(args.script, target, out)
-        return asserts.passed(bundle["results"])
-
-    sys.exit(0 if asyncio.run(go()) else 1)
+        ok = asyncio.run(faults.run_faults(args.faults, args.out))
+    elif args.script:
+        ok = asyncio.run(run_script(args.script, target, args.out, args.clock, args.live))
+    else:
+        parser.error("--script, --auth, --faults 중 하나가 필요하다")
+    sys.exit(0 if ok else 1)
 
 
 if __name__ == "__main__":
+    os.environ.setdefault("PYTHONUNBUFFERED", "1")
     main()

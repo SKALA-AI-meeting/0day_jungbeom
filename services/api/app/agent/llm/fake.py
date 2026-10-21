@@ -1,19 +1,31 @@
-"""테스트용 LLM. 스크립트의 응답을 차례로 돌려주고 받은 입력을 기록한다.
+"""테스트용 FakeLLM과 결정적 LLM 모드(LLM_FAKE=1)의 DeterministicLLM.
 
-스크립트 한 단계: 문자열(본문), AIMessage(도구 호출 등), 예외(그 시도를 실패시킴),
-또는 입력 메시지를 받아 그중 하나를 돌려주는 함수. 스크립트가 끝나면 default를 돌려준다.
+FakeLLM: 스크립트의 응답을 차례로 돌려주고 받은 입력을 기록한다.
+
+스크립트 한 단계: 문자열(본문), dict(JSON 본문으로 직렬화), AIMessage(도구 호출 등),
+예외(그 시도를 실패시킴), 또는 입력 메시지를 받아 그중 하나를 돌려주는 함수.
+스크립트가 끝나면 default를 돌려준다.
 """
 
+import json
+import re
 import uuid
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any
 
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
+from app.agent.catalog import attach
 from app.agent.llm.base import BaseLLM
 
-Step = str | AIMessage | BaseException | Callable[[list[BaseMessage]], "str | AIMessage"]
+Step = (
+    str
+    | dict
+    | AIMessage
+    | BaseException
+    | Callable[[list[BaseMessage]], "str | dict | AIMessage | BaseException"]
+)
 
 
 @dataclass
@@ -22,6 +34,8 @@ class FakeCall:
     tools: list[dict[str, Any]] | None
     json_mode: bool
     config: dict[str, Any]
+    temperature: float = 0.0
+    schema: dict[str, Any] | None = None
 
     @property
     def text(self) -> str:
@@ -38,10 +52,16 @@ def tool_call(name: str, **args: Any) -> AIMessage:
 class FakeLLM(BaseLLM):
     model = "fake"
 
-    def __init__(self, script: Iterable[Step] = (), default: str = "네, 확인했어요.") -> None:
+    def __init__(
+        self,
+        script: Iterable[Step] = (),
+        default: str | dict = "네, 확인했어요.",
+        temperature: float = 0.7,
+    ) -> None:
         self.script: list[Step] = list(script)
         self.default = default
         self.retry_delays = (0.0, 0.0)
+        self.temperature = temperature
         self.calls: list[FakeCall] = []
 
     async def _call(
@@ -52,13 +72,16 @@ class FakeLLM(BaseLLM):
         json_mode: bool,
         temperature: float,
         config: dict[str, Any],
+        schema: dict[str, Any] | None = None,
     ) -> AIMessage:
-        self.calls.append(FakeCall(messages, tools, json_mode, config))
+        self.calls.append(FakeCall(messages, tools, json_mode, config, temperature, schema))
         step = self.script.pop(0) if self.script else self.default
         if callable(step) and not isinstance(step, BaseException):
             step = step(messages)
         if isinstance(step, BaseException):
             raise step
+        if isinstance(step, dict):
+            step = json.dumps(step, ensure_ascii=False)
         message = AIMessage(content=step) if isinstance(step, str) else step
         tokens_in = sum(len(str(m.content)) for m in messages) // 2
         message.usage_metadata = {
@@ -67,3 +90,131 @@ class FakeLLM(BaseLLM):
             "total_tokens": tokens_in + len(str(message.content)) // 2,
         }
         return message
+
+
+# ---- 결정적 LLM 모드(LLM_FAKE=1) -------------------------------------------------------------
+# docs/agent/design.md "결정적 LLM 모드". 노드 코드는 모드를 모르고, 역할마다 입력에서 필요한
+# 값만 읽어
+# 같은 입력에 같은 고정 응답을 낸다. 네트워크 호출·사용량(토큰·비용)은 0이다.
+_PLAN = re.compile(r"\[내 입장 계획\]\n이번 단계에서 미는 안: (.+) \((\S+)\)\.")
+_PURPOSE = re.compile(r"\[이번 목적\]\n(\w+):")
+_CANDIDATE = re.compile(r"- 지원자: (.+)님")
+_OPPOSE = ("아니", "반대", "글쎄")
+_AGREE = ("좋아요", "동의", "찬성")
+NEUTRAL_LINE = "자료부터 같이 보고 얘기해요."
+TURN_SEAT = (
+    "p3"  # 규칙 결과 0명일 때 우선순위 첫 자리(critic > quiet > stubborn, quiet는 지명 전 제외)
+)
+
+
+class DeterministicLLM(BaseLLM):
+    model = "fake"
+
+    def __init__(self, role: str, temperature: float = 0.0, retries: int = 0) -> None:
+        self.role = role
+        self.temperature = temperature
+        # 역할 표와 같은 시도 횟수, 대기 없음(LLM_FAULT 주입이 실 모델과 같은 재시도·폴백을 타게)
+        self.retry_delays = (0.0,) * retries
+
+    async def _call(
+        self,
+        messages: list[BaseMessage],
+        *,
+        tools: list[dict[str, Any]] | None,
+        json_mode: bool,
+        temperature: float,
+        config: dict[str, Any],
+        schema: dict[str, Any] | None = None,
+    ) -> AIMessage:
+        body = {
+            "intent": _intent,
+            "persona": _persona,
+            "turn": _turn,
+            "assistant": _assistant,
+        }.get(self.role, lambda m, t: "{}")(messages, tools)
+        message = body if isinstance(body, AIMessage) else AIMessage(content=body)
+        message.usage_metadata = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        return message
+
+
+def _last_human(messages: list[BaseMessage]) -> str:
+    return next((str(m.content) for m in reversed(messages) if isinstance(m, HumanMessage)), "")
+
+
+def _intent(messages: list[BaseMessage], _tools: Any) -> str:
+    """키워드 규칙: 반대어 → oppose, 동의어 → agree, 안 라벨 → propose, 물음표 → question."""
+    data = json.loads(_last_human(messages))
+    text = str(data.get("메시지") or "")
+    labels: list[tuple[str, str, str]] = [
+        (o["label"], "target_option_id", o["option_id"]) for o in data.get("나온 안") or []
+    ]
+    labels += [
+        (c["label"], "scenario_option_key", c["scenario_option_key"])
+        for c in data.get("카탈로그 안") or []
+    ]
+    hit = next((x for x in sorted(labels, key=lambda x: -len(x[0])) if x[0] in text), None)
+    if any(w in text for w in _OPPOSE):
+        intent = "oppose"
+    elif any(w in text for w in _AGREE):
+        intent = "agree"
+    elif hit:
+        intent = "propose"
+    elif "?" in text:
+        intent = "question"
+    else:
+        intent = "other"
+    addressed = [
+        p["seat"]
+        for p in data.get("참여자") or []
+        if p.get("name") and (p["name"] in text or p["name"][1:] in text)
+    ]
+    out: dict[str, Any] = {
+        "intent": intent,
+        "target_option_id": None,
+        "scenario_option_key": None,
+        "new_option_label": None,
+        "confidence": "low",
+        "addressed_to": addressed,
+    }
+    if hit and intent in ("propose", "agree", "oppose"):
+        out[hit[1]] = hit[2]
+        out["confidence"] = "high"
+    elif intent == "question":
+        out["confidence"] = "high"
+    return json.dumps(out, ensure_ascii=False)
+
+
+def _persona(messages: list[BaseMessage], _tools: Any) -> str:
+    """계획 안을 지지하는 고정 문장. 입장을 밝히지 않는 단계면 중립 문장, 초대면 초대 골격."""
+    text = _last_human(messages)
+    purpose = _PURPOSE.search(text)
+    candidate = _CANDIDATE.search(text)
+    plan = _PLAN.search(text)
+    stance = None
+    if purpose and purpose.group(1) == "invite":
+        content = f"{candidate.group(1) if candidate else '지원자'}님은 어떻게 생각하세요?"
+    elif plan:
+        content = f"저는 {attach(plan.group(1), '이')} 좋다고 봐요."
+        stance = {"option_id": plan.group(2), "stance": "support"}
+    else:
+        content = NEUTRAL_LINE
+    return json.dumps({"content": content, "proposes": None, "stance": stance}, ensure_ascii=False)
+
+
+def _turn(_messages: list[BaseMessage], _tools: Any) -> str:
+    speakers = [{"seat": TURN_SEAT, "purpose": "respond", "option_id": None}]
+    return json.dumps({"speakers": speakers, "reason": "fake"}, ensure_ascii=False)
+
+
+def _assistant(messages: list[BaseMessage], tools: list[dict[str, Any]] | None) -> AIMessage | str:
+    """도구 1회(search_materials 질문 그대로) 뒤 첫 결과 제목을 인용한 고정 문장."""
+    results = [m for m in messages if isinstance(m, ToolMessage)]
+    if not results and tools:
+        return tool_call("search_materials", query=_last_human(messages))
+    try:
+        data = json.loads(str(results[-1].content)).get("data") if results else None
+    except ValueError:
+        data = None
+    if isinstance(data, list) and data and isinstance(data[0], dict):
+        return f"{data[0].get('title')} 자료를 참고해 보세요."
+    return "관련 자료를 찾지 못했어요."
