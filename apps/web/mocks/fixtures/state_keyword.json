@@ -15,6 +15,24 @@
     "office_end": "10:00",
     "completed_at": null
   },
+  "keyword_options": [
+    {
+      "option_key": "water",
+      "label": "물"
+    },
+    {
+      "option_key": "fire",
+      "label": "불"
+    },
+    {
+      "option_key": "tree",
+      "label": "나무"
+    },
+    {
+      "option_key": "wind",
+      "label": "바람"
+    }
+  ],
   "phases": [
     {
       "phase": "keyword",

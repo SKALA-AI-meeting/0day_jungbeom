@@ -1,100 +1,38 @@
-"""시나리오: 미션 카탈로그 로드(버전 해시), 채용 건 조립, 세션 시작 시 이벤트·공개 예약 펼치기.
+"""미션 카탈로그 로드, 채용 건 조립(positions.scenario), 자료 원문 시드, 시나리오 해석 함수.
 
-규칙은 docs/common/scenario-model.md가 정본이다. 카탈로그는 `scenarios/missions/<mission_id>/`
-(mission.yaml·cards.yaml·persona.yaml·documents/·prompts/)이다. 조립 결과(positions.scenario)는
-카드·문서·프롬프트 본문을 복사해 고정하므로, 이후 카탈로그가 바뀌어도 진행 중 채용 건과 실행 중
-그래프는 영향을 받지 않는다.
+규칙 정본은 docs/common/scenario-model.md 6장. MVP는 5요소·카드 6장·고정 자리 3개(p1 고집형 강한결,
+p2 소극형 윤하람, p3 비판형 서지안)이고 요소 선택은 없다(R2). 조립 결과는 카탈로그 본문을 복사해
+고정하므로 이후 카탈로그가 바뀌어도 진행 중 채용 건은 자기 복사본만 본다.
 """
 
 import importlib.util
-import uuid
 from datetime import datetime, timedelta
+from fractions import Fraction
 from functools import cache
 from pathlib import Path
 from typing import Any
 
 import yaml
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Material
 
 DEFAULT_MISSION = "debate"
-
-# 같은 at_min에서의 실행 순서: 흐름 카드 → 요소 카드 → 붙는 카드(collab_disagree) → 결 메시지
-_RANK_FLOW, _RANK_ELEMENT, _RANK_ATTACHED, _RANK_TEXTURE = range(4)
-
-# 카드 정의에서 scenario로 복사하는 내용 필드(시점·구조 필드는 조립에서 따로 다룬다)
-_CONTENT_FIELDS = (
-    "name",
-    "actor",
-    "channel",
-    "brief",
-    "brief_note",
-    "text",
-    "sender_label",
-    "recipient_label",
-    "release_text",
-    "system_text",
-    "after_timeout_note",
-    "colleague_greeting",
-    "sends_document",
-    "labels",
-    "label_texts",
-    "aux",
-    "evidence_types",
-    "metrics",
-    "aux_facts",
-    "finalize_metrics",
-    "rubric",
-    "fixed_opinions",
-    "target_rule",
-    "change_targets",
-    "requires_docs",
-    "facts_note",
-    "situation",
-    "debrief",
-)
-# mission.yaml에서 scenario로 그대로 복사하는 필드
-_MISSION_FIELDS = (
-    "name",
-    "company",
-    "candidate_role",
-    "candidate_title",
-    "parts",
-    "default_division",
-    "division_min",
-    "division_min_messages",
-    "debrief_texts",
-    "final_template",
-    "kickoff_assumption",
-)
-
-
-class InvalidElements(ValueError):
-    """elements가 미션의 요소 id가 아니거나, 중복이거나, 1~5개가 아님(422 invalid_elements)."""
+PHASES = ("keyword", "problem", "solution", "proposal")
+DEBATE_PHASES = ("keyword", "problem", "solution")
+# 아바타 파일 이름에 들어가면 안 되는 유형 이름(C8: 지원자 응답에 유형 비노출)
+PERSONA_TYPES = ("stubborn", "quiet", "critic", "agreeable", "divergent")
+TYPE_LABELS = ("고집형", "소극형", "비판형", "동조형", "발산형")
 
 
 class InvalidMission(ValueError):
-    """mission_id가 카탈로그에 없음(422 invalid_mission)."""
+    """카탈로그에 없는 mission_id 또는 조립 규칙 위반."""
 
 
-def _read_yaml(path: Path) -> dict[str, Any]:
+def _yaml(path: Path) -> Any:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
-
-
-def load_catalog(scenarios_dir: Path, mission_id: str = DEFAULT_MISSION) -> dict[str, Any]:
-    """미션 폴더를 읽는다. {mission, cards, persona}."""
-    root = scenarios_dir / "missions" / mission_id
-    if not (root / "mission.yaml").is_file():
-        raise InvalidMission(f"unknown mission: {mission_id}")
-    return {
-        "mission": _read_yaml(root / "mission.yaml"),
-        "cards": _read_yaml(root / "cards.yaml"),
-        "persona": _read_yaml(root / "persona.yaml"),
-    }
-
-
-def list_missions(scenarios_dir: Path) -> list[str]:
-    """mission.yaml이 있는 미션 폴더 id들(관리자 카탈로그의 missions)."""
-    root = scenarios_dir / "missions"
-    return sorted(p.name for p in root.iterdir() if (p / "mission.yaml").is_file())
 
 
 @cache
@@ -106,224 +44,257 @@ def _version_module(scenarios_dir: Path):
 
 
 def catalog_version(scenarios_dir: Path, mission_id: str = DEFAULT_MISSION) -> str:
-    """scenarios/version.py의 catalog_version()을 그대로 쓴다(rag-mcp와 같은 함수)."""
+    """scenarios/version.py와 같은 함수(rag-mcp 색인 키와 일치)."""
     return _version_module(scenarios_dir.resolve()).catalog_version(mission_id, scenarios_dir)
 
 
-def validate_elements(catalog: dict[str, Any], elements: list[str]) -> None:
-    known = [e["id"] for e in catalog["cards"]["elements"]]
-    if not 1 <= len(elements) <= len(known):
-        raise InvalidElements(f"elements must have 1 to {len(known)} items")
-    if len(set(elements)) != len(elements):
-        raise InvalidElements("duplicate elements")
-    unknown = [e for e in elements if e not in known]
-    if unknown:
-        raise InvalidElements(f"unknown elements: {unknown}")
+def mission_root(scenarios_dir: Path, mission_id: str) -> Path:
+    root = scenarios_dir / "missions" / mission_id
+    if not (root / "mission.yaml").is_file():
+        raise InvalidMission(f"unknown mission: {mission_id}")
+    return root
 
 
-def _minutes(value: float) -> float:
-    # 카탈로그 비율이 소수 넷째 자리(0.0833)라 L/12가 9.996이 된다. 0.01분 단위로 맞춘다.
-    return round(value, 2)
+def _scale(minutes: float, session_minutes: int, floor: float = 0.0) -> float:
+    return max(round(minutes * session_minutes / 60, 2), floor)
 
 
-def _clock(at_min: float) -> str:
-    total = int(round(at_min))
-    return f"{total // 60:02d}:{total % 60:02d}"
-
-
-def middle_times(session_minutes: int, n: int, timing: dict[str, Any]) -> list[float]:
-    """중간 카드 n개의 시점. L·start + i·(L·span)/n (n==1이면 L·start)."""
-    start = session_minutes * timing["middle"]["start_fraction"]
-    span = session_minutes * timing["middle"]["span_fraction"]
-    return [_minutes(start + i * span / n) for i in range(n)]
-
-
-def _content(card_def: dict[str, Any]) -> dict[str, Any]:
-    return {k: card_def[k] for k in _CONTENT_FIELDS if k in card_def}
+def _fraction_min(value: str, session_minutes: int) -> float:
+    return round(float(Fraction(value) * session_minutes), 2)
 
 
 def assemble(
-    catalog: dict[str, Any],
-    elements: list[str],
-    session_minutes: int,
-    documents: dict[str, str],
-    prompts: dict[str, str],
+    scenarios_dir: Path, mission_id: str = DEFAULT_MISSION, session_minutes: int = 60
 ) -> dict[str, Any]:
-    """positions.scenario를 만든다. documents는 doc_id→본문, prompts는 상대 경로→본문."""
-    validate_elements(catalog, elements)
-    mission, cards_def = catalog["mission"], catalog["cards"]
-    timing = cards_def["timing"]
-    L = session_minutes
-    selected = set(elements)
-    element_defs = cards_def["elements"]
-    element_of = {card["id"]: e["id"] for e in element_defs for card in e["cards"]}
-    card_defs = {card["id"]: card for e in element_defs for card in e["cards"]}
-    chosen = {cid: c for cid, c in card_defs.items() if element_of[cid] in selected}
+    """positions.scenario 한 벌. 시각 값은 session_minutes 기준으로 환산해 둔다."""
+    root = mission_root(scenarios_dir, mission_id)
+    mission = _yaml(root / "mission.yaml")
+    personas = _yaml(root / "personas.yaml")
+    cards = _yaml(root / "cards.yaml")
+    keywords = _yaml(root / "keywords.yaml")
+    rubric = _yaml(root / "rubric.yaml")
+    phrases = _yaml(root / "prompts" / "fixed_phrases.yaml")
+    prompts = {
+        p.relative_to(root / "prompts").as_posix(): p.read_text(encoding="utf-8")
+        for p in sorted((root / "prompts").rglob("*"))
+        if p.is_file() and "fixtures" not in p.parts
+    }
 
-    cards: list[tuple[float, int, dict[str, Any]]] = []
-
-    def element_card(card_def: dict[str, Any], at: float) -> dict[str, Any]:
-        card = {"card_id": card_def["id"], "element": element_of[card_def["id"]], "at_min": at}
-        card.update(_content(card_def))
-        return card
-
-    # 고정 흐름 카드. 승격 대상(flow_card)이 선택됐으면 같은 시각에 요소 카드 하나만 둔다.
-    promoted = {c["flow_card"]: c for c in chosen.values() if c.get("flow_card")}
-    flow_at: dict[str, float] = {}
-    for flow in cards_def["flow_cards"]:
-        at = _minutes(timing["fixed"][flow["id"]] * L)
-        flow_at[flow["id"]] = at
-        if flow["id"] in promoted:
-            card = element_card(promoted[flow["id"]], at)
-            rank = _RANK_ELEMENT
-        else:
-            card = {"card_id": flow["id"], "at_min": at, "flow": True}
-            card.update(_content(flow))
-            rank = _RANK_FLOW
-        if card.get("card_id") == "planning_division":
-            card["window_start_min"] = 0
-        if flow.get("or_on_submit"):
-            card["or_on_submit"] = True
-        cards.append((at, rank, card))
-
-    # 중간 카드: middle_order 중 선택된 것만 L/4 + i·(L/2)/N
-    middle = [cid for cid in timing["middle_order"] if cid in chosen]
-    delayed: dict[str, float] = {}
-    for cid, at in zip(middle, middle_times(L, len(middle), timing), strict=True):
-        card = element_card(chosen[cid], at)
-        effects = chosen[cid].get("effects") or {}
-        if "release_document" in effects:
-            release_at = _minutes(at + effects["delay_fraction"] * L)
-            delayed[effects["release_document"]] = release_at
-            card["effects"] = {
-                "release_document": effects["release_document"],
-                "release_at_min": release_at,
+    seats = []
+    for persona in sorted(personas["session"], key=lambda p: p["seat"]):
+        avatar = persona["avatar"]
+        lowered = avatar.lower()
+        if any(t in lowered for t in PERSONA_TYPES) or any(t in avatar for t in TYPE_LABELS):
+            raise InvalidMission(f"avatar file name reveals persona type: {avatar}")
+        if not (root / personas.get("avatar_dir", "assets/avatars") / avatar).is_file():
+            raise InvalidMission(f"avatar file missing: {avatar}")
+        seats.append(
+            {
+                "seat": persona["seat"],
+                "persona_type": persona["id"],
+                "name": persona["name"],
+                "avatar": avatar,
+                "persona_description": persona.get("persona_description", ""),
             }
-        cards.append((at, _RANK_ELEMENT, card))
+        )
+    if [s["seat"] for s in seats] != ["p1", "p2", "p3"]:
+        raise InvalidMission("seats must be p1, p2, p3")
 
-    # 붙는 카드(collab_disagree): 붙는 흐름 카드와 같은 시각의 별도 행
-    for card_def in chosen.values():
-        if card_def.get("attach_to"):
-            at = flow_at[card_def["attach_to"]]
-            card = element_card(card_def, at)
-            card["attach_to"] = card_def["attach_to"]
-            cards.append((at, _RANK_ATTACHED, card))
-
-    # texture: 지정 요소가 미선택일 때만(midpoint_draft는 계획성 미선택일 때 L/2)
-    for texture in cards_def.get("texture", []):
-        if texture.get("only_when_unselected") in selected:
-            continue
-        at = _minutes(texture["at_fraction"] * L)
-        card = {"card_id": texture["id"], "at_min": at, "texture": True}
-        card.update(_content(texture))
-        cards.append((at, _RANK_TEXTURE, card))
-
-    cards.sort(key=lambda item: (item[0], item[1]))
-    ordered = [card for _, _, card in cards]
-    delay_card = next((c for c in ordered if c["card_id"] == "responsibility_delay"), None)
-
-    return {
-        "mission_id": mission["id"],
-        "session_minutes": L,
-        "elements": [e["id"] for e in element_defs if e["id"] in selected],
-        "element_meta": [
-            {k: e[k] for k in ("id", "name", "meaning", "how_we_see", "if_unselected")}
-            for e in element_defs
-            if e["id"] in selected
-        ],
-        "cards": ordered,
-        **{k: mission[k] for k in _MISSION_FIELDS if k in mission},
-        "vars": {
-            # 킥오프의 {interview_expected_time}: 지연 카드 시각, 미선택이면 시작 시 공유
-            "interview_expected_time": (
-                _clock(delay_card["at_min"]) if delay_card else "시작 시 공유됨"
-            ),
-            "release_time": (
-                _clock(delay_card["effects"]["release_at_min"]) if delay_card else None
-            ),
-            "final_length": mission["final_template"]["length"],
-        },
-        "releases_at_start": [d["id"] for d in mission["documents"] if d["id"] not in delayed],
-        "documents": [
-            {"doc_id": d["id"], "title": d["title"], "content": documents[d["id"]]}
-            for d in mission["documents"]
-        ],
-        "persona": catalog["persona"],
-        "prompts": prompts,
-        "rubric_rules": cards_def["rubric_rules"],
-        "common_labels": cards_def["common_labels"],
-        "common_aux": cards_def.get("common_aux", []),
-    }
-
-
-def read_documents(scenarios_dir: Path, catalog: dict[str, Any]) -> dict[str, str]:
-    root = scenarios_dir / "missions" / catalog["mission"]["id"] / "documents"
-    return {
-        d["id"]: (root / d["file"]).read_text(encoding="utf-8")
-        for d in catalog["mission"]["documents"]
-    }
-
-
-def read_prompts(scenarios_dir: Path, mission_id: str) -> dict[str, str]:
-    root = scenarios_dir / "missions" / mission_id / "prompts"
-    if not root.is_dir():
-        return {}
-    return {
-        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
-        for p in sorted(root.rglob("*"))
-        if p.is_file()
-    }
-
-
-def build_scenario(
-    scenarios_dir: Path,
-    elements: list[str],
-    session_minutes: int = 120,
-    mission_id: str = DEFAULT_MISSION,
-) -> tuple[dict[str, Any], str]:
-    """채용 건 생성 시 한 번 호출한다. (scenario, catalog_version)."""
-    catalog = load_catalog(scenarios_dir, mission_id)
-    scenario = assemble(
-        catalog,
-        elements,
-        session_minutes,
-        read_documents(scenarios_dir, catalog),
-        read_prompts(scenarios_dir, mission_id),
-    )
-    return scenario, catalog_version(scenarios_dir, mission_id)
-
-
-def expand(
-    scenario: dict[str, Any], session_id: uuid.UUID, started_at: datetime
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """세션 시작 시 session_events 행과 document_releases 행을 만든다(collab_disagree도 별도 행)."""
-
-    def at(minutes: float) -> datetime:
-        return started_at + timedelta(minutes=minutes)
-
-    events = [
-        {
-            "session_id": session_id,
-            "card_id": card["card_id"],
-            "element": card.get("element"),
-            "due_at": at(card["at_min"]),
-            "texture": bool(card.get("texture")),
-            "or_on_submit": bool(card.get("or_on_submit")),
+    floor = float(mission.get("card_offset_floor_min", 0.34))
+    stages, cumulative = [], 0.0
+    for stage in mission["stages"]:
+        cumulative += stage["budget_min"]
+        stages.append(
+            {
+                "stage_id": stage["stage_id"],
+                "name": stage["name"],
+                "budget_min": round(stage["budget_min"] * session_minutes / 60, 2),
+                "deadline_min": round(cumulative * session_minutes / 60, 2),
+                "slot": stage["slot"],
+            }
+        )
+    scenario_cards = []
+    for card in cards["cards"]:
+        offset = card.get("offset_min")
+        scenario_cards.append(
+            {
+                **{k: v for k, v in card.items() if k not in ("offset_min", "offset_fraction")},
+                "offset_min": None if offset is None else _scale(offset, session_minutes, floor),
+            }
+        )
+    kw_map = {}
+    for kw in keywords["keywords"]:
+        kw_map[kw["key"]] = {
+            "label": kw["label"],
+            "problems": [{"key": p["key"], "label": p["label"]} for p in kw["problems"]],
+            "solutions": [{"key": s["key"], "label": s["label"]} for s in kw["solutions"]],
+            "materials": [
+                {"material_id": m["material_id"], "title": m["title"]} for m in kw["materials"]
+            ],
         }
-        for card in scenario["cards"]
-    ]
-    releases = [
-        {"session_id": session_id, "doc_id": doc_id, "release_at": started_at}
-        for doc_id in scenario["releases_at_start"]
-    ]
-    for card in scenario["cards"]:
-        effect = card.get("effects") or {}
-        if "release_document" in effect:
-            releases.append(
+    invite = mission["silence_invite"]
+    return {
+        "mission_id": mission_id,
+        "catalog_version": catalog_version(scenarios_dir, mission_id),
+        "session_minutes": session_minutes,
+        "name": mission["name"],
+        "elements": [e["id"] for e in mission["elements"]],
+        "element_info": mission["elements"],
+        "seats": seats,
+        "personas": personas["session"],
+        "common_must_not": personas.get("common_must_not", []),
+        "stages": stages,
+        "cards": scenario_cards,
+        "keywords": kw_map,
+        "keyword_order": [kw["key"] for kw in keywords["keywords"]],
+        "default_keyword": mission["default_keyword"],
+        "lead_option": mission["lead_option"],
+        "silence_inviter": invite["inviter"],
+        "silence_invite": {
+            "idle_min": _fraction_min(invite["idle_fraction"], session_minutes),
+            "no_opinion_after_budget_ratio": invite["no_opinion_after_budget_ratio"],
+            "opinion_intents": invite["opinion_intents"],
+        },
+        "time_warning_min": _fraction_min(
+            mission["timeout"]["warning_before_fraction"], session_minutes
+        ),
+        "fill_priority": mission["consensus_fill"]["filler_priority"],
+        "timeout_announcer_priority": mission["timeout"]["announcer_priority"],
+        "timeout_stage_default": mission["timeout"]["stage_default"],
+        "phrases": phrases,
+        "proposal_template": [f["field"] for f in mission["proposal_template"]],
+        "assistant": mission["assistant"],
+        "admin_catalog": mission["admin_catalog"],
+        "debrief": mission["debrief"],
+        "office_clock": mission["office_clock"],
+        "rubric": rubric,
+        "prompts": prompts,
+    }
+
+
+async def seed_materials(
+    db: AsyncSession, scenarios_dir: Path, mission_id: str, version: str
+) -> int:
+    """카탈로그 자료 원문을 catalog_version으로 materials에 넣는다(있으면 건너뜀, R5-18)."""
+    exists = await db.scalar(
+        select(Material.material_id).where(Material.catalog_version == version)
+    )
+    if exists:
+        return 0
+    root = mission_root(scenarios_dir, mission_id)
+    rows = []
+    for kw in _yaml(root / "keywords.yaml")["keywords"]:
+        for m in kw["materials"]:
+            rows.append(
                 {
-                    "session_id": session_id,
-                    "doc_id": effect["release_document"],
-                    "release_at": at(effect["release_at_min"]),
+                    "catalog_version": version,
+                    "material_id": m["material_id"],
+                    "keyword_key": kw["key"],
+                    "title": m["title"],
+                    "content": (root / "materials" / m["file"]).read_text(encoding="utf-8"),
                 }
             )
-    return events, releases
+    await db.execute(insert(Material).values(rows).on_conflict_do_nothing())
+    return len(rows)
+
+
+# ---- 시나리오 해석 ------------------------------------------------------------------------------
+
+
+def avatar_url(scenario: dict[str, Any], seat: dict[str, Any]) -> str:
+    return f"/assets/missions/{scenario['mission_id']}/avatars/{seat['avatar']}"
+
+
+def seat_names(scenario: dict[str, Any]) -> dict[str, str]:
+    return {s["seat"]: s["name"] for s in scenario["seats"]}
+
+
+def seat_of_type(scenario: dict[str, Any], persona_type: str) -> str:
+    for seat in scenario["seats"]:
+        if seat["persona_type"] == persona_type:
+            return seat["seat"]
+    raise KeyError(persona_type)
+
+
+def stage(scenario: dict[str, Any], phase: str) -> dict[str, Any]:
+    return next(s for s in scenario["stages"] if s["stage_id"] == phase)
+
+
+def phase_deadline(scenario: dict[str, Any], started_at: datetime, phase: str) -> datetime:
+    """누적 고정 마감: started_at + (예산 1..k의 합) × L/60."""
+    return started_at + timedelta(minutes=stage(scenario, phase)["deadline_min"])
+
+
+def next_phase(phase: str) -> str:
+    index = PHASES.index(phase)
+    return PHASES[index + 1] if index + 1 < len(PHASES) else "completed"
+
+
+def keyword_options(scenario: dict[str, Any]) -> list[dict[str, str]]:
+    return [
+        {"option_key": key, "label": scenario["keywords"][key]["label"]}
+        for key in scenario["keyword_order"]
+    ]
+
+
+def catalog_options(
+    scenario: dict[str, Any], phase: str, keyword_key: str | None
+) -> list[dict[str, str]]:
+    """그 단계의 카탈로그 안 전체 [{scenario_option_key, label}] (시나리오 순서)."""
+    if phase == "keyword":
+        return [
+            {"scenario_option_key": o["option_key"], "label": o["label"]}
+            for o in keyword_options(scenario)
+        ]
+    if phase not in ("problem", "solution") or keyword_key is None:
+        return []
+    kw = scenario["keywords"][keyword_key]
+    items = kw["problems"] if phase == "problem" else kw["solutions"]
+    return [{"scenario_option_key": o["key"], "label": o["label"]} for o in items]
+
+
+def phrase(scenario: dict[str, Any], key: str, **values: str) -> str:
+    template = scenario["phrases"][key]
+    if "option" in values:
+        # 조사 처리: 받침 있으면 "으로", 없거나 ㄹ 받침이면 "로" (문장 골격은 "{option}로")
+        option = values["option"]
+        template = template.replace("{option}로", "{option}" + _ro(option))
+    return template.format(**values)
+
+
+def _ro(word: str) -> str:
+    if not word:
+        return "로"
+    last = word[-1]
+    code = ord(last) - 0xAC00
+    if 0 <= code <= 11171:
+        jong = code % 28
+        return "로" if jong in (0, 8) else "으로"
+    return "로"
+
+
+def remaining_text(seconds: float) -> str:
+    seconds = max(int(round(seconds)), 0)
+    if seconds >= 60:
+        return f"{round(seconds / 60)}분"
+    return f"{seconds}초"
+
+
+def card(scenario: dict[str, Any], card_id: str) -> dict[str, Any]:
+    return next(c for c in scenario["cards"] if c["card_id"] == card_id)
+
+
+def card_seats(scenario: dict[str, Any], card_def: dict[str, Any]) -> list[str]:
+    """담당 자리 전원(joint) 또는 우선순위 첫 자리 후보. delivered 판정은 joint면 전원, 아니면
+    1명."""
+    actor = card_def.get("actor")
+    if not actor:
+        return []
+    actors = actor if isinstance(actor, list) else [actor]
+    return [seat_of_type(scenario, a) for a in actors]
+
+
+def card_required_count(card_def: dict[str, Any]) -> int:
+    if not card_def.get("actor"):
+        return 0
+    return len(card_def["actor"]) if card_def.get("actor_mode") == "joint" else 1

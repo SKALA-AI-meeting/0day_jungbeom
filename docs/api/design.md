@@ -67,6 +67,7 @@ services/api/app/
 - 메일박스는 `message` 자극마다 들어온 순서대로 **의도 분류와 안·지지 반영을 반드시 수행한다**. 분류와 반영은 저장된 `messages.phase`를 기준으로 한다. 자극이 낡았을 때(generation이 현재 값보다 작거나 메시지 단계가 현재 단계와 다름) 건너뛰는 것은 턴 선택·페르소나 발언 생성뿐이다(`agent_runs.status = skipped`). 그래서 연속 메시지에서도 앞 메시지의 안·입장·최초 제안 사실이 남는다.
 - 그래프는 화자마다 게시 직전에 SessionPorts로 generation을 다시 읽고, 실행 시작 때와 다르면 남은 화자를 버린다(새 메시지 자극이 다시 정한다).
 - `advance_phase`는 `phase_started` 자극을 큐에 넣기만 한다(직접 실행하지 않음).
+- `card_due`를 꺼내면 그래프 실행 전에 한 트랜잭션에서 `session_cards` 행을 만들고, 문제 상황 카드(`flexibility_majority`·`listening_pressure`)면 기준안(지원자 현재 지지 안이 아닌 첫 시나리오 안, 행이 없으면 proposer = 첫 담당 자리로 생성)을 `locked_option_id`에 잠근다(한 번만). 그래프는 DebateState `card_progress[].locked_option_id`로 읽는다.
 - 멱등은 `agent_runs.status`와 DB 멱등 키(메시지 (run_id, seq), 안, 입장, 칸 (session, phase), 관찰 (session, card_id))로만 한다. 이미 `finished`인 run_id는 다시 실행하지 않는다.
 - 메일박스는 메모리이므로 api는 단일 프로세스로 운영한다. 재시작하면 스케줄러가 미처리 run과 마감을 다시 집는다.
 

@@ -236,20 +236,21 @@ def stage_bounds(slots: list[dict[str, Any]], end_min: float) -> dict[str, tuple
 
 
 def card_window(
-    rule: str | None, phase: str, fired_t_min: float, bounds: dict[str, tuple[float, float]]
+    rule: dict[str, Any] | None,
+    phase: str,
+    fired_t_min: float,
+    bounds: dict[str, tuple[float, float]],
 ) -> dict[str, float]:
-    """카드 관찰 창(scenario-model.md 4.2). 핵심 장면 위치 표시용이며 입력 경계가 아니다."""
-    stage_start, stage_end = bounds[phase]
-    if rule == "stage":
-        return {"start_min": stage_start, "end_min": stage_end}
-    if rule == "stage_start_to_submit":
-        return {"start_min": stage_start, "end_min": bounds["proposal"][1]}
-    if rule == "card_to_next_stage_end":
-        index = PHASES.index(phase)
-        next_phase = PHASES[min(index + 1, len(PHASES) - 1)]
-        return {"start_min": fired_t_min, "end_min": bounds[next_phase][1]}
-    # card_to_stage_end와 알 수 없는 규칙
-    return {"start_min": fired_t_min, "end_min": stage_end}
+    """카드 관찰 창(scenario-model.md 4.2). 핵심 장면 위치 표시용이며 입력 경계가 아니다.
+
+    rule은 cards.yaml window 그대로: start = stage_start∣card_message,
+    end = "stage_end:<phase>"∣submit.
+    """
+    rule = rule or {}
+    start = bounds[phase][0] if rule.get("start") == "stage_start" else fired_t_min
+    end_rule = str(rule.get("end") or f"stage_end:{phase}")
+    end_phase = "proposal" if end_rule == "submit" else end_rule.removeprefix("stage_end:")
+    return {"start_min": start, "end_min": bounds[end_phase][1]}
 
 
 def _assemble(s: dict[str, Any], messages: list[dict[str, Any]], got: dict[str, Any]):

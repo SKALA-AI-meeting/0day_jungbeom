@@ -1,298 +1,203 @@
-"""5초 루프 스케줄러(docs/api/design.md "스케줄러").
+"""스케줄러(5초 틱). tick()은 주입된 시계로 한 번 조건을 보고 처리하므로 가짜 시계로 단위
+테스트한다.
 
-run.py가 같은 asyncio 루프에서 run(ctx)를 띄운다.
-
-tick 한 번이 차례로 본다:
-  releases  진행·보고 대기 세션의 지연 공개(release_at 도래, released_at 없음) → 공개와 "공개됨" 줄.
-            시작 공개분은 start()가 이미 기록한다
-  events    제출 전 세션마다 미완료 카드(fired)와 due된 pending 중 due_at이 가장 이른 묶음 하나만.
-            pending이면 같은 due_at 행을 카드 순서로 묶어 run_id 하나 → fired 커밋 → 실행.
-            fired면 이 프로세스에서 돌고 있으면 기다리고, 아니면(재시작) 60초 지나 같은 run_id로
-            재실행. 앞 묶음이 done·failed·skipped가 되기 전에는 뒤 묶음을 띄우지 않는다
-  retry     failed 필수 카드가 남은 진행 중 세션 → fail(session)
-  runs      메시지·division agent_runs가 120초 넘게 started → 같은 run_id로 재실행
-  endings   in_progress: ends_at 도달 또는 submitted_at만 남은 세션(재시작) → submit()
-            reporting: reported_at 있음 또는 deadline_at 도달 → complete()
-  outbox    60초마다 미발행 세션 재발행(queue.republish_pending)
-
-fired 기록은 tick 안에서 바로 커밋한다(±10초 목표는 이 시각). 실행(카드·메시지·제출·종료)은 세션
-Lock을 기다리므로 백그라운드 작업으로 띄우고, 같은 키(run_id, 종료는 ("end", session_id))는 한 번에
-하나만 돈다. WS의 메시지 실행과 보드 확정의 division 실행도 spawn으로 띄운다.
+세션마다(in_progress):
+  expiry   now ≥ ends_at → submit("timeout") (자동 제출, 큐 발행)
+  deadline 토론 단계 now ≥ phase_deadline_at, 칸 empty → api 결정적 시간 초과 채우기(LLM·그래프
+  없음)
+  warning  마감 L/30 전 → 시스템 안내 1건((session, phase, "warning") 멱등)
+  idle     침묵 초대 조건 참·그 단계 invite_delivered false·대기 중 idle 없음·지원자 입력 중 아님 →
+  enqueue
+  card_due 카드 예정 시각 도달·담당 전원 delivered 아님·같은 card_id 대기·실행 없음 → 새 run_id로
+  enqueue(같은 카드는 마지막 run 이후 30초 간격, 최대 3회)
+전역:
+  runs     started가 200초 넘은 run → failed로 닫고 같은 run_id로 다시 넣기
+  outbox   completed·approving인데 *_enqueued_at 비어 있으면 재발행
+  purge    ended_at + 90일이 지난 세션 삭제(completed 이후·failed·cancelled)
+재시작 복구는 recover(): 메일박스 queued·started 재큐 뒤 tick 한 번(마감·자동 제출·미발행 재처리).
 """
 
 import asyncio
 import logging
 import uuid
-from collections import defaultdict
-from collections.abc import Awaitable, Callable, Hashable
-from datetime import UTC, datetime, timedelta
-from functools import partial
-from typing import Any
+from datetime import timedelta
 
-from sqlalchemy import and_, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, select
 
+from app import queue
 from app.agent.runner import Stimulus
-from app.models import AgentRun, DocumentRelease, Invite, Position, Session, SessionEvent
-from app.queue import republish_pending
-from app.services import events as event_runs
-from app.services import releases
+from app.mailbox import pending_key
+from app.models import AgentRun, Invite, Message, MessageIntent, Position, Session, SessionCard
+from app.services import purge, timeout
+from app.services import scenario as sc
+from app.services import session as session_service
+from app.services.common import Effects, serialize_message
 from app.services.context import AppContext
-from app.services.runs import LLM_FAILURE_LIMIT, llm_failures_exceeded, run_agent
+from app.services.phases import save_message
 
 log = logging.getLogger(__name__)
-
-INTERVAL = 5.0
-RETRY_AFTER = timedelta(seconds=60)
-STALE_RUN = timedelta(seconds=120)
-OUTBOX_EVERY = timedelta(seconds=60)
-RETRY_DELAY = 2.0
-
-_LIVE = (Session.status == "in_progress", Session.submitted_at.is_(None))
-
-_inflight: set[Hashable] = set()
-_tasks: set[asyncio.Task] = set()
+TICK_SECONDS = 5
+RUN_TIMEOUT = timedelta(seconds=200)
+CARD_DUE_RETRY_GAP = timedelta(seconds=30)
+CARD_DUE_MAX_RUNS = 3
 
 
-def spawn(key: Hashable, job: Callable[[], Awaitable[Any]]) -> bool:
-    """같은 키가 돌고 있으면 띄우지 않는다. 예외는 로그로만 남기고 다음 tick이 다시 집는다."""
-    if key in _inflight:
-        return False
-    _inflight.add(key)
-
-    async def wrapper() -> None:
+async def tick(ctx: AppContext) -> None:
+    async with ctx.session_factory() as db:
+        ids = (await db.scalars(select(Session.id).where(Session.status == "in_progress"))).all()
+    for session_id in ids:
         try:
-            await job()
+            await tick_session(ctx, session_id)
         except Exception:
-            log.exception("scheduled job %s failed", key)
-        finally:
-            _inflight.discard(key)
-
-    task = asyncio.create_task(wrapper())
-    _tasks.add(task)
-    task.add_done_callback(_tasks.discard)
-    return True
+            log.exception("scheduler tick failed for %s", session_id)
+    await ctx.mailboxes.recover(stale_before=ctx.clock.now() - RUN_TIMEOUT)
+    async with ctx.session_factory() as db:
+        await queue.republish_pending(db, ctx.publisher, ctx.clock.now())
+    async with ctx.session_factory() as db:
+        await purge.purge_expired(db, ctx.clock.now())
 
 
-async def drain() -> None:
-    """현재 루프에서 띄운 작업이 모두 끝날 때까지 기다린다(테스트·종료용)."""
-    loop = asyncio.get_running_loop()
-    while pending := [t for t in _tasks if t.get_loop() is loop and not t.done()]:
-        await asyncio.gather(*pending, return_exceptions=True)
+async def tick_session(ctx: AppContext, session_id: uuid.UUID) -> None:
+    fx = Effects()
+    async with ctx.session_factory() as db:
+        session = await db.get(Session, session_id, with_for_update=True)
+        if session is None or session.status != "in_progress":
+            return
+        invite = await db.get(Invite, session.invite_id)
+        position = await db.get(Position, invite.position_id)
+        now = ctx.clock.now()
+        if now >= session.ends_at:
+            await session_service.submit(db, session, "timeout", now, fx)
+        elif session.phase in sc.DEBATE_PHASES and now >= session.phase_deadline_at:
+            await timeout.fill(db, session, position, ctx.clock, fx)
+        elif session.phase in sc.DEBATE_PHASES:
+            await _warning(db, session, position, now, fx)
+        await db.commit()
+        candidates: list[Stimulus] = []
+        if (
+            session.status == "in_progress"
+            and session.phase in sc.DEBATE_PHASES
+            and fx.generation is None
+        ):
+            if not ctx.hub.is_candidate_typing(session_id):
+                candidates = await _due_stimuli(db, ctx, session, position, now)
+    await ctx.apply(session_id, fx)
+    for stimulus in candidates:
+        await ctx.mailboxes.enqueue(session_id, stimulus)
 
 
-async def run(ctx: AppContext) -> None:
-    scheduler = Scheduler(ctx)
+async def _warning(db, session: Session, position: Position, now, fx: Effects) -> None:
+    scenario = position.scenario
+    warn_at = session.phase_deadline_at - timedelta(minutes=scenario["time_warning_min"])
+    if now < warn_at:
+        return
+    remaining = sc.remaining_text((session.phase_deadline_at - now).total_seconds())
+    message, created = await save_message(
+        db,
+        session,
+        sender="system",
+        content=scenario["phrases"]["time_warning"].format(remaining=remaining),
+        run_id=uuid.uuid5(session.id, "warning:" + session.phase),
+        seq=0,
+        now=now,
+        meta={"kind": "time_warning"},
+    )
+    if created:
+        fx.emit("message.new", serialize_message(session, message))
+
+
+async def _due_stimuli(db, ctx: AppContext, session: Session, position: Position, now):
+    scenario = position.scenario
+    phase = session.phase
+    out: list[Stimulus] = []
+    idle = Stimulus("idle", phase, session.generation)
+    if phase not in session.invite_delivered_phases and not ctx.mailboxes.has_pending(
+        pending_key(session.id, idle)
+    ):
+        if await _silence(db, session, scenario, now):
+            out.append(idle)
+    delivered = {
+        c.card_id: c.delivered_seats
+        for c in (
+            await db.scalars(select(SessionCard).where(SessionCard.session_id == session.id))
+        ).all()
+    }
+    for card in scenario["cards"]:
+        if card["stage_id"] != phase or card.get("offset_min") is None or not card.get("actor"):
+            continue
+        if now < session.phase_started_at + timedelta(minutes=card["offset_min"]):
+            continue
+        if len(delivered.get(card["card_id"], [])) >= sc.card_required_count(card):
+            continue
+        stimulus = Stimulus("card_due", phase, session.generation, card_id=card["card_id"])
+        if ctx.mailboxes.has_pending(pending_key(session.id, stimulus)):
+            continue
+        if await _card_retry_allowed(db, session, card["card_id"], now):
+            out.append(stimulus)
+    return out
+
+
+async def _card_retry_allowed(db, session: Session, card_id: str, now) -> bool:
+    """같은 카드의 card_due는 마지막 run 이후 30초 간격, 카드(=단계)당 최대 3회까지만 넣는다.
+
+    담당 화자가 끝내 게시하지 못해도 자극이 끝없이 쌓이지 않게 하는 상한이다.
+    """
+    count, last = (
+        await db.execute(
+            select(func.count(), func.max(AgentRun.queued_at)).where(
+                AgentRun.session_id == session.id,
+                AgentRun.stimulus == "card_due",
+                AgentRun.ref_id == card_id,
+            )
+        )
+    ).one()
+    if count >= CARD_DUE_MAX_RUNS:
+        log.info("card_due cap reached for %s %s", session.id, card_id)
+        return False
+    return last is None or now - last >= CARD_DUE_RETRY_GAP
+
+
+async def _silence(db, session: Session, scenario: dict, now) -> bool:
+    """scenario-model 3.1: (a) 마지막 지원자 메시지(또는 단계 시작) 후 L/20 무발언, 또는
+    (b) 단계 기본 시간 절반이 지났는데 이 단계 의견(propose·agree·oppose)이 없음."""
+    rule = scenario["silence_invite"]
+    last = await db.scalar(
+        select(func.max(Message.created_at)).where(
+            Message.session_id == session.id,
+            Message.sender == "candidate",
+            Message.channel == "room",
+            Message.phase == session.phase,
+        )
+    )
+    since = last or session.phase_started_at
+    if now - since >= timedelta(minutes=rule["idle_min"]):
+        return True
+    budget = sc.stage(scenario, session.phase)["budget_min"]
+    if now - session.phase_started_at >= timedelta(
+        minutes=budget * rule["no_opinion_after_budget_ratio"]
+    ):
+        opinions = await db.scalar(
+            select(func.count()).where(
+                MessageIntent.session_id == session.id,
+                MessageIntent.phase == session.phase,
+                MessageIntent.intent.in_(rule["opinion_intents"]),
+            )
+        )
+        return opinions == 0
+    return False
+
+
+async def recover(ctx: AppContext) -> None:
+    """api 기동 때: 메일박스 queued·started 재큐 → 마감·자동 제출·미발행 재처리."""
+    await ctx.mailboxes.recover()
+    await tick(ctx)
+
+
+async def run_forever(ctx: AppContext) -> None:
+    await recover(ctx)
     while True:
+        await asyncio.sleep(TICK_SECONDS)
         try:
-            await scheduler.tick()
+            await tick(ctx)
         except Exception:
             log.exception("scheduler tick failed")
-        await asyncio.sleep(INTERVAL)
-
-
-class Scheduler:
-    def __init__(self, ctx: AppContext) -> None:
-        self.ctx = ctx
-        self._outbox_at: datetime | None = None
-
-    async def tick(self, now: datetime | None = None) -> None:
-        now = now or datetime.now(UTC)
-        async with self.ctx.session_factory() as db:
-            await self._releases(db, now)
-            await self._events(db, now)
-            await self._retry(db)
-            await self._stale_runs(db, now)
-            await self._endings(db, now)
-            if self._outbox_at is None or now - self._outbox_at >= OUTBOX_EVERY:
-                self._outbox_at = now
-                await republish_pending(db, self.ctx.publisher)
-
-    async def _releases(self, db: AsyncSession, now: datetime) -> None:
-        rows = (
-            await db.execute(
-                select(DocumentRelease.session_id, DocumentRelease.doc_id, Position.scenario)
-                .join(Session, Session.id == DocumentRelease.session_id)
-                .join(Invite, Invite.id == Session.invite_id)
-                .join(Position, Position.id == Invite.position_id)
-                .where(
-                    DocumentRelease.release_at <= now,
-                    DocumentRelease.released_at.is_(None),
-                    Session.status.in_(("in_progress", "reporting")),
-                )
-            )
-        ).all()
-        for session_id, doc_id, scenario in rows:
-            await releases.release(db, self.ctx.hub, session_id, scenario, doc_id, now)
-
-    async def _events(self, db: AsyncSession, now: datetime) -> None:
-        rows = (
-            (
-                await db.execute(
-                    select(SessionEvent)
-                    .join(Session, Session.id == SessionEvent.session_id)
-                    .where(
-                        or_(
-                            SessionEvent.status == "fired",
-                            and_(SessionEvent.status == "pending", SessionEvent.due_at <= now),
-                        ),
-                        *_LIVE,
-                    )
-                    .order_by(SessionEvent.session_id, SessionEvent.due_at)
-                )
-            )
-            .scalars()
-            .all()
-        )
-        # 세션별 맨 앞 묶음(가장 이른 due_at)만. 상태를 가진 그래프가 카드 순서를 뒤집지 않게 한다
-        heads: dict[uuid.UUID, list[SessionEvent]] = {}
-        for event in rows:
-            head = heads.setdefault(event.session_id, [event])
-            if head[0] is not event and head[0].due_at == event.due_at:
-                head.append(event)
-        fired: list[tuple[uuid.UUID, uuid.UUID]] = []
-        for session_id, head in heads.items():
-            started = next((e for e in head if e.status == "fired"), None)
-            if started is not None:
-                stale = started.fired_at < now - RETRY_AFTER
-                if started.run_id not in _inflight and stale:
-                    spawn(started.run_id, partial(run_events, self.ctx, session_id, started.run_id))
-                continue
-            run_id = uuid.uuid4()
-            for event in head:
-                event.status, event.fired_at, event.run_id = "fired", now, run_id
-            fired.append((session_id, run_id))
-        if not fired:
-            return
-        await db.commit()
-        for session_id, run_id in fired:
-            spawn(run_id, partial(run_events, self.ctx, session_id, run_id))
-
-    async def _retry(self, db: AsyncSession) -> None:
-        """필수 카드가 failed이거나 일반 응답 LLM 실패가 연속 3회인데 세션이 아직 진행 중이면 실패로
-        수렴시킨다(실행 직후 전이 전에 죽은 경우)."""
-        stuck = (
-            await db.execute(
-                select(Session.id).where(
-                    Session.llm_failures >= LLM_FAILURE_LIMIT,
-                    Session.status.in_(("in_progress", "reporting")),
-                )
-            )
-        ).scalars()
-        for session_id in list(stuck):
-            await self.ctx.session_service(db).fail(session_id, "session", "llm_failures")
-        rows = (
-            await db.execute(
-                select(SessionEvent.session_id, SessionEvent.card_id)
-                .join(Session, Session.id == SessionEvent.session_id)
-                .where(
-                    SessionEvent.status == "failed",
-                    SessionEvent.texture.is_(False),
-                    Session.status.in_(("in_progress", "reporting")),
-                )
-                .order_by(SessionEvent.session_id, SessionEvent.due_at)
-            )
-        ).all()
-        failed: defaultdict[uuid.UUID, list[str]] = defaultdict(list)
-        for session_id, card_id in rows:
-            failed[session_id].append(card_id)
-        for session_id, cards in failed.items():
-            await self.ctx.session_service(db).fail(
-                session_id, "session", f"card_failed:{','.join(cards)}"
-            )
-
-    async def _stale_runs(self, db: AsyncSession, now: datetime) -> None:
-        """멈춘 메시지·division 실행만. 카드 실행 복구는 _events가 세션별 순서를 지키며 한다."""
-        runs = (
-            (
-                await db.execute(
-                    select(AgentRun)
-                    .join(Session, Session.id == AgentRun.session_id)
-                    .where(
-                        AgentRun.status == "started",
-                        AgentRun.stimulus.in_(("message", "division")),
-                        AgentRun.started_at < now - STALE_RUN,
-                        Session.status.in_(("in_progress", "reporting")),
-                    )
-                )
-            )
-            .scalars()
-            .all()
-        )
-        for run in runs:
-            if run.stimulus == "message":
-                stimulus = Stimulus("message", message_id=run.ref_ids[0])
-            else:
-                stimulus = Stimulus("division", task_event_ids=tuple(run.ref_ids))
-            spawn(run.run_id, partial(run_stimulus, self.ctx, run.session_id, stimulus, run.run_id))
-
-    async def _endings(self, db: AsyncSession, now: datetime) -> None:
-        rows = (
-            await db.execute(
-                select(Session).where(
-                    or_(
-                        and_(
-                            Session.status == "in_progress",
-                            or_(Session.ends_at <= now, Session.submitted_at.is_not(None)),
-                        ),
-                        and_(
-                            Session.status == "reporting",
-                            or_(Session.reported_at.is_not(None), Session.deadline_at <= now),
-                        ),
-                    )
-                )
-            )
-        ).scalars()
-        for session in rows:
-            if session.status == "in_progress":
-                reason = "timeout" if session.submitted_at is None else ended_reason(session)
-                spawn(("submit", session.id), partial(submit, self.ctx, session.id, reason))
-            else:
-                job = partial(complete, self.ctx, session.id, ended_reason(session))
-                spawn(("end", session.id), job)
-
-
-def ended_reason(session: Session) -> str:
-    """session.ended의 reason. 만료 자동 제출(submitted_at이 ends_at 이후)이면 timeout."""
-    if session.submitted_at is not None and session.submitted_at < session.ends_at:
-        return "submitted"
-    return "timeout"
-
-
-async def submit(ctx: AppContext, session_id: uuid.UUID, reason: str) -> None:
-    """Lock 밖에서 부른다. submit()이 세션 Lock을 잡고 진행 중 실행이 끝나기를 기다린다."""
-    async with ctx.session_factory() as db:
-        await ctx.session_service(db).submit(session_id, reason)
-
-
-async def complete(ctx: AppContext, session_id: uuid.UUID, reason: str) -> None:
-    """Lock 밖에서 부른다. complete()가 세션 Lock을 잡고 진행 중 실행이 끝나기를 기다린다."""
-    async with ctx.session_factory() as db:
-        await ctx.session_service(db).complete(session_id, reason)
-
-
-async def run_message(
-    ctx: AppContext, session_id: uuid.UUID, message_id: uuid.UUID, run_id: uuid.UUID
-) -> None:
-    """지원자 메시지 실행. agent_runs started는 accept_candidate_message가 이미 커밋했다."""
-    await run_stimulus(ctx, session_id, Stimulus("message", message_id=message_id), run_id)
-
-
-async def run_stimulus(
-    ctx: AppContext, session_id: uuid.UUID, stimulus: Stimulus, run_id: uuid.UUID
-) -> None:
-    """메시지·division 자극 실행. agent_runs started는 호출 전에 커밋돼 있다."""
-    async with ctx.session_factory() as db:
-        await run_agent(db, ctx.runner, ctx.locks, session_id, stimulus, run_id)
-        if await llm_failures_exceeded(db, session_id):
-            await ctx.session_service(db).fail(session_id, "session", "llm_failures")
-
-
-async def run_events(ctx: AppContext, session_id: uuid.UUID, run_id: uuid.UUID) -> None:
-    """같은 run_id로 묶인 카드 실행. 실패하면 같은 run_id로 다시(최초 포함 3회)."""
-    for attempt in range(event_runs.MAX_ATTEMPTS):
-        if attempt:
-            await asyncio.sleep(RETRY_DELAY)
-        async with ctx.session_factory() as db, ctx.locks(session_id):
-            if await event_runs.attempt(ctx.session_service(db), run_id):
-                return

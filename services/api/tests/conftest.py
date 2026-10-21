@@ -69,3 +69,46 @@ async def db(engine):
             await conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
         ).scalars()
         await conn.execute(text(f"TRUNCATE {', '.join(tables)} CASCADE"))
+
+
+# ---- api 트랙: 가짜 시계·메모리 큐·기록 runner로 띄운 AppContext와 HTTP 클라이언트(tests/kit.py) -
+
+
+@pytest.fixture
+def clock():
+    from app.services.clock import FakeClock
+
+    return FakeClock()
+
+
+@pytest.fixture
+def runner():
+    from kit import RecordingRunner
+
+    return RecordingRunner()
+
+
+@pytest.fixture
+def classifier():
+    from kit import FakeClassifier
+
+    return FakeClassifier()
+
+
+@pytest.fixture
+async def ctx(engine, db, clock, runner, classifier):
+    """db를 먼저 잡아 두어 테스트 뒤 메일박스를 비운 다음 테이블을 비운다."""
+    from kit import make_ctx
+
+    context = make_ctx(engine, clock, runner, classifier)
+    yield context
+    await context.mailboxes.drain()
+    await context.mailboxes.close()
+
+
+@pytest.fixture
+async def api(ctx):
+    from kit import Api
+
+    async with Api(ctx) as client:
+        yield client

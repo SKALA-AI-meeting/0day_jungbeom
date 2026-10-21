@@ -1,5 +1,6 @@
 {
   "session_id": "sess-e2e-1",
   "token": "tok-e2e-1",
-  "invite_url": "http://localhost:3000/s/tok-e2e-1"
+  "invite_url": "http://localhost:3000/s/tok-e2e-1",
+  "phase": null
 }

@@ -1,22 +1,24 @@
 """FastAPI 앱 2개. 공개(8000): /admin, /s, /sessions, /ws, /assets. 내부(8001): /internal.
 
-라우터는 api 트랙이 app/routers/<이름>.py에 `router`로 만들고 아래 목록에 이름을 넣는다.
-G-F 시점에는 토론형 라우터가 아직 없어 목록이 비어 있다.
-옛 라우터는 옛 모델을 import하므로 붙이지 않는다.
+라우터는 app/routers/<이름>.py의 `router`다. 공개 앱은 /assets/missions/<id>/avatars/를 읽기
+전용으로
+서빙한다(카탈로그 정적 에셋, D13-3).
 오류 응답은 contracts.md "공통" 형식 `{"error": {"code", "message"}}`,
 입력 검증 실패는 422 invalid_input.
 """
 
 import importlib
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-PUBLIC_ROUTERS: tuple[str, ...] = ()
-INTERNAL_ROUTERS: tuple[str, ...] = ()
+PUBLIC_ROUTERS: tuple[str, ...] = ("candidate", "admin", "ws")
+INTERNAL_ROUTERS: tuple[str, ...] = ("internal",)
 CORS_HEADERS = ["Authorization", "Content-Type"]
 
 
@@ -34,6 +36,12 @@ async def _http_error(_: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse(body, status_code=exc.status_code, headers=exc.headers)
 
 
+async def _service_error(_: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse(
+        {"error": {"code": exc.code, "message": exc.message}}, status_code=exc.status
+    )
+
+
 async def _invalid_input(_: Request, exc: RequestValidationError) -> JSONResponse:
     message = "; ".join(
         f"{'.'.join(str(part) for part in e['loc'])}: {e['msg']}" for e in exc.errors()
@@ -46,6 +54,9 @@ def _base(title: str, ctx: Any) -> FastAPI:
     app.state.ctx = ctx
     app.add_exception_handler(HTTPException, _http_error)
     app.add_exception_handler(RequestValidationError, _invalid_input)
+    from app.services.common import ServiceError
+
+    app.add_exception_handler(ServiceError, _service_error)
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -64,7 +75,29 @@ def create_public_app(ctx: Any, web_origins: tuple[str, ...] = ()) -> FastAPI:
         allow_headers=CORS_HEADERS,
     )
     _include(app, PUBLIC_ROUTERS)
+    _mount_assets(app, ctx)
     return app
+
+
+class _CachedStatic(StaticFiles):
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers.setdefault("Cache-Control", "public, max-age=3600")
+        return response
+
+
+def _mount_assets(app: FastAPI, ctx: Any) -> None:
+    """/assets/missions/<mission_id>/avatars/<file> → scenarios/missions/<id>/assets/avatars/."""
+    settings = getattr(ctx, "settings", None)
+    if settings is None:
+        return
+    missions = Path(settings.scenarios_dir) / "missions"
+    for mission in sorted(p for p in missions.iterdir() if (p / "assets" / "avatars").is_dir()):
+        app.mount(
+            f"/assets/missions/{mission.name}/avatars",
+            _CachedStatic(directory=mission / "assets" / "avatars"),
+            name=f"avatars-{mission.name}",
+        )
 
 
 def create_internal_app(ctx: Any) -> FastAPI:

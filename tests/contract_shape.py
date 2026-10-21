@@ -284,6 +284,7 @@ STATE = {
         "office_end": str,
         "completed_at": Opt(TS),
     },
+    "keyword_options": [{"option_key": str, "label": str}],
     "phases": [{"phase": PHASE, "budget_min": NUM, "deadline_t_min": NUM}],
     "participants": [
         Union(
@@ -635,7 +636,7 @@ REPORT = {
             }
         ],
     },
-    "review": Opt(Map(ANY)),
+    "review": Opt({"reviewer_name": str, "reviewed_at": Opt(TS)}),
     "notes": [{"id": str, "text": str, "reviewer_name": str, "created_at": TS}],
     "connection_gaps": [GAP],
     "generated_at": TS,
@@ -718,7 +719,14 @@ RUBRIC = {
         }
     ],
     "no_record_reasons": [{"code": NO_RECORD, "label": str}],
-    "cards": [{"card_id": CARD, "element": ELEMENT, "window": str}],
+    "cards": [
+        {
+            "card_id": CARD,
+            "element": ELEMENT,
+            "stage_id": PHASE,
+            "window": {"start": Enum("stage_start", "card_message"), "end": str, "label": str},
+        }
+    ],
 }
 SESSION_RECORD = {
     "session": {
@@ -1018,6 +1026,7 @@ SHAPES: dict[str, Any] = {
         "alias": str,
         "display_name": Opt(str),
         "position": {
+            "name": str,
             "mission_id": str,
             "session_minutes": MINUTES,
             "scenario": Map(ANY),
@@ -1082,6 +1091,8 @@ SHAPES: dict[str, Any] = {
             "id": str,
             "request_message_id": str,
             "response_message_id": str,
+            "request": str,
+            "response": str,
             "cited_material_ids": [str],
             "created_at": TS,
         }
@@ -1094,8 +1105,18 @@ SHAPES: dict[str, Any] = {
         "alias?": str,
         "company_id?": str,
         "admin_email?": str,
+        "start_at?": Enum("entry", "keyword", "problem", "solution", "proposal", "ended"),
+        "stage?": str,
     },
-    "internal_test_session": {"session_id": str, "token": str, "invite_url": str},
+    "internal_test_session": {
+        "session_id": str,
+        "token": str,
+        "invite_url": str,
+        "phase": Opt(Enum(*PHASE.values, "completed")),
+        "session_token?": str,
+        "debrief_token?": str,
+        "admin_report_url?": str,
+    },
     # 의도 분류
     "intent_classification": INTENT_OUTPUT,
     "intent_classification_fallback": INTENT_OUTPUT,

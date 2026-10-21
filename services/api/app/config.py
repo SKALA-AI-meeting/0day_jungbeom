@@ -50,6 +50,8 @@ class Settings:
     internal_token: str
     scenarios_dir: Path
     enable_test_api: bool
+    # LLM 호출만 결정적 고정 응답(FakeLLM)으로 바꾸는 모드. 래퍼(app/agent/llm)가 같은 env를 읽는다
+    llm_fake: bool
     openai_api_key: str
     openai_model: str
     debate_mcp_url: str
@@ -59,6 +61,8 @@ class Settings:
     assessment_mcp_token: str
     agent_runner: str
     web_origins: tuple[str, ...]
+    contact_email: str = "recruit@example.com"
+    web_base_url: str = "http://localhost:3000"
     public_port: int = 8000
     internal_port: int = 8001
 
@@ -76,12 +80,15 @@ def get_settings() -> Settings:
         internal_token=env.get("INTERNAL_TOKEN", "change-me-internal"),
         scenarios_dir=_scenarios_dir(env.get("SCENARIOS_DIR", DEFAULT_SCENARIOS_DIR)),
         enable_test_api=env.get("ENABLE_TEST_API") == "1",
+        llm_fake=env.get("LLM_FAKE") == "1",
         openai_api_key=env.get("OPENAI_API_KEY", ""),
         openai_model=env.get("OPENAI_MODEL", "gpt-4o-mini"),
         debate_mcp_url=env.get("DEBATE_MCP_URL", "http://localhost:9101/mcp"),
         rag_mcp_url=env.get("RAG_MCP_URL", "http://localhost:9102/mcp"),
         assessment_mcp_url=env.get("ASSESSMENT_MCP_URL", "http://localhost:9103/mcp"),
         assessment_mcp_token=env.get("ASSESSMENT_MCP_TOKEN", ""),
-        agent_runner=env.get("AGENT_RUNNER", "fake"),
+        agent_runner=env.get("AGENT_RUNNER", "session"),
         web_origins=_origins(env.get("WEB_ORIGIN", DEFAULT_WEB_ORIGIN)),
+        contact_email=env.get("CONTACT_EMAIL", "recruit@example.com"),
+        web_base_url=env.get("WEB_BASE_URL", DEFAULT_WEB_ORIGIN),
     )

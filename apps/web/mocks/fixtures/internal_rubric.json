@@ -685,32 +685,62 @@
     {
       "card_id": "persuasion_keyword",
       "element": "persuasion",
-      "window": "stage"
+      "stage_id": "keyword",
+      "window": {
+        "start": "stage_start",
+        "end": "stage_end:keyword",
+        "label": "키워드 단계 전체"
+      }
     },
     {
       "card_id": "flexibility_majority",
       "element": "flexibility",
-      "window": "card_to_next_stage_end"
+      "stage_id": "problem",
+      "window": {
+        "start": "card_message",
+        "end": "stage_end:solution",
+        "label": "카드 시각부터 해결책 단계 끝까지(승복과 다음 단계 기여를 함께 봄)"
+      }
     },
     {
       "card_id": "listening_pressure",
       "element": "listening",
-      "window": "card_to_stage_end"
+      "stage_id": "problem",
+      "window": {
+        "start": "card_message",
+        "end": "stage_end:problem",
+        "label": "첫 압박 메시지부터 문제 상황 단계 끝까지"
+      }
     },
     {
       "card_id": "inclusion_silence",
       "element": "inclusion",
-      "window": "card_to_stage_end"
+      "stage_id": "solution",
+      "window": {
+        "start": "card_message",
+        "end": "stage_end:solution",
+        "label": "머뭇거림 메시지부터 해결책 단계 끝까지"
+      }
     },
     {
       "card_id": "persuasion_solution",
       "element": "persuasion",
-      "window": "card_to_stage_end"
+      "stage_id": "solution",
+      "window": {
+        "start": "card_message",
+        "end": "stage_end:solution",
+        "label": "반론 메시지부터 해결책 단계 끝까지"
+      }
     },
     {
       "card_id": "honesty_credit",
       "element": "honesty",
-      "window": "stage_start_to_submit"
+      "stage_id": "proposal",
+      "window": {
+        "start": "stage_start",
+        "end": "submit",
+        "label": "기획안 단계 시작부터 제출까지"
+      }
     }
   ]
 }
