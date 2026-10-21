@@ -110,7 +110,7 @@ function SlotInput({
           maxLength={200}
           aria-label={`${SLOT_LABEL[phase]} 입력`}
           onChange={(event) => setValue(event.target.value)}
-          className="resize-none rounded-md border border-line bg-surface px-3 py-2 text-body outline-none focus-visible:border-accent disabled:bg-surface-sunken"
+          className="resize-none rounded-md border border-line bg-surface px-3 py-2 text-body outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:bg-surface-sunken"
         />
       )}
       {error && (

@@ -40,11 +40,17 @@ export function PhaseBar({ snap }: { snap: StateSnapshot }) {
             >
               {done &&
                 (timeout ? (
-                  <Clock3 size={14} className="text-muted" aria-label="시간 초과" />
+                  <Clock3 size={14} className="text-muted" aria-hidden />
                 ) : (
-                  <CircleCheck size={14} className="text-success" aria-label="합의" />
+                  <CircleCheck size={14} className="text-success" aria-hidden />
                 ))}
               {PHASE_LABEL[phase]}
+              {/* 지난 단계는 아이콘 + 글자로 결과를 보인다(색만으로 구분하지 않음) */}
+              {done && (
+                <span className="text-caption font-normal text-muted">
+                  · {timeout ? "시간 초과" : "합의"}
+                </span>
+              )}
             </span>
           </li>
         );
@@ -192,24 +198,23 @@ export function DebateView({
           className="flex w-[38%] max-w-[520px] min-w-[360px] shrink-0 flex-col border-l border-line bg-surface"
           aria-label="우측 패널"
         >
+          {/* 탭을 바꿔도 각 탭의 스크롤·입력 중 내용이 남도록 패널을 모두 둔 채 숨긴다(keepMounted) */}
           <Tabs
             variant="segmented"
-            className="shrink-0"
+            className="min-h-0 flex-1"
+            panelClassName="flex flex-col overflow-hidden"
+            keepMounted
             value={view.tab}
             onValueChange={(value) => session.setTab(value as PanelTab)}
-            items={tabs.map((tab) => ({ ...tab, content: null }))}
+            items={tabs.map((tab) => ({
+              ...tab,
+              content: (
+                <div data-panel={tab.value} className="min-h-0 flex-1 overflow-y-auto">
+                  {panels[tab.value]}
+                </div>
+              ),
+            }))}
           />
-          {/* 탭을 바꿔도 각 탭의 스크롤·입력 중 내용이 남도록 패널을 모두 둔 채 숨긴다 */}
-          {(Object.keys(panels) as PanelTab[]).map((tab) => (
-            <div
-              key={tab}
-              hidden={view.tab !== tab}
-              data-panel={tab}
-              className="min-h-0 flex-1 overflow-y-auto"
-            >
-              {panels[tab]}
-            </div>
-          ))}
         </aside>
       </div>
       {view.replaced && (

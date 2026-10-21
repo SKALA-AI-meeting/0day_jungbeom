@@ -92,6 +92,9 @@ type Ctx = {
   printing: boolean;
 };
 
+/** 평가 출력의 "(앵커 N)" 표기는 내부 용어라 화면에서 지운다 */
+const cleanRationale = (text: string) => text.replace(/\s*\(앵커 \d\)/g, "");
+
 function levelChip(level: Level | null, reason: NoRecordReason | null, adjusted?: boolean) {
   return level != null ? (
     <LevelChip level={level} adjusted={adjusted} />
@@ -432,9 +435,9 @@ function DimensionRow({
     <details
       id={`dim-${d.dimension_id}`}
       open={ctx.printing || undefined}
-      className="print-break group border-b border-line py-3 last:border-b-0"
+      className="group border-b border-line py-3 last:border-b-0"
     >
-      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1">
+      <summary className="print-break flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1">
         <span className="text-subtle transition-transform group-open:rotate-90" aria-hidden>
           ›
         </span>
@@ -444,9 +447,9 @@ function DimensionRow({
       </summary>
       <div className="mt-3 flex flex-col gap-4 pl-5">
         <p className="text-sm text-muted">{DIMENSION_DEFINITION[d.dimension_id] ?? ""}</p>
-        <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[7rem_1fr]">
+        <dl className="print-break grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[7rem_1fr]">
           <dt className="text-muted">판단 이유</dt>
-          <dd className="break-words">{d.rationale}</dd>
+          <dd className="break-words">{cleanRationale(d.rationale)}</dd>
           {d.reviewer_hint && (
             <>
               <dt className="text-muted">대표 행동</dt>
@@ -682,9 +685,9 @@ export function ReportView({
         <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <li className="inline-flex items-center gap-1.5">
             <Avatar seat="candidate" name={candidate?.display_name ?? report.alias} size={20} />
-            지원자 {report.alias}
+            {report.alias}
             {candidate && candidate.display_name !== report.alias && (
-              <span className="text-muted">(표시 이름 {candidate.display_name})</span>
+              <span className="text-muted">· 표시 이름 {candidate.display_name}</span>
             )}
           </li>
           {report.seats

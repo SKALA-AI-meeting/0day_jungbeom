@@ -21,6 +21,9 @@ export type TabsProps = {
   /** underline: 밑줄 탭(기본). segmented: 분절 컨트롤(우측 패널·세션 길이 선택) */
   variant?: "underline" | "segmented";
   className?: string;
+  /** 숨긴 탭의 패널도 남겨 스크롤·입력 중 내용을 지킨다 */
+  keepMounted?: boolean;
+  panelClassName?: string;
 };
 
 export function Tabs({
@@ -30,6 +33,8 @@ export function Tabs({
   onValueChange,
   variant = "underline",
   className,
+  keepMounted = false,
+  panelClassName,
 }: TabsProps) {
   const segmented = variant === "segmented";
   return (
@@ -82,7 +87,8 @@ export function Tabs({
         <BaseTabs.Panel
           key={item.value}
           value={item.value}
-          className="min-h-0 flex-1 overflow-auto"
+          keepMounted={keepMounted}
+          className={cn("min-h-0 flex-1 overflow-auto", panelClassName)}
         >
           {item.content}
         </BaseTabs.Panel>

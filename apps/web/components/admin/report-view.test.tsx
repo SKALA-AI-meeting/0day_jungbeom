@@ -62,7 +62,7 @@ test("샘플 리포트 화면: 사유 문장 5종, 미발생 카드, 담당자 �
   for (const text of Object.values(NO_RECORD_TEXT)) expect(html).toContain(text);
   expect(html).toContain("이벤트 미발생");
   expect(html).toContain("담당자 조정됨");
-  expect(html).toContain("메모 · m-08 앞뒤에서");
+  expect(html).toContain("메모 · 09:06 발언 앞뒤에서");
   expect(html).not.toContain("검토 완료");
   expect(html).not.toMatch(TOTAL);
   expect(judged(html)).toBe(false);

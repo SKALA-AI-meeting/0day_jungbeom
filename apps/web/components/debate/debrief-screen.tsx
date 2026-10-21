@@ -12,6 +12,12 @@ import { SECTION_META } from "./proposal-editor";
 import { PHASE_LABEL, officeTime } from "./state";
 import { SECTION_IDS, type Debrief, type EndReason, type Seat } from "./types";
 
+/** 첫 문장(R1 고정)과 나머지 설명을 두 문단으로 나눈다 */
+const introSentences = (text: string) => {
+  const cut = text.indexOf(".") + 1;
+  return cut > 0 && cut < text.length ? [text.slice(0, cut), text.slice(cut).trim()] : [text];
+};
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-4 border-t border-line pt-8">
@@ -142,7 +148,12 @@ export function DebriefScreen({
         {endReason === "timeout" && !failed && (
           <p className="text-callout text-muted">시간이 끝나 지금 상태로 제출됐어요.</p>
         )}
-        <p className="text-callout leading-relaxed">{debrief.intro_notice}</p>
+        {/* 첫 문장(R1 고정)은 따로 한 줄로 두고, 이어지는 설명은 다음 문단으로 */}
+        {introSentences(debrief.intro_notice).map((sentence) => (
+          <p key={sentence} className="text-callout leading-relaxed">
+            {sentence}
+          </p>
+        ))}
         <p className="text-body text-muted">{debrief.appeal_contact}</p>
       </header>
 

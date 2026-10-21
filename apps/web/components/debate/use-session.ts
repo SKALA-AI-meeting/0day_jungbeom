@@ -43,8 +43,8 @@ const errorText = (error: unknown) =>
     ? (ERROR_TEXT[error.code] ?? "잠시 뒤 다시 시도해 주세요")
     : "잠시 뒤 다시 시도해 주세요";
 
-const timeText = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleTimeString("ko-KR", { hour12: false }) : null;
+/** 저장 시각은 실제 시계로 보여 주지 않고(R7) 경과 시간 계산에만 쓴다 */
+const savedMs = (iso: string | null) => (iso ? Date.parse(iso) : null);
 
 export function useDebateSession(auth: SessionAuth, initial: StateSnapshot) {
   const [view, dispatch] = useReducer(reduce, initial, (snap) => initialView(snap, Date.now()));
@@ -167,7 +167,7 @@ export function useDebateSession(auth: SessionAuth, initial: StateSnapshot) {
 
   // ── 기획안: 화면의 초안을 1초 디바운스로 저장, 409면 최신으로 바꾼다 ──
   const [draft, setDraft] = useState<Sections>(initial.proposal.sections);
-  const [savedAt, setSavedAt] = useState<string | null>(timeText(initial.proposal.updated_at));
+  const [savedAt, setSavedAt] = useState<number | null>(savedMs(initial.proposal.updated_at));
   const [saving, setSaving] = useState(false);
   const revision = useRef(initial.proposal.revision);
   const draftRef = useRef(draft);
@@ -190,7 +190,7 @@ export function useDebateSession(auth: SessionAuth, initial: StateSnapshot) {
     draftRef.current = latest.sections;
     dirty.current = false;
     setDraft(latest.sections);
-    setSavedAt(timeText(latest.updated_at));
+    setSavedAt(Date.now());
   }, [path]);
 
   const saveJob = useCallback(async () => {
@@ -203,7 +203,7 @@ export function useDebateSession(auth: SessionAuth, initial: StateSnapshot) {
       });
       revision.current = res.revision;
       dirty.current = false;
-      setSavedAt(timeText(res.updated_at));
+      setSavedAt(Date.now());
     } catch (error) {
       if (error instanceof ApiError && error.code === "conflict") {
         await adoptLatest();

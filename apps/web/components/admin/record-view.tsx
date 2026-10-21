@@ -120,7 +120,7 @@ export function RecordView({
   );
   return (
     <div className="flex flex-col gap-4">
-      <div className="no-print sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-3 border-b border-line bg-canvas/95 px-1 py-2">
+      <div className="no-print sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-3 border-b border-line bg-canvas px-1 py-2">
         <Link href={backHref}>
           <Button variant="secondary" size="sm">
             ← 리포트로 돌아가기

@@ -2,7 +2,7 @@
 
 // 기획안(ProposalEditor): 우측 탭 안 6칸 세로 폼(UX 결정 6). 예시 문장 없이 칸이 무엇인지만 한 줄로 쓴다.
 // idea_credit 안내는 R7 고정 문구. 제출은 기획안 작성 단계에서만, 확인 창 하나를 거친다.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button, ConfirmDialog } from "@/components/ui";
 
@@ -17,6 +17,14 @@ export const SECTION_META: Record<SectionId, { title: string; hint: string }> = 
   idea_credit: { title: "아이디어 기여", hint: "이 기획에 반영된 의견과 그 의견을 낸 사람" },
 };
 
+/** 저장 표시는 상대 표기만 쓴다(실제 시계 금지, R7): 방금 / n분 전 / 저장됨 */
+export function savedLabel(savedAt: number, now: number): string {
+  const minutes = Math.floor((now - savedAt) / 60_000);
+  if (minutes < 1) return "방금 저장됨";
+  if (minutes < 60) return `${minutes}분 전 저장됨`;
+  return "저장됨";
+}
+
 export function ProposalEditor({
   sections,
   savedAt,
@@ -27,8 +35,8 @@ export function ProposalEditor({
   onSubmit,
 }: {
   sections: Sections;
-  /** 마지막 저장 시각(표시용 "HH:MM:SS") */
-  savedAt: string | null;
+  /** 마지막 저장 시각(epoch ms, 경과 시간 계산용) */
+  savedAt: number | null;
   saving: boolean;
   canSubmit: boolean;
   locked: boolean;
@@ -37,6 +45,12 @@ export function ProposalEditor({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    // 새로 저장되면 savedAt이 now보다 늦어 "방금"으로 보인다(Math.max), 이후 20초마다 경과를 다시 센다
+    const id = window.setInterval(() => setNow(Date.now()), 20_000);
+    return () => window.clearInterval(id);
+  }, [savedAt]);
   return (
     <div className="flex flex-col">
       <div className="flex flex-col gap-6 px-6 py-5">
@@ -50,7 +64,7 @@ export function ProposalEditor({
               rows={id === "keyword" ? 1 : 2}
               data-section={id}
               onChange={(event) => onChange(id, event.target.value)}
-              className="mt-1 resize-none border-0 border-b border-line bg-transparent px-0 py-2 text-body outline-none field-sizing-content focus-visible:border-accent disabled:text-muted"
+              className="mt-1 resize-none border-0 border-b border-line bg-transparent px-0 py-2 text-body outline-none field-sizing-content focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:text-muted"
             />
           </label>
         ))}
@@ -62,7 +76,7 @@ export function ProposalEditor({
             : saving
               ? "저장 중…"
               : savedAt
-                ? `${savedAt} 저장됨`
+                ? savedLabel(savedAt, Math.max(now, savedAt))
                 : "자동 저장"}
         </span>
         {!canSubmit && !locked && (

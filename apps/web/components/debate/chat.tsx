@@ -109,8 +109,6 @@ function MessageGroup({
   const seat = group.sender as Seat;
   const person = snap.participants.find((p) => p.id === group.sender);
   const minutes = snap.session.session_minutes;
-  const first = group.lines[0].message;
-  const time = officeTime(first.t_min, minutes, snap.session.office_start);
   return (
     <div className={cn("flex gap-2 pt-3", mine ? "justify-end" : "justify-start")}>
       {!mine && (
@@ -129,11 +127,11 @@ function MessageGroup({
           mine ? "items-end" : "items-start",
         )}
       >
+        {/* 묶음 머리는 이름만. 시각은 가운데 시각 줄(5분 간격·단계 경계)과 말풍선 hover로 본다 */}
         <p className="flex items-baseline gap-1.5 px-1 text-caption text-muted">
           <span className={cn("truncate", !mine && "font-medium")}>
             {mine ? "나" : nameOf(snap, seat)}
           </span>
-          <span className="tabular-nums">{time}</span>
         </p>
         {group.lines.map((line, i) => {
           const m = line.message;
@@ -266,7 +264,13 @@ export function ChatRoom({
         </span>
       </header>
       <div className="relative min-h-0 flex-1">
-        <div ref={scroller} onScroll={onScroll} className="h-full overflow-y-auto px-4 pt-2 pb-4">
+        <div
+          ref={scroller}
+          role="log"
+          aria-live="polite"
+          onScroll={onScroll}
+          className="h-full overflow-y-auto px-4 pt-2 pb-4"
+        >
           {groups.map((item) =>
             "lines" in item ? (
               <MessageGroup key={item.lines[0].message.id} group={item} snap={snap} fresh={fresh} />
@@ -373,7 +377,7 @@ function Composer({
             send();
           }
         }}
-        className="max-h-32 min-h-10 flex-1 resize-none rounded-[20px] border border-line bg-surface px-4 py-2 text-body outline-none field-sizing-content focus-visible:border-accent disabled:bg-surface-sunken"
+        className="max-h-32 min-h-10 flex-1 resize-none rounded-[20px] border border-line bg-surface px-4 py-2 text-body outline-none field-sizing-content focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:bg-surface-sunken"
       />
       <button
         type="submit"
