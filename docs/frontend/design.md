@@ -258,7 +258,7 @@ D13-2 톤: 흰 바탕, 한 열 문서처럼 읽히는 구조, 큰 제목과 분�
 | 사유 | 화면 문장 |
 |---|---|
 | no_activity | 지원자 활동 없음 |
-| evaluate_failed | 시스템: 판단 실패 |
+| evaluate_failed | 판단 보류 · 근거 부족 — 원문 기록 확인 권장 |
 | not_applicable | 해당 없음 |
 | event_not_fired | 이벤트 미발생 |
 | auto_submitted_blank | 자동 제출로 기여 칸 미작성 |

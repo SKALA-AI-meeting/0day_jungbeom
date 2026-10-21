@@ -106,7 +106,7 @@ empty ──지원자 확정 / AI 합의 채우기 / api 시간 초과 채우기
 
 지원자 화면 문구는 내부 용어 대신 지원자 말을 쓴다: 칸 → "정할 항목", 합의 패널 → "결정 사항", 확정 → "이걸로 정하기". API 필드 이름(`slot`·`confirm`)은 그대로다.
 
-칸 결과 표시(지원자 화면·관리자 리포트 공통): `resolution: timeout`은 "시간 초과". `resolution: consensus`는 확정 시점 `support` 스냅샷에서 확정 안 지지자가 참여자 4명 중 3명 이상이면 "합의", 아니면(지원자 혼자 확정 등) "지원자 결정"으로 표시한다. 데이터 값(`resolution`)은 바꾸지 않는다.
+칸 결과 표시(지원자 화면·관리자 리포트 공통): api가 칸마다 표시용 `outcome`(`consensus`∣`candidate_decision`∣`timeout`∣확정 전 null)을 계산해 `/state`의 `slots`, 칸 확정 응답의 `slot`, WS `slot.confirmed`, 리포트 `slots`에 함께 내린다(열로 저장하지 않고 확정 값에서 계산). `resolution: timeout`이면 `timeout`("시간 초과"). `resolution: consensus`이면 확정 시점 `support` 스냅샷에서 확정 안 지지자가 참여자 4명 중 3명 이상이면 `consensus`("합의"), 아니면(지원자 혼자 확정 등) `candidate_decision`("지원자 결정"). AI 합의 채우기(`fill_slot`)는 항상 `consensus`다. 화면은 `outcome`만 보고 지지 현황(`support`)은 계속 지원자 화면에 내려가지 않는다. 데이터 값(`resolution`)은 바꾸지 않는다.
 
 ## 의도 분류 출력 스키마
 
@@ -238,7 +238,7 @@ empty ──지원자 확정 / AI 합의 채우기 / api 시간 초과 채우기
  "facts":{"message_count":{"total":24,"keyword":5,"problem":9,"solution":8,"proposal":2},"spontaneous_count":19,"invited_count":5,"spontaneous_ratio":0.79,
           "response_latency_median_sec":21,"intent_counts":{"propose":4,"agree":8,"oppose":3,"question":5,"other":4}},
  "contribution_check":[{"phase":"problem","option_id":"...","label":"도심 폭우·침수 피해 증가","first_proposer":"p3","credited_in_proposal":["p3"],"credit_quote":"문제 상황: 서지안 제안"}],
- "slots":[{"phase":"keyword","value":"물","option_id":"...","filled_by":"candidate","resolution":"consensus","t_min":8.2,
+ "slots":[{"phase":"keyword","value":"물","option_id":"...","filled_by":"candidate","resolution":"consensus","outcome":"consensus","t_min":8.2,
            "first_proposer":"p3","support":[{"option_id":"...","label":"물","supporters":["candidate","p2","p3"]}]}],
  "cards":[{"card_id":"listening_pressure","element":"listening","fired_at":13.0,"delivered":true,"scene":"고집형 동료가 문제 상황 단계에서 자기 안을 강하게 밀어붙인 장면"}],
  "debrief":{"cards":[{"card_id":"listening_pressure","element":"listening","phase":"problem","fired":true,"fired_t_min":13.0,"window":{"start_min":13.0,"end_min":28.0}}],
@@ -297,7 +297,7 @@ empty ──지원자 확정 / AI 합의 채우기 / api 시간 초과 채우기
 | POST | /sessions/{id}/assistant | Bearer {prompt} | {call_id, message_id, content, cited_material_ids, tool_calls: [{name, query?, material_id?}]} 또는 429 `assistant_limit`(세션 60회 초과). 어시스턴트는 tool-calling 루프(`search_materials`·`get_material`, 요청당 도구 최대 3회)로 열린 자료만 보고, 답에는 인용한 자료 id를 붙인다 |
 | GET | /sessions/{id}/proposal | Bearer | Proposal {sections, revision, updated_at, submitted_at} |
 | PUT | /sessions/{id}/proposal | Bearer {sections, revision} | {revision, updated_at}. 디바운스 저장. in_progress 언제든. `revision`이 현재 값과 다르면 409 `conflict`(다른 탭 덮어쓰기 방지, 화면은 최신을 다시 읽음) |
-| POST | /sessions/{id}/proposal/submit | Bearer {blank_warning_shown?: bool} | {status: "completed", completed_at, submitted_at}. phase=proposal에서만(아니면 409 `phase_not_open`). 저장 대기분을 먼저 PUT한 뒤 호출. 현재 초안을 제출본으로 고정 → completed → WS `session.ended{submitted}`. 멱등(completed 이후 재호출은 저장된 값). 화면은 "제출하면 수정할 수 없어요" 확인 창을 거친다 빈 칸(`sections` 값이 공백뿐)은 api가 제출본에서 직접 계산해 `proposals.submit_blank_sections`에 저장하고, 클라이언트가 빈칸 경고 창을 보여 준 뒤 제출했으면 `blank_warning_shown: true`를 보낸다(`proposals.blank_warning_shown`, 자동 제출이면 null). 빈 칸이 있어도 제출은 막지 않는다 |
+| POST | /sessions/{id}/proposal/submit | Bearer {blank_warning_shown?: bool} | {status: "completed", completed_at, submitted_at}. phase=proposal에서만(아니면 409 `phase_not_open`). 저장 대기분을 먼저 PUT한 뒤 호출. 현재 초안을 제출본으로 고정 → completed → WS `session.ended{submitted}`. 멱등(completed 이후 재호출은 저장된 값). 화면은 "제출하면 수정할 수 없어요" 확인 창을 거친다. 빈 칸(`sections` 값이 공백뿐)은 api가 제출본에서 직접 계산해 `proposals.submit_blank_sections`에 저장한다(수동·자동 제출 모두, 빈 칸이 없으면 `[]`). 클라이언트가 빈칸 경고 창을 보여 준 뒤 제출했으면 `blank_warning_shown: true`를 보내고, 수동 제출에서 생략하면 false로 저장한다(`proposals.blank_warning_shown`, 자동 제출이면 null). 두 값은 제출 전 null이고 제출 때 한 번 쓰며 멱등 재호출로 바뀌지 않는다. 빈 칸이 있어도 제출은 막지 않는다 |
 | GET | /sessions/{id}/debrief | Bearer(세션 JWT 또는 debrief_token) | {intro_notice, elements: [{element, name, how_we_see}] (5요소의 이름과 "이렇게 봅니다" 한 줄, `/admin/catalog` 요소 카드와 같은 문구), cards: [{card_id, element, name, description}] (실제 발동한 카드만, 원천은 `observations`), seats: [{seat: "candidate", display_name}, {seat, display_name, avatar_url, persona_type, persona_description}] (AI 동료가 성향을 가진 AI였다는 설명), my_messages: [{id, content, phase, t_min}], scoring_notice, appeal_contact, connection_gaps, retention_notice, contact_email, proposal: {sections}∣null, view_until(`ended_at` + 7일), survey: {submitted, questions: [{q, text, kind: "scale"∣"text"}]}, failed_stage?}. `intro_notice` 첫 문장은 고정("같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 반응을 본다"). `my_messages`는 지원자 발언 2~3개의 읽기 전용 회고: 토론 단계마다 가장 긴 지원자 메시지 하나씩(최대 3개, 결정적 선택). `appeal_contact`는 이의 제기 연락처 문자열. **척도 세부(차원·수준 앵커)와 평가 결과는 디브리핑에 내려가지 않는다.** 세션 실패면 elements·cards·seats·proposal·my_messages 없이 중단·재응시 안내만 |
 | POST | /sessions/{id}/debrief/survey | Bearer(세션 JWT 또는 debrief_token) {answers: [{q: "natural"∣"fair", value: 1~5}], free_comment?: string(500자 이내)} | {submitted: true}. 한 번만 저장(멱등) |
 
@@ -325,9 +325,9 @@ empty ──지원자 확정 / AI 합의 채우기 / api 시간 초과 채우기
            {"phase":"solution","budget_min":18,"deadline_t_min":46},{"phase":"proposal","budget_min":14,"deadline_t_min":60}],
  "participants":[{"id":"candidate","display_name":"김지원"},{"id":"p1","display_name":"강한결","avatar_url":"/assets/missions/debate/avatars/avatar-01.png"},
                  {"id":"p2","display_name":"윤하람","avatar_url":"/assets/missions/debate/avatars/avatar-02.png"},{"id":"p3","display_name":"서지안","avatar_url":"/assets/missions/debate/avatars/avatar-03.png"}],
- "slots":[{"phase":"keyword","status":"confirmed","value":"물","filled_by":"candidate","resolution":"consensus","t_min":8.2},
-          {"phase":"problem","status":"empty","value":null,"filled_by":null,"resolution":null,"t_min":null},
-          {"phase":"solution","status":"empty","value":null,"filled_by":null,"resolution":null,"t_min":null}],
+ "slots":[{"phase":"keyword","status":"confirmed","value":"물","filled_by":"candidate","resolution":"consensus","outcome":"consensus","t_min":8.2},
+          {"phase":"problem","status":"empty","value":null,"filled_by":null,"resolution":null,"outcome":null,"t_min":null},
+          {"phase":"solution","status":"empty","value":null,"filled_by":null,"resolution":null,"outcome":null,"t_min":null}],
  "messages":[{"id":"...","sender":"p1","content":"...","phase":"problem","is_invite":false,"t_min":9.0,"created_at":"..."}],
  "materials":{"locked":false,"keyword":"물","materials":[{"material_id":"water_stats","title":"물 부족 통계"}]},
  "proposal":{"sections":{"keyword":"","problem":"","solution":"","rationale":"","expected_effect":"","idea_credit":""},"revision":0,"updated_at":"...","submitted_at":null},
@@ -351,7 +351,7 @@ empty ──지원자 확정 / AI 합의 채우기 / api 시간 초과 채우기
 | message.ack | {client_msg_id, message_id, run_id}. 메시지 저장 커밋 직후, 의도 분류 전에 보낸다 |
 | message.new | Message = {id, sender: candidate∣p1∣p2∣p3∣system, content, phase, is_invite, t_min, created_at}. 합의·시간 초과 채우기 공지는 `slot.confirmed` 바로 앞에 온다 |
 | typing | {participant: p1∣p2∣p3, state: "start"∣"stop"}. 화면 "OO님이 입력 중…". start 뒤 30초 안에 stop이 없으면 화면이 끈다 |
-| slot.confirmed | {phase, value, filled_by, resolution: "consensus"∣"timeout", t_min} |
+| slot.confirmed | {phase, value, filled_by, resolution: "consensus"∣"timeout", outcome: "consensus"∣"candidate_decision"∣"timeout", t_min} |
 | phase.changed | {phase, previous_phase, reason: "start"∣"confirmed"∣"timeout", phase_started_at, phase_deadline_at, t_min} |
 | timer | {phase, phase_deadline_at, phase_remaining_seconds, session_remaining_seconds}. 단계 전환 때와 60초마다(시계 보정). 화면은 로컬로 카운트다운 |
 | materials.opened | {keyword, materials: [{material_id, title}]} |
@@ -482,7 +482,7 @@ close code: 4401(토큰 문제 → resume 후 재연결), 4403(다른 세션, �
 
 차원 행은 `evaluations`, 실행 메타와 요소 요약(`elements`)은 `evaluation_runs`에 한 트랜잭션으로 저장한다. draft는 `GET /evaluations`에서 둘을 함께 읽어 만든다(체크포인트에 의존하지 않음).
 
-**평가 호출 규칙**: 요소마다 별도 LLM 호출(`MODEL_EVALUATOR`, temperature 0~0.2), 다른 요소의 결과는 입력에 넣지 않는다. 재요청은 **요소 단위 1회**(형식 오류·근거 부재일 때)이고, 그래도 실패한 차원은 `level: null, no_record_reason: "evaluate_failed"`(화면 "시스템: 판단 실패")로 저장한다. **LLM 전송 실패·타임아웃은 저장하지 않고** 예외로 올려 큐 재시도(`attempt+1`)에 맡긴다. 워커는 수준·근거를 고쳐 쓰지 않는다(확신도 clamp만 예외).
+**평가 호출 규칙**: 요소마다 별도 LLM 호출(`MODEL_EVALUATOR`, temperature 0~0.2), 다른 요소의 결과는 입력에 넣지 않는다. 재요청은 **요소 단위 1회**(형식 오류·근거 부재일 때)이고, 그래도 실패한 차원은 `level: null, no_record_reason: "evaluate_failed"`(화면 문구는 `rubric.md` 5장)로 저장한다. **LLM 전송 실패·타임아웃은 저장하지 않고** 예외로 올려 큐 재시도(`attempt+1`)에 맡긴다. 워커는 근거를 고쳐 쓰지 않는다. 예외는 근거 1개인 수준 4·5의 상한(수준 3·확신도 최대 medium)과 확신도 clamp뿐이다.
 
 ## MCP 도구
 

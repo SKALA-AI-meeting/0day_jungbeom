@@ -19,8 +19,8 @@ draft와 approval(interrupt)을 나눈 이유: LangGraph는 재개 시 interrupt
 3. **aggregate**(결정적): 사실 지표(`rubric.md` 6장)를 리포트 `facts`로 정리하고, 카드 창(`scenario-model.md` 4.2 `window`, 관찰의 발동 시각 기준)과 `contribution_check`(안별 실제 최초 제안자 / 기획안에 적힌 기여자)를 만든다. 이 단계는 수준을 정하지 않는다.
 4. **evaluate**(LLM, `MODEL_EVALUATOR`, temperature 0~0.2): 평가 에이전트가 **요소마다 별도 호출**(5요소 고정, R2)로 그 요소의 차원 전부를 판단한다. 입력은 세션 대화 전체와 칸 기록·기획안·카드 발생 기록·사실 지표·Contributions, 그 요소의 척도와 앵커(프롬프트 구성은 `agent/design.md` "평가 에이전트"). **다른 요소의 판단 결과는 입력에 넣지 않는다**(후광 방지). 카드 관찰 창은 핵심 장면 위치일 뿐 입력을 자르지 않는다.
    - 먼저 현재 run_id로 저장된 평가가 있는지 내부 `GET /evaluations`로 본다(차원 행 + `evaluation_runs`의 요소 요약 `elements`). 있으면 LLM을 다시 부르지 않고 차원·요소 요약을 그대로 재사용한다(재전달 멱등, 저장 직후 체크포인트 전에 죽어도 요소 요약이 복구된다).
-   - **워커 검증**(`rubric.md` 7.3, 차원마다): `dimension_id`가 그 요소의 차원 목록 안이고 차원마다 정확히 한 행, `level`과 `no_record_reason` 중 하나만, **근거 없는 수준 금지**(수준이 있으면 `evidence_refs`가 같은 세션의 실제 행이고 수준 1~3은 지원자 근거 1개 이상, **4·5는 서로 다른 지원자 근거 2개 이상**, 맥락 참조는 개수에 안 셈, `hon_credit_record` 예외), `rationale`·`summary` 금지어(합격·불합격·순위·추천·척도 밖 점수 표현).
-   - **재요청은 요소 단위 1회**(R5-14, 이전의 "차원 단위 1회"를 대체): 형식 오류(스키마 위반·차원 누락·중복·금지어)나 근거 부재가 하나라도 있으면 그 요소 호출 전체를 실패 차원과 사유를 붙여 1회 다시 요청한다. 재요청 뒤에도 실패한 차원만 `level=null`, `no_record_reason=evaluate_failed`(화면 "시스템: 판단 실패")로 두고 나머지는 재요청 결과를 쓴다. 자동 대체 모델 없음, 워커가 수준·근거를 고쳐 쓰지 않음.
+   - **워커 검증**(`rubric.md` 7.3, 차원마다): `dimension_id`가 그 요소의 차원 목록 안이고 차원마다 정확히 한 행, `level`과 `no_record_reason` 중 하나만, **근거 없는 수준 금지**(수준이 있으면 `evidence_refs`가 같은 세션의 실제 행이고 수준 1~3은 지원자 근거 1개 이상, **4·5는 서로 다른 지원자 근거 2개 이상**(1개면 거부하지 않고 수준 3·확신도 최대 medium으로 상한), 맥락 참조는 개수에 안 셈, `hon_credit_record` 예외), `rationale`·`summary` 금지어(합격·불합격·순위·추천·척도 밖 점수 표현).
+   - **재요청은 요소 단위 1회**(R5-14, 이전의 "차원 단위 1회"를 대체): 형식 오류(스키마 위반·차원 누락·중복·금지어)나 근거 부재가 하나라도 있으면 그 요소 호출 전체를 실패 차원과 사유를 붙여 1회 다시 요청한다. 재요청 뒤에도 실패한 차원만 `level=null`, `no_record_reason=evaluate_failed`(화면 문구는 `rubric.md` 5장)로 두고 나머지는 재요청 결과를 쓴다. 자동 대체 모델 없음, 워커가 근거를 고쳐 쓰지 않음(근거 1개 수준 4·5 상한과 확신도 clamp만 예외).
    - **확신도 상한은 거부하지 않고 깎는다**(clamp): 근거 1개면 최대 medium, 설득 카드 하나만 발동이면 최대 medium, 보조 장면만이면 최대 low. 상한보다 높게 나오면 워커가 상한 값으로 바꿔 저장한다.
    - LLM 전송 오류·타임아웃은 그 요소를 `evaluate_failed`로 만들지 않는다. 아무것도 저장하지 않고 작업을 실패시켜 큐 재시도(8단계)로 넘긴다.
    - 요소 요약: `level`은 수준이 있는 차원 평균을 워커가 반올림(.5 올림, 전부 기록 없음이면 null), `summary` 1~2줄은 평가 에이전트가 쓴다. `dimension_count`·`no_record_count` 포함.
@@ -76,7 +76,7 @@ MCP 접속 URL(`DEBATE_MCP_URL`·`RAG_MCP_URL`·`ASSESSMENT_MCP_URL`)의 정본�
 
 - `docker compose up`으로 8개 서비스 전부 healthy, 공개 포트가 web·api 8000·rabbitmq 관리(로컬)뿐.
 - 픽스처 세션(지원자 메시지·칸 확정·기획안·관찰)으로: evaluate가 요소마다 LLM 호출 1회(5회, 다른 요소 결과가 프롬프트에 없음), temperature·`MODEL_EVALUATOR` 설정 확인, `save_evaluation` 1회에 척도 버전·`prompt_versions` 맵·모델 포함, 같은 작업 재전달에 LLM 재호출 없음(같은 `(session_id, run_id)`의 차원과 `evaluation_runs.elements` 재사용), save 직후 강제 종료 뒤 재실행에서 요소 요약 복구.
-- 워커 검증 단위 테스트(`rubric.md` 7.3): 근거 없는 수준, 수준 4·5에 근거 1개, 맥락 참조만 있는 근거, 다른 세션 메시지 참조, `level`·`no_record_reason` 동시 존재, 차원 누락·중복, 금지어 → 각각 실패하고 요소 호출 1회 재요청. 재요청 뒤에도 실패한 차원만 `evaluate_failed`(다른 차원은 재요청 결과). 확신도 상한 위반은 실패가 아니라 clamp된 값으로 저장. LLM 타임아웃 주입은 저장 0건·큐 재시도. 요소 level이 평균 반올림(.5 올림)과 같고 전부 기록 없음이면 null.
+- 워커 검증 단위 테스트(`rubric.md` 7.3): 근거 없는 수준, 맥락 참조만 있는 근거, 다른 세션 메시지 참조, `level`·`no_record_reason` 동시 존재, 차원 누락·중복, 금지어 → 각각 실패하고 요소 호출 1회 재요청. 재요청 뒤에도 실패한 차원만 `evaluate_failed`(다른 차원은 재요청 결과). 수준 4·5에 근거 1개와 확신도 상한 위반은 실패가 아니라 각각 수준 3·확신도 최대 medium, clamp된 값으로 저장. LLM 타임아웃 주입은 저장 0건·큐 재시도. 요소 level이 평균 반올림(.5 올림)과 같고 전부 기록 없음이면 null.
 - 리포트 형태: `elements[]` 5개, `dimensions[]` 19개(`rubric.md` 3장 id), 수준 있는 차원마다 근거 ≥ 1(4·5는 ≥ 2), evidence가 모두 같은 세션 행, 메시지 근거마다 `record_ref`와 앞 5·뒤 3 맥락, contribution_check가 `get_contributions`와 일치, facts 키가 `rubric.md` 6장과 같음, ai_usage 시간순 사실만, 총점·합계 필드 없음, 텍스트 필드 금지어 없음.
 - draft의 `cards[].scene`이 카드 `report_template`과 같고 draft 단계 LLM 호출이 0회.
 - 새 `eval_round` 발행은 이전 회차 thread가 interrupt에 멈춰 있어도 collect부터 실행하고 이전 draft를 저장하지 않음, 같은 `eval_round` 재전달만 체크포인트에서 재개.

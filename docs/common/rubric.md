@@ -43,7 +43,7 @@
 1. 제출(자동 제출 포함)로 세션이 종료되면 api가 리포트 작업을 큐에 넣는다.
 2. `collect`·`aggregate`: 워커가 세션 기록 전체(대화 전체·칸 기록·기획안 제출본·카드 발생 기록·`get_contributions`)를 모으고 사실 지표(6장)를 규칙으로 계산한다. 대화 전체를 읽는 정확한 경로는 `contracts.md`가 정한다.
 3. `evaluate`: 평가 에이전트가 모은 세션 전체 기록과 척도(`get_rubric`)로 **요소마다 한 번** 판단한다. 한 호출은 그 요소의 차원 전부를 내고, 다른 요소의 판단 결과는 입력에 넣지 않는다(후광 방지).
-4. 워커가 출력을 검증한다(7.3). 형식 오류나 근거 부재가 있으면 **그 요소 호출을 1회** 다시 요청하고(R5-14, 이전의 차원 단위 재요청을 대체), 그래도 실패한 차원은 `evaluate_failed`로 둔다(자동 대체 모델 없음, 워커가 수준·근거를 고쳐 쓰지 않음). 확신도 상한 위반은 거부하지 않고 워커가 상한으로 깎는다(clamp). LLM 전송·타임아웃 실패는 저장하지 않고 큐가 재시도한다.
+4. 워커가 출력을 검증한다(7.3). 형식 오류나 근거 부재가 있으면 **그 요소 호출을 1회** 다시 요청하고(R5-14, 이전의 차원 단위 재요청을 대체), 그래도 실패한 차원은 `evaluate_failed`로 둔다(자동 대체 모델 없음, 워커가 근거를 고쳐 쓰지 않음). 근거가 1개인 수준 4·5는 거부하지 않고 수준 3·확신도 최대 medium으로 깎고(상한), 확신도 상한 위반도 거부하지 않고 워커가 상한으로 깎는다(clamp). 근거 개수는 `hon_credit_record` 예외(3.5)를 따른다. LLM 전송·타임아웃 실패는 저장하지 않고 큐가 재시도한다.
 5. `save_evaluation`으로 차원 평가와 요소 요약(`elements`)을 함께 저장한다(실행 단위 기록 `evaluation_runs`에 `rubric_version`·평가 프롬프트 파일별 해시 맵 `prompt_versions`·모델·`elements`, 정확한 입출력은 `contracts.md`). 같은 세션의 재시도는 저장된 평가를 재사용하고, `evaluate_failed`가 섞인 결과는 리포트 재생성 때 새 `run_id`로 다시 평가한다. 요소 수준(평균 반올림)은 워커가 결정적으로 계산하고, 요소 서술 1~2줄은 평가 에이전트가 쓴다. api는 형식·세션 소속만 검증하고 판단 규칙 검증(7.3)은 워커가 한다.
 6. `draft`: 근거마다 `get_transcript_span`(기본 앞 5·뒤 3)으로 앞뒤 맥락을 붙여 리포트 초안을 만든다.
 7. `interrupt`·`finalize`: 리포트를 저장하고 담당자 검토를 기다린다. 같은 작업의 재실행은 멱등이다(저장된 평가가 있으면 재사용).
@@ -674,8 +674,8 @@
 | `messages_after_rejection` | int | 문제 상황 칸 확정 후 해결책 단계 끝까지 지원자 메시지 수 | `flex_acceptance` |
 | `ai_adopted_units` | list | 확정 칸의 `option_id` 중 `options.proposer`가 AI 동료 자리(`p1`~`p3`)인 안과 그 제안자 | `hon_credit_record` |
 | `credit_field_filled` | bool | `idea_credit`가 비어 있지 않음(공백·"없음" 제외) | `hon_credit_record` |
-| `blank_sections_at_submit` | list[str] | 제출본에서 비어 있던 기획안 칸 id(`proposals.submit_blank_sections`) | 맥락 참고(단독으로 수준을 정하지 않음, 안의 질 평가 금지) |
-| `blank_warning_acknowledged` | bool∣null | 빈칸 경고 창을 본 뒤 제출했는지(`proposals.blank_warning_shown`, 자동 제출이면 null) | 맥락 참고(`hon_credit_record`의 자발 빈칸 구분 보조) |
+| `blank_sections_at_submit` | list[str] | 제출본에서 비어 있던 기획안 칸 id(`proposals.submit_blank_sections`) | 맥락 참고만. 빈 칸 수·다른 칸의 공란·경고 확인을 성실성이나 기획안 품질의 대리 지표로 쓰지 않는다(안의 질 평가 금지). `idea_credit` 공란만 `hon_credit_record`의 기존 전제·앵커로 판단한다 |
+| `blank_warning_acknowledged` | bool∣null | 빈칸 경고 창을 본 뒤 제출했는지(`proposals.blank_warning_shown`, 자동 제출이면 null) | 맥락 참고만(`hon_credit_record`에서 `idea_credit` 공란이 경고를 보고도 남긴 것인지 구분하는 보조. 감점 근거 단위로 세지 않음) |
 | `assistant_calls` | list | AI 어시스턴트 요청·응답·인용 자료(시간순). 사용하지 않았으면 "사용하지 않음" | 설득(인용 출처 확인만) |
 | `material_views` | list | 자료 열람 기록 | 설득(인용 출처 확인만) |
 | `connection_gaps` | list | 접속이 끊긴 구간 | 전 차원(확신도) |
