@@ -22,7 +22,7 @@
 | update_observation | {session_id, card_id, window_start, metrics, run_id} | PATCH /observations. 같은 (card_id, window_start) 행의 지정한 지표만 갱신(세션 종료 시 collab_help `promise_kept` 확정용) | 변경 |
 
 - 삭제된 도구: 공유 문서 조회·파트 쓰기 도구. 동료는 자기 문서를 send_document로만 쓰고, 지원자 문서는 get_shared_documents로만 읽는다.
-- 허용 목록(그래프가 주입): 동료 respond = search_documents, get_document, get_board, get_shared_documents. 팀장 respond_manager = search_documents, get_board, get_shared_documents. 결정적 노드(코드 호출) = post_message, send_document, set_division, update_task, release_document, record_observation, update_observation.
+- 허용 목록(그래프가 주입): 동료 respond = search_documents, get_document, get_board, get_shared_documents. 팀장 respond_manager = search_documents, get_board, get_shared_documents. 결정적 노드(코드 호출) = post_message, send_document, set_division, update_task, release_document, record_observation, update_observation, get_session(route), list_documents(respond의 미공개 문서 판정). list_messages는 호출하는 그래프가 없다.
 - 멱등 키는 그대로 전달하고 판단은 api에 맡긴다: `post_message`는 (run_id, seq), `send_document`는 문서 (doc_id, run_id)·메시지 (run_id, seq)(같은 키면 버전이 늘지 않고 기존 결과), `update_task`는 (task_id, field, run_id), `set_division`은 내용 동일성, `record_observation`은 (card_id, window_start)(run_id는 추적용), `update_observation`은 같은 키에 같은 run_id면 기존 값.
 
 ## rag-mcp (`services/rag-mcp/`)

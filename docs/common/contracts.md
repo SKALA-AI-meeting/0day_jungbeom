@@ -244,9 +244,9 @@
 
 | 도구 | 입력 | 출력 data | 구분 |
 |---|---|---|---|
-| get_session | {session_id} | 내부 GET /sessions/{id} | 조회 |
-| list_messages | {session_id, since_t_min?, channel?, limit?=50} | [Message] | 조회 |
-| get_board | {session_id} | {section_owners: [{part_no, owner, status: "draft"∣"confirmed", draft_differs}], division: {snapshot_id, parts, decided_by, decided_at}∣null, tasks: [...]} (할 일 0개여도 section_owners 5행과 확정 snapshot은 항상 반환) | 조회. 동료가 빈 보드에서도 섹션 담당과 확정 상태를 읽고 초안을 쓸 수 있게 한다 |
+| get_session | {session_id} | 내부 GET /sessions/{id} | 조회. 세션 그래프 route가 실행마다 세션·시나리오·확정 분업을 읽는다 |
+| list_messages | {session_id, since_t_min?, channel?, limit?=50} | [Message] | 조회. 호출하는 그래프 없음(최근 메시지는 api가 저장소에서 직접 읽어 State에 넣는다). 허용 목록에 넣지 않는다 |
+| get_board | {session_id} | {section_owners: [{part_no, owner, status: "draft", draft_differs}], division: {snapshot_id, parts, decided_by, decided_at}∣null, tasks: [...]} (할 일 0개여도 section_owners 5행과 확정 snapshot은 항상 반환) | 조회. 동료가 빈 보드에서도 섹션 담당과 확정 상태를 읽고 초안을 쓸 수 있게 한다 |
 | get_shared_documents | {session_id} | 내부 GET /docs/shared (지원자 문서는 보낸 버전만) | 조회 |
 | post_message | {session_id, channel, sender ∈ colleague∣manager∣system, content, event_id?, run_id, seq, meta?} | Message | 변경 |
 | set_division | {session_id, parts, decided_by, run_id} | {section_owners, division} | 변경. 섹션 담당 draft 5개만 쓰고, 분업안 공유와 같은 검사(섹션 담당 5개 + division_min)를 통과하면 snapshot을 만든다. 할 일(tasks) 행은 읽지도 쓰지도 않는다(2026-10-21 후속) |
@@ -262,7 +262,7 @@
 |---|---|---|---|
 | search_documents | {query, session_id, top_k?=3} | [{doc_id, title, chunk, score}]. 내부 GET /documents로 공개 여부 확인 후 공개된 문서만 | 조회 |
 | get_document | {doc_id, session_id} | {doc_id, title, content}. 공개 전이면 `not_released` | 조회 |
-| list_documents | {session_id} | [{doc_id, title, released}] | 조회 |
+| list_documents | {session_id} | [{doc_id, title, released}] | 조회. 세션 그래프 respond가 모델 호출 전에 코드로 불러 미공개 문서를 묻는 질문인지 판정한다 |
 | reindex_documents | {mission_id?} | {indexed: n(색인된 청크 수), model, dim, catalog_version}. 미션(기본 `planning`)의 현재 카탈로그 버전으로 회사 문서를 색인(관리용). 다른 버전의 청크는 지우지 않음. 에이전트에는 노출하지 않음 | 변경 |
 
 ### 에이전트별 도구 허용 목록
@@ -271,7 +271,7 @@
 |---|---|---|
 | 세션 그래프 respond(동료) | search_documents, get_document, get_board, get_shared_documents | 그래프가 주입(모델이 바꿀 수 없음) |
 | 세션 그래프 respond(팀장) | search_documents, get_board, get_shared_documents (회사 문서의 뜻 질문에 답하기 위한 검색) | 주입 |
-| 세션 그래프 결정적 노드 | 나머지 business-mcp 변경 도구 (코드가 직접 호출) | 주입 |
+| 세션 그래프 결정적 노드 | 나머지 business-mcp 변경 도구, get_session(route), list_documents(respond의 미공개 문서 판정) (코드가 직접 호출) | 주입 |
 | 어시스턴트 | search_documents, get_document | 주입 |
 | 워커 | 없음 (내부 REST만) | — |
 
