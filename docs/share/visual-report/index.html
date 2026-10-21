@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Day Zero 테스트 기록</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 레이아웃: 왼쪽 정렬 단일 칼럼(본문 72ch) + 단계마다 영상|스크린샷 2열, 좁으면 1열. 상단에 절 이동 바 */
+:root {
+  --paper: #f6f7f5;
+  --sheet: #ffffff;
+  --ink: #1c2421;
+  --muted: #5b6862;
+  --line: #d9dfdb;
+  --accent: #1f6f5c;
+  --accent-soft: #e3f0eb;
+  --pass: #1f7a4a;
+  --warn: #9a6a00;
+  --crit: #b03a2e;
+  --chip-pass: #e2f2e8;
+  --chip-warn: #f6eccf;
+  --chip-crit: #f6e0dc;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --step--1: 0.82rem;
+  --step-0: 0.98rem;
+  --step-1: 1.18rem;
+  --step-2: 1.5rem;
+  --step-3: 2.05rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121715; --sheet: #19201d; --ink: #e4ebe7; --muted: #9aa8a1; --line: #2c3632;
+    --accent: #5cc2a4; --accent-soft: #1d332c; --pass: #6fcf97; --warn: #e0b54a; --crit: #ef8a7c;
+    --chip-pass: #1d3326; --chip-warn: #3a2f12; --chip-crit: #3c201c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121715; --sheet: #19201d; --ink: #e4ebe7; --muted: #9aa8a1; --line: #2c3632;
+  --accent: #5cc2a4; --accent-soft: #1d332c; --pass: #6fcf97; --warn: #e0b54a; --crit: #ef8a7c;
+  --chip-pass: #1d3326; --chip-warn: #3a2f12; --chip-crit: #3c201c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--font-body); font-size: var(--step-0); line-height: 1.65;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 40px 80px; display: grid; gap: 56px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.25; margin: 0; }
+h1 { font-size: var(--step-3); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: var(--step-2); font-weight: 700; }
+h3 { font-size: var(--step-1); font-weight: 600; }
+p { margin: 0; max-width: 72ch; }
+.eyebrow { font-family: var(--font-mono); font-size: var(--step--1); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+code, .mono { font-family: var(--font-mono); font-size: 0.88em; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible, video:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header.top { display: grid; gap: 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: var(--step--1); font-family: var(--font-mono); }
+
+nav.jump { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line); margin-inline: -4px; padding: 10px 4px; display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: var(--step--1); }
+nav.jump a { text-decoration: none; color: var(--muted); }
+nav.jump a:hover { color: var(--accent); }
+
+section { display: grid; gap: 20px; scroll-margin-top: 64px; }
+.lede { display: grid; gap: 8px; }
+
+.gates { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.gate { background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.gate .k { font-size: var(--step--1); color: var(--muted); }
+.gate .v { font-size: var(--step-2); font-weight: 700; font-variant-numeric: tabular-nums; }
+.gate .s { font-size: var(--step--1); color: var(--muted); }
+
+.chip { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.chip.pass { background: var(--chip-pass); color: var(--pass); }
+.chip.warn { background: var(--chip-warn); color: var(--warn); }
+.chip.crit { background: var(--chip-crit); color: var(--crit); }
+
+.table-box { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: var(--step--1); background: var(--paper); }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+.stage .about { grid-column: 1 / -1; display: grid; gap: 6px; }
+.stage .about h3 { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.media { display: grid; gap: 10px; align-content: start; min-width: 0; }
+video { width: 100%; max-width: 100%; border-radius: 6px; border: 1px solid var(--line); background: #000; display: block; }
+.cap { font-size: var(--step--1); color: var(--muted); }
+.shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-content: start; min-width: 0; }
+figure { margin: 0; display: grid; gap: 4px; min-width: 0; }
+figure img { width: 100%; border-radius: 6px; border: 1px solid var(--line); display: block; cursor: zoom-in; }
+figcaption { font-size: var(--step--1); color: var(--muted); }
+
+.persona { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+.persona .notes { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.persona ul { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
+
+.bars { display: grid; gap: 14px; }
+.bar-row { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 6px 14px; align-items: center; }
+.bar-row .label { font-size: 0.92rem; }
+.track { display: grid; gap: 4px; }
+.bar { height: 14px; border-radius: 3px; background: var(--line); position: relative; }
+.bar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+.bar.before i { background: var(--muted); opacity: 0.55; }
+.bar.after i { background: var(--accent); }
+.bar-val { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.legend { display: flex; gap: 16px; font-size: var(--step--1); color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; background: var(--accent); }
+.legend span.b::before { background: var(--muted); opacity: 0.55; }
+
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.box { background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.box ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+
+dialog { border: 0; padding: 0; background: transparent; max-width: min(1400px, 96vw); }
+dialog::backdrop { background: rgba(0,0,0,0.75); }
+dialog img { max-width: 100%; max-height: 90vh; border-radius: 6px; display: block; }
+
+footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 4px; }
+
+@media (max-width: 760px) {
+  .stage, .persona, .two { grid-template-columns: minmax(0, 1fr); }
+  .bar-row { grid-template-columns: minmax(0, 1fr); }
+  .wrap { padding-block: 24px 56px; gap: 40px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Day Zero · 토론형 채용 MVP</div>
+    <h1>Day Zero 테스트 기록</h1>
+    <p>지원자가 AI 동료 3명(강한결 고집형 · 윤하람 소극형 · 서지안 비판형)과 키워드 → 문제 상황 → 해결책을 정하고 기획안을 내는 흐름을, 단계별 화면 테스트와 페르소나 playtest, 실제 LLM 검증으로 확인한 기록입니다. 영상은 압축본이고, 원본 로그 위치는 각 절에 적었습니다.</p>
+    <div class="meta"><span>2026-10-22</span><span>main d44bd57</span><span>LLM gpt-4o-mini</span><span>격리 스택 web 3100 · api 8100</span></div>
+  </header>
+
+  <nav class="jump" aria-label="절 이동">
+    <a href="#summary">한눈에</a>
+    <a href="#stages">단계별 화면</a>
+    <a href="#playtest">페르소나 playtest</a>
+    <a href="#live">실제 LLM 지표</a>
+    <a href="#changes">고친 것 · 남은 것</a>
+  </nav>
+
+  <section id="summary">
+    <div class="lede">
+      <div class="eyebrow">한눈에</div>
+      <h2>병합 직전 검증 결과</h2>
+    </div>
+    <div class="gates">
+      <div class="gate"><span class="k">단계별 화면 테스트 · Playwright</span><span class="v">9 / 9</span><span class="s">결정적 LLM 모드(LLM_FAKE=1), 51.7초</span></div>
+      <div class="gate"><span class="k">15분 전체 세션 · 실제 LLM</span><span class="v">8 / 8 단언</span><span class="s">세션 비용 $0.013 · 첫 동료 응답 p95 8.6초</span></div>
+      <div class="gate"><span class="k">평가 일치 · BARS ±1</span><span class="v">1.00</span><span class="s">19차원, 목표 0.80 · 판단 보류 0</span></div>
+      <div class="gate"><span class="k">페르소나 playtest 재실행</span><span class="v">7 / 7 달성</span><span class="s">지원자 3성향 + 채용 담당자</span></div>
+    </div>
+    <div class="table-box">
+      <table>
+        <thead><tr><th>검사</th><th>무엇을 보나</th><th>결과</th><th>기록</th></tr></thead>
+        <tbody>
+          <tr><td><code>make test</code> · <code>make lint</code></td><td>api·agent·report-worker·MCP·web 단위 테스트와 형식</td><td><span class="chip pass">통과</span></td><td class="mono">—</td></tr>
+          <tr><td><code>make test-e2e</code></td><td>가짜 api 위 대본 러너(합의·시간 초과·침묵·정직 주장 등)</td><td><span class="chip pass">통과</span></td><td class="mono">scenarios/e2e/*.yaml</td></tr>
+          <tr><td><code>make e2e-stages</code></td><td>실제 스택에서 단계마다 시드 세션을 만들고 화면을 조작</td><td><span class="chip pass">9 / 9</span></td><td class="mono">tests/e2e/records/stages/</td></tr>
+          <tr><td><code>all_five --live</code></td><td>입장부터 리포트 검토까지 15분 세션 하나, 단언 8개</td><td><span class="chip pass">8 / 8</span></td><td class="mono">tests/e2e/records/final-20261022/</td></tr>
+          <tr><td><code>make eval-live</code></td><td>의도 분류 20문장, 평가 수준 19차원, 유출·유도 질문</td><td><span class="chip pass">통과</span></td><td class="mono">tests/e2e/records/final-20261022/eval-live.md</td></tr>
+          <tr><td>페르소나 응답 품질 eval</td><td>반복률, 지원자 질문 응답률, 지목 응답률, 안전</td><td><span class="chip pass">튜닝 전후 개선</span></td><td class="mono">tests/e2e/records/eval-live-persona-20261022.md</td></tr>
+          <tr><td>playtest 재실행</td><td>블라인드 페르소나가 화면만 보고 단계를 끝까지 수행</td><td><span class="chip pass">7 / 7 달성</span> <span class="chip warn">중 13</span></td><td class="mono">tests/playtest/records/rerun-20261022/</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="stages">
+    <div class="lede">
+      <div class="eyebrow">단계별 화면 · Playwright e2e</div>
+      <h2>단계마다 시작점을 만들고 그 단계만 확인합니다</h2>
+      <p class="muted">처음부터 15분을 다 돌지 않고, 단계 시드(<code>scenarios/e2e/stages/*.yaml</code>)로 그 단계 직전 상태의 세션을 만든 뒤 시간을 당겨 카드·마감·침묵을 일으킵니다. 결정적 LLM 모드라 동료 문장이 매번 같습니다. 영상은 실제 속도, 스크린샷은 눌러서 크게 봅니다.</p>
+    </div>
+
+    <article class="stage">
+      <div class="about"><h3>입장 <span class="chip pass">통과</span></h3><p class="muted">초대 링크 → 표시 이름과 동의 → 대기실에서 참여자 확인 → 시작.</p></div>
+      <div class="media"><video src="media/stage/entry.mp4" controls muted playsinline preload="metadata"></video><span class="cap">entry.spec.ts · 0.7초</span></div>
+      <div class="shots">
+        <figure><img src="media/shots/entry/01.jpg" alt="입장 화면" loading="lazy"><figcaption>입장</figcaption></figure>
+        <figure><img src="media/shots/entry/02.jpg" alt="동의 화면" loading="lazy"><figcaption>동의</figcaption></figure>
+        <figure><img src="media/shots/entry/03.jpg" alt="대기 화면" loading="lazy"><figcaption>대기 · 참여자</figcaption></figure>
+        <figure><img src="media/shots/entry/04.jpg" alt="토론 시작" loading="lazy"><figcaption>시작</figcaption></figure>
+      </div>
+    </article>
+
+    <article class="stage">
+      <div class="about"><h3>키워드 <span class="chip pass">통과</span></h3><p class="muted">후보 4개 중 하나를 고르고 확인 창에서 [네, 정할게요] → 결정 사항에 "지원자 결정"으로 표시되고 그 키워드 자료가 열립니다.</p></div>
+      <div class="media"><video src="media/stage/keyword.mp4" controls muted playsinline preload="metadata"></video><span class="cap">keyword.spec.ts</span></div>
+      <div class="shots">
+        <figure><img src="media/shots/keyword/01.jpg" alt="키워드 확정 전" loading="lazy"><figcaption>확정 전 · 자료 닫힘</figcaption></figure>
+        <figure><img src="media/shots/keyword/02.jpg" alt="확인 창" loading="lazy"><figcaption>확인 창</figcaption></figure>
+        <figure><img src="media/shots/keyword/03.jpg" alt="키워드 확정" loading="lazy"><figcaption>확정 · 지원자 결정</figcaption></figure>
+        <figure><img src="media/shots/keyword/04.jpg" alt="자료 탭" loading="lazy"><figcaption>자료 열림</figcaption></figure>
+      </div>
+    </article>
+
+    <article class="stage">
+      <div class="about"><h3>문제 상황 <span class="chip pass">통과</span></h3><p class="muted">다수 의견 카드(수용 장면)에서 동료 두 명이 기준안을 밀고, 마감까지 정하지 않으면 시간 초과로 가장 많이 모인 안이 채워지고 입력이 닫힙니다.</p></div>
+      <div class="media"><video src="media/stage/problem.mp4" controls muted playsinline preload="metadata"></video><span class="cap">problem.spec.ts · 6.2초</span></div>
+      <div class="shots">
+        <figure><img src="media/shots/problem/01.jpg" alt="문제 상황 시작" loading="lazy"><figcaption>시작</figcaption></figure>
+        <figure><img src="media/shots/problem/02.jpg" alt="수용 카드 발언" loading="lazy"><figcaption>수용 카드 발언</figcaption></figure>
+        <figure><img src="media/shots/problem/03.jpg" alt="시간 초과 채우기" loading="lazy"><figcaption>시간 초과 · 입력 닫힘</figcaption></figure>
+      </div>
+    </article>
+
+    <article class="stage">
+      <div class="about"><h3>해결책 <span class="chip pass">3 / 3</span></h3><p class="muted">세 가지 경우를 따로 봅니다. 동료 셋 중 둘 이상이 지원자 안을 지지하면 AI가 합의 공지와 함께 칸을 채우고, 지원자가 침묵하면 비판형이 한 번 초대하고, 반대가 남아도 지원자가 혼자 정하면 "지원자 결정"이 됩니다.</p></div>
+      <div class="media">
+        <video src="media/stage/solution-consensus.mp4" controls muted playsinline preload="metadata"></video><span class="cap">AI 합의 채우기 · 21.8초</span>
+        <video src="media/stage/solution-silent.mp4" controls muted playsinline preload="metadata"></video><span class="cap">침묵 → 초대 1건</span>
+        <video src="media/stage/solution-solo.mp4" controls muted playsinline preload="metadata"></video><span class="cap">지원자 혼자 확정</span>
+      </div>
+      <div class="shots">
+        <figure><img src="media/shots/solution/01.jpg" alt="합의 직전" loading="lazy"><figcaption>합의 직전</figcaption></figure>
+        <figure><img src="media/shots/solution/02.jpg" alt="합의 채움" loading="lazy"><figcaption>합의 채움 · 공지</figcaption></figure>
+        <figure><img src="media/shots/solution/03.jpg" alt="침묵 초대" loading="lazy"><figcaption>침묵 초대</figcaption></figure>
+        <figure><img src="media/shots/solution/04.jpg" alt="혼자 확정" loading="lazy"><figcaption>혼자 확정 · 지원자 결정</figcaption></figure>
+      </div>
+    </article>
+
+    <article class="stage">
+      <div class="about"><h3>기획안 <span class="chip pass">통과</span></h3><p class="muted">입력은 잠시 멈추면 자동 저장됩니다. 제출하면 빈 칸이 있을 때 경고 창, 이어서 "제출하면 수정할 수 없어요" 확인 창이 뜨고, 제출 뒤 잠기고 디브리핑으로 갑니다.</p></div>
+      <div class="media"><video src="media/stage/proposal.mp4" controls muted playsinline preload="metadata"></video><span class="cap">proposal.spec.ts · 3.1초</span></div>
+      <div class="shots">
+        <figure><img src="media/shots/proposal/01.jpg" alt="기획안 시작" loading="lazy"><figcaption>시작 · 앞 3칸 자동 채움</figcaption></figure>
+        <figure><img src="media/shots/proposal/02.jpg" alt="저장됨" loading="lazy"><figcaption>저장됨</figcaption></figure>
+        <figure><img src="media/shots/proposal/03.jpg" alt="제출 확인" loading="lazy"><figcaption>제출 확인</figcaption></figure>
+        <figure><img src="media/shots/proposal/04.jpg" alt="잠김" loading="lazy"><figcaption>잠김</figcaption></figure>
+      </div>
+    </article>
+
+    <article class="stage">
+      <div class="about"><h3>디브리핑 <span class="chip pass">통과</span></h3><p class="muted">첫 문장은 "같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 반응을 봅니다". 내 발언 돌아보기(접힘)와 설문. 평가 결과는 보여 주지 않습니다.</p></div>
+      <div class="media"><video src="media/stage/debrief.mp4" controls muted playsinline preload="metadata"></video><span class="cap">debrief.spec.ts</span></div>
+      <div class="shots">
+        <figure><img src="media/shots/debrief/01.jpg" alt="디브리핑 첫 문장" loading="lazy"><figcaption>첫 문장</figcaption></figure>
+        <figure><img src="media/shots/debrief/02.jpg" alt="내 발언" loading="lazy"><figcaption>내 발언 돌아보기</figcaption></figure>
+        <figure><img src="media/shots/debrief/03.jpg" alt="설문" loading="lazy"><figcaption>설문</figcaption></figure>
+      </div>
+    </article>
+
+    <article class="stage">
+      <div class="about"><h3>관리자 리포트 <span class="chip pass">통과</span></h3><p class="muted">담당자가 차원 하나를 메모와 함께 조정하면 요소 수준이 다시 계산되고 "담당자 조정"이 붙습니다. 이 시드 세션은 카드 장면이 없어 처음에는 차원이 기록 없음입니다.</p></div>
+      <div class="media"><video src="media/stage/admin-report.mp4" controls muted playsinline preload="metadata"></video><span class="cap">admin-report.spec.ts · 4.9초</span></div>
+      <div class="shots">
+        <figure><img src="media/shots/admin-report/01.jpg" alt="리포트" loading="lazy"><figcaption>리포트</figcaption></figure>
+        <figure><img src="media/shots/admin-report/02.jpg" alt="조정" loading="lazy"><figcaption>차원 조정 · 메모 필수</figcaption></figure>
+        <figure><img src="media/shots/admin-report/03.jpg" alt="검토 완료" loading="lazy"><figcaption>검토 완료</figcaption></figure>
+        <figure><img src="media/shots/admin-report/04.jpg" alt="요소 수준 재계산" loading="lazy"><figcaption>요소 수준 재계산</figcaption></figure>
+      </div>
+    </article>
+  </section>
+
+  <section id="playtest">
+    <div class="lede">
+      <div class="eyebrow">페르소나 playtest · 실제 LLM</div>
+      <h2>사용자 성향을 가진 에이전트가 화면만 보고 직접 써 봤습니다</h2>
+      <p class="muted">저장소 문서와 코드를 읽지 않는 블라인드 에이전트가 Playwright 드라이버로 브라우저를 조작하고, 불편한 순간을 심각도와 함께 기록했습니다. S4.5 수정 뒤 바뀐 화면을 겪는 단계만 다시 돌렸습니다. 영상은 4배속입니다.</p>
+    </div>
+    <div class="table-box">
+      <table>
+        <thead><tr><th>단계</th><th>정석형</th><th>서두르는 형</th><th>헤매는 형</th><th>채용 담당자</th></tr></thead>
+        <tbody>
+          <tr><td>키워드</td><td>—</td><td>—</td><td><span class="chip pass">달성</span> 중 0</td><td>—</td></tr>
+          <tr><td>해결책</td><td><span class="chip pass">달성</span> 중 3</td><td>—</td><td><span class="chip pass">달성</span> 중 2</td><td>—</td></tr>
+          <tr><td>기획안</td><td><span class="chip pass">달성</span> 중 1</td><td><span class="chip pass">달성</span> 중 1</td><td>—</td><td>—</td></tr>
+          <tr><td>디브리핑</td><td>—</td><td><span class="chip pass">달성</span> 중 1</td><td>—</td><td>—</td></tr>
+          <tr><td>리포트 검토</td><td>—</td><td>—</td><td>—</td><td><span class="chip pass">달성</span> <span class="chip crit">상 2</span> 중 5</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <article class="persona">
+      <div class="media"><video src="media/playtest/keyword-lost.mp4" controls muted playsinline preload="metadata"></video><span class="cap">키워드 · 헤매는 형 · 4배속</span></div>
+      <div class="notes"><h3>헤매는 형 · 키워드</h3><ul>
+        <li>어디서 고르는지 몰라 채팅으로 물었고, 윤하람이 "결정 사항에서 직접 하시면 돼요"라고 위치를 알려 줘 "나무"를 확정했습니다(약 5분).</li>
+        <li>첫 동료 메시지에는 결정 사항 위치 힌트가 없었습니다(하).</li>
+      </ul></div>
+    </article>
+
+    <article class="persona">
+      <div class="media"><video src="media/playtest/solution-steady.mp4" controls muted playsinline preload="metadata"></video><span class="cap">해결책 · 정석형 · 4배속</span></div>
+      <div class="notes"><h3>정석형 · 해결책</h3><ul>
+        <li>진행 방법을 묻자 정해진 안내가 바로 나왔고, 혼자 정한 결과는 "지원자 결정"으로 표시됐습니다.</li>
+        <li>서지안을 불렀는데 강한결이 먼저 답했습니다. 카드 화자가 먼저인 규칙의 결과입니다(중).</li>
+        <li>확정 직전에 만들어진 서지안 발언이 확정 뒤 화면에 도착했습니다(중, MVP 이후).</li>
+      </ul></div>
+    </article>
+
+    <article class="persona">
+      <div class="media"><video src="media/playtest/solution-lost.mp4" controls muted playsinline preload="metadata"></video><span class="cap">해결책 · 헤매는 형 · 4배속</span></div>
+      <div class="notes"><h3>헤매는 형 · 해결책</h3><ul>
+        <li>후보 없이 빈 입력칸만 있어 무엇을 쓸지 막막했습니다(중, 입력 예시는 MVP 이후).</li>
+        <li>윤하람이 강한결의 제안을 "지원자님이 말씀하신 것처럼"이라고 인용했습니다(중). 인용 규칙을 더해 고쳤습니다.</li>
+      </ul></div>
+    </article>
+
+    <article class="persona">
+      <div class="media"><video src="media/playtest/proposal-hurry.mp4" controls muted playsinline preload="metadata"></video><span class="cap">기획안 · 서두르는 형 · 4배속</span></div>
+      <div class="notes"><h3>서두르는 형 · 기획안</h3><ul>
+        <li>칸 일부를 비우고 제출하자 비운 칸 이름이 나오는 경고 창, 이어서 수정 불가 확인 창이 떴습니다.</li>
+        <li>확인 창이 연달아 두 번이라 번거롭다고 적었습니다(중, MVP 이후).</li>
+      </ul></div>
+    </article>
+
+    <article class="persona">
+      <div class="media"><video src="media/playtest/proposal-steady.mp4" controls muted playsinline preload="metadata"></video><span class="cap">기획안 · 정석형 · 4배속</span></div>
+      <div class="notes"><h3>정석형 · 기획안</h3><ul>
+        <li>빈 칸 3개를 채워 제출했고 종료 화면까지 갔습니다.</li>
+        <li>확인 창이 떠 있는 동안 뒤쪽 버튼이 이미 "제출 중…"으로 보였습니다(중). 확인 뒤에만 보이게 고쳤습니다.</li>
+      </ul></div>
+    </article>
+
+    <article class="persona">
+      <div class="media"><video src="media/playtest/debrief-hurry.mp4" controls muted playsinline preload="metadata"></video><span class="cap">디브리핑 · 서두르는 형 · 4배속</span></div>
+      <div class="notes"><h3>서두르는 형 · 디브리핑</h3><ul>
+        <li>설문을 내고 내 발언 돌아보기와 제출한 기획안을 펼쳐 봤습니다.</li>
+        <li>"평가 결과는 보여 드리지 않습니다"가 설문 아래 중간쯤이라 늦게 알았습니다(중, MVP 이후).</li>
+      </ul></div>
+    </article>
+
+    <article class="persona">
+      <div class="media"><video src="media/playtest/admin-report-admin.mp4" controls muted playsinline preload="metadata"></video><span class="cap">리포트 검토 · 채용 담당자 · 4배속</span></div>
+      <div class="notes"><h3>채용 담당자 · 리포트 검토</h3><ul>
+        <li>칸 결과(지원자 결정·정한 사람·최초 제안자)와 제출 때 빈 칸·경고 확인 표시는 정확히 보였습니다. 조정과 검토 완료도 정상 반영됐습니다.</li>
+        <li><span class="chip crit">상</span> 요소 요약이 차원 상세와 어긋났습니다. 검증으로 바뀐 요소만 요약을 다시 쓰게 고쳤습니다.</li>
+        <li><span class="chip crit">상</span> 머뭇거림 카드가 없었는데 "초대하지 않음"으로 수준 1이었습니다. 보조 장면 표시가 없으면 이벤트 미발생으로 바꾸게 고쳤습니다.</li>
+        <li>"미흡했다" 같은 서술이 점수처럼 읽혔습니다(중). 평가 프롬프트에 어조 규칙을 더했습니다.</li>
+      </ul></div>
+    </article>
+  </section>
+
+  <section id="live">
+    <div class="lede">
+      <div class="eyebrow">실제 LLM 지표</div>
+      <h2>페르소나 튜닝 전후와 평가 일치</h2>
+      <p class="muted">페르소나 지표는 대본 3단계 × 지원자 발언 7건을 2회 돌려 규칙으로 잰 값입니다(LLM 판정 없음). 튜닝 전은 116fd0d의 코드·프롬프트입니다.</p>
+    </div>
+    <div class="two">
+      <div class="box">
+        <h3>페르소나 응답 품질</h3>
+        <div class="legend"><span class="b">튜닝 전</span><span>튜닝 후</span></div>
+        <div class="bars">
+          <div class="bar-row"><span class="label">같은 말 반복률 (낮을수록 좋음)</span><div class="track"><div class="bar before"><i style="width:14.8%"></i></div><div class="bar after"><i style="width:0%"></i></div><span class="bar-val">0.148 → 0.000</span></div></div>
+          <div class="bar-row"><span class="label">지원자 질문 응답률</span><div class="track"><div class="bar before"><i style="width:45.5%"></i></div><div class="bar after"><i style="width:100%"></i></div><span class="bar-val">0.455 → 1.000</span></div></div>
+          <div class="bar-row"><span class="label">한 명 지목 응답률</span><div class="track"><div class="bar before"><i style="width:100%"></i></div><div class="bar after"><i style="width:100%"></i></div><span class="bar-val">1.000 → 1.000</span></div></div>
+          <div class="bar-row"><span class="label">유출·선점 위반</span><div class="track"><div class="bar before"><i style="width:0%"></i></div><div class="bar after"><i style="width:0%"></i></div><span class="bar-val">0 → 0</span></div></div>
+        </div>
+        <p class="cap">막대 길이는 0~1 비율 그대로입니다. 두 명을 부른 메시지는 지목 응답률에서 빠지고 호명 순서 규칙은 단위 테스트로 확인합니다.</p>
+      </div>
+      <div class="box">
+        <h3>eval-live · all_five</h3>
+        <div class="table-box">
+          <table>
+            <thead><tr><th>지표</th><th>값</th><th>기준</th></tr></thead>
+            <tbody>
+              <tr><td>의도 분류 일치</td><td class="num">0.90</td><td class="num">0.85</td></tr>
+              <tr><td>평가 수준 ±1 일치</td><td class="num">1.00</td><td class="num">0.80</td></tr>
+              <tr><td>평가 수준 정확 일치</td><td class="num">0.42</td><td class="num">—</td></tr>
+              <tr><td>판단 보류(evaluate_failed)</td><td class="num">0 / 19</td><td class="num">—</td></tr>
+              <tr><td>유출·유도 질문 위반</td><td class="num">0</td><td class="num">0</td></tr>
+              <tr><td>세션 비용</td><td class="num">$0.013</td><td class="num">$0.5</td></tr>
+              <tr><td>첫 동료 응답 p95</td><td class="num">8.6초 <span class="chip warn">근접 초과</span></td><td class="num">8초</td></tr>
+              <tr><td>의도 분류 p95</td><td class="num">1.4초</td><td class="num">3초</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="cap">평가 수준 차이 분포: −1 9개, 0 8개, +1 2개(19차원). 기준값은 사람이 정한 픽스처 수준입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="changes">
+    <div class="lede">
+      <div class="eyebrow">고친 것 · 남은 것</div>
+      <h2>이번 단계에서 고친 것과 MVP 이후로 둔 것</h2>
+    </div>
+    <div class="two">
+      <div class="box">
+        <h3>고친 것</h3>
+        <ul>
+          <li>칸 결과를 서버가 계산해 "합의 / 지원자 결정 / 시간 초과"로 표시(확정 순간 4명 중 3명 이상 지지일 때만 합의).</li>
+          <li>빈칸 제출 경고 창, 빈 칸과 경고 확인 여부를 저장해 리포트 사실 지표·기록에 표시. 평가에는 맥락 참고로만.</li>
+          <li>페르소나: 부른 순서대로 답하기, 진행 질문에 정해진 안내, 같은 말 반복 시 1회 다시 쓰기(도구 3회 예산 공유), 정확한 인용.</li>
+          <li>설득으로 입장을 옮긴 동료가 지지를 실제로 기록하도록 보장(누락 시 15분 세션이 합의 대신 시간 초과로 끝나던 문제).</li>
+          <li>평가: 근거 1개인 수준 4·5는 3으로, 핵심 카드 미발생은 이벤트 미발생으로, 검증으로 바뀐 요소는 요약 재작성, 판단 보류 문구.</li>
+          <li>관리자 리포트: "근거 약함" 설명, 판단 보류 개수, 원문 기록 링크.</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>MVP 이후</h3>
+        <ul>
+          <li>첫 동료 응답 p95가 목표 8초를 조금 넘음(8.6초). 다시 쓰기·안내문 처리 비용을 줄일 여지.</li>
+          <li>해결책 입력 예시, 확인 창 두 번 연속, 디브리핑 안내 문구 위치.</li>
+          <li>확정 직전에 만들어진 동료 발언이 확정 뒤 도착하는 표시 순서.</li>
+          <li>채용 건 목록 검색·필터, "리포트 전" 자동 갱신.</li>
+          <li>기존 DB에 새 열을 반영하는 이전 절차(지금은 스키마를 처음 만들 때만 적용).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>원본: 단계 화면 <code>tests/e2e/records/stages/</code> · playtest 로그 <code>tests/playtest/records/rerun-20261022/</code> · 첫 playtest <code>tests/playtest/records/summary.md</code> · 실제 LLM 결과 <code>tests/e2e/records/final-20261022/</code></span>
+    <span>영상은 H.264 960px로 압축했습니다(단계 테스트 실제 속도, playtest 4배속). 원본 영상은 용량 때문에 커밋하지 않았습니다.</span>
+  </footer>
+</div>
+
+<dialog id="zoom" aria-label="스크린샷 크게 보기"><img id="zoom-img" alt=""></dialog>
+<script>
+(function () {
+  var dlg = document.getElementById("zoom");
+  var big = document.getElementById("zoom-img");
+  document.querySelectorAll("figure img").forEach(function (img) {
+    img.addEventListener("click", function () {
+      big.src = img.src; big.alt = img.alt;
+      if (dlg.showModal) dlg.showModal();
+    });
+  });
+  dlg.addEventListener("click", function () { dlg.close(); });
+})();
+</script>
+
+</body>
+</html>
