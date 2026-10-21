@@ -1,0 +1,1654 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UX 시안 비교</title>
+<meta name="description" content="토론형 지원자 화면과 기업 리포트의 열린 UX 항목별 후보안을 목업으로 비교하고 하나씩 고르는 페이지">
+<style>
+:root{
+  --canvas:#F5F5F7; --surface:#FFFFFF; --sunken:#F2F2F7; --line:#D2D2D7;
+  --ink:#1D1D1F; --muted:#6E6E73; --subtle:#86868B;
+  --accent:#0071E3; --accent-strong:#0058B0; --accent-soft:#E8F2FD;
+  --success:#248A3D; --success-soft:#E6F4EA; --warning:#B25000; --warning-soft:#FDF0E3; --danger:#D70015; --danger-soft:#FDE8EA;
+  --b-cand:#0071E3; --on-cand:#FFFFFF;
+  --b1:#FFF1DE; --b2:#E3F6E8; --b3:#F3E6FA;
+  --s1:#A85A00; --s2:#1E7A35; --s3:#8E3FBF;
+  --av1:#D1D1D6; --av2:#C7C7CC; --av3:#BABABF; --avfg:#F7F7F9;
+  --bar:rgba(255,255,255,.82); --dim:rgba(0,0,0,.22); --shadow:0 4px 16px rgba(0,0,0,.08);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --canvas:#000000; --surface:#1C1C1E; --sunken:#2C2C2E; --line:#38383A;
+    --ink:#F5F5F7; --muted:#A1A1A6; --subtle:#8E8E93;
+    --accent:#0A84FF; --accent-strong:#409CFF; --accent-soft:#0A2A4D;
+    --success:#30D158; --success-soft:#11301A; --warning:#FF9F0A; --warning-soft:#3A2708; --danger:#FF453A; --danger-soft:#3D1412;
+    --b-cand:#0060DF; --on-cand:#FFFFFF;
+    --b1:#3A2A14; --b2:#17331F; --b3:#33213D;
+    --s1:#FF9F0A; --s2:#30D158; --s3:#BF5AF2;
+    --av1:#48484A; --av2:#3A3A3C; --av3:#545456; --avfg:#8E8E93;
+    --bar:rgba(28,28,30,.82); --dim:rgba(0,0,0,.5); --shadow:0 0 0 1px #38383A;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"], .force-dark{
+  --canvas:#000000; --surface:#1C1C1E; --sunken:#2C2C2E; --line:#38383A;
+  --ink:#F5F5F7; --muted:#A1A1A6; --subtle:#8E8E93;
+  --accent:#0A84FF; --accent-strong:#409CFF; --accent-soft:#0A2A4D;
+  --success:#30D158; --success-soft:#11301A; --warning:#FF9F0A; --warning-soft:#3A2708; --danger:#FF453A; --danger-soft:#3D1412;
+  --b-cand:#0060DF; --on-cand:#FFFFFF;
+  --b1:#3A2A14; --b2:#17331F; --b3:#33213D;
+  --s1:#FF9F0A; --s2:#30D158; --s3:#BF5AF2;
+  --av1:#48484A; --av2:#3A3A3C; --av3:#545456; --avfg:#8E8E93;
+  --bar:rgba(28,28,30,.82); --dim:rgba(0,0,0,.5); --shadow:0 0 0 1px #38383A;
+  color-scheme:dark;
+}
+.force-light{
+  --canvas:#F5F5F7; --surface:#FFFFFF; --sunken:#F2F2F7; --line:#D2D2D7;
+  --ink:#1D1D1F; --muted:#6E6E73; --subtle:#86868B;
+  --accent:#0071E3; --accent-strong:#0058B0; --accent-soft:#E8F2FD;
+  --success:#248A3D; --success-soft:#E6F4EA; --warning:#B25000; --warning-soft:#FDF0E3;
+  --b-cand:#0071E3; --on-cand:#FFFFFF;
+  --b1:#FFF1DE; --b2:#E3F6E8; --b3:#F3E6FA;
+  --s1:#A85A00; --s2:#1E7A35; --s3:#8E3FBF;
+  --av1:#D1D1D6; --av2:#C7C7CC; --av3:#BABABF; --avfg:#F7F7F9;
+  --bar:rgba(255,255,255,.82); --dim:rgba(0,0,0,.22); --shadow:0 4px 16px rgba(0,0,0,.08);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--canvas);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;padding-bottom:96px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font:inherit;color:inherit;cursor:pointer}
+.ic{width:1em;height:1em;vertical-align:-.14em;flex:none}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px}
+@media (max-width:640px){.wrap{padding:0 16px}}
+
+/* page header */
+.pagebar{position:sticky;top:0;z-index:20;background:var(--bar);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line)}
+.pagebar .wrap{display:flex;align-items:center;gap:16px;height:52px}
+.pagebar .brand{font-weight:600;font-size:15px}
+.pagebar .brand small{color:var(--muted);font-weight:400;margin-left:8px}
+.pagebar .sp{flex:1}
+.themeseg{display:inline-flex;background:var(--sunken);border-radius:9px;padding:2px}
+.themeseg button{border:0;background:transparent;padding:4px 12px;border-radius:7px;font-size:13px;color:var(--muted)}
+.themeseg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.hero{padding-top:72px;padding-bottom:40px}
+.eyebrow{font-size:13px;color:var(--muted);font-weight:600;margin:0 0 8px}
+h1{font-size:40px;line-height:1.15;margin:0 0 16px;font-weight:700;letter-spacing:-.01em}
+.lede{font-size:19px;color:var(--muted);max-width:760px;margin:0}
+@media (max-width:640px){h1{font-size:30px}.lede{font-size:16px}.hero{padding-top:44px;padding-bottom:28px}}
+.howto{display:grid;grid-template-columns:1.2fr 1fr;gap:48px;padding-top:32px;padding-bottom:56px;border-top:1px solid var(--line)}
+@media (max-width:900px){.howto{grid-template-columns:1fr;gap:32px}}
+.howto h2{font-size:22px;margin:0 0 12px}
+.howto ol{margin:0;padding-left:20px}
+.howto li{margin:6px 0}
+.note{color:var(--muted);font-size:14px}
+.legend{list-style:none;margin:12px 0 0;padding:0}
+.legend li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.legend li:last-child{border-bottom:0}
+.legend .sw{width:28px;height:18px;border-radius:9px;flex:none;border:1px solid var(--line)}
+.toc{columns:2;column-gap:32px;margin:12px 0 0;padding:0;list-style:none}
+@media (max-width:640px){.toc{columns:1}}
+.toc li{break-inside:avoid;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px;display:flex;gap:10px;align-items:baseline}
+.toc .n{color:var(--subtle);font-variant-numeric:tabular-nums;width:22px;flex:none}
+.toc .st{margin-left:auto;font-size:12px;color:var(--subtle)}
+.toc .st.on{color:var(--accent);font-weight:600}
+
+/* sections */
+.item{padding:72px 0;border-top:1px solid var(--line)}
+.item:nth-of-type(even){background:var(--surface)}
+.item:nth-of-type(even) .opt{background:var(--canvas)}
+.ihead{display:grid;grid-template-columns:1fr auto;gap:8px 24px;align-items:end;margin-bottom:32px}
+.inum{font-size:13px;color:var(--muted);font-weight:600;margin:0 0 6px;font-variant-numeric:tabular-nums}
+.ihead h2{font-size:30px;line-height:1.2;margin:0;letter-spacing:-.01em}
+.ihead p{margin:10px 0 0;color:var(--muted);max-width:820px}
+.ihead .rel{font-size:13px;color:var(--subtle);white-space:nowrap}
+@media (max-width:640px){.ihead{grid-template-columns:1fr}.ihead h2{font-size:24px}.ihead .rel{white-space:normal}}
+.linknote{margin:-12px 0 28px;padding:12px 16px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;font-size:14px;max-width:900px}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:24px}
+.opts.wide{grid-template-columns:1fr}
+.opt{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px;transition:border-color .18s ease, box-shadow .18s ease}
+.opt.picked{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.opts.wide .opt{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(260px,1fr);gap:28px;align-items:start}
+@media (max-width:980px){.opts.wide .opt{grid-template-columns:1fr}}
+.ohead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.okey{font-size:13px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 7px;line-height:22px}
+.ohead h3{font-size:18px;margin:0;line-height:1.3}
+.rec{font-size:13px;color:var(--accent);font-weight:600;white-space:nowrap}
+.odesc{margin:6px 0 0;font-size:14px;color:var(--muted)}
+.pc{list-style:none;margin:0;padding:0;font-size:14px}
+.pc li{display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
+.pc li:first-child{border-top:0}
+.pc b{flex:none;font-weight:600;width:32px;color:var(--muted)}
+.pc .plus b{color:var(--success)}
+.pc .minus b{color:var(--warning)}
+.oact{display:flex;gap:8px;align-items:center;margin-top:auto;flex-wrap:wrap}
+.pick{border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:980px;padding:6px 16px;font-size:14px;font-weight:600;transition:background-color .15s ease,color .15s ease}
+.pick:active{transform:scale(.98)}
+.opt.picked .pick{background:var(--accent);color:#fff}
+.ghost{border:0;background:var(--sunken);border-radius:980px;padding:6px 14px;font-size:13px;color:var(--ink)}
+.side{display:flex;flex-direction:column;gap:14px}
+.cap{font-size:12px;color:var(--subtle);margin:8px 0 0}
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px}
+
+/* ---------- mock primitives ---------- */
+.mock{font-size:12px;line-height:1.45;color:var(--ink);background:var(--canvas);border:1px solid var(--line);border-radius:14px;overflow:hidden;position:relative}
+.screen{min-width:660px}
+.topbar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bar);border-bottom:1px solid var(--line)}
+.topbar .logo{font-weight:700;font-size:12px;letter-spacing:-.01em}
+.phases{display:flex;align-items:center;gap:2px;list-style:none;margin:0 auto;padding:0}
+.phases li{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;color:var(--subtle);white-space:nowrap;font-size:11.5px}
+.phases li+li::before{content:"";width:12px;height:1px;background:var(--line);margin-right:6px}
+.phases .done{color:var(--muted)}
+.phases .done .ic{color:var(--success)}
+.phases .to .ic{color:var(--warning)}
+.phases .cur{color:var(--accent);font-weight:600}
+.phases .dl{font-size:10px;color:var(--subtle);font-weight:400}
+.timer{font-variant-numeric:tabular-nums;font-size:11.5px;color:var(--ink);white-space:nowrap}
+.timer .tm{font-weight:600}
+.qbtn{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);display:inline-grid;place-items:center;font-size:11px;color:var(--muted)}
+.body{display:grid;grid-template-columns:62fr 38fr}
+.body.b-wide{grid-template-columns:40fr 60fr}
+.chat{background:var(--surface);display:flex;flex-direction:column;min-height:330px}
+.chead{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line)}
+.chead b{font-size:12px}
+.avg{display:flex;align-items:center}
+.avg .av{margin-left:-6px;box-shadow:0 0 0 2px var(--surface)}
+.avg .av:first-child{margin-left:0}
+.tmp{font-size:9.5px;color:var(--subtle);border:1px dashed var(--line);border-radius:4px;padding:0 4px;line-height:15px;white-space:nowrap}
+.msgs{flex:1;padding:6px 12px 10px;display:flex;flex-direction:column}
+.msg{display:flex;flex-direction:column;margin-top:10px}
+.msg.c{margin-top:2px}
+.msg.r{align-items:flex-end}
+.who{font-size:10.5px;color:var(--muted);margin:0 0 2px 32px}
+.r .who{margin:0 4px 2px 0}
+.row{display:flex;align-items:flex-end;gap:6px}
+.row .gap{width:24px;flex:none}
+.bub{padding:6px 10px;border-radius:15px;max-width:78%;color:var(--ink)}
+.p1 .bub{background:var(--b1)} .p2 .bub{background:var(--b2)} .p3 .bub{background:var(--b3)}
+.r .bub{background:var(--b-cand);color:var(--on-cand)}
+.sys{align-self:center;text-align:center;font-size:10.5px;color:var(--muted);margin:12px 8px 2px;max-width:90%}
+.typing{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10.5px;color:var(--muted)}
+.dots{display:inline-flex;gap:3px;padding:7px 9px;border-radius:12px;background:var(--b3)}
+.dots i{width:4px;height:4px;border-radius:50%;background:var(--muted);animation:dot 1.2s infinite ease-in-out}
+.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,80%,100%{opacity:.3}40%{opacity:1}}
+.compose{display:flex;align-items:center;gap:6px;margin:0 12px 10px;padding:5px 5px 5px 12px;border:1px solid var(--line);border-radius:18px;color:var(--subtle);font-size:11.5px}
+.compose > span:first-child{flex:1}
+.compose .send{width:20px;height:20px;border-radius:50%;background:var(--sunken);display:grid;place-items:center;color:var(--subtle)}
+.av{width:24px;height:24px;border-radius:50%;overflow:hidden;flex:none;display:inline-grid;place-items:center;vertical-align:middle}
+.av svg{width:100%;height:100%;display:block}
+.av.me{background:var(--accent);color:#fff;font-weight:600;font-size:11px}
+.av.s16{width:16px;height:16px;font-size:9px}
+.av.s20{width:20px;height:20px;font-size:10px}
+.av.s36{width:36px;height:36px;font-size:15px}
+.panel{background:var(--canvas);border-left:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:12px;position:relative}
+.seg{display:flex;background:var(--sunken);border-radius:8px;padding:2px}
+.seg span{flex:1;text-align:center;padding:4px 2px;border-radius:6px;font-size:10.5px;color:var(--muted);white-space:nowrap;position:relative}
+.seg .on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.seg .bd::after{content:"";position:absolute;top:3px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.plabel{font-size:10.5px;color:var(--muted);font-weight:600;margin:0}
+.results{display:flex;flex-direction:column}
+.res{display:grid;grid-template-columns:auto 1fr;gap:1px 8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.res .rk{font-size:10.5px;color:var(--muted)}
+.res .rv{font-weight:600;font-size:12px}
+.res .meta{grid-column:2;font-size:10.5px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.res .ok{color:var(--success)} .res .to{color:var(--warning)}
+.res.flash{background:var(--accent-soft);border-radius:6px;padding-left:6px;padding-right:6px}
+.slot{display:flex;flex-direction:column;gap:6px}
+.field{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:7px 9px;min-height:32px;font-size:12px}
+.field.ph{color:var(--subtle)}
+.field.err{border-color:var(--danger)}
+.errline{font-size:10.5px;color:var(--danger)}
+.sbtns{display:flex;justify-content:flex-end;gap:6px}
+.btn{border:0;border-radius:8px;padding:5px 14px;font-size:11.5px;font-weight:600;background:var(--accent);color:#fff;line-height:1.4}
+.btn.sec{background:var(--sunken);color:var(--ink)}
+.btn.dis{opacity:.38}
+.btn.big{font-size:13px;padding:8px 18px}
+.dim{position:absolute;inset:0;background:var(--dim);display:grid;place-items:center;padding:12px}
+.dlg{background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:16px;width:min(260px,100%);text-align:center}
+.dlg h4{margin:0 0 4px;font-size:13px}
+.dlg p{margin:0 0 12px;color:var(--muted);font-size:11.5px}
+.dlg .sbtns{justify-content:stretch}
+.dlg .btn{flex:1}
+.toast{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:var(--ink);color:var(--surface);border-radius:12px;padding:7px 8px 7px 12px;display:flex;align-items:center;gap:10px;font-size:11.5px;white-space:nowrap;overflow:hidden}
+.toast .undo{color:var(--accent-strong);font-weight:600}
+:root[data-theme="dark"] .toast .undo,.force-dark .toast .undo{color:#0058B0}
+.toast .cd{font-variant-numeric:tabular-nums;color:var(--subtle)}
+.toast .bar{position:absolute;left:0;bottom:0;height:2px;background:var(--accent);width:100%;transform-origin:left}
+.anim.play .toast .bar{animation:shrink 3s linear forwards}
+@keyframes shrink{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:980px;padding:3px 10px;font-size:11.5px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.kseg{display:grid;grid-template-columns:repeat(4,1fr);background:var(--sunken);border-radius:9px;padding:2px}
+.kseg span{text-align:center;padding:6px 0;border-radius:7px;font-size:12px;color:var(--ink)}
+.kseg .on{background:var(--surface);font-weight:700;color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.mini{padding:12px}
+.snip{background:var(--surface);border-top:1px solid var(--line);padding:4px 12px 12px}
+.snip .t{font-size:10px;color:var(--subtle);margin:8px 0 0}
+.divider{display:flex;align-items:center;gap:8px;margin:14px 0 4px;font-size:10.5px;color:var(--muted)}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(245,245,247,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0;pointer-events:none}
+:root[data-theme="dark"] .overlay{background:rgba(0,0,0,.6)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .overlay{background:rgba(0,0,0,.6)}}
+.overlay div{text-align:center}
+.overlay b{display:block;font-size:26px;font-weight:700}
+.overlay span{color:var(--muted);font-size:12px}
+.anim.play .overlay{animation:ov 1.3s ease forwards}
+@keyframes ov{0%{opacity:0}15%{opacity:1}75%{opacity:1}100%{opacity:0}}
+.anim.play .flash{animation:flash .9s ease-out forwards}
+@keyframes flash{0%,30%{background:var(--accent-soft)}100%{background:transparent}}
+.anim .res.flash{background:transparent}
+.anim.play .fin{animation:fin .32s ease-out both}
+.anim.play .fin2{animation:fin .32s ease-out .25s both}
+@keyframes fin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.anim.play .cur{animation:curin .3s ease-out both}
+@keyframes curin{from{opacity:.3}to{opacity:1}}
+.doc{background:var(--surface);border-radius:12px;border:1px solid var(--line);padding:12px 14px}
+.pf{padding:8px 0;border-bottom:1px solid var(--line)}
+.pf:last-child{border-bottom:0}
+.pf h5{margin:0 0 3px;font-size:11.5px}
+.pf p{margin:0;font-size:11.5px;color:var(--ink)}
+.pf p.e{color:var(--subtle)}
+.pf.cl{display:flex;align-items:center;gap:8px}
+.pf.cl h5{margin:0;flex:1}
+.pf.cl .s{font-size:10.5px;color:var(--muted)}
+.chev{color:var(--subtle)}
+.savebar{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--muted)}
+.pinhead{background:var(--sunken);border-radius:10px;padding:8px 10px;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:11px}
+.pinhead span{color:var(--muted)}
+/* report */
+.rep{background:var(--surface);min-width:660px}
+.rep .rtop{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.badge{font-size:10px;border-radius:5px;padding:1px 6px;background:var(--sunken);color:var(--muted);font-weight:600;white-space:nowrap}
+.badge.acc{background:var(--accent-soft);color:var(--accent)}
+.badge.warn{background:var(--warning-soft);color:var(--warning)}
+.rbody{padding:16px 20px 20px}
+.rbody h4{font-size:18px;margin:0 0 4px}
+.rbody h5{font-size:13px;margin:16px 0 6px}
+.fixed{font-size:10.5px;color:var(--muted);margin:0 0 10px;max-width:560px}
+.stbl{width:100%;border-collapse:collapse;font-size:11.5px}
+.stbl td,.stbl th{padding:6px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.stbl th{font-weight:600;color:var(--muted);font-size:10.5px}
+.lv{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.lv small{font-weight:400;color:var(--muted)}
+.lowtag{font-size:10px;color:var(--warning);white-space:nowrap}
+.conf{font-size:10px;color:var(--muted);white-space:nowrap}
+.strip{display:grid;grid-template-columns:1fr 2fr 2fr 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:10.5px}
+.strip div{padding:6px 7px;border-left:1px solid var(--line)}
+.strip div:first-child{border-left:0}
+.strip b{display:block;font-size:11px}
+.strip span{color:var(--muted)}
+.mk{display:inline-block;width:7px;height:7px;transform:rotate(45deg);background:var(--ink);margin-right:4px;vertical-align:1px}
+.fold{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:11.5px}
+.fold .t{flex:1;font-weight:600}
+.dimrow{display:grid;grid-template-columns:minmax(80px,1fr) auto auto;gap:4px 10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:11.5px;align-items:baseline}
+.dimrow .why{grid-column:1/-1;color:var(--muted);font-size:10.5px}
+.ev{margin:6px 0 2px 0;padding:8px 10px;background:var(--canvas);border-radius:10px;display:flex;flex-direction:column;gap:6px}
+.ev .em{font-size:10px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.ev .links{display:flex;gap:12px;font-size:10.5px}
+.ev .links a{color:var(--accent)}
+.evq{align-self:flex-end;background:var(--b-cand);color:var(--on-cand);padding:5px 9px;border-radius:13px;max-width:90%;font-size:11.5px}
+.ctx{border-left:2px solid var(--line);padding-left:8px;display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--muted)}
+.ctx .hl{color:var(--ink);background:var(--accent-soft);border-radius:4px;padding:1px 4px}
+.split{display:grid;grid-template-columns:150px 1fr}
+.toc2{border-right:1px solid var(--line);padding:14px 10px;font-size:11px;display:flex;flex-direction:column;gap:2px;background:var(--canvas)}
+.toc2 span{padding:4px 8px;border-radius:6px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+.toc2 span.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.toc2 em{font-style:normal;font-variant-numeric:tabular-nums}
+.toc2 .h{font-size:9.5px;color:var(--subtle);padding:8px 8px 2px;text-transform:none}
+.axis{position:relative;height:18px;font-size:9.5px;color:var(--subtle);margin-left:70px}
+.axis span{position:absolute;transform:translateX(-50%)}
+.lanes{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line)}
+.lane{display:grid;grid-template-columns:70px 1fr;align-items:center;border-bottom:1px solid var(--line);height:26px;font-size:10.5px}
+.lane .ln{color:var(--muted)}
+.track{position:relative;height:100%;background:linear-gradient(90deg,transparent calc(100%/6 - .5px),var(--line) calc(100%/6 - .5px),var(--line) calc(100%/6 + .5px),transparent calc(100%/6 + .5px),transparent calc(50% - .5px),var(--line) calc(50% - .5px),var(--line) calc(50% + .5px),transparent calc(50% + .5px),transparent calc(500%/6 - .5px),var(--line) calc(500%/6 - .5px),var(--line) calc(500%/6 + .5px),transparent calc(500%/6 + .5px))}
+.track .d{position:absolute;top:50%;width:8px;height:8px;border-radius:50%;background:var(--ink);transform:translate(-50%,-50%)}
+.track .d.low{background:transparent;border:1.5px solid var(--warning)}
+.track .k{position:absolute;top:50%;width:8px;height:8px;background:var(--accent);transform:translate(-50%,-50%) rotate(45deg)}
+.track .gapband{position:absolute;top:4px;bottom:4px;background:var(--sunken);border-radius:3px}
+.pop{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px 10px;font-size:10.5px;width:220px}
+.cpanel{border-left:1px solid var(--line);background:var(--canvas);padding:12px;display:flex;flex-direction:column;gap:4px}
+.cpanel .msg{margin-top:6px}
+.cpanel .bub{max-width:92%;font-size:11px}
+.cpanel .msg.hl .bub{outline:2px solid var(--accent);outline-offset:1px}
+.rec-row{display:grid;grid-template-columns:40px 50px 1fr;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line);font-size:11px;align-items:center}
+.rec-row .k{font-size:9.5px;color:var(--muted);border:1px solid var(--line);border-radius:4px;text-align:center}
+.rec-row.hl{background:var(--accent-soft)}
+.rec-row .tt{color:var(--muted);font-variant-numeric:tabular-nums}
+.ctbl{width:100%;border-collapse:collapse;font-size:11.5px}
+.ctbl td,.ctbl th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left}
+.ctbl th{font-size:10.5px;color:var(--muted);font-weight:600}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;margin-right:4px;border:1px solid rgba(0,0,0,.06)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.pair > div{padding:10px 12px}
+.pair > div + div{border-left:1px solid var(--line)}
+.pair .lab{font-size:10px;color:var(--muted);margin:0 0 4px}
+.hold{position:relative;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none}
+.hold::before{content:"";position:absolute;inset:0;background:var(--accent-strong);transform:scaleX(0);transform-origin:left;transition:transform .15s ease}
+.hold.holding::before{transform:scaleX(1);transition:transform .9s linear}
+.hold span{position:relative}
+.hold.done{background:var(--success)}
+.livebtn:disabled{opacity:.38;cursor:default}
+.inp{font:inherit;font-size:12px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 9px;width:100%}
+.inp:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+.hint{font-size:10.5px;color:var(--muted)}
+
+/* bottom pick bar */
+.pickbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--bar);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line)}
+.pickbar .wrap{display:flex;align-items:center;gap:12px;min-height:60px;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}
+.pickbar .cnt{font-weight:600;font-size:14px;white-space:nowrap}
+.pickbar .list{flex:1;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pickbar .list b{color:var(--ink);font-weight:600}
+.copybtn{border:0;background:var(--accent);color:#fff;border-radius:980px;padding:7px 16px;font-size:14px;font-weight:600}
+.copybtn:active{transform:scale(.98)}
+.resetbtn{border:0;background:transparent;color:var(--muted);font-size:13px;padding:6px 4px}
+@media (max-width:640px){.pickbar .list{display:none}.pickbar .sp2{flex:1}}
+.foot{padding:48px 0;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="av1" viewBox="0 0 40 40"><rect width="40" height="40" style="fill:var(--av1)"/><circle cx="20" cy="16" r="7" style="fill:var(--avfg)"/><path d="M6 40c0-8.5 6.3-13.5 14-13.5S34 31.5 34 40z" style="fill:var(--avfg)"/></symbol>
+    <symbol id="av2" viewBox="0 0 40 40"><rect width="40" height="40" style="fill:var(--av2)"/><circle cx="20" cy="15" r="6.5" style="fill:var(--avfg)"/><rect x="9" y="25" width="22" height="18" rx="9" style="fill:var(--avfg)"/></symbol>
+    <symbol id="av3" viewBox="0 0 40 40"><rect width="40" height="40" style="fill:var(--av3)"/><circle cx="20" cy="17" r="7.5" style="fill:var(--avfg)"/><path d="M8 40c1.5-7 6-11 12-11s10.5 4 12 11z" style="fill:var(--avfg)"/></symbol>
+    <symbol id="i-check" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.8V8l2.2 1.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 7V5.2a2.5 2.5 0 015 0V7" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-up" viewBox="0 0 16 16"><path d="M8 12.5v-9M4.5 7L8 3.5 11.5 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-down" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 16 16"><path d="M6 4h6v6M12 4l-7 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 16 16"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8M3.4 3.4l1.3 1.3M11.3 11.3l1.3 1.3M3.4 12.6l1.3-1.3M11.3 4.7l1.3-1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 16 16"><path d="M13 9.8A5.5 5.5 0 016.2 3a5.5 5.5 0 106.8 6.8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<header class="pagebar">
+  <div class="wrap">
+    <span class="brand">Day Zero<small>UX 시안 비교</small></span>
+    <span class="sp"></span>
+    <div class="themeseg" role="group" aria-label="화면 모드">
+      <button type="button" data-theme-set="system" aria-pressed="true">시스템</button>
+      <button type="button" data-theme-set="light" aria-pressed="false">라이트</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false">다크</button>
+    </div>
+  </div>
+</header>
+
+<main>
+<div class="wrap" role="note" style="margin-top:16px;padding:12px 16px;border:1px solid currentColor;border-radius:10px;font-size:14px;line-height:1.5">R2·R3·R7 이전 시안입니다(요소 선택·옛 인물·시간 표기 포함). 확정 내용은 <code>docs/frontend/design.md</code> "UX 결정"을 따릅니다.</div>
+<section class="wrap hero">
+  <p class="eyebrow">UI/UX 게이트 · 열린 항목 선택</p>
+  <h1>열린 UX 항목,<br>직접 보고 골라 주세요</h1>
+  <p class="lede">지원자 토론 화면과 기업 리포트에서 아직 정하지 않은 항목 10개입니다. 항목마다 후보안 2~3개를 실제 화면처럼 그렸습니다. 예시 대화는 모두 키워드 「물」로 토론하는 장면입니다.</p>
+</section>
+
+<section class="wrap howto" aria-label="사용 방법과 목차">
+  <div>
+    <h2>사용 방법</h2>
+    <ol>
+      <li>항목마다 후보안을 비교하고 <b>하나씩</b> 고릅니다. 후보안 아래 [이 안으로]를 누르면 화면 아래 막대에 쌓입니다. 고른 내용은 이 브라우저에만 남습니다.</li>
+      <li>다 골랐으면 아래 막대의 [선택 복사]로 복사해 붙여 주거나, “1-A, 2-B, 3-A…”처럼 말로 알려 주세요. 고치고 싶은 점은 한 줄 덧붙이면 됩니다.</li>
+      <li><span style="color:var(--accent);font-weight:600">★ 추천</span>은 목업을 먼저 그릴 기준안입니다. 다른 안을 골라도 됩니다.</li>
+      <li>오른쪽 위 [라이트]·[다크]로 모든 목업을 두 모드에서 볼 수 있습니다. 일부 후보안은 [다시 보기]나 직접 눌러 보는 데모가 있습니다.</li>
+    </ol>
+    <h2 style="margin-top:32px">목업 표기</h2>
+    <ul class="legend">
+      <li><span class="av s20"><svg viewBox="0 0 40 40"><use href="#av1"/></svg></span><span class="sw" style="background:var(--b1)"></span><span><b>강한결</b> · 자리 p1 · 연한 오렌지 틴트</span></li>
+      <li><span class="av s20"><svg viewBox="0 0 40 40"><use href="#av2"/></svg></span><span class="sw" style="background:var(--b2)"></span><span><b>윤하람</b> · 자리 p2 · 연한 그린 틴트</span></li>
+      <li><span class="av s20"><svg viewBox="0 0 40 40"><use href="#av3"/></svg></span><span class="sw" style="background:var(--b3)"></span><span><b>서지안</b> · 자리 p3 · 연한 퍼플 틴트</span></li>
+      <li><span class="av s20 me">정</span><span class="sw" style="background:var(--b-cand)"></span><span><b>정민재</b> · 지원자(예시 표시 이름) · 오른쪽 강조색 · 이니셜 아바타</span></li>
+    </ul>
+    <p class="note">AI 동료 프로필은 <b>임시 이미지</b>입니다. 유형을 드러내지 않는 중립 실루엣이며 나중에 팀이 고른 이미지로 바꿉니다. 요소 5개를 모두 고른 채용 건이라 세션 동료는 위 세 명이고, 지원자 화면에는 이름만 보입니다.</p>
+  </div>
+  <div>
+    <h2>항목 목차</h2>
+    <ul class="toc" id="toc">
+      <li><span class="n">0</span><a href="#base">기준 화면</a><span class="st">참고</span></li>
+      <li data-toc="1"><span class="n">1</span><a href="#i1">혼자 확정 처리</a><span class="st">미선택</span></li>
+      <li data-toc="2"><span class="n">2</span><a href="#i2">오클릭 방지</a><span class="st">미선택</span></li>
+      <li data-toc="3"><span class="n">3</span><a href="#i3">키워드 칸 입력 방식</a><span class="st">미선택</span></li>
+      <li data-toc="4"><span class="n">4</span><a href="#i4">단계 전환 연출</a><span class="st">미선택</span></li>
+      <li data-toc="5"><span class="n">5</span><a href="#i5">기획안 단계 진입</a><span class="st">미선택</span></li>
+      <li data-toc="6"><span class="n">6</span><a href="#i6">기획안 작성 화면</a><span class="st">미선택</span></li>
+      <li data-toc="7"><span class="n">7</span><a href="#i7">기업 리포트 화면 구조</a><span class="st">미선택</span></li>
+      <li data-toc="8"><span class="n">8</span><a href="#i8">리포트 근거 보기</a><span class="st">미선택</span></li>
+      <li data-toc="9"><span class="n">9</span><a href="#i9">라이트·다크 전환</a><span class="st">미선택</span></li>
+      <li data-toc="10"><span class="n">10</span><a href="#i10">AI 동료 틴트 배정</a><span class="st">미선택</span></li>
+    </ul>
+    <p class="note" style="margin-top:16px">항목 1~6은 지원자 화면, 7~8은 기업 리포트, 9~10은 공통입니다.</p>
+  </div>
+</section>
+
+<!-- ============ 0 BASE ============ -->
+<section class="item" id="base">
+  <div class="wrap">
+    <div class="ihead">
+      <div>
+        <p class="inum">0 · 참고</p>
+        <h2>기준 화면</h2>
+        <p>모든 후보안이 공유하는 지원자 화면입니다. 상단에 단계 진행바와 남은 시간, 가운데 토론방, 오른쪽에 합의·자료·AI 어시스턴트·기획안 탭이 있습니다. 문제 상황 단계 09:17 장면입니다.</p>
+      </div>
+      <span class="rel">D13 · D13-1 · D13-2 · D14 · D17</span>
+    </div>
+    <div class="scroll-x">
+      <div class="mock screen" style="min-width:820px">
+        <div class="topbar">
+          <span class="logo">Day Zero</span>
+          <ol class="phases">
+            <li class="done"><svg class="ic"><use href="#i-check"/></svg>키워드</li>
+            <li class="cur">문제 상황 <span class="dl">~09:30</span></li>
+            <li>해결책 <span class="dl">~09:50</span></li>
+            <li>기획안 작성 <span class="dl">~10:00</span></li>
+          </ol>
+          <span class="timer">이 단계 <span class="tm">12:40</span> 남음 · 09:17</span>
+          <span class="qbtn">?</span>
+        </div>
+        <div class="body">
+          <div class="chat">
+            <div class="chead"><b>새 프로젝트 팀</b>
+              <span class="avg"><span class="av s20"><svg viewBox="0 0 40 40"><use href="#av1"/></svg></span><span class="av s20"><svg viewBox="0 0 40 40"><use href="#av2"/></svg></span><span class="av s20"><svg viewBox="0 0 40 40"><use href="#av3"/></svg></span><span class="av s20 me">정</span></span>
+              <span class="tmp">임시 이미지</span>
+            </div>
+            <div class="msgs">
+              <div class="sys">09:10<br>문제 상황 단계예요. 「물」과 관련된 문제 상황 하나를 정해요 · 20분</div>
+              <div class="msg r"><div class="who">나</div><div class="bub">저는 도심 폭우로 인한 침수 피해가 더 와닿아요. 자료 보니까 침수 피해가 해마다 늘고 있더라고요.</div></div>
+              <div class="msg l p1"><div class="who">강한결</div><div class="row"><span class="gap"></span><div class="bub">그건 핵심이 아니에요. 가뭄으로 생활용수 제한이 잦아지는 게 먼저죠.</div></div></div>
+              <div class="msg l p1 c"><div class="row"><span class="av"><svg viewBox="0 0 40 40"><use href="#av1"/></svg></span><div class="bub">물 부족 통계만 봐도 답이 나와요.</div></div></div>
+              <div class="msg l p3"><div class="who">서지안</div><div class="row"><span class="av"><svg viewBox="0 0 40 40"><use href="#av3"/></svg></span><div class="bub">저도 가뭄 쪽이요. 침수는 지역마다 편차가 크지 않아요? 근거가 더 있어요?</div></div></div>
+              <div class="msg l p2"><div class="who">윤하람</div><div class="row"><span class="av"><svg viewBox="0 0 40 40"><use href="#av2"/></svg></span><div class="bub">음… 저는…</div></div></div>
+              <div class="typing"><span class="av s20"><svg viewBox="0 0 40 40"><use href="#av3"/></svg></span><span class="dots"><i></i><i></i><i></i></span>서지안님이 입력 중</div>
+            </div>
+            <div class="compose"><span>메시지 입력</span><span class="send"><svg class="ic"><use href="#i-up"/></svg></span></div>
+          </div>
+          <div class="panel">
+            <div class="seg"><span class="on">합의</span><span>자료</span><span>AI 어시스턴트</span><span>기획안</span></div>
+            <div class="results">
+              <div class="res"><span class="rk">키워드</span><span class="rv">물</span><span class="meta"><span class="ok"><svg class="ic"><use href="#i-check"/></svg> 합의</span>· 09:08 · 정민재</span></div>
+            </div>
+            <div class="slot">
+              <p class="plabel">문제 상황</p>
+              <div class="field ph">문제 상황</div>
+              <div class="sbtns"><span class="btn dis">확정</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">합의 탭에는 확정된 결과만 쌓이고 후보안·지지 현황은 보이지 않습니다(D14). 지원자 메시지에는 아바타 대신 위에 작은 “나”를 둡니다.</p>
+  </div>
+</section>
+
+<!-- ============ 1 혼자 확정 ============ -->
+<section class="item" id="i1" data-item="1" data-name="혼자 확정 처리">
+  <div class="wrap">
+    <div class="ihead">
+      <div>
+        <p class="inum">항목 1 · 지원자 화면</p>
+        <h2>혼자 확정 처리</h2>
+        <p>강한결·서지안은 가뭄을 미는데 지원자가 칸에 “도심 폭우·침수 피해 증가”를 적고 [확정]을 누른 순간입니다. 합의가 없을 때 화면이 다르게 반응해야 할까요? 확정 시점의 지지 현황은 어느 안이든 기록에만 남고, 수용/유연성의 결정 존중 판단에 쓰입니다.</p>
+      </div>
+      <span class="rel">D2 · D14 · 기준안 ★A</span>
+    </div>
+    <p class="linknote">항목 2와 연결됩니다. 여기서 B를 고르면 항목 2의 확인 창(A)과 같은 창이 됩니다. A는 “합의 여부와 상관없이 늘 같은 흐름”이라는 뜻이고, 실수 방지는 항목 2에서 따로 정합니다.</p>
+    <div class="opts">
+      <article class="opt" data-item="1" data-key="A">
+        <div>
+          <div class="ohead"><span class="okey">A</span><h3>그대로 확정</h3><span class="rec">★ 추천</span></div>
+          <p class="odesc">지지 여부와 상관없이 바로 확정하고 다음 단계로 넘어갑니다.</p>
+        </div>
+        <div class="mock">
+          <div class="panel" style="border-left:0">
+            <div class="seg"><span class="on">합의</span><span>자료</span><span>AI 어시스턴트</span><span>기획안</span></div>
+            <div class="results">
+              <div class="res"><span class="rk">키워드</span><span class="rv">물</span><span class="meta"><span class="ok"><svg class="ic"><use href="#i-check"/></svg> 합의</span>· 09:08 · 정민재</span></div>
+              <div class="res flash"><span class="rk">문제 상황</span><span class="rv">도심 폭우·침수 피해 증가</span><span class="meta"><span class="ok"><svg class="ic"><use href="#i-check"/></svg> 합의</span>· 09:21 · 정민재</span></div>
+            </div>
+            <div class="slot"><p class="plabel">해결책</p><div class="field ph">해결책</div><div class="sbtns"><span class="btn dis">확정</span></div></div>
+          </div>
+          <div class="snip">
+            <p class="t">토론방</p>
+            <div class="sys">문제 상황이 「도심 폭우·침수 피해 증가」로 정해졌어요<br>해결책 단계예요 · 29분</div>
+            <div class="msg l p1"><div class="who">강한결</div><div class="row"><span class="av"><svg viewBox="0 0 40 40"><use href="#av1"/></svg></span><div class="bub">정해졌으니 따를게요.</div></div></div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>화면이 개입하지 않아 혼자 결정하는 행동이 그대로 기록됩니다. 흐름이 끊기지 않습니다.</span></li>
+          <li class="minus"><b>단점</b><span>잘못 눌러도 되돌릴 수 없어 항목 2의 오클릭 방지가 꼭 필요합니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+
+      <article class="opt" data-item="1" data-key="B">
+        <div>
+          <div class="ohead"><span class="okey">B</span><h3>한 줄 확인 창</h3></div>
+          <p class="odesc">[확정] 뒤 “이 값으로 확정하면 다음 단계로 넘어가요” 확인 창. 지지 현황은 보이지 않습니다.</p>
+        </div>
+        <div class="mock" style="min-height:250px">
+          <div class="panel" style="border-left:0">
+            <div class="seg"><span class="on">합의</span><span>자료</span><span>AI 어시스턴트</span><span>기획안</span></div>
+            <div class="results">
+              <div class="res"><span class="rk">키워드</span><span class="rv">물</span><span class="meta"><span class="ok"><svg class="ic"><use href="#i-check"/></svg> 합의</span>· 09:08 · 정민재</span></div>
+            </div>
+            <div class="slot"><p class="plabel">문제 상황</p><div class="field">도심 폭우·침수 피해 증가</div><div class="sbtns"><span class="btn">확정</span></div></div>
+          </div>
+          <div class="dim">
+            <div class="dlg">
+              <h4>문제 상황을 확정할까요?</h4>
+              <p>이 값으로 확정하면 다음 단계로 넘어가요.</p>
+              <div class="sbtns"><span class="btn sec">취소</span><span class="btn">확정</span></div>
+            </div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>실수 확정을 막고 항목 2와 같은 창 하나로 끝납니다.</span></li>
+          <li class="minus"><b>단점</b><span>합의 여부와 무관하게 늘 떠야 합니다. 합의 없을 때만 띄우면 “다시 생각해 보라”는 신호가 되어 행동 유도가 됩니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+
+      <article class="opt" data-item="1" data-key="C">
+        <div>
+          <div class="ohead"><span class="okey">C</span><h3>3초 되돌리기</h3></div>
+          <p class="odesc">바로 확정하되 3초 동안 [되돌리기] 토스트를 띄웁니다.</p>
+        </div>
+        <div class="mock anim" style="min-height:250px">
+          <div class="panel" style="border-left:0">
+            <div class="seg"><span class="on">합의</span><span>자료</span><span>AI 어시스턴트</span><span>기획안</span></div>
+            <div class="results">
+              <div class="res"><span class="rk">키워드</span><span class="rv">물</span><span class="meta"><span class="ok"><svg class="ic"><use href="#i-check"/></svg> 합의</span>· 09:08 · 정민재</span></div>
+              <div class="res"><span class="rk">문제 상황</span><span class="rv">도심 폭우·침수 피해 증가</span><span class="meta"><span class="ok"><svg class="ic"><use href="#i-check"/></svg> 합의</span>· 09:21 · 정민재</span></div>
+            </div>
+          </div>
+          <div class="toast"><span>문제 상황을 확정했어요</span><span class="undo">되돌리기</span><span class="bar"></span></div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>흐름을 끊지 않으면서 실수를 고칠 수 있습니다.</span></li>
+          <li class="minus"><b>단점</b><span>3초 동안 단계 전환·AI 동료 반응을 미뤄야 해 WS 순서가 복잡해지고, 되돌림도 기록·해석 대상이 됩니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button><button class="ghost replay" type="button">다시 보기</button></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2 오클릭 ============ -->
+<section class="item" id="i2" data-item="2" data-name="오클릭 방지">
+  <div class="wrap">
+    <div class="ihead">
+      <div>
+        <p class="inum">항목 2 · 지원자 화면</p>
+        <h2>오클릭 방지</h2>
+        <p>확정은 되돌릴 수 없고 다음 단계로 바로 넘어갑니다. 모든 [확정]에 똑같이 적용할 실수 방지 방법을 고릅니다. B와 C는 직접 눌러 볼 수 있습니다.</p>
+      </div>
+      <span class="rel">D2 · 기준안 ★A</span>
+    </div>
+    <div class="opts">
+      <article class="opt" data-item="2" data-key="A">
+        <div>
+          <div class="ohead"><span class="okey">A</span><h3>확인 창 하나</h3><span class="rec">★ 추천</span></div>
+          <p class="odesc">[확정]을 누르면 값과 함께 한 번 묻습니다. 기획안 제출 확인 창과 같은 모양입니다.</p>
+        </div>
+        <div class="mock" style="min-height:230px">
+          <div class="panel" style="border-left:0">
+            <div class="slot"><p class="plabel">키워드</p><div class="kseg"><span class="on">물</span><span>불</span><span>나무</span><span>바람</span></div><div class="sbtns"><span class="btn">확정</span></div></div>
+          </div>
+          <div class="dim">
+            <div class="dlg">
+              <h4>키워드를 「물」로 확정할까요?</h4>
+              <p>확정하면 다음 단계로 넘어가요.</p>
+              <div class="sbtns"><span class="btn sec">취소</span><span class="btn">확정</span></div>
+            </div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>익숙하고 키보드·스크린 리더로 다루기 쉽습니다. 제출 창과 패턴이 같습니다.</span></li>
+          <li class="minus"><b>단점</b><span>확정마다 클릭이 하나 늘어납니다(세션에 최대 3번).</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+
+      <article class="opt" data-item="2" data-key="B">
+        <div>
+          <div class="ohead"><span class="okey">B</span><h3>길게 눌러 확정</h3></div>
+          <p class="odesc">버튼을 1초 가까이 누르고 있어야 확정됩니다. 아래 버튼을 눌러 보세요.</p>
+        </div>
+        <div class="mock" style="min-height:230px">
+          <div class="panel" style="border-left:0">
+            <div class="slot"><p class="plabel">키워드</p><div class="kseg"><span class="on">물</span><span>불</span><span>나무</span><span>바람</span></div>
+              <div class="sbtns"><button type="button" class="btn hold" id="holdBtn"><span>길게 눌러 확정</span></button></div>
+              <p class="hint" style="text-align:right">누르고 있으면 채워집니다</p>
+            </div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>창 없이 오클릭을 거의 막습니다.</span></li>
+          <li class="minus"><b>단점</b><span>웹에서는 낯선 조작이고 키보드·보조기기용 대체 수단이 따로 필요합니다. 시간 압박 중 답답할 수 있습니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+
+      <article class="opt" data-item="2" data-key="C">
+        <div>
+          <div class="ohead"><span class="okey">C</span><h3>한 박자 뒤 활성</h3></div>
+          <p class="odesc">값을 입력하거나 바꾸면 [확정]이 1초 뒤에 켜집니다. 아래 칸에 입력해 보세요.</p>
+        </div>
+        <div class="mock" style="min-height:230px">
+          <div class="panel" style="border-left:0">
+            <div class="slot"><p class="plabel">문제 상황</p>
+              <input class="inp" id="delayInp" type="text" placeholder="입력해 보세요" aria-label="문제 상황 입력 데모">
+              <div class="sbtns"><button type="button" class="btn livebtn" id="delayBtn" disabled>확정</button></div>
+            </div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>눈에 띄지 않고 클릭도 늘지 않습니다.</span></li>
+          <li class="minus"><b>단점</b><span>값을 다 쓴 뒤의 잘못된 클릭은 못 막습니다. 버튼이 왜 꺼져 있는지 잠깐 헷갈릴 수 있습니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 키워드 입력 ============ -->
+<section class="item" id="i3" data-item="3" data-name="키워드 칸 입력 방식">
+  <div class="wrap">
+    <div class="ihead">
+      <div>
+        <p class="inum">항목 3 · 지원자 화면</p>
+        <h2>키워드 칸 입력 방식</h2>
+        <p>키워드는 후보 4개(물·불·나무·바람) 중 하나로만 확정됩니다. 후보 밖 키워드는 채팅에서는 말할 수 있지만 칸에서는 막힙니다(422 <code>invalid_keyword</code>).</p>
+      </div>
+      <span class="rel">D2 · D3 · 기준안 ★A</span>
+    </div>
+    <div class="opts">
+      <article class="opt" data-item="3" data-key="A">
+        <div>
+          <div class="ohead"><span class="okey">A</span><h3>후보 4개 분절 버튼</h3><span class="rec">★ 추천</span></div>
+          <p class="odesc">하나를 고르고 [확정]. 고르기 전에는 [확정]이 꺼져 있습니다.</p>
+        </div>
+        <div class="mock">
+          <div class="panel" style="border-left:0">
+            <div class="seg"><span class="on">합의</span><span>자료</span><span>AI 어시스턴트</span><span>기획안</span></div>
+            <div class="slot"><p class="plabel">키워드</p>
+              <div class="kseg"><span class="on">물</span><span>불</span><span>나무</span><span>바람</span></div>
+              <div class="sbtns"><span class="btn">확정</span></div>
+            </div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>오류가 생길 수 없고 가장 빠릅니다. 모바일·키보드 모두 쉽습니다.</span></li>
+          <li class="minus"><b>단점</b><span>다른 칸(자유 입력)과 입력 모양이 다릅니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+
+      <article class="opt" data-item="3" data-key="B">
+        <div>
+          <div class="ohead"><span class="okey">B</span><h3>자유 입력 + 오류 안내</h3></div>
+          <p class="odesc">다른 칸처럼 직접 입력하고, 후보 밖이면 칸 아래 한 줄로 막습니다.</p>
+        </div>
+        <div class="mock">
+          <div class="panel" style="border-left:0">
+            <div class="seg"><span class="on">합의</span><span>자료</span><span>AI 어시스턴트</span><span>기획안</span></div>
+            <div class="slot"><p class="plabel">키워드</p>
+              <div class="field err">물부족</div>
+              <span class="errline">물·불·나무·바람 중 하나로만 정할 수 있어요</span>
+              <div class="sbtns"><span class="btn">확정</span></div>
+            </div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>세 칸 모두 입력 방식이 같습니다.</span></li>
+          <li class="minus"><b>단점</b><span>오타·띄어쓰기로 막히는 일이 생기고, 10분짜리 단계에서 시간을 씁니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+
+      <article class="opt" data-item="3" data-key="C">
+        <div>
+          <div class="ohead"><span class="okey">C</span><h3>버튼 + 입력 둘 다</h3></div>
+          <p class="odesc">후보 칩을 누르면 입력란이 채워지고, 직접 고쳐 쓸 수도 있습니다.</p>
+        </div>
+        <div class="mock">
+          <div class="panel" style="border-left:0">
+            <div class="seg"><span class="on">합의</span><span>자료</span><span>AI 어시스턴트</span><span>기획안</span></div>
+            <div class="slot"><p class="plabel">키워드</p>
+              <div class="chips"><span class="chip on">물</span><span class="chip">불</span><span class="chip">나무</span><span class="chip">바람</span></div>
+              <div class="field">물</div>
+              <div class="sbtns"><span class="btn">확정</span></div>
+            </div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>빠르게 고를 수도, 다른 칸과 같은 입력란도 씁니다.</span></li>
+          <li class="minus"><b>단점</b><span>같은 일을 하는 컨트롤이 둘이라 복잡하고, 고쳐 쓰면 결국 B처럼 막힙니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4 단계 전환 ============ -->
+<section class="item" id="i4" data-item="4" data-name="단계 전환 연출">
+  <div class="wrap">
+    <div class="ihead">
+      <div>
+        <p class="inum">항목 4 · 지원자 화면</p>
+        <h2>단계 전환 연출</h2>
+        <p>키워드가 「물」로 확정되어 문제 상황 단계로 넘어가는 순간입니다. 어느 안이든 절제된 짧은 전환만 씁니다. [다시 보기]로 움직임을 확인하세요.</p>
+      </div>
+      <span class="rel">D2 · D8 · 기준안 ★A</span>
+    </div>
+    <div class="opts wide">
+      <article class="opt" data-item="4" data-key="A">
+        <div class="scroll-x">
+          <div class="mock screen anim">
+            <div class="topbar">
+              <span class="logo">Day Zero</span>
+              <ol class="phases">
+                <li class="done"><svg class="ic"><use href="#i-check"/></svg>키워드</li>
+                <li class="cur">문제 상황</li>
+                <li>해결책</li>
+                <li>기획안 작성</li>
+              </ol>
+              <span class="timer">이 단계 <span class="tm">21:52</span> 남음 · 09:08</span>
+            </div>
+            <div class="body">
+              <div class="chat">
+                <div class="msgs">
+                  <div class="msg r"><div class="who">나</div><div class="bub">그럼 물로 할게요.</div></div>
+                  <div class="msg l p3"><div class="who">서지안</div><div class="row"><span class="av"><svg viewBox="0 0 40 40"><use href="#av3"/></svg></span><div class="bub">좋아요, 물이면 자료도 많을 것 같네요.</div></div></div>
+                  <div class="sys fin">키워드가 「물」로 정해졌어요</div>
+                  <div class="sys fin2">문제 상황 단계예요. 「물」과 관련된 문제 상황 하나를 정해요 · 21분<br>「물」 자료가 열렸어요</div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="seg"><span class="on">합의</span><span class="bd">자료</span><span>AI 어시스턴트</span><span>기획안</span></div>
+                <div class="results"><div class="res flash"><span class="rk">키워드</span><span class="rv">물</span><span class="meta"><span class="ok"><svg class="ic"><use href="#i-check"/></svg> 합의</span>· 09:08 · 정민재</span></div></div>
+                <div class="slot fin2"><p class="plabel">문제 상황</p><div class="field ph">문제 상황</div><div class="sbtns"><span class="btn dis">확정</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">A</span><h3>진행바 이동 + 결과 줄 강조 + 회색 안내</h3><span class="rec">★ 추천</span></div>
+            <p class="odesc">진행바의 현재 표시가 다음 칸으로 옮겨 가고(200ms), 합의 결과 줄이 연한 파랑으로 한 번 빛났다 사라지며(600ms), 토론방 가운데 회색 안내가 붙습니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>세 곳이 동시에 같은 사실을 조용히 알려 줍니다. 토론을 가리지 않습니다.</span></li>
+            <li class="minus"><b>단점</b><span>채팅에 몰입해 있으면 우측 강조를 못 볼 수 있습니다(가운데 안내가 보완).</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button><button class="ghost replay" type="button">다시 보기</button></div>
+        </div>
+      </article>
+
+      <article class="opt" data-item="4" data-key="B">
+        <div class="scroll-x">
+          <div class="mock screen anim">
+            <div class="topbar">
+              <span class="logo">Day Zero</span>
+              <ol class="phases">
+                <li class="done"><svg class="ic"><use href="#i-check"/></svg>키워드</li>
+                <li class="cur">문제 상황</li>
+                <li>해결책</li>
+                <li>기획안 작성</li>
+              </ol>
+              <span class="timer">이 단계 <span class="tm">21:52</span> 남음 · 09:08</span>
+            </div>
+            <div class="body">
+              <div class="chat">
+                <div class="msgs">
+                  <div class="msg r"><div class="who">나</div><div class="bub">그럼 물로 할게요.</div></div>
+                  <div class="msg l p3"><div class="who">서지안</div><div class="row"><span class="av"><svg viewBox="0 0 40 40"><use href="#av3"/></svg></span><div class="bub">좋아요, 물이면 자료도 많을 것 같네요.</div></div></div>
+                  <div class="divider fin">문제 상황 · 09:08~09:30</div>
+                  <div class="sys fin2">「물」과 관련된 문제 상황 하나를 정해요 · 「물」 자료가 열렸어요</div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="seg"><span class="on">합의</span><span class="bd">자료</span><span>AI 어시스턴트</span><span>기획안</span></div>
+                <div class="results"><div class="res"><span class="rk">키워드</span><span class="rv">물</span><span class="meta"><span class="ok"><svg class="ic"><use href="#i-check"/></svg> 합의</span>· 09:08 · 정민재</span></div></div>
+                <div class="slot"><p class="plabel">문제 상황</p><div class="field ph">문제 상황</div><div class="sbtns"><span class="btn dis">확정</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">B</span><h3>토론방 안 단계 구분선</h3></div>
+            <p class="odesc">대화 흐름 속에 “문제 상황 · 09:08~09:30” 구분선을 넣어 단계를 장(章)처럼 나눕니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>나중에 스크롤로 다시 읽을 때 단계별로 찾기 쉽습니다(기획안 쓸 때 유용).</span></li>
+            <li class="minus"><b>단점</b><span>전환 순간의 알림은 약합니다. A와 함께 쓸 수도 있습니다.</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button><button class="ghost replay" type="button">다시 보기</button></div>
+        </div>
+      </article>
+
+      <article class="opt" data-item="4" data-key="C">
+        <div class="scroll-x">
+          <div class="mock screen anim">
+            <div class="topbar">
+              <span class="logo">Day Zero</span>
+              <ol class="phases">
+                <li class="done"><svg class="ic"><use href="#i-check"/></svg>키워드</li>
+                <li class="cur">문제 상황</li>
+                <li>해결책</li>
+                <li>기획안 작성</li>
+              </ol>
+              <span class="timer">이 단계 <span class="tm">21:52</span> 남음 · 09:08</span>
+            </div>
+            <div class="body">
+              <div class="chat">
+                <div class="msgs">
+                  <div class="msg r"><div class="who">나</div><div class="bub">그럼 물로 할게요.</div></div>
+                  <div class="msg l p3"><div class="who">서지안</div><div class="row"><span class="av"><svg viewBox="0 0 40 40"><use href="#av3"/></svg></span><div class="bub">좋아요, 물이면 자료도 많을 것 같네요.</div></div></div>
+                  <div class="sys">문제 상황 단계예요 · 21분</div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="seg"><span class="on">합의</span><span class="bd">자료</span><span>AI 어시스턴트</span><span>기획안</span></div>
+                <div class="results"><div class="res"><span class="rk">키워드</span><span class="rv">물</span><span class="meta"><span class="ok"><svg class="ic"><use href="#i-check"/></svg> 합의</span>· 09:08 · 정민재</span></div></div>
+                <div class="slot"><p class="plabel">문제 상황</p><div class="field ph">문제 상황</div><div class="sbtns"><span class="btn dis">확정</span></div></div>
+              </div>
+            </div>
+            <div class="overlay"><div><b>문제 상황</b><span>키워드 「물」 · 21분</span></div></div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">C</span><h3>1초 반투명 오버레이</h3></div>
+            <p class="odesc">화면 전체에 단계 이름을 1초쯤 띄웠다가 스스로 사라집니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>전환을 놓칠 수 없습니다.</span></li>
+            <li class="minus"><b>단점</b><span>토론을 잠깐 가리고, 입력 중이던 지원자의 흐름을 끊습니다. 반투명 남용 규칙과도 부딪힙니다.</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button><button class="ghost replay" type="button">다시 보기</button></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5 기획안 진입 ============ -->
+<section class="item" id="i5" data-item="5" data-name="기획안 단계 진입">
+  <div class="wrap">
+    <div class="ihead">
+      <div>
+        <p class="inum">항목 5 · 지원자 화면</p>
+        <h2>기획안 단계 진입</h2>
+        <p>해결책이 확정되어 마지막 기획안 작성 단계(혼자 쓰고 제출)로 들어갈 때 화면 배치를 어떻게 바꿀지 고릅니다. 이 단계에서도 토론방에서 AI 동료에게 물을 수 있습니다.</p>
+      </div>
+      <span class="rel">D7 · D13 · 기준안 ★A</span>
+    </div>
+    <div class="opts wide">
+      <article class="opt" data-item="5" data-key="A">
+        <div class="scroll-x">
+          <div class="mock screen">
+            <div class="topbar">
+              <span class="logo">Day Zero</span>
+              <ol class="phases">
+                <li class="done"><svg class="ic"><use href="#i-check"/></svg>키워드</li>
+                <li class="to"><svg class="ic"><use href="#i-clock"/></svg>문제 상황</li>
+                <li class="done"><svg class="ic"><use href="#i-check"/></svg>해결책</li>
+                <li class="cur">기획안 작성</li>
+              </ol>
+              <span class="timer">이 단계 <span class="tm">14:20</span> 남음 · 09:45</span>
+            </div>
+            <div class="body">
+              <div class="chat">
+                <div class="msgs">
+                  <div class="msg l p2"><div class="who">윤하람</div><div class="row"><span class="av"><svg viewBox="0 0 40 40"><use href="#av2"/></svg></span><div class="bub">빗물 저금통 사례 자료에 설치비 지원 얘기도 있었어요.</div></div></div>
+                  <div class="sys">해결책이 「빗물 저금통·투수 포장 같은 생활 인프라」로 정해졌어요<br>기획안 작성 단계예요. 기획안 탭에서 쓰고 제출해요 · 14분</div>
+                </div>
+                <div class="compose"><span>메시지 입력</span><span class="send"><svg class="ic"><use href="#i-up"/></svg></span></div>
+              </div>
+              <div class="panel">
+                <div class="seg"><span>합의</span><span>자료</span><span>AI 어시스턴트</span><span class="on">기획안</span></div>
+                <div class="doc">
+                  <div class="pf"><h5>키워드</h5><p>물</p></div>
+                  <div class="pf"><h5>문제 상황</h5><p>가뭄으로 생활용수 제한이 잦아짐</p></div>
+                  <div class="pf"><h5>해결책</h5><p>빗물 저금통·투수 포장 같은 생활 인프라</p></div>
+                  <div class="pf"><h5>근거</h5><p class="e">&nbsp;</p></div>
+                  <div class="pf"><h5>…</h5></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">A</span><h3>우측 탭이 기획안으로 자동 전환</h3><span class="rec">★ 추천</span></div>
+            <p class="odesc">배치는 그대로 두고 우측 패널만 기획안 탭으로 바뀝니다. 앞 3칸은 확정 결과로 미리 채워져 있습니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>화면이 크게 바뀌지 않아 낯설지 않고 구현이 가장 단순합니다.</span></li>
+            <li class="minus"><b>단점</b><span>6칸을 쓰기에 패널 폭(약 38%)이 좁습니다.</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+        </div>
+      </article>
+
+      <article class="opt" data-item="5" data-key="B">
+        <div class="scroll-x">
+          <div class="mock screen">
+            <div class="topbar">
+              <span class="logo">Day Zero</span>
+              <ol class="phases">
+                <li class="done"><svg class="ic"><use href="#i-check"/></svg>키워드</li>
+                <li class="to"><svg class="ic"><use href="#i-clock"/></svg>문제 상황</li>
+                <li class="done"><svg class="ic"><use href="#i-check"/></svg>해결책</li>
+                <li class="cur">기획안 작성</li>
+              </ol>
+              <span class="timer">이 단계 <span class="tm">14:20</span> 남음 · 09:45</span>
+            </div>
+            <div class="body b-wide">
+              <div class="chat">
+                <div class="msgs">
+                  <div class="msg l p2"><div class="who">윤하람</div><div class="row"><span class="av"><svg viewBox="0 0 40 40"><use href="#av2"/></svg></span><div class="bub">빗물 저금통 사례 자료에 설치비 지원 얘기도 있었어요.</div></div></div>
+                  <div class="sys">기획안 작성 단계예요 · 14분</div>
+                </div>
+                <div class="compose"><span>메시지 입력</span><span class="send"><svg class="ic"><use href="#i-up"/></svg></span></div>
+              </div>
+              <div class="panel">
+                <div class="seg"><span>합의</span><span>자료</span><span>AI 어시스턴트</span><span class="on">기획안</span></div>
+                <div class="doc">
+                  <div class="pf"><h5>키워드</h5><p>물</p></div>
+                  <div class="pf"><h5>문제 상황</h5><p>가뭄으로 생활용수 제한이 잦아짐</p></div>
+                  <div class="pf"><h5>해결책</h5><p>빗물 저금통·투수 포장 같은 생활 인프라</p></div>
+                  <div class="pf"><h5>근거</h5><p>지역별 물 부족 통계에서 생활용수 제한 일수가 늘고 있어…</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">B</span><h3>우측 패널을 넓혀 기획안 비중 확대</h3></div>
+            <p class="odesc">토론방 40% · 패널 60%로 폭을 바꿉니다(200ms 전환). 토론방은 그대로 보입니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>쓰기 공간이 넉넉해지고 대화도 계속 보입니다.</span></li>
+            <li class="minus"><b>단점</b><span>말풍선 줄바꿈이 바뀌어 대화 위치가 흔들립니다. 1280px 화면에서 토론방이 좁아집니다.</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+        </div>
+      </article>
+
+      <article class="opt" data-item="5" data-key="C">
+        <div class="scroll-x">
+          <div class="mock screen">
+            <div class="topbar">
+              <span class="logo">Day Zero</span>
+              <ol class="phases">
+                <li class="done"><svg class="ic"><use href="#i-check"/></svg>키워드</li>
+                <li class="to"><svg class="ic"><use href="#i-clock"/></svg>문제 상황</li>
+                <li class="done"><svg class="ic"><use href="#i-check"/></svg>해결책</li>
+                <li class="cur">기획안 작성</li>
+              </ol>
+              <span class="timer">이 단계 <span class="tm">14:20</span> 남음 · 09:45</span>
+            </div>
+            <div class="body">
+              <div class="chat" style="background:var(--canvas);padding:12px">
+                <div class="doc" style="padding:14px 18px">
+                  <p class="plabel" style="margin-bottom:4px">기획안</p>
+                  <div class="pf"><h5>키워드</h5><p>물</p></div>
+                  <div class="pf"><h5>문제 상황</h5><p>가뭄으로 생활용수 제한이 잦아짐</p></div>
+                  <div class="pf"><h5>해결책</h5><p>빗물 저금통·투수 포장 같은 생활 인프라</p></div>
+                  <div class="pf"><h5>근거</h5><p>지역별 물 부족 통계에서 생활용수 제한 일수가 늘고 있어…</p></div>
+                </div>
+              </div>
+              <div class="panel" style="background:var(--surface);padding:0">
+                <div class="chead"><b>새 프로젝트 팀</b></div>
+                <div class="msgs">
+                  <div class="msg l p2"><div class="who">윤하람</div><div class="row"><span class="av"><svg viewBox="0 0 40 40"><use href="#av2"/></svg></span><div class="bub">빗물 저금통 사례 자료에 설치비 지원 얘기도 있었어요.</div></div></div>
+                  <div class="sys">기획안 작성 단계예요 · 14분</div>
+                </div>
+                <div class="compose"><span>메시지 입력</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">C</span><h3>기획안을 가운데로, 토론방을 오른쪽으로 교대</h3></div>
+            <p class="odesc">주인공을 바꿉니다. 기획안이 넓은 가운데, 토론방은 오른쪽 좁은 열로 갑니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>“이제 혼자 쓰는 시간”이 분명하게 전달되고 쓰기 공간이 가장 넓습니다.</span></li>
+            <li class="minus"><b>단점</b><span>레이아웃이 통째로 바뀌어 순간적으로 길을 잃기 쉽고, 자료·어시스턴트 탭 자리가 애매해집니다.</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6 기획안 작성 ============ -->
+<section class="item" id="i6" data-item="6" data-name="기획안 작성 화면">
+  <div class="wrap">
+    <div class="ihead">
+      <div>
+        <p class="inum">항목 6 · 지원자 화면</p>
+        <h2>기획안 작성 화면</h2>
+        <p>템플릿 6칸(키워드 · 문제 상황 · 해결책 · 근거 · 기대효과 · 아이디어 기여)을 쓰는 화면입니다. placeholder·예시 문구는 없고 1초마다 자동 저장됩니다. 항목 5와 어울리는 조합을 함께 보세요(5-A ↔ 6-A, 5-B·C ↔ 6-B).</p>
+      </div>
+      <span class="rel">D7 · 기준안 ★A</span>
+    </div>
+    <div class="opts">
+      <article class="opt" data-item="6" data-key="A">
+        <div>
+          <div class="ohead"><span class="okey">A</span><h3>탭 안 6칸 세로 폼</h3><span class="rec">★ 추천</span></div>
+          <p class="odesc">우측 탭 안에서 6칸을 위에서 아래로 씁니다.</p>
+        </div>
+        <div class="mock">
+          <div class="panel" style="border-left:0">
+            <div class="seg"><span>합의</span><span>자료</span><span>AI 어시스턴트</span><span class="on">기획안</span></div>
+            <div class="doc">
+              <div class="pf"><h5>키워드</h5><p>물</p></div>
+              <div class="pf"><h5>문제 상황</h5><p>가뭄으로 생활용수 제한이 잦아짐</p></div>
+              <div class="pf"><h5>해결책</h5><p>빗물 저금통·투수 포장 같은 생활 인프라</p></div>
+              <div class="pf"><h5>근거</h5><p>지역별 물 부족 통계에서 제한 급수 일수가 늘고 있음</p></div>
+              <div class="pf"><h5>기대효과</h5><p class="e">&nbsp;</p></div>
+              <div class="pf"><h5>아이디어 기여</h5><p class="e">&nbsp;</p></div>
+            </div>
+            <div class="savebar"><span>09:46 저장됨</span><span class="btn">제출</span></div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>토론 단계에서 미리 쓰던 화면과 같아 이어 쓰기 쉽습니다.</span></li>
+          <li class="minus"><b>단점</b><span>폭이 좁아 긴 문단을 쓰면 스크롤이 길어집니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+
+      <article class="opt" data-item="6" data-key="B">
+        <div>
+          <div class="ohead"><span class="okey">B</span><h3>넓은 편집 보기 + 합의 요약 고정 머리</h3></div>
+          <p class="odesc">편집 영역 위에 확정된 세 칸 결과를 고정해 두고, 아래에서 근거·기대효과·기여를 넓게 씁니다.</p>
+        </div>
+        <div class="mock">
+          <div class="mini" style="display:flex;flex-direction:column;gap:10px">
+            <div class="pinhead">
+              <span>키워드</span><b>물 · 합의</b>
+              <span>문제 상황</span><b>가뭄으로 생활용수 제한이 잦아짐 · 시간 초과</b>
+              <span>해결책</span><b>빗물 저금통·투수 포장 같은 생활 인프라 · 합의</b>
+            </div>
+            <div class="doc">
+              <div class="pf"><h5>키워드 · 문제 상황 · 해결책</h5><p>물 / 가뭄으로 생활용수 제한이… / 빗물 저금통…</p></div>
+              <div class="pf"><h5>근거</h5><p>지역별 물 부족 통계에서 제한 급수 일수가 늘고 있음</p></div>
+              <div class="pf"><h5>기대효과</h5><p class="e">&nbsp;</p></div>
+              <div class="pf"><h5>아이디어 기여</h5><p class="e">&nbsp;</p></div>
+            </div>
+            <div class="savebar"><span>09:46 저장됨</span><span class="btn">제출</span></div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>합의 결과를 보면서 쓸 수 있고 문서처럼 넓습니다.</span></li>
+          <li class="minus"><b>단점</b><span>넓은 영역이 필요해 5-B·C 배치가 전제됩니다. 고정 머리가 세로 공간을 차지합니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+
+      <article class="opt" data-item="6" data-key="C">
+        <div>
+          <div class="ohead"><span class="okey">C</span><h3>칸별 접기·펼치기</h3></div>
+          <p class="odesc">지금 쓰는 칸만 펼치고 나머지는 한 줄 요약으로 접습니다.</p>
+        </div>
+        <div class="mock">
+          <div class="panel" style="border-left:0">
+            <div class="seg"><span>합의</span><span>자료</span><span>AI 어시스턴트</span><span class="on">기획안</span></div>
+            <div class="doc">
+              <div class="pf cl"><h5>키워드</h5><span class="s">물</span><svg class="ic chev"><use href="#i-chev"/></svg></div>
+              <div class="pf cl"><h5>문제 상황</h5><span class="s">가뭄으로 생활용수…</span><svg class="ic chev"><use href="#i-chev"/></svg></div>
+              <div class="pf cl"><h5>해결책</h5><span class="s">빗물 저금통…</span><svg class="ic chev"><use href="#i-chev"/></svg></div>
+              <div class="pf"><div class="pf cl" style="padding:0;border:0"><h5>근거</h5><svg class="ic chev"><use href="#i-down"/></svg></div><div class="field" style="margin-top:6px;min-height:56px">지역별 물 부족 통계에서 제한 급수 일수가 늘고 있음</div></div>
+              <div class="pf cl"><h5>기대효과</h5><span class="s">비어 있음</span><svg class="ic chev"><use href="#i-chev"/></svg></div>
+              <div class="pf cl"><h5>아이디어 기여</h5><span class="s">비어 있음</span><svg class="ic chev"><use href="#i-chev"/></svg></div>
+            </div>
+            <div class="savebar"><span>09:46 저장됨</span><span class="btn">제출</span></div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>좁은 패널에서도 한 칸에 집중할 수 있고 전체 진행이 한눈에 보입니다.</span></li>
+          <li class="minus"><b>단점</b><span>여러 칸을 오가며 고칠 때 클릭이 늘고, 접힌 칸은 내용을 다시 읽기 어렵습니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7 리포트 구조 ============ -->
+<section class="item" id="i7" data-item="7" data-name="기업 리포트 화면 구조">
+  <div class="wrap">
+    <div class="ihead">
+      <div>
+        <p class="inum">항목 7 · 기업 리포트</p>
+        <h2>기업 리포트 화면 구조</h2>
+        <p>평가 에이전트가 요소마다 하위 차원의 수준(1~5)·근거·확신도를 내고, 담당자가 그것을 참고해 평가합니다. 요소는 “수준 N (1~5)”으로 보이고 <b>총점·합계는 없습니다</b>. 확신도가 낮은 차원에는 “근거 약함, 원문 확인 권장”이 붙습니다. 화면 전체를 어떤 순서로 묶을지 고릅니다.</p>
+      </div>
+      <span class="rel">D18·D19 개정 · 평가 결과 계약 · 기준안 ★A</span>
+    </div>
+    <p class="linknote">이전 문서의 “참고 점수 2점 (0~3)·조건 충족/미충족·합계” 표기는 행동 기준 척도(BARS)로 바뀌어 쓰지 않습니다. 세 안 모두 새 표기로 그렸습니다.</p>
+    <div class="opts wide">
+      <article class="opt" data-item="7" data-key="A">
+        <div class="scroll-x">
+          <div class="mock rep">
+            <div class="rtop"><b style="font-size:12px">Day Zero 관리자</b><span class="badge acc">검토 대기</span><span style="flex:1"></span><span class="badge">삭제 예정 2027-01-19</span><span class="badge">인쇄</span></div>
+            <div class="rbody">
+              <h4>정민재 리포트</h4>
+              <p class="fixed">이 리포트는 담당자가 평가할 때 보는 참고 자료입니다. AI 평가 에이전트가 공개된 척도로 근거를 들어 수준을 판단했고, 담당자가 근거를 보고 조정합니다. 합격·불합격·순위는 판정하지 않습니다.</p>
+              <table class="stbl">
+                <tr><th>요소</th><th>수준</th><th>한 줄 관찰</th><th></th></tr>
+                <tr><td>설득/논리력</td><td class="lv">수준 4 <small>(1~5)</small></td><td>자료 수치를 들어 자기 안을 설명했습니다</td><td></td></tr>
+                <tr><td>경청/존중</td><td class="lv">수준 3 <small>(1~5)</small></td><td>반복 압박에 대체로 내용으로 답했습니다</td><td class="lowtag">근거 약함 1</td></tr>
+                <tr><td>배려/포용</td><td class="lv">수준 3 <small>(1~5)</small></td><td>머뭇거린 동료에게 한 번 의견을 물었습니다</td><td></td></tr>
+                <tr><td>수용/유연성</td><td class="lv">수준 2 <small>(1~5)</small></td><td>채택되지 않은 뒤 한동안 말이 줄었습니다</td><td></td></tr>
+                <tr><td>정직/공정</td><td class="lv">수준 4 <small>(1~5)</small></td><td>빗물 저금통 아이디어를 윤하람님 것으로 적었습니다</td><td></td></tr>
+              </table>
+              <h5>① 토론 흐름</h5>
+              <div class="strip">
+                <div><b>키워드 · 물</b><span>합의 09:08 · 정민재</span></div>
+                <div><b>문제 상황 · 가뭄으로 생활용수 제한</b><span>시간 초과 09:30 · 강한결 · <i class="mk"></i>수용·경청 장면</span></div>
+                <div><b>해결책 · 빗물 저금통·투수 포장</b><span>합의 09:44 · 정민재 · <i class="mk"></i>배려·설득 장면</span></div>
+                <div><b>기획안</b><span>제출 09:58</span></div>
+              </div>
+              <h5>② 요소 상세</h5>
+              <div class="fold"><span class="t">설득/논리력 · 수준 4</span><span class="conf">차원 4</span><svg class="ic chev"><use href="#i-chev"/></svg></div>
+              <div class="fold"><span class="t">경청/존중 · 수준 3</span><span class="lowtag">근거 약함 1</span><svg class="ic chev"><use href="#i-down"/></svg></div>
+              <div style="padding-left:12px">
+                <div class="dimrow"><span>응답성</span><span class="lv">수준 4</span><span class="conf">확신도 높음</span></div>
+                <div class="dimrow"><span>이해 확인</span><span class="lv">수준 3</span><span class="conf">확신도 보통</span></div>
+                <div class="dimrow"><span>타당성 인정</span><span class="lv">수준 4</span><span class="conf">확신도 높음</span></div>
+                <div class="dimrow"><span>존중하는 반대</span><span class="lv">수준 2</span><span class="lowtag">확신도 낮음 · 근거 약함, 원문 확인 권장</span></div>
+              </div>
+              <div class="fold"><span class="t">배려/포용 · 수준 3</span><span class="conf">차원 4</span><svg class="ic chev"><use href="#i-chev"/></svg></div>
+              <h5>③ 사실 지표 · ④ 제출 기획안 · ⑤ AI 활용</h5>
+              <p class="fixed" style="margin:0">발언 31회(자발 28 · 초대 후 3) · 응답 간격 중앙값 42초 · 기획안 6칸 · 어시스턴트 요청 4회(판단 기준 없음)</p>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">A</span><h3>한 열 문서</h3><span class="rec">★ 추천</span></div>
+            <p class="odesc">요약표 → 토론 흐름 → 요소 상세(접힘) → 사실 지표 → 기획안 → AI 활용 순서로 위에서 아래로 읽습니다. 요약표 행을 누르면 해당 요소로 갑니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>처음 보는 담당자도 순서대로 읽으면 되고, 인쇄·PDF가 그대로 나옵니다.</span></li>
+            <li class="minus"><b>단점</b><span>요소 5개를 모두 펼치면 길어져 요소 사이를 오가기 번거롭습니다.</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+        </div>
+      </article>
+
+      <article class="opt" data-item="7" data-key="B">
+        <div class="scroll-x">
+          <div class="mock rep">
+            <div class="rtop"><b style="font-size:12px">Day Zero 관리자</b><span class="badge acc">검토 대기</span><span style="flex:1"></span><span class="badge">인쇄</span></div>
+            <div class="split">
+              <div class="toc2">
+                <span class="h">개요</span>
+                <span>요약</span><span>토론 흐름</span>
+                <span class="h">요소</span>
+                <span>설득/논리력 <em>4</em></span>
+                <span class="on">경청/존중 <em>3</em></span>
+                <span>배려/포용 <em>3</em></span>
+                <span>수용/유연성 <em>2</em></span>
+                <span>정직/공정 <em>4</em></span>
+                <span class="h">기록</span>
+                <span>사실 지표</span><span>제출 기획안</span><span>AI 활용</span>
+              </div>
+              <div class="rbody">
+                <p class="plabel">요소</p>
+                <h4>경청/존중 · 수준 3 <small style="font-weight:400;color:var(--muted);font-size:12px">(1~5)</small></h4>
+                <p class="fixed">반복 압박에 대체로 내용으로 답했지만 한 번 답답함이 사람을 향해 드러났습니다.</p>
+                <div class="dimrow"><span>응답성</span><span class="lv">수준 4</span><span class="conf">확신도 높음</span></div>
+                <div class="dimrow"><span>이해 확인</span><span class="lv">수준 3</span><span class="conf">확신도 보통</span></div>
+                <div class="dimrow"><span>타당성 인정</span><span class="lv">수준 4</span><span class="conf">확신도 높음</span></div>
+                <div class="dimrow"><span>존중하는 반대</span><span class="lv">수준 2</span><span class="lowtag">확신도 낮음 · 근거 약함, 원문 확인 권장</span><span class="why">“같은 얘기를 계속 하시는데 제 말은 안 들으시네요” 한 건만 근거입니다.</span></div>
+                <p class="fixed" style="margin-top:10px">관련 장면: 문제 상황 단계 강한결의 반복 압박(09:12~09:30)</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">B</span><h3>왼쪽 목차 고정 + 오른쪽 상세</h3></div>
+            <p class="odesc">왼쪽에 요소와 수준이 늘 보이고, 고른 요소의 상세만 오른쪽에 엽니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>요소 사이 이동이 빠르고 전체 수준이 항상 보입니다.</span></li>
+            <li class="minus"><b>단점</b><span>요소 사이 흐름(같은 장면이 여러 요소에 걸침)이 끊겨 보이고, 인쇄용 배치를 따로 만들어야 합니다.</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+        </div>
+      </article>
+
+      <article class="opt" data-item="7" data-key="C">
+        <div class="scroll-x">
+          <div class="mock rep">
+            <div class="rtop"><b style="font-size:12px">Day Zero 관리자</b><span class="badge acc">검토 대기</span><span style="flex:1"></span><span class="chips"><span class="chip on">전체</span><span class="chip">설득</span><span class="chip">경청</span><span class="chip">배려</span><span class="chip">수용</span><span class="chip">정직</span></span></div>
+            <div class="rbody" style="position:relative">
+              <h4 style="font-size:15px">정민재 · 시간축</h4>
+              <div class="axis"><span style="left:0">09:00</span><span style="left:16.66%">09:10</span><span style="left:50%">09:30</span><span style="left:83.33%">09:50</span><span style="left:100%">10:00</span></div>
+              <div class="lanes">
+                <div class="lane"><span class="ln">단계</span><div class="track"><span class="k" style="left:13%"></span><span class="k" style="left:50%"></span><span class="k" style="left:73%"></span></div></div>
+                <div class="lane"><span class="ln">설득 4</span><div class="track"><span class="d" style="left:6%"></span><span class="d" style="left:10%"></span><span class="d" style="left:64%"></span></div></div>
+                <div class="lane"><span class="ln">경청 3</span><div class="track"><span class="d" style="left:24%"></span><span class="d" style="left:31%"></span><span class="d low" style="left:38%"></span></div></div>
+                <div class="lane"><span class="ln">배려 3</span><div class="track"><span class="d" style="left:58%"></span></div></div>
+                <div class="lane"><span class="ln">수용 2</span><div class="track"><span class="d" style="left:52%"></span><span class="d" style="left:56%"></span></div></div>
+                <div class="lane"><span class="ln">정직 4</span><div class="track"><span class="d" style="left:94%"></span></div></div>
+                <div class="lane"><span class="ln">끊김</span><div class="track"><span class="gapband" style="left:40%;width:3%"></span></div></div>
+              </div>
+              <div class="pop" style="right:20px;top:272px">
+                <b>09:23 · 경청/존중 · 존중하는 반대 수준 2</b><br>
+                <span style="color:var(--warning)">확신도 낮음 · 근거 약함, 원문 확인 권장</span><br>
+                “같은 얘기를 계속 하시는데 제 말은 안 들으시네요.”
+              </div>
+              <div style="height:70px"></div>
+              <p class="fixed" style="margin:0">◆ 칸 확정 · ● 근거 메시지 · ○ 확신도 낮은 근거 · 회색 띠 접속 끊김</p>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">C</span><h3>시간축 중심</h3></div>
+            <p class="odesc">60분 시간축 위에 칸 확정·근거 메시지를 요소별 줄로 얹고, 요소 칩으로 거릅니다. 점을 누르면 근거가 뜹니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>장면 전후의 변화와 반복 패턴이 한눈에 보입니다.</span></li>
+            <li class="minus"><b>단점</b><span>차원별 수준·서술을 읽으려면 결국 다른 보기가 필요하고, 인쇄·접근성이 가장 어렵습니다.</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8 근거 보기 ============ -->
+<section class="item" id="i8" data-item="8" data-name="리포트 근거 보기">
+  <div class="wrap">
+    <div class="ihead">
+      <div>
+        <p class="inum">항목 8 · 기업 리포트</p>
+        <h2>리포트 근거 보기</h2>
+        <p>차원마다 근거 메시지가 1개 이상 붙습니다. 근거에는 원문, 오피스 시각, 앞뒤 맥락(앞 5 · 뒤 3 메시지), 전체 기록으로 가는 링크가 있습니다. 예시는 경청/존중의 “존중하는 반대” 차원(수준 2, 확신도 낮음)입니다.</p>
+      </div>
+      <span class="rel">평가 결과 계약 · 기준안 ★A</span>
+    </div>
+    <div class="opts wide">
+      <article class="opt" data-item="8" data-key="A">
+        <div class="scroll-x">
+          <div class="mock rep" style="min-width:560px">
+            <div class="rbody">
+              <div class="dimrow"><span><b>존중하는 반대</b></span><span class="lv">수준 2</span><span class="lowtag">확신도 낮음 · 근거 약함, 원문 확인 권장</span>
+                <span class="why">답답함이 상대를 향한 표현이 한 번 있었으나 이후 회복했는지 판단할 근거가 부족합니다.</span></div>
+              <div class="ev">
+                <div class="em"><span>09:23 · 문제 상황</span><span>자발</span><span>압박 장면 안</span></div>
+                <div class="evq">한결님, 같은 얘기를 계속 하시는데 제 말은 안 들으시네요.</div>
+                <div class="ctx">
+                  <span>09:21 강한결 · 물 부족 통계만 봐도 답이 나와요.</span>
+                  <span>09:22 강한결 · 침수는 핵심이 아니라니까요.</span>
+                  <span class="hl">09:23 나 · 한결님, 같은 얘기를 계속 하시는데 제 말은 안 들으시네요.</span>
+                  <span>09:23 서지안 · 근데 침수 쪽 근거도 한번 들어 볼까요?</span>
+                </div>
+                <div class="links"><a href="#i8">맥락 접기 (앞 5 · 뒤 3)</a><a href="#i8">기록에서 보기 <svg class="ic"><use href="#i-ext"/></svg></a></div>
+              </div>
+              <div class="dimrow" style="margin-top:6px"><span><b>타당성 인정</b></span><span class="lv">수준 4</span><span class="conf">확신도 높음</span></div>
+              <div class="fold" style="color:var(--muted)"><span class="t" style="font-weight:400">근거 2개</span><svg class="ic chev"><use href="#i-chev"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">A</span><h3>차원 아래 근거 목록 펼침</h3><span class="rec">★ 추천</span></div>
+            <p class="odesc">차원을 펼치면 근거 말풍선이 그 자리에 나오고, 앞뒤 맥락도 그 아래에서 펼칩니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>판단 이유와 원문이 같은 자리에 있어 확인이 빠르고 인쇄에도 그대로 들어갑니다.</span></li>
+            <li class="minus"><b>단점</b><span>맥락까지 펼치면 문서가 길어집니다.</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+        </div>
+      </article>
+
+      <article class="opt" data-item="8" data-key="B">
+        <div class="scroll-x">
+          <div class="mock rep" style="min-width:660px">
+            <div style="display:grid;grid-template-columns:1fr 1fr">
+              <div class="rbody">
+                <div class="dimrow"><span><b>존중하는 반대</b></span><span class="lv">수준 2</span><span class="lowtag">근거 약함, 원문 확인 권장</span></div>
+                <div class="ev" style="outline:2px solid var(--accent);outline-offset:-1px">
+                  <div class="em"><span>09:23 · 문제 상황</span><span>자발</span></div>
+                  <div class="evq">한결님, 같은 얘기를 계속 하시는데 제 말은 안 들으시네요.</div>
+                </div>
+                <div class="dimrow" style="margin-top:6px"><span><b>타당성 인정</b></span><span class="lv">수준 4</span><span class="conf">확신도 높음</span></div>
+                <div class="ev"><div class="em"><span>09:16 · 문제 상황</span></div><div class="evq">통계가 확실한 건 맞아요. 다만 체감은 침수가 더 크다고 봐요.</div></div>
+              </div>
+              <div class="cpanel">
+                <p class="plabel">대화 맥락 · 앞 5 · 뒤 3</p>
+                <div class="msg l p1"><div class="who">강한결 · 09:21</div><div class="bub">물 부족 통계만 봐도 답이 나와요.</div></div>
+                <div class="msg l p1 c"><div class="bub">침수는 핵심이 아니라니까요.</div></div>
+                <div class="msg r hl"><div class="who">나 · 09:23</div><div class="bub">한결님, 같은 얘기를 계속 하시는데 제 말은 안 들으시네요.</div></div>
+                <div class="msg l p3"><div class="who">서지안 · 09:23</div><div class="bub">근데 침수 쪽 근거도 한번 들어 볼까요?</div></div>
+                <div class="msg r"><div class="who">나 · 09:24</div><div class="bub">네, 제가 자료 정리해서 말씀드릴게요.</div></div>
+                <a href="#i8" style="font-size:10.5px;margin-top:6px">기록에서 보기 <svg class="ic"><use href="#i-ext"/></svg></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">B</span><h3>오른쪽 대화 맥락 패널</h3></div>
+            <p class="odesc">근거를 누르면 오른쪽에 토론방과 같은 말풍선으로 앞 5 · 뒤 3 메시지가 열리고 해당 메시지가 강조됩니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>토론방에서 본 모습 그대로 맥락을 읽을 수 있어 “근거 약함”을 확인하기 가장 좋습니다.</span></li>
+            <li class="minus"><b>단점</b><span>화면이 좁으면 패널이 본문을 가리고, 인쇄에는 별도 처리가 필요합니다. 7-B와 함께 쓰기 어렵습니다.</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+        </div>
+      </article>
+
+      <article class="opt" data-item="8" data-key="C">
+        <div class="scroll-x">
+          <div class="mock rep" style="min-width:560px">
+            <div class="pair">
+              <div>
+                <p class="lab">리포트</p>
+                <div class="dimrow"><span><b>존중하는 반대</b></span><span class="lv">수준 2</span><span class="lowtag">근거 약함</span></div>
+                <div class="ev"><div class="em"><span>09:23 메시지 1개</span></div><div class="links"><a href="#i8">기록에서 보기 <svg class="ic"><use href="#i-ext"/></svg></a></div></div>
+              </div>
+              <div style="padding:0">
+                <p class="lab" style="padding:10px 10px 4px">전체 기록 (새 화면)</p>
+                <div class="rec-row"><span class="tt">09:21</span><span class="k">메시지</span><span>강한결 · 물 부족 통계만 봐도…</span></div>
+                <div class="rec-row"><span class="tt">09:22</span><span class="k">메시지</span><span>강한결 · 침수는 핵심이 아니라니까요.</span></div>
+                <div class="rec-row hl"><span class="tt">09:23</span><span class="k">메시지</span><span>나 · 한결님, 같은 얘기를 계속…</span></div>
+                <div class="rec-row"><span class="tt">09:23</span><span class="k">메시지</span><span>서지안 · 근데 침수 쪽 근거도…</span></div>
+                <div class="rec-row"><span class="tt">09:24</span><span class="k">자료</span><span>도심 침수 사례 열람</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div>
+            <div class="ohead"><span class="okey">C</span><h3>기록 화면으로만 이동</h3></div>
+            <p class="odesc">리포트에는 근거 개수와 링크만 두고, 원문은 전체 기록 화면에서 하이라이트로 봅니다.</p>
+          </div>
+          <ul class="pc">
+            <li class="plus"><b>장점</b><span>리포트가 짧고 원문은 한 곳(기록)에만 있습니다.</span></li>
+            <li class="minus"><b>단점</b><span>근거마다 화면을 오가야 해 검토가 느립니다. 인쇄본에 원문이 빠집니다.</span></li>
+          </ul>
+          <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 9 라이트·다크 ============ -->
+<section class="item" id="i9" data-item="9" data-name="라이트·다크 전환">
+  <div class="wrap">
+    <div class="ihead">
+      <div>
+        <p class="inum">항목 9 · 공통</p>
+        <h2>라이트·다크 전환</h2>
+        <p>두 모드는 모두 지원합니다. 정할 것은 화면 안에 전환 토글을 둘지입니다. 이 페이지 오른쪽 위 분절 버튼이 B 방식의 예입니다.</p>
+      </div>
+      <span class="rel">D13-2 · 기준안 ★A</span>
+    </div>
+    <div class="opts">
+      <article class="opt" data-item="9" data-key="A">
+        <div>
+          <div class="ohead"><span class="okey">A</span><h3>시스템 설정만 따름</h3><span class="rec">★ 추천</span></div>
+          <p class="odesc">OS의 라이트·다크 설정을 그대로 따릅니다. 화면에 토글이 없습니다.</p>
+        </div>
+        <div class="mock">
+          <div class="pair">
+            <div class="force-light" style="background:var(--surface);color:var(--ink)">
+              <p class="lab">라이트</p>
+              <div class="msg l p1" style="margin-top:2px"><div class="who" style="margin-left:0">강한결</div><div class="bub">가뭄이 먼저죠.</div></div>
+              <div class="msg r"><div class="bub">침수도 커요.</div></div>
+              <div class="sys">2분 남았어요</div>
+            </div>
+            <div class="force-dark" style="background:var(--surface);color:var(--ink)">
+              <p class="lab">다크</p>
+              <div class="msg l p1" style="margin-top:2px"><div class="who" style="margin-left:0">강한결</div><div class="bub">가뭄이 먼저죠.</div></div>
+              <div class="msg r"><div class="bub">침수도 커요.</div></div>
+              <div class="sys">2분 남았어요</div>
+            </div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>상단 바에 요소가 하나 줄고 Apple 앱과 같은 동작입니다. 60분 세션 중 바꿀 일이 드뭅니다.</span></li>
+          <li class="minus"><b>단점</b><span>캡처·시연 때 모드를 바꾸려면 OS 설정을 바꿔야 합니다(목업 조작 패널로 보완).</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+
+      <article class="opt" data-item="9" data-key="B">
+        <div>
+          <div class="ohead"><span class="okey">B</span><h3>화면 토글 추가</h3></div>
+          <p class="odesc">상단 바 오른쪽 “?” 옆에 자동·라이트·다크 분절 버튼을 둡니다.</p>
+        </div>
+        <div class="mock">
+          <div class="topbar" style="flex-wrap:wrap">
+            <span class="logo">Day Zero</span>
+            <span style="flex:1"></span>
+            <span class="timer"><span class="tm">12:40</span> 남음 · 09:17</span>
+            <span class="seg" style="width:auto"><span class="on" style="padding:3px 7px">자동</span><span style="padding:3px 7px"><svg class="ic"><use href="#i-sun"/></svg></span><span style="padding:3px 7px"><svg class="ic"><use href="#i-moon"/></svg></span></span>
+            <span class="qbtn">?</span>
+          </div>
+          <div class="mini" style="background:var(--surface)">
+            <div class="msg l p1" style="margin-top:0"><div class="who" style="margin-left:0">강한결</div><div class="bub">가뭄이 먼저죠.</div></div>
+            <div class="msg r"><div class="bub">침수도 커요.</div></div>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>지원자·담당자가 바로 바꿀 수 있고 시연·캡처가 쉽습니다.</span></li>
+          <li class="minus"><b>단점</b><span>상단 바가 붐비고, 선택값 저장·첫 화면 깜빡임 처리가 더 필요합니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10 틴트 배정 ============ -->
+<section class="item" id="i10" data-item="10" data-name="AI 동료 틴트 배정">
+  <div class="wrap">
+    <div class="ihead">
+      <div>
+        <p class="inum">항목 10 · 공통</p>
+        <h2>AI 동료 틴트 배정</h2>
+        <p>말풍선 틴트는 페르소나 유형이 아니라 자리(p1·p2·p3)에 붙습니다. 다만 자리 순서가 요소 선택으로 정해져서(경청을 고르면 고집형이 늘 p1) 색과 유형이 같이 다니게 됩니다. 그 연결을 끊을지 고릅니다.</p>
+      </div>
+      <span class="rel">D5 · D13-1 · D13-2 · 기준안 ★A</span>
+    </div>
+    <div class="opts">
+      <article class="opt" data-item="10" data-key="A">
+        <div>
+          <div class="ohead"><span class="okey">A</span><h3>자리 고정</h3><span class="rec">★ 추천</span></div>
+          <p class="odesc">p1 오렌지 · p2 그린 · p3 퍼플. 모든 채용 건에서 같습니다.</p>
+        </div>
+        <div class="mock">
+          <div class="mini" style="background:var(--surface)">
+            <table class="ctbl">
+              <tr><th>자리</th><th>채용 건 1</th><th>채용 건 2</th></tr>
+              <tr><td>p1</td><td><span class="dot" style="background:var(--b1)"></span>강한결</td><td><span class="dot" style="background:var(--b1)"></span>강한결</td></tr>
+              <tr><td>p2</td><td><span class="dot" style="background:var(--b2)"></span>윤하람</td><td><span class="dot" style="background:var(--b2)"></span>서지안</td></tr>
+              <tr><td>p3</td><td><span class="dot" style="background:var(--b3)"></span>서지안</td><td><span class="dot" style="background:var(--b3)"></span>최해솔</td></tr>
+            </table>
+            <p class="cap">채용 건 2는 배려/포용을 빼서 윤하람 대신 최해솔이 들어간 경우입니다.</p>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>단순하고 리포트·기록·캡처에서 색이 일정합니다. 이름이 이미 페르소나마다 고정이라 색을 돌려도 숨겨지는 정보가 거의 없습니다.</span></li>
+          <li class="minus"><b>단점</b><span>지원자끼리 “주황 말풍선 사람이 세게 민다” 같은 경험을 공유하면 색이 단서가 될 수 있습니다(이름도 같은 단서).</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+
+      <article class="opt" data-item="10" data-key="B">
+        <div>
+          <div class="ohead"><span class="okey">B</span><h3>채용 건마다 고정 순서 회전</h3></div>
+          <p class="odesc">채용 건을 만들 때 색 세 개를 정해진 순서로 돌려 배정하고, 그 채용 건 안에서는 고정합니다.</p>
+        </div>
+        <div class="mock">
+          <div class="mini" style="background:var(--surface)">
+            <table class="ctbl">
+              <tr><th>자리</th><th>채용 건 1</th><th>채용 건 2</th></tr>
+              <tr><td>p1</td><td><span class="dot" style="background:var(--b1)"></span>강한결</td><td><span class="dot" style="background:var(--b2)"></span>강한결</td></tr>
+              <tr><td>p2</td><td><span class="dot" style="background:var(--b2)"></span>윤하람</td><td><span class="dot" style="background:var(--b3)"></span>서지안</td></tr>
+              <tr><td>p3</td><td><span class="dot" style="background:var(--b3)"></span>서지안</td><td><span class="dot" style="background:var(--b1)"></span>최해솔</td></tr>
+            </table>
+            <p class="cap">같은 채용 건의 지원자는 같은 색을 봅니다(공정성 유지).</p>
+          </div>
+        </div>
+        <ul class="pc">
+          <li class="plus"><b>장점</b><span>채용 건 사이에서 색과 유형의 연결이 끊깁니다.</span></li>
+          <li class="minus"><b>단점</b><span>이름이 고정이라 효과가 작고, 시나리오에 색 배정 필드가 하나 더 생깁니다. 리포트를 여러 건 보는 담당자에게 색이 매번 달라 보입니다.</span></li>
+        </ul>
+        <div class="oact"><button class="pick" type="button">이 안으로</button></div>
+      </article>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">후보안은 각 항목의 결정 근거 문서(토론형 전환 브리프, 프론트 설계의 열린 항목, 디자인 방향·시스템, 시나리오 모델, 평가표)를 바탕으로 그렸습니다. 고른 결과는 프론트 설계 문서의 열린 항목을 결정으로 바꿀 때 씁니다.</div>
+</footer>
+
+<div class="pickbar" role="region" aria-label="선택 요약">
+  <div class="wrap">
+    <span class="cnt" id="pickCount">10개 중 0개 선택</span>
+    <span class="list" id="pickList">항목마다 [이 안으로]를 눌러 고르세요</span>
+    <span class="sp2"></span>
+    <button class="resetbtn" type="button" id="resetBtn">초기화</button>
+    <button class="copybtn" type="button" id="copyBtn">선택 복사</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY='dayzero-ux-options-picks-v1', TKEY='dayzero-ux-options-theme';
+  var picks={};
+  try{picks=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){picks={}}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(picks))}catch(e){}}
+
+  var items=[].map.call(document.querySelectorAll('section.item[data-item]'),function(s){return {id:s.dataset.item,name:s.dataset.name}});
+
+  function render(){
+    document.querySelectorAll('.opt').forEach(function(o){
+      var on=picks[o.dataset.item]===o.dataset.key;
+      o.classList.toggle('picked',on);
+      var b=o.querySelector('.pick');
+      if(b){b.textContent=on?'선택됨':'이 안으로';b.setAttribute('aria-pressed',on?'true':'false')}
+    });
+    var n=0, parts=[];
+    items.forEach(function(it){
+      var v=picks[it.id];
+      if(v){n++;parts.push(it.id+'-'+v)}
+      var t=document.querySelector('[data-toc="'+it.id+'"] .st');
+      if(t){t.textContent=v?v+' 선택':'미선택';t.classList.toggle('on',!!v)}
+    });
+    document.getElementById('pickCount').textContent=items.length+'개 중 '+n+'개 선택';
+    document.getElementById('pickList').innerHTML=parts.length?parts.map(function(p){return '<b>'+p+'</b>'}).join(' · '):'항목마다 [이 안으로]를 눌러 고르세요';
+  }
+  document.querySelectorAll('.pick').forEach(function(b){
+    b.addEventListener('click',function(){
+      var o=b.closest('.opt'), it=o.dataset.item, k=o.dataset.key;
+      if(picks[it]===k){delete picks[it]}else{picks[it]=k}
+      save();render();
+    });
+  });
+  function summary(){
+    return 'UX 시안 선택\n'+items.map(function(it){return it.id+'. '+it.name+': '+(picks[it.id]||'미선택')}).join('\n');
+  }
+  var copyBtn=document.getElementById('copyBtn');
+  function flash(msg){var old='선택 복사';copyBtn.textContent=msg;setTimeout(function(){copyBtn.textContent=old},1600)}
+  function fallbackCopy(text){
+    var ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();
+    var ok=false;try{ok=document.execCommand('copy')}catch(e){}
+    document.body.removeChild(ta);
+    if(ok){flash('복사했어요')}else{window.prompt('아래 내용을 복사해 주세요',text)}
+  }
+  copyBtn.addEventListener('click',function(){
+    var text=summary();
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){flash('복사했어요')},function(){fallbackCopy(text)});
+    }else{fallbackCopy(text)}
+  });
+  document.getElementById('resetBtn').addEventListener('click',function(){picks={};save();render()});
+  render();
+
+  /* theme */
+  var root=document.documentElement;
+  function applyTheme(t){
+    if(t==='light'||t==='dark'){root.setAttribute('data-theme',t)}else{root.removeAttribute('data-theme');t='system'}
+    document.querySelectorAll('[data-theme-set]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.themeSet===t?'true':'false')});
+  }
+  var saved='system';try{saved=localStorage.getItem(TKEY)||'system'}catch(e){}
+  applyTheme(saved);
+  document.querySelectorAll('[data-theme-set]').forEach(function(b){
+    b.addEventListener('click',function(){applyTheme(b.dataset.themeSet);try{localStorage.setItem(TKEY,b.dataset.themeSet)}catch(e){}});
+  });
+
+  /* replay */
+  document.querySelectorAll('.replay').forEach(function(b){
+    b.addEventListener('click',function(){
+      var a=b.closest('.opt').querySelector('.anim');
+      if(!a)return;
+      a.classList.remove('play');void a.offsetWidth;a.classList.add('play');
+    });
+  });
+
+  /* hold to confirm */
+  var hb=document.getElementById('holdBtn'), ht=null, hl=hb.querySelector('span');
+  function hstart(e){
+    if(hb.classList.contains('done'))return;
+    if(e&&e.type==='keydown'){if(e.key!==' '&&e.key!=='Enter')return;if(e.repeat)return;e.preventDefault()}
+    hb.classList.add('holding');
+    ht=setTimeout(function(){
+      hb.classList.remove('holding');hb.classList.add('done');hl.textContent='확정됨';
+      setTimeout(function(){hb.classList.remove('done');hl.textContent='길게 눌러 확정'},1600);
+    },900);
+  }
+  function hend(e){if(e&&e.type==='keyup'&&e.key!==' '&&e.key!=='Enter')return;clearTimeout(ht);hb.classList.remove('holding')}
+  hb.addEventListener('pointerdown',hstart);
+  ['pointerup','pointerleave','pointercancel'].forEach(function(ev){hb.addEventListener(ev,hend)});
+  hb.addEventListener('keydown',hstart);hb.addEventListener('keyup',hend);
+
+  /* delayed enable */
+  var di=document.getElementById('delayInp'), db=document.getElementById('delayBtn'), dt=null;
+  di.addEventListener('input',function(){
+    db.disabled=true;clearTimeout(dt);
+    if(di.value.trim()){dt=setTimeout(function(){db.disabled=false},1000)}
+  });
+  db.addEventListener('click',function(){db.textContent='확정됨';setTimeout(function(){db.textContent='확정'},1400)});
+})();
+</script>
+</body>
+</html>

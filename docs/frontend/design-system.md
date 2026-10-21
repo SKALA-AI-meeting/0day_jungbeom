@@ -1,89 +1,131 @@
 # 디자인 시스템 (web)
 
-레퍼런스: Linear·Tegon류 이슈 트래커와 칸반 보드(2026-10-20 사용자 제공 이미지). 톤은 "오늘 합류한 팀의 업무 도구". 밝은 바탕, 흰 표면, 얇은 선, 부드러운 모서리, 색은 상태·태그에만. 토큰은 `apps/web/app/globals.css`의 `@theme`가 정본이고 이 문서는 뜻과 쓰임을 적는다. 레이아웃과 흐름은 `design-direction.md`, 화면별 규칙은 `design.md`.
+컨셉은 **Apple스러운 디자인**(브리프 D13-2): 넓은 여백과 분명한 위계, 흰색·#F5F5F7 바탕, 시스템 블루 강조색 하나, 시스템 폰트 + Pretendard, 일관된 둥근 모서리와 얇은 구분선, 최소한의 반투명, 절제된 전환. 채팅은 iMessage식 말풍선이고 D13-1(이름+아바타, 색만으로 구분 금지)·D13-3(지원자 표시 이름, AI 동료 프로필 이미지)을 함께 따른다. 라이트·다크 모두 지원한다.
+
+토큰은 `apps/web/app/globals.css`가 정본이고 이 문서는 뜻·쓰임과 web-kit이 정한 현재 값을 적는다. 라이트는 `@theme`, 다크는 `@media (prefers-color-scheme: dark)` 안의 `:root:not(.light)` 재정의다(UX 결정 9: 시스템 설정만 따름). `:root.dark`·`.light` 클래스는 캡처·점검에서 테마를 강제로 켤 때만 쓴다. Tailwind 유틸리티 이름은 토큰 이름 그대로(`bg-accent-fill`, `text-on-accent`, `rounded-bubble-tail` 등)다. 값을 바꾸면 globals.css와 이 문서를 함께 고치고 대비 표를 다시 잰다. 관찰 목적·디자인 컨셉·레이아웃과 화면별 규칙은 `design.md`.
 
 ## 색
 
-| 토큰 | 값 | 쓰임 |
+### 바탕·글자·강조
+
+| 토큰 | 라이트 | 다크 | 쓰임 |
+|---|---|---|---|
+| canvas | #F5F5F7 | #000000 | 페이지 바탕 |
+| surface | #FFFFFF | #1C1C1E | 패널·입력·대화 상자 |
+| surface-sunken | #F2F2F7 | #2C2C2E | 선택된 항목, 인용·코드, 분절 컨트롤 바탕 |
+| line | #D2D2D7 | #38383A | 1px(또는 0.5px 레티나) 구분선. 그림자 대신 선 |
+| ink | #1D1D1F | #F5F5F7 | 본문·제목 |
+| muted | #6E6E73 | #A1A1A6 | 보조 글, 시스템 안내 |
+| subtle | #86868B | #8E8E93 | 메타(아이콘·자리표시). 본문 글자에는 쓰지 않음 |
+| accent | #0066CC | #2997FF | **글자·아이콘**용 강조: 링크·선택 표시·포커스 링·현재 단계 글자. 강조색 계열은 이것 하나(시스템 블루) |
+| accent-strong | #004F9E | #6CB4FF | accent 글자의 눌림·hover |
+| accent-soft | #EEF5FE | #0A2A4D | 하이라이트(기록 화면·근거 메시지), 선택 배경, 결과 줄 강조 |
+| accent-fill | #0071E3 | #0060DF | **흰 글자를 얹는 면**: 주 버튼, 지원자 말풍선과 같은 계열. #0071E3은 canvas 위 글자로는 4.3:1이라 글자에는 쓰지 않고 면에만 쓴다 |
+| accent-fill-hover | #0066CC | #0050C0 | accent-fill 면의 hover·눌림 |
+| on-accent | #FFFFFF | #FFFFFF | accent-fill·danger-fill 위 글자 |
+| success / warning / danger | #1E7A35 / #B25000 / #D70015 | #30D158 / #FF9F0A / #FF453A | 합의 확정·마감 임박·오류. 아이콘과 글자에만, 넓은 면에는 soft |
+| success-soft / warning-soft / danger-soft | #E7F5EA / #FDF0E3 / #FCE8EA | #0F2E18 / #3A2508 / #3D1412 | 상태의 넓은 면(배너·칩 바탕) |
+| danger-fill | #D70015 | #D70015 | 흰 글자를 얹는 위험 동작 버튼 면(취소 확인 등). 다크도 같은 값 |
+
+### 참여자 (D13-1, D13-3)
+
+AI 동료 틴트는 **자리**(`p1`·`p2`·`p3`)에 붙고 페르소나 유형과 연결하지 않는다. Apple 시스템 색(오렌지·그린·퍼플)의 연한 틴트다.
+
+| 토큰 | 라이트 | 다크 | 쓰임 |
+|---|---|---|---|
+| bubble-candidate / on-bubble-candidate | #0071E3 / #FFFFFF | #0060DF / #FFFFFF | 지원자 말풍선(오른쪽). accent-fill과 같은 값 |
+| bubble-p1 | #FFF1DE | #3A2A14 | p1(강한결) 말풍선 |
+| bubble-p2 | #E3F6E8 | #17331F | p2(윤하람) 말풍선 |
+| bubble-p3 | #F3E6FA | #33213D | p3(서지안) 말풍선 |
+| on-bubble | #1D1D1F | #F5F5F7 | AI 동료 말풍선 글자(ink와 같은 값) |
+| system-notice | #6E6E73 | #A1A1A6 | 가운데 작은 회색 안내 글자(바탕 없음, muted와 같은 값) |
+| seat-p1 / seat-p2 / seat-p3 | #A85A00 / #1E7A35 / #8E3FBF | #FF9F0A / #30D158 / #BF5AF2 | 프로필 이미지 대체 이니셜 바탕·이름 옆 점·리포트 근거 표식 |
+| seat-candidate | #0071E3 | #0A84FF | 지원자 이니셜 아바타 |
+| on-seat | #FFFFFF | #000000 | 이니셜 아바타 글자(라이트 흰 글자, 다크 검은 글자) |
+
+자리 이름은 MVP 고정 배정(R2: p1 강한결·p2 윤하람·p3 서지안)의 예시이고, 틴트는 이름·유형이 아니라 자리에 붙는다.
+
+### 대비 기준
+
+| 대상 | 기준 | 확인 |
 |---|---|---|
-| canvas | #F6F7F9 | 페이지 바탕 |
-| surface | #FFFFFF | 카드·패널·입력 |
-| surface-sunken | #EEF0F3 | 레일, 선택된 항목 배경, 코드·인용 |
-| line | #DDE1E6 | 1px 경계. 그림자 대신 선 |
-| ink / muted / subtle | #1B1F24 / #5F6873 / #8B939C | 본문 / 보조 / 메타(시각·버전) |
-| accent | #2F6FDE (+strong #2459B8, soft #E8F0FD) | 버튼·링크·선택·포커스. 하나만 |
-| success / warning / danger | #1F8A5B / #B26A00 / #C4362F (+soft) | 완료·마감 경고·오류 |
+| 말풍선 본문(모든 참여자, 라이트·다크) | 4.5:1 이상 | 지원자 흰 글자/#0071E3 ≈ 4.7, 다크 흰 글자/#0060DF ≈ 5.6, 틴트 위 on-bubble은 12 이상 |
+| accent 글자 | 4.5:1 이상 | #0066CC/#F5F5F7 ≈ 5.1, #0066CC/#FFFFFF ≈ 5.6, #0066CC/#EEF5FE ≈ 5.1, 다크 #2997FF/#000 ≈ 7.0, #2997FF/#1C1C1E ≈ 5.6 |
+| on-accent 면 | 4.5:1 이상 | 흰 글자/#0071E3 ≈ 4.7, /#0066CC(hover) ≈ 5.6, 다크 /#0060DF ≈ 5.6, /#0050C0 ≈ 7.2, 흰 글자/danger-fill #D70015 ≈ 5.4 |
+| 상태 글자 | 4.5:1 이상 | success #1E7A35/#FFFFFF ≈ 5.4, /#F5F5F7 ≈ 5.0 |
+| 시스템 안내 system-notice/canvas | 4.5:1 이상 | #6E6E73/#F5F5F7 ≈ 4.7, #A1A1A6/#000 ≈ 8 |
+| 아이콘·구분선·포커스 링 | 3:1 이상(구분선은 장식이면 예외) | |
+| 이니셜 아바타 on-seat | 4.5:1 이상 | 라이트 흰 글자/seat-p1·p2·p3·candidate ≈ 5.1·5.4·5.8·4.7, 다크 검은 글자/seat-p1·p2·p3·candidate ≈ 10.2·10.4·6.0·5.8 |
 
-상태 색(보드 칸·상태 알약). 레퍼런스의 "In review 파랑, In progress 노랑, Done 초록"을 따른다.
-
-| 상태 | 알약 배경 / 글자 | 아이콘 |
-|---|---|---|
-| 할 일 | #EEF0F3 / muted | 점선 원 |
-| 진행 중 | #FDF1DD / #B26A00 | 반원 |
-| 완료 | #E5F4EC / #1F8A5B | 체크 원 |
-
-파트 태그 색(파스텔 5색, 채도 낮게). 보드 카드·문서 카드·최종본 섹션에서 같은 파트는 같은 색.
-
-| 파트 | 배경 / 글자 |
-|---|---|
-| 1 문제 정의 | #E8F0FD / #2459B8 |
-| 2 인터뷰 근거 | #FDE8EF / #B0325F |
-| 3 핵심 기능 | #FDF1DD / #8A5200 |
-| 4 사례 | #E5F4EC / #1F6F4B |
-| 5 지표·일정 | #EEE9FB / #5B3FB3 |
-
-사람 색(이니셜 아바타). 한서윤 #5B3FB3 바탕 흰 글자 "서", 이도현 #1F8A5B "도", 지원자 #2F6FDE 별칭 첫 글자. 온라인은 아바타 우하단 초록 점.
+- 색만으로 구분하지 않는다: AI 동료 말풍선 묶음에는 이름이 항상 보이고, 지원자는 오른쪽 정렬로 구분된다. 칸 결과·수준·확신도·상태도 아이콘 + 글자로 쓴다.
+- 대비 검사는 목업 완료 기준에 들어간다(`design.md`). 값을 바꾸면 이 표를 다시 잰다.
 
 ## 타이포·간격·모서리
 
-- Pretendard. xs 12 / sm 13 / base 15 / lg 17 / xl 20 / 2xl 24. 메시지 본문 base, 메타 xs, 섹션 제목 lg, 화면 제목 2xl.
-- 간격 4px 단위. 카드 안 16, 카드 사이 12, 패널 안 20.
-- 모서리 sm 4(태그·알약) / md 8(버튼·입력·카드) / lg 12(패널·대화 상자). 아바타 원형.
-- 그림자는 떠 있는 것(팝오버·대화 상자·열린 문서 헤더)에만 `0 8px 24px rgba(27,31,36,.08)`.
+- 글꼴: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Pretendard Variable", Pretendard, system-ui, sans-serif`. 한글은 Pretendard가 맡는다. 숫자 타이머는 `font-variant-numeric: tabular-nums`.
+- 크기·굵기: caption 12 / footnote 13 / body 15(본문·말풍선) / callout 16 / title3 20 semibold / title2 22 semibold / title1 28 bold / large 34 bold(입장·디브리핑 머리). 줄 간격 본문 1.5, 제목 1.2. 위계는 크기와 굵기로 만들고 색은 ink·muted 두 단계만.
+- 간격 4px 단위. 넓게 쓴다: 패널 안 24, 섹션 사이 32~48, 말풍선 사이 2(같은 사람)·12(다른 사람).
+- 모서리 토큰: `radius-sm` 6(칩·배지) / `radius-md` 10(버튼·입력) / `radius-lg` 14(패널·팝오버) / `radius-xl` 20(대화 상자) / `radius-bubble` 18(말풍선) / `radius-bubble-tail` 6(묶음에서 다음 말풍선과 붙는 쪽 모서리). 아바타 원형.
+- 그림자는 떠 있는 것(팝오버·대화 상자·토스트)에만 `0 4px 16px rgba(0,0,0,.08)`, 다크는 그림자 대신 line 테두리.
+- 반투명(vibrancy): 상단 바와 떠 있는 패널만 `backdrop-filter: saturate(180%) blur(20px)` + surface 80% 불투명. 그 외 반투명·글래스 효과 없음. `prefers-reduced-transparency`면 불투명.
 
 ## 컴포넌트
 
-기존 `components/ui/`(button, card, badge, status-badge, tabs, field, confirm-dialog, empty-state)에 아래를 더한다. props는 foundation이 정하고 내부는 web-redesign이 쓴다.
+`components/ui/`(button, card, badge, status-badge, status-pill, chip, avatar, tabs, field, confirm-dialog, empty-state, menu, toaster, wordmark)를 토큰만 바꿔 살리고 아래를 더하거나 고친다.
 
 | 컴포넌트 | 쓰임 | 비고 |
 |---|---|---|
-| Avatar | 이니셜·색·온라인 점·크기(20/28/36) | 아바타 묶음(AvatarGroup)은 겹침 -6px |
-| Chip | 파트 태그·버전·"2번 필요" 의존 배지 | 배경 soft + 글자 진한 색, radius sm |
-| StatusPill | 할 일·진행 중·완료 | 아이콘 + 글자, 보드 칸 머리와 카드에 공용 |
-| RailItem | 레일의 채널·DM·알림 | 선택 시 surface-sunken, 안 읽음 수 배지 |
-| ChannelHeader | 채널명·멤버 아바타 묶음·마감 시계 | "누가 보는가"를 항상 표시 |
-| MessageRow | 아바타·이름·시각·본문 | 말풍선 없음. 같은 사람 연속 메시지는 아바타 생략 |
-| SystemLine | "도현님이 4번 v1을 보냈어요" | muted, 가운데 정렬 없이 왼쪽 얇은 줄 |
-| DocCard | 메시지 안 문서 카드: 파트 칩·제목·보낸 사람·버전·열기 | 레퍼런스의 첨부 카드 형태, 클릭 영역 전체 |
-| DocViewer | 가운데 열린 문서: 헤더(제목·주인·버전 선택·답글·최종본에 가져오기·닫기)·본문 | 열릴 때 대화 위로 슬라이드 |
-| DocEditor | 오른쪽 내 문서 편집: 제목·본문 textarea·마지막 저장·보내기 | 1초 디바운스 저장 |
-| FinalDoc | 최종본: 섹션 5개, 섹션마다 출처 칩("도현 v2에서")·가져오기·편집 | 제출 버튼은 여기 |
-| BoardColumn / BoardCard | 칸 3개, 카드(번호 칩·제목·담당 아바타·언제까지·의존 배지) | 끌어 놓기 dnd kit |
-| PropertyRow | 카드 상세 패널의 상태/담당/언제까지/의존 행 | 레퍼런스 8의 속성 행 |
-| DocList | 자료함 목록: 잠금 아이콘·공개 예정 시각 | |
-| Timer | 상단 "마감까지 01:23:40" | 10분 전부터 warning 색 |
-| Toast | 저장·보내기·충돌 안내 | Sonner |
+| Avatar | AI 동료: `avatar_url` 프로필 이미지. 지원자: 표시 이름 첫 글자 이니셜(seat-candidate 바탕, on-seat 글자). 크기 20/28/36 | **원형 크롭·고정 크기·`object-fit: cover`**. 특정 비율·화풍·배경에 의존하는 스타일 금지. 이미지 없음·로드 실패면 같은 크기 이니셜(seat 색 + on-seat). 이미지는 임시이며 교체해도 코드 변경 없음(D13-3) |
+| AvatarGroup | 헤더·대기 화면 참여자 목록 | 겹침 -6px, 각 아바타에 이름 툴팁 |
+| MessageBubble | iMessage식 말풍선. 지원자 오른쪽 bubble-candidate + on-bubble-candidate, AI 동료 왼쪽 bubble-p1~p3 + on-bubble | 묶음 첫 메시지 위에 이름(caption, muted), 끝 메시지 옆에 Avatar 28. 최대 폭 70%. 모서리 radius-bubble, 붙는 쪽 radius-bubble-tail. 보내는 중(ack 전) 60% 불투명 |
+| SystemNotice | 단계 시작·마감 임박·확정 결과·자료 열림·접속 끊김 | 가운데 정렬 footnote muted, 말풍선 없음. 시각 구분선도 같은 모양 |
+| TypingIndicator | "OO님이 입력 중" | 그 자리 틴트의 작은 말풍선 안 점 세 개 + 이름 글자. 점 애니메이션은 opacity만 |
+| PhaseBar | 상단 4단계 진행 | 분절 표시, 현재 단계 accent 글자 semibold, 지난 단계는 결과 아이콘(✓ 합의 / 시계 시간 초과) + 글자. 시각 없음 |
+| Timer | "이 단계 12:40 남음" | tabular-nums, 2분 전 warning 색 전환 1회. 오피스 시각을 같은 줄에 붙이지 않는다(R7) |
+| SegmentedTabs | 우측 패널 탭(결정 사항·자료·AI 어시스턴트·기획안), 세션 길이 선택(60·15분) | 기존 tabs를 분절 컨트롤 모양으로. 배지는 작은 accent 점 + 숫자 |
+| ConsensusPanel / SlotResult / SlotInput | 화면 이름 "결정 사항": 결과 줄 목록과 현재 정할 항목 입력·[이걸로 정하기] | 결과 줄은 구분선 목록(카드 아님), 시각 없음. SlotInput은 field(keyword는 분절 버튼 4개) + 주 버튼(accent-fill + on-accent) |
+| MaterialList / MarkdownViewer | 자료 목록·잠금 상태, 읽기 전용 Markdown | 본문 폭 최대 68자, 제목 위계는 타이포 표 |
+| AssistantPanel | 요청·응답·인용 칩·복사 | 말풍선 아님. 반짝이·로봇 아이콘 금지 |
+| ProposalEditor | 기획안 6칸·저장 시각·[제출] | 칸 제목 title3, 칸 설명 한 줄(footnote muted, 예: `idea_credit` "이 기획에 반영된 의견과 그 의견을 낸 사람"), textarea는 테두리 없는 문서형 + 하단 구분선 |
+| EvidenceItem | 리포트 근거(`msg:`·`slot:`·`proposal:`, 맥락용 `contribution:`·AI 동료 메시지) | 메시지 근거는 MessageBubble 축소판 재사용(같은 틴트·이름·아바타). 누르면 원문·앞 5·뒤 3 맥락 펼침, 근거 메시지 accent-soft 강조. 맥락 참조는 "맥락" 칩과 보조색 |
+| LevelChip | 요소·차원 수준 "수준 N (1~5)" / 목록용 "설득 3", 기록 없음은 사유 문장 | 숫자 tabular, 수준별 색 구분 없이 중립 톤(높고 낮음을 색으로 서열화하지 않음). 담당자 조정 값은 "담당자 조정됨" 글자 동반 |
+| ConfidenceTag | 차원 확신도 높음/보통/낮음 | 아이콘 + 글자. 낮음은 warning 톤 글자 "근거 약함, 원문 확인 권장" |
+| DimensionRow | 리포트 차원: 수준 칩·확신도·판단 이유·근거·차원 단위 조정(수준 분절 컨트롤 또는 기록 없음 사유 + 메모 필수) | 접힘 기본, 구분선 목록. 자동 값과 담당자 값·메모를 나란히 |
+| Timeline | 리포트 토론 흐름 띠 | 단계 4칸·칸 결과·카드 표식("설계된 장면" 칩, R1) |
+| Toast | 저장·충돌·제출 안내 | Sonner, 하단 가운데, 그림자 최소 |
+
+삭제: RailItem, ChannelHeader(채널 목록용), DocCard, DocViewer, DocEditor, FinalDoc, BoardColumn, BoardCard, PropertyRow, 파트 태그 색, 상태 알약의 보드 상태(할 일·진행 중·완료). globals.css에 옛 화면 호환으로 남은 `part1~5`·`part*-ink`·`person-*` 토큰은 화면 트랙이 해당 컴포넌트를 지울 때 함께 지운다(새 화면에서 쓰지 않음). StatusPill은 관리자 목록 상태 표시로만 남긴다.
+
+## 아이콘
+
+- 선 굵기가 고른 단색 아이콘 한 벌(lucide-react, 새로 설치). 크기 16/20, 색은 ink·muted·accent.
+- 쓰지 않는 것: 반짝이(✨), 로봇·AI 상징, 이모지 장식, 그라데이션 아이콘.
 
 ## 라이브러리 (`pick-ui-library` 기준)
 
 | 용도 | 선택 |
 |---|---|
 | 접근성 기본 요소(메뉴·팝오버·대화 상자·선택) | base-ui (이미 설치) |
-| 끌어 놓기(보드) | dnd kit |
 | 토스트 | Sonner |
-| 전환 애니메이션(문서 열기·카드 이동·레이아웃) | motion. 단순 hover·fade는 CSS |
+| 전환 애니메이션(단계 전환·탭·말풍선 도착) | motion. 단순 hover·fade는 CSS |
 | 변형 스타일 | cva + clsx (clsx 설치됨) |
-| 읽기 전용 Markdown(자료·받은 문서) | react-markdown + remark-gfm(표·목록), 받은 문서만 remark-breaks(평문 줄바꿈). `skipHtml`로 원문 HTML은 그리지 않음 |
+| 읽기 전용 Markdown(자료) | react-markdown + remark-gfm(표·목록). `skipHtml`로 원문 HTML은 그리지 않음 |
+| 아이콘 | lucide-react |
+
+dnd kit(`@dnd-kit/core`)은 보드 삭제로 의존성에서 뺀다.
 
 ## 모션 (`animate`·`review-animations` 기준)
 
-- 문서 열기: 가운데 패널 위로 160ms ease-out 슬라이드 + 페이드. 닫기 120ms.
-- 메시지 도착: 120ms 페이드, 스크롤은 사용자가 맨 아래에 있을 때만.
-- 보드 카드 이동: layout 애니메이션 150ms. 드롭 시 scale 0.98 → 1.
-- 버튼 `:active` scale 0.97. 전환은 `all` 대신 속성 지정.
-- 타이머 경고: 10분 전 색 전환 1회, 깜빡임 없음.
-- 그 밖의 모션 없음. `break-ui`로 긴 별칭·빈 목록·긴 메시지·긴 문서를 점검한다.
+- 원칙: 짧고 부드럽게, 위치보다 불투명도. 튀는 스프링·과장된 확대 없음.
+- 말풍선 도착: 160ms ease-out, opacity 0→1 + translateY 4px→0. 스크롤은 사용자가 맨 아래에 있을 때만.
+- 입력 중 점: 1.2s 주기 opacity 순환.
+- 단계 전환: 진행바 현재 표시 이동 200ms, 결정 사항 결과 줄 accent-soft 배경 600ms 페이드아웃 1회.
+- 탭 전환: 분절 선택 표시 이동 180ms, 내용은 즉시(페이드 120ms).
+- 대화 상자: 180ms opacity + scale 0.98→1. 닫기 120ms.
+- 버튼 `:active` scale 0.98. 전환은 `all` 대신 속성 지정.
+- 타이머 경고: 색 전환 1회, 깜빡임 없음.
+- `prefers-reduced-motion`이면 이동 없이 opacity만. 그 밖의 모션 없음.
 
 ## 하지 않는 것
 
-진한 색 레일, 말풍선, 그라데이션, 사진 아바타, 다크 모드, 이모지 리액션, 스켈레톤 과다(목록 로딩만).
+보라·파랑 그라데이션, 반짝이·로봇 아이콘, 글래스모피즘 남용(상단 바·떠 있는 패널 밖의 반투명), 네온·형광색, 과한 그림자, 카드만 반복되는 대시보드, 실존 인물 사진 아바타(임시 단계), 이모지 리액션, 스켈레톤 과다(목록 로딩만), 색만으로 구분하는 표시.

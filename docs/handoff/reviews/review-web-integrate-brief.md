@@ -1,6 +1,0 @@
-# 리뷰 브리프: web-integrate 트랙 (P2 1라운드)
-역할: 읽기 전용 리뷰어. 소스 수정·git 변경·외부 게시 금지. 서버·DB를 띄우지 않는다(실 스택 사용권은 개발 트랙 몫). 결과는 `/Users/zaehorang/Projects/Day-0_zaeho.worktrees/web-integrate/REVIEW.md`(git에 안 올림)에 Markdown, 마지막 응답은 경로 한 줄.
-출력: 1) 반드시 고칠 것 2) 고치면 좋은 것(2라운드·e2e-runner로 넘길 것 구분) 3) 보고서 "변경 요청"·"남은 문제"·"2라운드 목록" 의견 4) 다른 트랙 주의사항. 파일:줄·한 줄 근거, 한국어.
-기준: `docs/handoff/briefs/brief-web-integrate.md`(허용 파일: apps/web의 app·components/{admin,office}·lib·mocks·e2e·package; ui·globals.css·brand 금지), `docs/common/contracts.md`(REST·WS 프레임·close code·State·Report), `docs/frontend/design.md`, 보고서 `docs/handoff/reports/web-integrate-report.md`(먼저 읽기), web-redesign·web-polish 보고서의 web-integrate 인수 목록(B2 저장 실패 표시 유지, 보고 분류는 서버, 공개됨 칩은 document.released, catalog.documents, active_runs 복원, 픽스처 재비교).
-특히: lib/api.ts·lib/ws.ts의 실 연결(토큰 저장·4401 resume·4000 replaced·3초 재접속·/state 갱신·connection_gaps)이 계약과 1:1인지, mock 분기가 MOCK일 때만 남고 실 경로에 mock 가정(문장 파싱·DOC_TITLES·보고 감지)이 없는지, 재연결 중 미저장 편집 보존·저장 직렬화(web-redesign Codex B1~B3)가 실 API 지연에서도 성립하는지, e2e 스크립트가 그래프 역할을 대신한 부분(내부 docs/send·classification·complete·positions UPDATE)이 보고서에 정확히 적혔고 화면 결함을 가리지 않는지, mocks/fixtures가 main tests/fixtures/contracts와 값까지 같은지, ui props·globals.css 변경 없음, 테스트 happy path, 주석 수준. 실행: `cd apps/web && pnpm test && pnpm lint && npx next build`(MOCK 없이 빌드).
-대상: `git diff main...HEAD`.

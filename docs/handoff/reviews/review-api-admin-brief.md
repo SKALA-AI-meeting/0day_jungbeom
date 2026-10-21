@@ -1,6 +1,0 @@
-# 리뷰 브리프: api-admin 트랙 (W1)
-역할: 읽기 전용 리뷰어. 파일 수정, git 변경 명령, gh, 외부 게시 금지. 결과는 worktree 안 REVIEW.md 파일(`/Users/zaehorang/SKALA/Day65_AI_Agent_Capstone_MCP_2/assignments/Day-0_zaeho.worktrees/api-admin/REVIEW.md`, git에 올리지 않음)에 Markdown으로 저장하고, 마지막 응답은 그 경로 한 줄만.
-출력: 1) 반드시 고칠 것(병합 차단) 2) 고치면 좋은 것 3) 보고서의 "내가 정한 것"·"남은 문제"·"변경 요청" 쟁점별 의견(동의/반대, 권장 처리) 4) 다른 트랙 주의사항. 각 항목에 파일:줄과 한 줄 근거. 한국어. 리뷰 기준(docs/dev-process.md): 계약 준수, 완료 기준 충족, 소유권 밖 파일 수정 없음, 테스트가 happy path 범위를 넘지 않음, MVP 과잉.
-대상: 현재 worktree(브랜치 track/api-admin)의 `git diff main..HEAD`. 개발자 보고서: /private/tmp/claude-501/-Users-zaehorang-SKALA-Day65-AI-Agent-Capstone-MCP-2-assignments-day-zero/90e4e69c-acb7-4a6e-b8e2-a14b26e6a4e7/scratchpad/api-admin-report.md (먼저 읽는다).
-기준 문서: AGENTS.md, docs/plan.md, docs/common/contracts.md(/admin·/internal 전부, 오류 코드, Report JSON), docs/common/rubric.md(조정 규칙), docs/common/data-model.md, docs/api/design.md, infra/db/schema.sql, services/api/app/{main,auth}.py, app/services/*.
-특히 볼 것: 기업 간 격리가 모든 조회에 적용되는지, 리뷰 조정 규칙(memo_required, already_reviewed, 재조정 금지, unique item)과 rubric.md 일치, 내부 저장 멱등 키, draft/final 해시 규칙, division→tasks 생성이 foundation 결정(decisions.md "foundation 리뷰 반영": tasks는 api-candidate)과 충돌하는지와 어느 쪽이 맞는지, FOR UPDATE 사용의 타당성, 테스트 18개가 과잉인지.

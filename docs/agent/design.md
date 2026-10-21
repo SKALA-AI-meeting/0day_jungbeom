@@ -1,210 +1,264 @@
 # 에이전트 설계 (api 안의 LangGraph 모듈)
 
-2026-10-20 재설계(`docs/prd-change-proposals.md` "인성 5요소·미션 단위 재설계", `docs/frontend/design-direction.md`) 기준이다. 요소 id는 `responsibility, planning, adaptability, collaboration, honesty`, 카드 id는 `planning_division, planning_checkin, collab_help, collab_disagree, responsibility_delay, adaptability_change, honesty_report`다. 지원자 호칭은 **주담당**이다.
+2026-10-21 토론형 전환(`docs/handoff/briefs/brief-debate-pivot.md` D10·D11·D12·D16·D17)과 같은 브리프의 "리뷰 반영 결정"(R1~R7) 기준이다. R 결정이 앞선 결정과 다르면 R이 우선한다. 요소 id는 `persuasion, listening, inclusion, flexibility, honesty`, 카드 id는 `persuasion_keyword, flexibility_majority, listening_pressure, inclusion_silence, persuasion_solution, honesty_credit`, 페르소나 유형 id는 `stubborn, quiet, critic, agreeable, divergent`다(정본 `scenario-model.md`). MVP 세션 자리는 **고정**이다(R2): `p1` 고집형 강한결(`stubborn`), `p2` 소극형 윤하람(`quiet`), `p3` 비판형 서지안(`critic`). 동조형·발산형은 MVP 이후 확장이며 아래 규칙의 우선순위 목록에 남아 있어도 MVP 세션에는 나오지 않는다. 참여자 id는 `candidate`·`p1`·`p2`·`p3`·`system`. 칸 결과는 `resolution: consensus | timeout`. 지원자 호칭은 "지원자", 대화 속에서는 표시 이름 + "님"이다.
 
-## AgentRunner 인터페이스
+모듈: `app/agent/{debate, assistant, intent, guard, llm, mcp_client}`, `runner.py`. `mcp_client`는 env `DEBATE_MCP_URL`·`RAG_MCP_URL`·`ASSESSMENT_MCP_URL`(+`ASSESSMENT_MCP_TOKEN`)로 접속한다(`contracts.md` "MCP 도구"). 실시간 관찰 분류(`observe/`)와 세션 그래프(`session/`)는 삭제한다. 평가(차원별 수준 판단)는 세션 후 report-worker 안의 평가 에이전트 몫이다(아래 "평가 에이전트", 실행 흐름은 `worker-infra/design.md`). G-F 전까지 `app/agent/intent` 등 교차 인터페이스 stub은 be-foundation 소유이고 G-F 뒤 agent 트랙이 인계받는다(R6-d).
 
-api의 다른 부분은 이 인터페이스만 본다. M0 공용 기반에 `FakeAgentRunner`(고정 문장을 post_message)가 있어 api·web 트랙이 에이전트 없이 전체 흐름을 돌릴 수 있다.
+## AgentRunner 인터페이스와 SessionPorts
+
+api의 다른 부분은 이 인터페이스만 본다. `FakeAgentRunner`(자리별 고정 문장을 post)는 유지해 api·web이 에이전트 없이 흐름을 돌린다.
 
 ```python
 class AgentRunner(Protocol):
     async def run(self, session_id: UUID, stimulus: Stimulus, run_id: UUID) -> RunResult: ...
-# Stimulus = {type: "message"|"event"|"division"|"end", message_id?, event_ids?: [UUID], task_event_ids?: [UUID]}
-#   event: 같은 due_at의 행 묶음(card order). run_id는 묶음의 대표(첫 행의 run_id, api가 모든 행에 같은 값을 기록)
-#   division: 주담당이 분업안 공유로 분업을 확정했거나(division.confirmed) 확정 뒤 수정안을 다시 공유했을 때 api가 보냄. task_event_ids는 그 섹션 담당 변경 행
-# RunResult = {ok: bool, fallback_used: bool, error?: str, usage: {llm_calls, retries, tokens_in, tokens_out, latency_ms, tool_calls}}  # usage는 agent_runs.usage로 저장
+# Stimulus = {type: "message"|"phase_started"|"idle"|"card_due", phase: str,
+#             generation: int, message_id?: UUID, card_id?: str}
+# generation: message 자극은 그 메시지 저장이 올린 값(enqueue 때 다시 읽지 않음), 그 밖의 자극은 enqueue 시점 값
+# RunResult = {ok: bool, fallback_used: bool, error?: str, decision: TurnDecision|None,
+#              usage: {llm_calls, retries, tokens_in, tokens_out, cost_usd, latency_ms, tool_calls}}
 ```
-세션별 asyncio.Lock으로 직렬 실행. Lock은 메모리이므로 api는 단일 프로세스로 운영한다(제약을 `docs/plan.md`에 기록). 실행 기록은 `agent_runs`(run_id, 자극, 상태, usage)에 api가 남기고, 120초 넘게 `started`인 run은 스케줄러가 같은 run_id로 다시 실행한다.
 
-- 실행은 `app/services/runs.run_agent(...)`로 한다. 이 함수가 세션 Lock을 잡는다. 호출자가 이미 `locks(session_id)` 안이면 `lock_held=True`로 부른다(asyncio.Lock은 재진입되지 않아 다시 잡으면 교착된다). `ok=False`나 예외면 agent_runs는 failed.
-- 종료 run(`stimulus=end`, run_id=uuid5(session_id,"end")): `SessionService.complete()`가 Lock 안에서 상태 재검증 → 종료 실행(열린 창 닫기, collab_help `promise_kept` 확정) → 재사용 추정 → completed(`completed_at` 저장) → 발행을 한 번에 한다. 종료 run이 `ok=False`여도 지원자 작업물을 잃지 않도록 completed로 진행하고 리포트를 발행한다(agent_runs failed, 경고 로그). 예외면 complete가 중단되고 스케줄러가 다시 부른다.
-- 제출: 그래프는 제출을 처리하지 않는다. api가 제출 메시지·한서윤 고정 답장을 저장하고, pending인 honesty_report(또는 report_request) 행을 DM 없이 done 처리한 뒤 같은 요청에서 end run을 부른다(`docs/api/design.md` 제출 처리).
+- 그래프가 api에 기대는 것은 `SessionPorts`(api `ports.py`, R6-d) 세 가지뿐이다: typing 전송(hub), generation 조회, 자극 enqueue. 나머지 읽기·쓰기는 MCP를 거친다.
+- 실행은 api 세션 **메일박스**가 한다(R5-1, `api/design.md`). 자극은 세션마다 직렬로 처리되므로 그래프 안에 Lock이 없고 `lock_held`·`handled`도 없다.
+- `agent_runs`(run_id, graph=debate, stimulus, status, decision, usage). 멱등은 `agent_runs.status`와 DB 멱등 키만 쓴다. started로 200초(역할별 타임아웃 합 + 여유)를 넘긴 run은 스케줄러가 같은 run_id로 재실행한다.
+- 자극 4종과 run_id 규칙은 `contracts.md` "그래프 자극"이 정본이다: message는 api가 새로 발급, phase_started는 `uuid5(session, "phase:"+phase)`, card_due는 enqueue마다 새 uuid4(담당 전원 delivered까지 스케줄러가 다시 넣음, 멱등은 `session_cards.delivered_seats`), idle은 스케줄러가 enqueue할 때마다 발급(침묵 초대 중복은 `invite_delivered`와 `is_invite` 409가 막음). `timeout` 자극과 `room_quiet`는 없다(R5-2·R5-3).
 
-재실행 멱등 규칙(같은 run_id로 두 번 실행해도 결과가 한 벌):
-- state의 `handled_stimuli`(message_id·event_id 집합)에 이미 있으면 route가 생성·전이를 건너뛰고 ok를 돌려준다(그래프 완료 후 done 기록 전에 중단된 경우).
-- `seq`는 순서 카운터가 아니라 **노드별 고정 슬롯**이다(kickoff 팀장=1, 동료 인사=2, inject 카드=1, checkin 공유=1, review 공유=1, 반대 의견=2, respond 응답=1, 폴백=9, 문서 카드=파트 번호×10 …, `app/agent/seq.py` 표). 변경 도구를 부르기 전에 같은 (run_id, seq)의 행이 있는지 조회해 있으면 **LLM 생성 없이 그 결과를 재사용**한다. 그래서 변경 성공 뒤 체크포인트 전에 죽어도 재실행은 같은 결과로 수렴한다. 문서 보내기는 `send_document`에 event_id·seq를 함께 줘 문서 카드 메시지 1건을 만들며, 문서는 (doc_id, run_id)·메시지는 (run_id, seq)로 멱등이다(같은 run_id면 버전이 늘지 않고 기존 메시지를 돌려줌). 같은 run에서 여러 파트를 보내도 seq가 파트별로 고정이라 겹치지 않는다. 분업은 set_division 멱등, 관찰은 (card_id, window_start)로 같은 원리다.
-- 관찰 창 경계는 `now`가 아니라 카드의 `due_at`이다(아래 observe). 예외는 planning_division으로 window_start=0(세션 시작)이다. 재실행해도 같은 (card_id, window_start)가 된다.
-- 카드 발행 지연: 이벤트는 스케줄러가 due_at에 `fired`로 표시하고, 카드 메시지는 Lock을 기다린 뒤 나간다. 메시지 실행이 Lock을 오래 잡지 않도록 inject를 observe보다 먼저 한다. 시점 합격 기준은 하나다(testing.md와 같음): 이벤트 시점 기준 fired→done ±10초, 카드 메시지 전달은 fired 후 90초 안.
+## 토론 그래프 (`app/agent/debate/`)
 
-## 세션 그래프
+MVP 구조는 **턴 매니저 + 페르소나 에이전트 3**(D10). thread `debate:{session_id}`, PostgresSaver.
 
-State (TypedDict): `session_id, phase, negotiate_round, division, scenario, current_card, window_start, pressure_sent, stimulus, run_id, seq, handled_stimuli, recent_messages, summary, work_notes, tool_calls_used, token_budget_left, last_error` (18필드)
-
-- `current_card`: 열린 관찰 창의 카드 id(요소 카드만). `window_start`는 그 카드의 due_at.
-- `pressure_sent`: 진행 확인 DM(honesty_report·report_request)이 나갔는지. 정직 창 시작이 DM 시각인지 제출 시각인지를 정한다.
-
-`work_notes`(동료의 작업 기억, 요약으로 접히지 않음):
 ```
-{parts: [4, 5],                                   # 확정 division에서 동료 담당
- instructions: [{t_min: 11, text: "사례는 재참여 기능 있는 서비스 위주로", source_message_id, part_no?}],   # 주담당 지시 누적
- agreements: ["3번은 같이, 골격 v1은 도현이 먼저"],
- progress: {4: "사례 3개 추림", 5: "지표 초안 중"},   # 동료가 말한 진행 상태. 말한 것만 기록
- sent: {4: 2, 5: 1},                              # 파트별 마지막으로 보낸 버전(send_document 결과)
- feedback: [{document_id, version, text, source_message_id}],   # 주담당이 동료 문서에 매단 답글
- disagree_target: {document_id?, version?, sentence?} | {fallback: "board"|"kickoff"}}   # 반대 의견 카드가 말한 대상
+load → cards → turn ─┬─ (화자마다) typing_on → respond → guard → stance_check → wait_typing → apply → typing_off ─┐
+                     │                                                                                       ├→ fill → END
+                     └─ 화자 0명 ─────────────────────────────────────────────────────────────────────────────┘
 ```
-- negotiate·respond는 구조화 출력에 `instruction?: str`를 포함한다. 지원자 메시지가 동료에게 하는 지시·요청이면 채워지고 `work_notes.instructions`에 추가된다(재지시 포함).
-- 진행 상황 질문에는 `progress`만 근거로 답하고, 답한 내용을 다시 `progress`에 기록한다(두 번 물어도 같은 답).
-- 동료 문서(초안 v1·완성본 v2·피드백 반영 v3)는 `parts`·`instructions`·`agreements`·`feedback` 전부와 회사 문서 검색 결과를 입력으로 생성한다. 지시가 반영되지 않은 파트는 생성 실패로 보고 1회 재생성한다(검사: 각 instruction의 핵심어가 본문에 있는지, 규칙 함수). 재생성도 실패하면 초안은 생략(skipped, 진행을 묻는 메시지만), 완성본은 카드 실패로 올려 복구 절차(총 3회)를 탄다.
-- 지시는 파트별 **최신 유효 지시**를 적용하고 이전 지시는 이력으로 남긴다(`instructions[].part_no?`, 같은 파트의 새 지시가 대체). 같은 source_message_id는 중복 추가하지 않는다.
-- 동료는 지원자 문서를 **공유된 버전만** 읽는다(`get_shared_documents`). 지원자가 보내지 않은 문서의 내용은 어떤 경로로도 동료 컨텍스트에 들어가지 않는다.
 
-`work_notes` 갱신표:
+### State
 
-| 시점 | 갱신 |
-|---|---|
-| 분업 확정(주담당 결정·기본안·재분업 공통 함수 `confirm_division`) | parts, agreements(both 파트 설명), 보드에 동료 실행 담당 할 일이 있으면 그 할 일만 doing(`update_task`). 할 일이 0개면 보드는 건드리지 않는다. 담당이 바뀐 파트는 문서 주인이 바뀌지 않고 새 담당이 자기 문서를 새로 쓴다 |
-| 분업안 공유 자극(stimulus=division, api가 섹션 담당 5개와 division_min 검사를 통과해 스냅샷을 만들었을 때 보냄) | 같은 `confirm_division`으로 parts·agreements 갱신, 할 일이 있으면 위와 같이 doing, "분업안 봤어요, 그렇게 할게요" post(team). set_division은 부르지 않는다(이미 api가 확정) |
-| 확정 뒤 재공유 자극(stimulus=division, 섹션 담당 task_event 있음) | parts·agreements·progress를 바뀐 담당에 맞게 갱신, 수락 메시지 post. 한도는 아래 "업무 중 재분업" |
-| 지원자 메시지 분류 결과 kind=instruction·redivide | instructions 추가(part_no 추정, source_message_id) |
-| progress_query 응답 | progress[part] = 답한 내용 |
-| 초안 v1 보냄(checkin) | sent[part]=1, progress 갱신 |
-| 완성본 v2 보냄(review) | sent[part]=2, 그 섹션에 연결된 동료 실행 담당 할 일이 있으면 done |
-| 지원자 답글(kind=doc_feedback, 메시지의 `reply_to_doc`) | feedback 추가. 반영 요청이면 v3 보내고 sent[part]=3 |
-| 반대 의견 실행(review) | disagree_target 기록(공유된 주담당 문서의 문장 또는 대체 대상) |
+`session_id, run_id, stimulus, phase, generation, debate_state, transcript, seats, decision, speaker_idx, seat_memory, card_progress, tool_calls_used, cost_left, last_error`
 
-phase: `kickoff → division → work → checkin → review → done`
-
-- `division`: 분업 카드가 나가 주담당 결정을 기다리는 구간(계획성 요소 창).
-- `work`: 분업 확정 뒤 동료가 자기 파트를 쓰는 구간. 도움 요청 카드가 여기 온다.
-- `checkin`: 동료가 초안 v1을 보낸 뒤. 지연·변경 카드가 여기 온다.
-- `review`: 완성본 v2(+반대 의견)를 보낸 뒤 주담당이 통합하는 구간. L×11/12의 진행 확인 DM도 이 구간에 온다.
-- 제출하면 api가 바로 end 자극을 보내 `done`이 된다. 제출 뒤 대기 구간은 없다.
-
-### 자극별 전이표
-
-중간 카드(`collab_help, planning_checkin, responsibility_delay, adaptability_change`)는 선택된 것만 L/4 + i·(L/2)/N 에 순서대로 온다. 계획성 미선택이면 `planning_checkin` 자리에 texture `midpoint_draft`(L/2, 관찰 없음)가 온다. 정직 미선택이면 진행 확인 DM은 흐름 카드 `report_request`로 같은 시각에 오되 창을 열지 않는다. 시각을 말하는 모든 발화는 오피스 시각(09:00 + t_min × 120/L)을 쓴다.
-
-| phase | 자극 | 노드 | 부수 효과 | 다음 phase |
-|---|---|---|---|---|
-| kickoff | event kickoff | kickoff | 팀장 브리프 post(team: 미션·대상·마감 11:00, 최종본 템플릿, 주담당 지정 "OO님이 주담당으로 맡아 도현님과 함께", 인터뷰 자료 공유 예정 시각=조립된 지연 카드의 오피스 시각(120분 5요소면 10:00). 실제 공개 `release_at_min`(10:10)은 킥오프에 말하지 않는다), 동료 인사 post(team, 준비됐다는 수준의 한 줄. 분업을 유도하지 않음. DM 인사는 없음) | kickoff |
-| kickoff | event planning_division | ask_division | 동료가 어떻게 나눌지 묻는 post(team, 힌트만: 파트 목록과 의존 "3번은 2번 자료가 필요". 할 일 만들기·분업안 공유 같은 화면 동작은 권하지 않음). negotiate_round=0, division=None. 보드는 빈 상태(할 일 0개)이고 섹션 담당 5행은 owner null이다. 계획성 선택 시 current_card=planning_division, window_start=0(세션 시작. 카드 전에 정한 계획도 같은 창) | division |
-| kickoff | message | negotiate 또는 respond | 팀 채널·동료 DM에서 동료에게 한 말이고 분류가 decide면 negotiate(주담당이 L/12 전에 정해도 저장). 아니면 respond | kickoff(결정되면 분업 카드는 확인만) |
-| division | message | negotiate | 분류 `{decision: decide∣ask∣other, parts?}`. decide(주담당이 분담을 말함): 최소 조건 충족이면 set_division(섹션 담당 draft와 스냅샷, decided_by=candidate. 할 일 행은 만들지 않음)·동료 실행 담당 할 일이 있으면 update_task(doing)·"네, 그렇게 할게요" post. 위반이면 의존 관계를 이유로 조건에 맞춘 대안 post, round+1(되돌림은 1회. round≥2면 대안을 그대로 확정). ask(어떻게 나누면 좋겠냐고 되물음): 기본안을 **참고로** 말하되 결정은 주담당에게 돌림, round 유지. other: respond로 답하고 round 유지. 순서·시점은 동료가 먼저 정하지 않는다(선점 금지) | 확정 시 work |
-| division | event (중간 카드) | inject → observe | division이 None이면 default_division으로 **확정**하고(set_division이 섹션 담당 스냅샷을 만듦) "아직 안 정해져서 일단 이렇게 진행할게요" post 후 카드 실행 (PRD F-21). 미결정 사실은 `division_decided_by: colleague_default`로 기록. planning_checkin이면 checkin 노드 | work 또는 checkin |
-| division | event review | review → observe | 같은 규칙으로 확정 post 후 review 실행(중간 카드를 하나도 선택하지 않은 경우) | review |
-| work·checkin | message | respond | 수신자 규칙으로 동료/팀장 결정. 도구 선택(허용 목록), 문서명 인용. 분류가 `redivide`(주담당의 재분업·재지시)면 negotiate 1회: 최소 조건 안에서 set_division·update_task 후 "알겠어요, 그렇게 바꿀게요" 안내. 담당은 그대로 두고 방향만 바꾸는 재지시(예: 사례를 후속 모임 기능이 있는 서비스 위주로)는 동료가 수락 메시지만 post하고 자기 문서 작성 시 반영. `doc_feedback`이면 feedback 기록, 반영 요청이면 다음 버전 send_document | 유지 |
-| work·checkin | event collab_help / responsibility_delay / adaptability_change | inject → observe | 카드 실행 → 직전 창(current_card, [이전 카드 due_at, 이 카드 due_at)) record_observation → current_card=이 카드. responsibility_delay는 지원자만 받는 notice(system, 발신 "리서치 담당 → 나", 수신자가 나뿐임을 명시)이고 L/12 뒤 release_document 효과가 따라오며 같은 채널에 "공개됨" 시스템 줄이 붙는다. adaptability_change는 팀장이 핵심 기능을 "첫 모임 뒤 48시간 안 후속 모임 제안" 하나로 좁히고 출시를 다음 분기→이번 분기로 당기는 변경(대상 사용자·마감 그대로, 3번·5번 재조정 필요) | 유지 |
-| work | event planning_checkin (또는 texture midpoint_draft) | checkin → observe | division이 있으면 동료 담당 파트 전부의 초안 v1과 both 파트 골격 v1을 `send_document`(team, 문서 카드 메시지, event_id=이 행, seq=파트 번호×10)로 보내며 공유 메시지(seq 1)에서 주담당 진행을 **묻고** "2번 자료 언제쯤 볼 수 있을까요?"라고 시점을 한 번 묻는다(지연 카드 60분 전이라 책임감 창 선점 금지와 충돌하지 않음. 재촉은 하지 않음). division이 없으면 묻는 메시지만. 계획성 선택이면 직전 창 닫기·current_card=planning_checkin, texture면 observe 없음·창 유지 | checkin |
-| work·checkin | event review (+collab_disagree attach) | review → observe | 동료 담당 파트 전부(both 포함)의 완성본 v2 send_document(team, 초안 + instructions·feedback 반영, seq=파트 번호×10), 그 섹션의 동료 실행 담당 할 일이 있으면 done, 공유 메시지(seq 1, `event_id=review`). collab_disagree 행이 있으면 "주담당 파트 확인해 봐도 될까요?" 청한 뒤 **고정 의견**을 post(seq 2, `event_id=collab_disagree`, 대상 규칙은 아래) → 직전 창 닫기, current_card=collab_disagree | review |
-| review | message | respond | 반대 의견에 주담당이 답하면 근거를 한 번 더 말하지 않고 결정을 따른다("한 번 반대"는 카드 실행뿐). 피드백 반영 요청이면 v3 send_document | review |
-| review | event honesty_report 또는 report_request (11L/12, 제출 전일 때만) | inject(pressure_dm) | 팀장 진행 확인 DM을 카드 `text` 그대로 post(manager_dm, LLM 없음): "11시에 위에 올려야 해서요. 지금 어디까지 됐어요? 다 됐다고 전해도 되죠?" 팀 채널에는 아무것도 보내지 않는다. 정직 선택이면 직전 창 닫고 current_card=honesty_report, 미선택이면 흐름 카드라 창 유지. pressure_sent=true | review |
-| review | message (팀장 DM) | respond_manager | 진행 확인 DM 뒤 주담당의 답에는 "알겠어요" 수준의 확인만 하고 판단·재촉·압박 문구 반복은 하지 않는다(guard) | review |
-| any | end | observe → close | 열린 창 닫기(window_end=`completed_at`. 제출로 done 처리된 honesty_report는 window_start=submitted_at) → collab_help 관찰 행의 `promise_kept`를 related_card 메시지로 다시 계산해 observations PATCH(같은 키, 그 지표만, 같은 run_id 멱등) → phase done | done |
-
-**수신자 규칙**(respond 앞에서 결정적으로): 동료 DM 채널 → 동료. 팀장 DM 채널 → 팀장(상시). team 채널 → ① 동료 이름("도현")이 있으면 동료, ② 팀장 호칭("팀장님", 팀장 이름)이 있으면 팀장, ③ 둘 다 없으면 내용이 과제 범위·마감·보고·요구사항 변경이면 팀장, 그 외는 동료. 둘 다 답하지 않는다. 지원자가 10분 넘게 조용해도 먼저 말을 걸지 않는다(F-25는 MVP 제외). 페르소나가 먼저 말하는 경우는 카드 실행과 texture뿐이다.
-
-**팀장 응답 규칙**(respond_manager): 과제 맥락·조건·배경 질문(대상, 마감, 분량, 템플릿, 회사 문서의 뜻)에는 답한다. 시각은 오피스 시계로 말하고, 화면 기능 설명 외에 평가 대상 행동(할 일 만들기, 기여 정리, 보고 등)을 권하지 않는다. "뭘 쓰면 되나요", "이게 맞나요" 같은 정답·판단 요청은 "그건 주담당이 정해 주세요"로 돌린다(선점 금지와 같은 원칙). 도구는 `search_documents`(공개된 회사 문서만)·`get_board`·`get_shared_documents`뿐이며 문서를 쓰지 않는다. 평가·점수는 guard가 막는다.
-
-`collab_disagree`는 `session_events`에 review와 같은 due_at의 별도 행(`attach_to: review`)으로 있다. 스케줄러는 같은 시각의 이벤트를 card order대로 한 run에서 처리하며(review 먼저), 행마다 자기 event_id를 단 메시지를 최소 1건 만든다. review 행: 동료 완성본 공유 메시지(`event_id=review`). collab_disagree 행: 반대 의견 메시지(`event_id=collab_disagree`, 같은 run_id의 다음 seq). 같은 시각의 흐름 카드+요소 카드는 요소 카드(collab_disagree) 기준으로 창을 연다. 디브리핑·발생률 검사는 이 행과 메시지를 본다.
-
-**반대 의견의 대상 규칙**(카탈로그 `cards.collab_disagree`): 의견 내용은 카탈로그에 고정된다(1번 문제 정의의 원인 가정에 대한 고정 의견 1개 + 지원자가 같은 가정이면 쓰는 두 번째 고정 의견. 적응성 변경이 건드리는 3번·5번과 겹치지 않는 주제). 지원자 작성물은 "어느 문장에 대해 말할지"에만 쓰고 의견 자체는 바뀌지 않는다("말투만 생성"). 대상은 다음 순서로 정한다. ① 3L/4까지 주담당이 보낸 1번 파트 문서(get_shared_documents, 본문 50자 이상)가 있으면 그 최신 버전의 해당 문장. ② 없으면 보드·채팅에 남은 방향(분업 때 정한 agreements·instructions)에 대해. ③ 그것도 없으면 킥오프 기본 가정에 대해. 보내지 않은 주담당을 재촉하지 않으며, 보냈는지 자체는 점수에 넣지 않는다. 쓴 대상은 `work_notes.disagree_target`에 남긴다.
+- `generation`: 실행 시작 때 읽은 `sessions.generation`. 화자마다 게시 직전 SessionPorts 값과 비교한다.
+- `debate_state`: debate-mcp `get_debate_state` 결과(DebateState + seats). 페르소나 컨텍스트에 미리 넣는다(R5-12, 조회 도구 왕복 줄이기). 페르소나에게 줄 때 `card_progress`·`cost_left`를 뺀다.
+- `seats`: 내부 `GET /internal/sessions/{id}`의 `seats` 그대로. 지원자 `{seat: candidate, display_name}`과 AI 자리 `{seat, display_name, avatar_url, persona_type}`(D13-3). `persona_type`은 그래프 안에서만 쓰고 페르소나 프롬프트에는 자기 성향 설명으로만 들어간다.
+- `seat_memory[seat]`: `{pushed: {phase: option_id}, said_to_candidate: [짧은 요약], persuaded: {phase: bool}, pressure_count: int, hesitated: bool}`. 요약으로 접히지 않는 자리별 기억.
+- `card_progress`: DebateState의 카드 진행(발동한 카드, 담당 화자별 `delivered`, 잠긴 기준안). api 기록이 원천이고 그래프는 읽기만 한다.
 
 ### 노드
 
-| 노드 | 역할 | Agentic 요소 |
+| 노드 | 종류 | 하는 일 |
 |---|---|---|
-| route | 전이표 조회 | 결정적 |
-| kickoff, ask_division | 카드 brief로 문장 생성 후 post | 생성 |
-| negotiate | 구조화 출력 `{decision: decide∣ask∣other, parts?, instruction?}`. decide면 최소 조건 검사 후 수락(set_division·update_task(doing)·work_notes.parts) 또는 대안 생성, ask면 참고안 생성, other면 respond로 위임 | 분류 + 생성 |
-| respond, respond_manager | tool-calling 루프. 허용 도구만, 최대 3회, 결과 2k자 절단. 인용 시 문서 제목 포함. 구조화 선행 분류 `{recipient, kind: question∣instruction∣redivide∣progress_query∣doc_feedback∣other, instruction?, related_card?: card id, reply_to_doc?: {document_id, version}}`를 work_notes에 반영하고 **api에 `messages.meta.classification`으로 저장**(observe와 지표 계산이 읽음. `kind=report`는 제출 메시지에만 api가 붙인다) | **모델이 도구 선택** |
-| checkin | 동료 담당 파트 초안 v1과 both 파트 골격 v1 생성·`send_document`·진행과 2번 자료 시점을 묻는 한 줄(texture면 관찰 없음). work_notes와 search_documents 결과 입력, 지시 반영 검사 후 1회 재생성 | 생성 |
-| review | 완성본 v2 생성·send_document(동료 담당 파트 전부, both 포함. 초안·instructions·feedback 반영, 지시 반영 검사), 해당 동료 실행 담당 할 일이 있으면 done, 공유 post. collab_disagree 행이 있으면 대상 규칙으로 문장을 고르고 고정 의견을 말투만 생성해 post | 생성 |
-| observe | `observe/` 순수 함수로 metrics(카탈로그 `metrics`, 정의는 rubric.md), LLM 레이블 분류(temperature 0). 창 안에 지원자 활동(메시지·문서 수정·보내기·열람·보드 변경·어시스턴트 호출)이 하나도 없으면 LLM을 부르지 않고 `no_evidence`. 허용 레이블 외 출력은 `unclassified`, LLM 실패는 null. evidence는 창 안의 데이터만, 타입별 참조 `{type: message∣document∣share∣open∣task_event∣doc_view∣assistant_call, id}`(근거 타입 표는 rubric.md) → record_observation(card_id) | 규칙 + 고정 레이블 분류 |
-| inject | 카드 실행. system 카드와 고정 문구 카드(honesty_report·report_request)는 text 그대로 post(LLM 없음). colleague/manager는 brief로 생성. post는 event_id·run_id·seq 포함 | 생성 |
-| guard 앞 context | 페르소나별 컨텍스트 허용 목록(harness.md Context)으로 입력을 거른다: 미래 카드·관찰 레이블·어시스턴트 대화·지원자의 보내지 않은 문서는 어떤 페르소나에도 넣지 않음 | 함수 |
-| guard | 모든 생성 텍스트: 판정 금지 패턴 치환, 600자 제한. 팀장·동료 생성 메시지에 압박 문구 패턴("다 됐다고 전해도" 류)이 있으면 1회 재생성 → 그래도 있으면 안전 문구 | 함수 |
+| load | 결정적 | debate-mcp `get_debate_state`·`get_transcript(phase, limit 30)`, SessionPorts로 generation. 이 run_id가 이미 `finished`면 END |
+| cards | 결정적 | `stimulus=card_due`면 그 카드와 **예정 시각이 지난 같은 단계의 미전달 카드**를 함께 발동 대상으로(공동 처리, `delivered_seats`에 이미 든 자리는 다시 넣지 않음), 그 밖의 자극이면 **이미 발동했지만 `delivered`가 아닌 담당 화자**를 이어서 말할 대상으로 정한다(R5-4). 결과는 이번 실행의 `card_brief`(누가 어떤 고정 내용을 말할지). `flexibility_majority`면 여기서 기준안을 계산해 잠근다(아래). 관찰 기록은 이 노드가 아니라 apply가 첫 카드 발언 게시 뒤에 한다 |
+| turn | 결정적 규칙 + LLM(`MODEL_TURN`) | 화자 0~2명과 목적을 정한다(아래 규칙). 출력은 계약의 턴 매니저 결정 스키마 그대로 `agent_runs.decision`에 저장 |
+| typing_on / typing_off | 결정적 | SessionPorts로 hub에 `typing{participant, state}` |
+| respond | LLM(`MODEL_PERSONA`) + 도구 | 자리의 페르소나 에이전트가 발언을 만든다(아래). 구조화 출력 |
+| guard | 결정적 | 금지 문구 검사 → 재생성 1회 → 자리별 안전 문구(아래) |
+| stance_check | 결정적 | 게시 문장과 입장이 `stance_plan`과 맞는지 검증. 계획 밖이면 응답 전체 1회 재생성 → 그래도 밖이면 계획과 맞는 고정 문구로 교체(R5-8, 아래) |
+| wait_typing | 결정적 | 지원자 입력 중이면 최대 10초 기다린다. 그래도 입력 중이면 **게시하지 않고** 이 자극을 SessionPorts로 다시 enqueue하고 남은 화자를 끝낸다(R5-9). generation이 바뀌었으면 남은 화자를 버린다(R5-1) |
+| apply | 결정적 | `post_message`(카드 발언이면 `card_ids` 포함, 두 카드를 겸하면 둘 다 → api가 카드마다 그 화자 `delivered` 기록) → (안을 처음 밀면) `propose_option` → (입장 표현) `set_stance`. 카드의 첫 발언이 게시된 직후 카드마다 assessment-mcp `record_observation{card_id, phase, trigger_message_id, run_id}` |
+| fill | 결정적 | apply가 이번 발언의 입장을 저장한 뒤 `get_debate_state`로 지지를 **다시 읽어** 합의(지원자 포함 3/4, 지원자 지지)가 있으면 같은 run에서 채운다(`decision.fill`이 없었어도). 이 노드 전용 분기가 `decision.fill = {option_id, seat}`(또는 재판정 결과)로 공지 고정 문장을 만들고 `fill_slot{session_id, option_id, seat, content, run_id}` 한 번에 넘긴다(respond·apply를 거치지 않음). api가 한 트랜잭션에서 합의 재검사 → 칸 confirmed → 공지 메시지 저장(seq 5, `meta.kind=consensus_fill`) → generation +1을 하고 WS는 `message.new`(공지) → `slot.confirmed` → `phase.changed` → `timer` 순서로 보낸다. 별도 `post_message`는 없다. 409 `no_consensus`·`slot_confirmed`·`phase_not_open`이면 아무것도 저장되지 않고 run을 끝낸다 |
 
-동료 담당 파트는 확정 division에서 `assignee ∈ {colleague}`인 파트다. `both`는 동료가 중간 점검 때 골격 v1을, 리뷰 때 v2를 보내고 주담당이 최종본에 가져와 고친다(문서 주인은 동료, 최종본 섹션 출처에 "주담당 편집"이 남는다). 동료는 지원자 단독 파트 문서를 쓰지 않는다.
+### 턴 매니저 규칙 (turn)
 
-**지원자는 주담당**(카탈로그 `candidate_role: primary`): 분업을 정하고, 요구사항 변경 뒤 재지시하고, 최종본을 통합하고, 보고를 맡는다. 동료와 같은 팀원이며 화면·브리프·리포트 문구에 "리더"류 호칭을 쓰지 않는다. 동료는 묻고 따르되 자기 파트는 자율로 쓴다. 분업 결과에는 `division_decided_by: candidate∣colleague_default`를 남겨 주담당이 결정을 미룬 경우가 관찰에 쓰인다.
+규칙을 위에서부터 적용한다. 결정·합의·채우기는 규칙이 하고 LLM은 "누가 자연스럽게 말할지"만 고른다(원칙 "결정은 결정적 코드가, 말투는 LLM이"). 시간 초과 채우기는 api가 결정적으로 하므로 그래프 규칙에 없다(R5-2).
 
-**분업 최소 조건**(PRD 6.2, 카탈로그 `division_min`): 2번 파트는 지원자 담당, 3번(2번 의존)은 동료 또는 같이(both), 4·5번 중 하나 이상은 동료 단독 담당이어야 한다. 이 조건은 `set_division`과 분업안 공유(api `POST /division/share`·내부 `PUT /division`, 위반은 422)가 같이 검증하고, negotiate가 조건을 어기는 결정을 받으면 "3번은 2번 자료가 필요하니 제가 맡거나 같이 하는 게 좋겠어요" 식으로 의존 관계를 이유로 조건에 맞춘 대안을 내고 round+1 한다(되돌림 1회). 그래서 모든 분업에서 책임감 카드(2번 자료 지연이 동료 파트에 미치는 영향)와 정직 카드(동료 문서와 최종본 출처 대조)의 전제가 성립한다. 그래도 영향이 없는 분업이면 해당 항목은 사유 `not_applicable`의 기록 없음이다. 파트 의존(3번은 2번 자료 필요)은 카탈로그에 있고 계획성 "동료 파트에 필요한 내 자료 확인"과 책임감 "동료 영향 언급"의 근거다.
+1. `consensus_option_id`가 있고 칸이 `empty`: 화자 0명, `fill = {option_id, seat}`(합의 채우기 전용)만 정한다. 공지 화자는 화자 목록에 들어가지 않고 respond → guard → stance_check → apply 루프 없이 fill 노드 전용 분기가 처리한다. `seat` = 그 안 지지자 중 우선순위(`scenario-model.md`, 고정 자리에서는 서지안 > 윤하람 > 강한결) 첫 자리. 합의는 지원자 포함 3/4 지지가 되는 즉시이고 대기 시간이 없다(R4). 이번 실행의 AI 발언으로 합의가 생기면 fill 노드가 apply 뒤에 다시 판정한다.
+2. `card_brief`가 있으면 카드가 정한 화자·목적(`card`)을 넣는다. 미전달 화자가 남아 있으면 자극 종류와 상관없이 먼저 넣는다. `stimulus=card_due`는 이 규칙으로만 화자를 정한다.
+3. `stimulus=message`이고 의도 분류 `addressed_to`에 자리가 있으면 그 자리 `respond`(최대 2명). `quiet`는 이름이 불렸거나 전체 질문(intent=question, addressed_to=[])일 때만 대상이 된다.
+4. `stimulus=idle`이고 그 단계 `invite_delivered=false`: 화자 1명 `invite`. 묻는 자리 = 우선순위 `agreeable > divergent > critic` 중 세션에 있는 첫 자리(`stubborn`·`quiet` 제외, 고정 자리에서는 서지안). 게시 때 `is_invite=true`. 지원자가 입력 중이라 게시하지 못하면 플래그가 그대로라 스케줄러가 다시 넣는다.
+5. `stimulus=phase_started`: 단계 첫 발언자 1~2명 `push_option`(시나리오 고정 입장을 가진 자리 중 `quiet` 제외). 문제 상황 단계에서는 카드 전이므로 `stubborn`도 입장을 밝히지 않고 일반 발언(`react`)만 한다(R5-4). proposal 단계는 화자 0명.
+6. **턴 LLM은 1~5의 결과가 0명이고 자극이 `message`일 때만** 부른다(R5-12). LLM은 `respond`·`push_option`·`react` 중에서 최대 2명을 고른다. 입력은 DebateState 요약·최근 대화 10개·자리별 성향 한 줄·카드 선점 금지 목록. LLM 실패면 0명.
 
-## 페르소나 (프롬프트 `scenarios/missions/<id>/prompts/`의 근거, 데이터는 카탈로그 `persona`)
+공통 제약: 한 실행 화자 최대 2명, 같은 자리 연속 3회 발언 금지(카드·지명 응답 제외), 카드 선점 금지(`scenario-model.md` 4.2 표)에 걸리는 목적은 제외. proposal 단계에서는 지원자가 묻거나 부른 경우만 `respond`.
 
-동료는 규칙 묶음이 아니라 **회사가 원하는 인재상으로 설정된 한 사람**이다. 정의는 세 층이다.
+### 페르소나 에이전트 (respond)
 
-| 층 | 내용 | 강제 방식 |
+- 입력(Context, harness.md): 자기 자리의 성향 프롬프트(`prompts/persona_<type>.md`의 말투·행동 규칙), 공통 규칙, 이번 목적과 대상 안, 자기 고정 입장(`stance_plan`), 카드 brief(해당 자리만), 자리 기억, **미리 넣은 DebateState**(지지 현황·확정된 칸·단계 남은 시간), 최근 대화 30개, 지원자 표시 이름(대화에서 "OO님"), 다른 자리 이름. 시간은 단계 남은 시간으로만 말한다.
+- 도구(허용 목록, 응답당 3회): `get_transcript`(30개보다 앞 대화가 필요할 때), `search_materials`, `get_material`, `get_draft`(proposal 단계에서만 바인딩). `get_debate_state`는 컨텍스트에 이미 있으므로 바인딩하지 않는다. 자료는 확정 키워드 것만 열려 있고 키워드 단계에서는 상식 수준으로만 말한다.
+- 출력(구조화): `{content, proposes?: {scenario_option_key∣label}, stance?: {option_id, stance: support∣oppose}}`. `content`는 1~3문장, 200자 이내 권장(guard 상한 400자).
+- `stance_plan`은 결정적으로 계산한다: 단계별 고정 입장 표, 수용 카드 담당(고집형 1명 확정 전 불변 + 다른 1명 설득 가능, R1), 설득 가능 규칙(지원자가 그 자리 안에 반대·대안 제안을 두 번 하면 지원자 안으로 단계당 1회 이동, `stubborn`은 확정 전 불변).
+- 비용 하드 상한($2, R5-11)을 넘은 세션(load가 읽은 DebateState `cost_left ≤ 0`, 원천은 `sessions.debate_cost_usd`)이면 respond는 LLM을 부르지 않고 자리별 고정 안전 문구를 낸다.
+- 금지(모든 자리): 점수·평가·합격·연출될 상황 언급, 지원자 대신 결론 선언(칸 채우기 고정 문장 제외), 지원자 평가·판정, 카드 선점 금지 위반, 기획안 대필, `idea_credit` 내용 언급, 다른 자리의 성향 이름 언급. 페르소나는 assessment-mcp에 접근할 수 없다.
+
+### 계획 밖 입장 (stance_check, R5-8)
+
+- 검사: 구조화 출력의 `stance`·`proposes`가 `stance_plan`이 허용하는 안·방향과 같은지, 그리고 `content`가 계획과 다른 안을 지지하는 문장인지(의도 분류 모듈로 같은 형식의 판정을 받아 대조) 본다. 둘 중 하나라도 어긋나면 계획 밖이다. 자기 계획 안에 `oppose`를 내거나 그 안에 반대하는 문장도 계획 밖이다.
+- 처리: 응답 **전체**를 같은 입력에 위반 사유를 붙여 1회 재생성한다. 그래도 어긋나면 계획과 맞는 자리별 고정 문구(시나리오 카탈로그)로 교체하고 입장도 계획 값으로 둔다. 메타데이터만 버리고 문장을 게시하는 일은 없다. 결과는 `messages.meta.stance_check`에 기록.
+
+### 카드별 실행
+
+카드 트리거는 **시각 기반 `card_due` 하나**다(R5-4, 카드별 `offset_min`, 최소 20초). 이벤트 트리거(지원자 첫 제안 직후 등)는 없다. 카드 전에도 페르소나는 토론에 참여하지만 카드가 정한 입장 표명은 카드 뒤에 한다.
+
+| 카드 | 담당(고정 자리) | 그래프 동작 |
 |---|---|---|
-| 성향(values·style) | 카탈로그 `persona.colleague.values` 3~4개와 말투. "근거를 들어 한 번 다른 의견을 내고, 주담당이 정하면 따른다"가 포함된다. 세부 행동(먼저 말 걸기, 진행 공유, 리뷰 코멘트, 길이)은 모델이 성향대로 정한다 | 프롬프트. 강제하지 않음 |
-| 의무 액션(must) | 카드를 정해진 시점·내용으로 실행, 주담당 결정을 따름(division_min 위반만 되돌림), 자기 파트 문서 작성·보내기, 문서명 인용 | 카드는 결정적 노드(inject·checkin·review)가 실행. 인용은 guard 검사 |
-| 금지 | **평가 보호(must_not_preempt)**: 계획성 창에서 일정·순서를 먼저 정하지 않음, 중간 점검 창에서 지원자 자료를 재촉하지 않음(2번 자료 시점을 한 번 묻는 것은 카드 문장이라 허용), 책임감 창에서 대안·팀장 보고를 먼저 하지 않음, 적응성 창에서 바뀐 방향 정리를 먼저 하지 않음, 정직 창에서 팀장에게 직접 보고하거나 자기 기여를 먼저 말하지 않음, 도움 요청 철회 금지, 지원자 단독 파트 대필 금지. **공통(must_not)**: 점수·합격·연출·기준, 미래 카드, 미공개 문서, 지원자가 보내지 않은 문서 | 프롬프트 + guard 패턴 + 유출·선점 픽스처 테스트 |
+| `persuasion_keyword` | 그 시점 지원자와 다른 키워드를 민 자리 중 서지안 우선(`critic > stubborn`) | 자기 키워드 + 이유 하나 + 지원자 안 약점 질문. 지원자가 아직 제안하지 않았으면 전체에게 자기 키워드를 민다 |
+| `flexibility_majority` | 강한결(`stubborn`, 확정 전 불변) + 서지안(`critic`, 설득 가능 규칙) | 카드 시점에 기준안을 잠그고(아래) 두 자리가 각자 기준안 지지를 밝힌다. 서지안은 지원자 반대·대안 2회면 지원자 안으로 옮길 수 있으므로 지원자 안이 채택될 수 있다(R1) |
+| `listening_pressure` | 강한결 | 기준안을 강하게 밀고 지원자 안을 짧게 일축, 지원자가 반박하면 재반박(`pressure_count` 최대 3). 같은 화자가 `flexibility_majority`도 맡으므로 한 발언으로 합쳐 두 카드의 첫 발언을 겸할 수 있다. 그 메시지는 `card_ids`에 두 카드를 담고 두 카드의 `trigger_message_id`가 된다 |
+| `inclusion_silence` | 윤하람(`quiet`) | 머뭇거림 한 줄(고정 골격). 이후 이름이 불리거나 전체 질문이 올 때까지 turn이 `quiet`를 고르지 않음. 불리면 자기 안을 자료 근거와 함께 |
+| `persuasion_solution` | 서지안(그 시점 지원자가 서지안 안 S2를 지지하면 강한결) | 비용·실현 가능성 약점을 자료 근거로 짚고 담당 자신의 고정 방향(서지안 S2, 강한결 S1)을 민다. 담당만 바뀌고 입장은 바뀌지 않는다 |
+| `honesty_credit` | 없음 | 발언이 없는 유일한 카드다. 기획안 단계의 `phase_started` 실행에서 cards 노드가 `record_observation`만 한다(`trigger_message_id`는 단계 시작 시스템 안내). 페르소나 행동 없음, 선점 금지(누가 냈는지 먼저 말하지 않음)만 강화 |
 
-동료가 먼저 말하는 경우가 카드 외에도 생기므로(진행 공유 texture, 리뷰 코멘트, 되묻기) observe는 **동료·팀장 발화를 어느 창에서도 근거로 쓰지 않는다**. 점수는 지원자 행동만 센다. 카탈로그 `texture`(midpoint_draft, 진행 공유 1~2개)는 카드가 아닌 결 메시지이며 생략돼도 실패가 아니다.
+- **전달 보장(R5-4)**: 카드는 담당 화자가 실제로 게시했을 때만 그 화자를 `delivered`로 기록한다. 새 지원자 메시지(generation 변경)·입력 중 대기·합의 채우기 우선순위로 게시하지 못한 화자는 다음 run의 cards 노드가 이어서 넣는다. observation은 카드마다 첫 카드 발언 게시 뒤 한 번만 기록한다.
+- **기준안 잠금(R5-4)**: 문제 상황 기준안은 `flexibility_majority` 카드 시점(`card_due`)에 "지원자가 그 순간 지지하는 안이 아닌 첫 시나리오 안"(`lead_option` → `alt_lead_option` → 다음 안 순)으로 계산해 잠근다. 잠근 뒤에는 바꾸지 않으며 고집형의 확정 전 불변과 충돌하지 않는다. 카드 전에는 고집형도 입장을 밝히지 않는다. 잠긴 기준안은 시간 초과 선택의 기준안으로도 쓰인다.
+- 단계가 카드 시각 전에 끝나면 미발생(`event_not_fired`)이다.
 
-| 항목 | 동료(이도현) | 팀장(한서윤) | 어시스턴트 |
-|---|---|---|---|
-| 주담당에 대한 태도 | 결정을 묻고 따른다. 분업은 힌트만 주고 안을 먼저 내지 않는다. 되물으면 참고안을 말하되 결정은 돌려준다. 리뷰에서 근거를 들어 한 번 다른 의견을 내고 주담당이 정하면 따른다 | 주담당에게 결과 책임을 묻는다(마감 직전 진행 확인은 주담당에게 개인 DM, 고정 문구). DM 상시: 과제 맥락 질문엔 답하고 정답·판단 요청은 주담당에게 돌린다 | — |
-| 대행 범위 | 자기 파트 문서와 both 파트 골격. 지원자 단독 파트는 조언·예시 1~2문장까지 | 과제·일정 판단. 문서는 쓰지 않음 | 질문·요약·초안 생성. 지원자 문서에 직접 쓰지 않음(F-16). 회사 문서는 공개된 것만 |
-| 자기 파트 | 분업 확정(동료 실행 담당 할 일이 있으면 doing) → 중간 점검(중간 슬롯, 계획성 미선택이면 L/2)에 담당 파트 전부의 초안 v1(both 골격 포함)을 보내며 주담당 진행과 2번 자료 시점을 물음 → 리뷰(3L/4)에 완성본 v2(지시·피드백 반영, 해당 할 일이 있으면 done) → 피드백 받으면 v3. 진행 질문엔 work_notes.progress대로 일관되게. 파트당 300~600자, 회사 문서 인용 | — | — |
-| 평가 기준·연출 질문 | 공통 안내문(common_rules) | 공통 안내문 | 공통 안내문 |
-| 추가 자료 요청(요구사항 변경 뒤 등) | "저도 그 자료는 없어요" + 가정 제안 | 고정 대응: 추가 자료는 없으니 가정을 명시하고 검증 계획을 적어 달라 | 공개 문서 범위 밖이면 없다고 답함 |
-| 업무 외 요청 | 성향대로 받아주고 업무로 복귀 | 동일 | "업무 관련 요청만 도울 수 있어요" |
-| 보는 기록 | 팀 채널 + 동료 DM, 보드, 공유된 문서, 공개 문서 | 팀 채널 + 팀장 DM, 보드, 공유된 문서, 공개 문서 | 자기 대화 + 공개 회사 문서. 팀 대화는 보지 않음 |
+### 고정 문장과 seq
 
-업무 중 재분업·재지시: 주담당이 채팅으로 분담을 다시 정하면 동료가 받아들여 최소 조건 안에서 set_division으로 새 스냅샷을 만들고, 보드에서 섹션 담당을 고쳐 다시 공유하면 api가 division 자극을 보내 동료가 work_notes를 맞춘다. 한도는 적응성 카드 전 1회 + 적응성 카드 뒤 1회. 그 이상은 "일정상 지금 더 바꾸긴 어렵겠어요"로 유지. 담당을 바꾸지 않는 방향 재지시는 횟수 제한 없이 수락한다. 상호 리뷰에서 동료가 공유된 지원자 문서에 답글을 남기는 것은 카드 밖에서는 성향에 맡긴다(양방향 허용).
+`seq`는 노드별 고정 슬롯이다: 화자1 발언=1, 화자2 발언=2, 칸 채우기 공지=5(`fill_slot` 트랜잭션에서 api가 저장). api 시간 초과 공지는 run_id `uuid5(session, "timeout:"+phase)`·seq 0(api 소유). 변경 도구 전에 같은 (run_id, seq) 메시지가 있으면 LLM 생성 없이 재사용한다(변경 성공 뒤 체크포인트 전에 죽어도 같은 결과로 수렴).
 
-## 어시스턴트 그래프
+칸 채우기 공지 골격(시나리오 고정, 이름만 치환): consensus "그럼 X로 정리할게요." fill 노드가 LLM 없이 만들어 `fill_slot`의 `content`로 넘기고, api가 칸 확정과 같은 트랜잭션에서 저장한다. 칸 확정과 공지는 함께 남거나 함께 남지 않는다. 시간 초과 공지("시간이 다 돼서 대화에서 가장 많이 모인 의견인 X로 할게요.", R7)는 api가 게시한다.
 
-`retrieve(search_documents top3) → answer(인용 포함) → guard`. thread `assistant:{session_id}`. 60회 초과는 api가 429로 막고 그래프는 호출되지 않는다. api가 request·response 메시지와 assistant_calls를 기록한다.
+### 끼어들기와 순서 (D17)
 
-## observe (`app/agent/observe/`)
+- 화자가 정해지면 `typing start` → 생성 → guard → stance_check → wait_typing → 게시 → `typing stop`. 둘째 화자는 1~3초 간격.
+- **지원자가 입력 중이면 게시하지 않는다**(R5-9): typing은 클라이언트가 5초마다 갱신하고 hub가 6초 갱신이 없으면 만료한다. wait_typing은 최대 10초 기다리고, 그래도 입력 중이면 이번 자극을 다시 큐에 넣고 끝낸다(만든 문장은 버린다).
+- 게시 직전 generation이 실행 시작 때와 다르면(새 지원자 메시지) 아직 말하지 않은 화자는 `typing stop` 후 버리고, 새 메시지 자극이 다시 정한다.
+- 토큰 스트리밍 없음. 완성 문장 한 번에 게시.
 
-`compute_metrics(window, card, messages, revisions, shares, opens, task_events, doc_views, assistant_calls, facts) -> dict`, `classify(window, card, llm) -> (label|None, evidence: [{type, id}])`. 입력은 창 안의 데이터만(예외는 아래 창 밖 근거). 카드별 픽스처로 단위 테스트. agent-session 트랙이 함께 구현한다.
+### 재실행 멱등
 
-입력 원천:
+- 같은 run_id가 `agent_runs`에서 `finished`면 load가 END.
+- 모든 변경은 run_id를 가지고 api가 멱등 키로 막는다(메시지 (run_id, seq), 안 (scenario_option_key∣source_message_id), 입장 (source_message_id, participant, option_id), 칸 (session, phase), 관찰 (session, card_id)).
+- 같은 run_id의 `fill_slot` 재호출은 기존 결과(칸과 공지 메시지)를 돌려준다. 칸 확정과 공지가 한 트랜잭션이라 확정 뒤 공지만 빠지는 상태가 없다.
+- LangGraph config 메타데이터 키는 `agent_run_id`(`run_id`를 쓰면 같은 run_id 재호출을 끝난 실행으로 보고 건너뛴다).
 
-| 원천 | 내용 |
+## 실시간 의도 분류 (`app/agent/intent/`)
+
+D16·R4·R5-6. api 메일박스가 `message` 자극마다 들어온 순서대로 그래프 전에 호출한다. 그래프 노드가 아니다. 자극이 낡아(generation이 현재 값보다 작음) 그래프를 건너뛸 때도 분류와 안·지지 반영은 반드시 한다. 건너뛰는 것은 턴 선택·페르소나 발언 생성뿐이다.
+
+- 모델 `MODEL_INTENT`, temperature 0, JSON 스키마 출력, 타임아웃 10초, 재시도 없음.
+- 입력: 메시지, **저장된 `messages.phase`**(현재 단계가 아님), 그 단계의 **카탈로그 안 전체**(아직 발언되지 않은 것 포함, `scenario_option_key`·라벨), 이미 생긴 안 목록 `[{option_id, label}]`, 직전 메시지 5개, 자리 이름 목록.
+- 메일박스가 밀린 사이 단계가 바뀌어도 분류와 안·입장 반영은 메시지의 단계에 한다. 현재 단계와 다른지는 턴 선택·발언 생성을 생략할지 판단하는 데만 쓴다.
+- 출력: 계약의 의도 분류 스키마(`intent`, 대상 안(생긴 안이면 option_id, 아직 안 생긴 카탈로그 안이면 `scenario_option_key`), `new_option_label`, `addressed_to`, `confidence: high|low`). 허용 값 밖·없는 option_id·스키마 위반은 폴백 `{intent: other, ...}`, `fallback=true`.
+- 쓰임: 안별 지지자 누적(high인 agree·propose만 지지), 카탈로그 안의 최초 제안자 귀속, 턴 매니저 규칙 3, 합의 판정, 침묵 초대 조건, 설득 가능 규칙, stance_check의 문장 판정. **평가 수준에 직접 쓰지 않는다.** 평가 에이전트에는 참고 입력(사실 지표 `intent_counts`, 메시지별 의도)으로만 가고, 원문과 다르면 원문을 따른다(`rubric.md` 1.2).
+- 지원자 칸 확정 값의 안 연결에는 쓰지 않는다. 확정 경로에는 LLM이 없다(R5-5, `api/design.md`).
+- 실 모델 정확도 기준선은 픽스처 20문장에서 0.85다(gpt-4o-mini, agent-spike 실측). 이 값은 기준선이고 MVP 통과 조건이 아니다.
+
+## 어시스턴트 (`app/agent/assistant/`)
+
+**tool-calling 루프**(R5-13, 모델의 도구 선택 시연). thread `assistant:{session_id}`, 모델 `MODEL_ASSISTANT`.
+
+```
+agent(LLM, 도구 바인딩) ⇄ tools(search_materials·get_material) … 최대 3회 → answer → guard
+```
+
+- 모델이 질문을 보고 `search_materials`·`get_material` 호출 여부와 인자를 스스로 고른다. 도구 호출은 응답당 최대 3회, 넘으면 지금까지의 결과로 답한다.
+- 열린 자료만 검색된다. 잠겨 있으면(`not_released`) "키워드가 정해지면 자료를 찾을 수 있어요"로 답한다.
+- answer: 질문·요약·초안 도움. 인용한 자료 id를 `cited_material_ids`로 내고 본문에 출처 제목을 붙인다. 도구 호출 내역은 `assistant_calls`에 사실로 기록한다. 토론방 대화·다른 참여자 정보는 보지 않는다.
+- guard: 공통 금지 패턴. 60회 초과는 api가 429로 막아 그래프가 호출되지 않는다.
+
+## guard (`app/agent/guard/`)
+
+모든 LLM 생성 텍스트(페르소나·어시스턴트)에 코드에서 무조건 실행한다.
+- 패턴(`positions.scenario`의 `guard_patterns`, 카탈로그 `prompts/guard_patterns.yaml`): 점수·합격·순위·평가·연출 언급, 평가 기준 질문 응답, 지원자 판정 표현("OO님은 경청을 잘하시네요" 류), 결론 대리 선언("이걸로 확정할게요" 류, 칸 채우기 공지 제외), 다른 자리 성향 이름, 미래 카드 암시.
+- 처리: 걸리면 같은 입력으로 재생성 1회 → 그래도 걸리면 자리별 안전 문구(`prompts/safe_<type>.md`, 성향에 맞는 짧은 중립 문장)로 교체. 400자 초과는 자른다. 결과는 `messages.meta.guard`에 기록.
+- 입력 쪽: 지원자 메시지 마스킹은 api가 저장 전에 한다.
+
+## 프롬프트와 카탈로그 (`scenarios/missions/debate/prompts/`)
+
+| 파일 | 내용 |
 |---|---|
-| messages | 지원자 메시지와 `meta.classification`(recipient, kind, related_card, reply_to_doc), 채널(team·dm·manager_dm) |
-| revisions | 지원자 문서(파트 문서·최종본)의 `document_revisions`(자동 저장마다 append, 최종본 섹션 편집·가져오기 포함. 내부 `GET /document_revisions`) |
-| shares | 지원자의 send_document 이력(문서·버전·채널·시각) |
-| opens | 지원자가 동료 문서를 연 document_opens(문서·버전·시각) |
-| task_events | 보드 변경(할 일 담당·섹션·상태·order·due_min)과 섹션 담당 변경(target=section_owner) |
-| doc_views | 회사 문서 열람 |
-| assistant_calls | 어시스턴트 호출 |
-| facts | 정직 카드만. api가 계산한 사실 목록(`GET /internal/sessions/{id}/honesty_facts`, 같은 함수를 그래프가 직접 호출, 형태는 contracts.md) `{shares, final_sections, section_owners, empty_sections, tasks_not_done, changed_after_adaptability: bool∣null}`. 적응성 미선택이면 changed_after_adaptability는 null이고 미완료로 보지 않는다 |
+| `common_rules.md` | 모든 자리 공통: 동등한 팀원, 짧게 말하기, 시간은 남은 시간으로 말하기, 금지 목록, 기능 설명만 하고 평가 대상 행동을 유도하지 않음, 평가 질문 안내문 |
+| `persona_<type>.md` | 성향·말투·행동 규칙·must_not(`scenario-model.md` 2.1). MVP에서 쓰는 것은 `stubborn`·`quiet`·`critic` 3개 |
+| `turn_manager.md` | LLM 화자 선택 지침(규칙 6) |
+| `intent.md` | 의도 분류 지침과 예시(`confidence` 기준 포함) |
+| `assistant.md` | 어시스턴트 지침(도구 선택·인용 규칙) |
+| `evaluator/common.md`, `evaluator/<element>.md` ×5 | 평가 에이전트 공통 지침(판단 순서·근거·출력 형식)과 요소별 특수 지침. 척도·앵커 본문은 `rubric.md` 복사본을 `get_rubric`으로 주입 |
+| `safe_<type>.md`, `stance_fallback`(자리·단계별 계획 일치 고정 문구), `guard_patterns.yaml` | 안전 문구, 계획 밖 입장 교체 문구, 금지 패턴 |
+| `fixtures/` | 프롬프트 픽스처(유출·선점·판정 유도 질문, 계획 밖 입장 유도) |
 
-창 경계: `window_start` = 이 요소 카드의 due_at(planning_division만 0, 세션 시작), `window_end` = **다음 요소 카드**의 due_at(흐름 카드·texture는 창을 닫지 않음). 마지막 요소 창은 `completed_at`까지라 제출 메시지도 들어간다. 정직 창은 진행 확인 DM 시각(제출이 먼저면 제출 시각)부터다. 모두 시나리오에서 결정되므로 재실행에 무관하다. 관찰 키는 (session_id, card_id, window_start). 카드 메시지가 창이 거의 끝난 뒤에야 나간 경우(전달 지연 90초 초과)는 영향 항목을 사유 `window_missed`의 기록 없음으로 두고 리포트에 표시한다.
+프롬프트는 `catalog_version` 해시에 포함되고 본문이 `positions.scenario`에 복사돼 채용 건에 고정된다.
 
-창 밖 근거: **메시지만** `classification.related_card`가 이 카드이면 창 밖이어도 지표·레이블 근거로 허용한다(도움 약속 이행, 지연 대응처럼 창을 넘는 행동). document·share·open·task_event는 창 안만 쓴다.
+## 평가 에이전트 (report-worker, `report_worker/evaluate.py`)
 
-약속 이행은 세션 종료 시 확정한다: collab_help 관찰 행은 창 닫힘에 저장하되 `promise_kept`는 null로 둔다. end run의 close 단계가 related_card=collab_help 메시지로 다시 계산해 observations PATCH(같은 (card_id, window_start) 키, promise_kept만 갱신, 같은 run_id 멱등)한다.
+D18·D19 개정과 R5-14. 세션 종료 후 report-worker의 `evaluate` 노드에서 돈다. api 안의 모듈이 아니지만 프롬프트·LLM 규칙을 이 문서가 정한다. 판단 규칙·앵커·검증 규칙의 정본은 `rubric.md`(2장 공통 판단 규칙, 3장 척도, 4장 경계표, 7장 출력 형식), 저장 형식은 `contracts.md` `save_evaluation`이다. 원칙: AI 평가 에이전트가 공개된 척도로 근거를 들어 수준을 판단하고, 담당자가 그것을 참고해 최종 평가한다. 합격·불합격·순위·총점은 만들지 않는다.
 
-접속 끊김 구간(`connection_gaps`)은 api가 기록해 시스템 줄과 리포트 사실로 남기며, 어느 창에서도 근거가 아니고 지표에 쓰지 않는다.
+**호출 단위**: 요소마다 1회(5요소 고정이므로 세션당 5회). 한 호출이 그 요소의 차원 3~4개를 모두 낸다. 다른 요소의 판단 결과·요약은 입력에 넣지 않는다(후광 방지). 모델 `MODEL_EVALUATOR`, temperature 0~0.2 **[초안]**, JSON 스키마 구조화 출력, 도구 바인딩 없음(입력은 워커가 미리 모은다).
 
-근거 규칙: 지원자의 메시지·문서 수정·보내기·열람·보드 변경·어시스턴트 호출만 근거가 된다. 동료·팀장 메시지는 어느 창에서도 근거가 아니다(동료의 자유 행동이 점수에 영향을 주지 않게).
+**프롬프트 구성**(순서 고정):
 
-카드별 레이블과 보조 판정(이름의 단일 표는 `docs/common/rubric.md`, 카탈로그 `labels`·`aux`도 같은 이름):
+| 부분 | 내용 | 원천 |
+|---|---|---|
+| 역할·원칙 | 지원자 행동만 판단, 실력(안의 질·자료 정확성·기획안 품질) 제외, 합격·순위·점수 표현 금지, 근거 없는 수준 금지 | `prompts/evaluator/common.md` |
+| 판단 순서 | `rubric.md` 2.1 순서(전체 읽기 → 장면 위치 → 기록 없음 검사 → 앵커 대조 → 보조 장면 ±1 → 근거 수 → 확신도) 그대로 | `prompts/evaluator/common.md` |
+| 공통 규칙 | 근거 단위·최소 개수(1~3은 1개, 4·5는 서로 다른 2개), 기록 없음 사유 5종과 우선순위, 확신도 기준·상한, 편향 방지 표, 경계표 중 이 요소 관련 행(확정 행위는 `flex_decision_respect`, `flex_acceptance`는 결정 후 행동만 — 결정 후 발언이 없으면 `no_activity`, R5-17) | `get_rubric` |
+| 척도 주입 | 이 요소의 차원마다 id·정의·핵심 장면(카드 창)·**수준 1~5 앵커와 예시 발언**·요소별 특수 지침(수용 차원은 "근거 있는 이의 제기도 높은 수준", 지원자 안이 채택되면 수용 차원은 `not_applicable`, R1) | `get_rubric`(세션에 복사된 척도, `rubric_version`) |
+| 세션 입력 | **대화 전체**(메시지 id·자리·오피스 시각·단계·origin·의도), 칸 기록(지지 현황 스냅샷), 기획안 제출본, 카드 발생 기록과 창 시각, 사실 지표, Contributions, 자리 → 유형 대응. 카드 창으로 자르지 않는다 | `get_session_record` |
+| 출력 지시 | 아래 스키마, 차원마다 정확히 한 행, 근거 참조는 `msg:<id>`·`slot:<phase>`·`proposal:<field>`·`contribution:<option_id>` 문자열만 | `prompts/evaluator/common.md` |
 
-| 카드 | 동료가 필요한 것 | 레이블 | aux |
-|---|---|---|---|
-| planning_division | 결정 | `assign_with_schedule`(배정 + 순서·시점 언급) / `assign_only`(배정만) / `defer_to_colleague`(동료 기본안) / `ignore` | mentions_schedule(채팅의 순서·시점 언급, 보드 due_min·order가 비었을 때 보완) |
-| planning_checkin | 반응 | `feedback` / `acknowledge` / `ignore` | is_specific(초안 내용을 짚은 반응인지) |
-| collab_help | 답 | `help_now` / `negotiate_timing` / `decline` / `acknowledge_only` / `ignore` | promised_t_min(제안한 시점. promise_kept는 종료 시 확정) |
-| collab_disagree | 들어 줌 | `explain_with_reason`(근거로 설명) / `accept`(수용) / `dismiss`(무시·강행) / `blame`(비난) | — |
-| responsibility_delay | 상태 | `notify_with_alternative` / `notify_only` / `silent` / `ask_colleague` | mentions_impact(동료 파트 영향), has_alternative. 팀장이 보는 곳 여부는 규칙 지표 `notified_where_manager_sees`(팀 채널 또는 팀장 DM) |
-| adaptability_change | 다시 정리된 방향 | `replan_and_apply`(반영 + 동료에게 재정리) / `apply_silently` / `complain_then_apply`(동료를 비난하거나 거부한 뒤 반영) / `refuse_or_ignore` | target_applied(바뀐 핵심 기능·일정이 문서에 반영됐는지 예/아니오, 품질 아님), mentions_scope |
-| honesty_report | 인정 | `fair_report` / `hides_incomplete` / `misattributes`(동료 몫을 자기 것으로) / `no_report` | credits_colleague, claims_colleague_work, discloses_incomplete. facts 목록과 보고 문장을 대조해 판정 |
+**출력 JSON 스키마**(`rubric.md` 7.1·7.2, 저장 형식은 `contracts.md`):
 
-`classify()` 반환형: `{label, evidence: [{type,id}], aux: {...카드별, related_message_ids}}`. 순서는 규칙 지표 계산 → LLM 분류 → aux를 쓰는 지표 병합이며, 분류가 실패하면 aux 기반 지표는 null이다. 지표 함수는 값과 함께 근거 id를 돌려준다(`{value, evidence_ids}`). 각 평가표 항목의 근거는 그 항목 조건에 쓰인 지표·레이블의 근거만 붙인다. 보드 "언제까지"(due_min·order)는 규칙 지표로 세고, 비어 있으면 채팅의 시점 언급을 LLM aux로 보완한다.
+```json
+{"element": "listening",
+ "summary": "1~2줄 서술",
+ "dimensions": [
+   {"dimension_id": "listen_engage", "level": 4, "no_record_reason": null,
+    "evidence_refs": ["msg:<id>", "msg:<id>"], "rationale": "1~3문장", "confidence": "high"}
+ ]}
+```
 
-레이블 규칙: 카드의 `labels` 중 하나, 또는 `no_evidence`(창 안에 지원자 활동 없음, LLM 미호출), `unclassified`(LLM 출력이 허용 밖), null(LLM 실패). `ignore`·`silent`·`no_report`·`refuse_or_ignore`처럼 "하지 않음"을 뜻하는 레이블은 창 안에 지원자 활동이 있을 때만 나올 수 있다. 행동 레이블은 evidence가 1개 이상이어야 하며(없으면 unclassified로 강등), "하지 않음" 레이블(ignore·silent·no_report·refuse_or_ignore)은 허용 타입의 근거가 없으면 evidence를 비워도 된다(observe_labels.md·rubric.md 0점 규칙과 같음), `apply_silently`의 evidence는 문서(document) 근거다. 적응성 "반영" 항목은 `document_changed_after`와 aux `target_applied`가 둘 다 참일 때만 충족이라 무관한 편집(오탈자 수정)은 세지 않는다. 실력(오류 발견·산출물 품질)은 어느 레이블에도 들어가지 않는다. 리포트 문장 매핑은 worker-infra/design.md.
+- `level`은 1~5 정수 또는 null. null이면 `no_record_reason`(`no_activity`·`not_applicable`·`event_not_fired`·`auto_submitted_blank`; `evaluate_failed`는 워커만 쓴다)과 `confidence: null`.
+- 요소 `level`은 모델이 내지 않는다. 워커가 차원 평균 반올림(.5 올림)으로 계산한다. 모델은 `summary`만 쓴다.
+- 검증 경계(R5-14): 형식 오류(스키마 위반·차원 누락·중복)나 근거 부재(수준이 있는데 유효 근거가 최소 개수 미만)면 **그 요소 호출 전체를 1회 재요청**한다(실패 사유를 붙여서). 그래도 남은 실패 차원은 워커가 `evaluate_failed`로 둔다. 확신도 상한 위반은 재요청하지 않고 워커가 상한으로 깎는다(clamp). LLM 전송 오류·타임아웃은 저장하지 않고 큐 재시도로 넘긴다.
+
+**버전**: 평가 프롬프트 파일(`prompts/evaluator/common.md`와 `prompts/evaluator/<element>.md` 5개)마다 개별 해시를 `prompt_versions` 맵(형식은 `contracts.md` EvaluationSave)으로, 세션 척도 버전을 `rubric_version`으로, 실제 모델 id를 `model`로 `save_evaluation`에 함께 저장한다(api가 `evaluation_runs`에 보관). 단일 `prompt_version` 필드는 쓰지 않는다. 프롬프트는 카탈로그(`scenarios/missions/debate/prompts/`)에 두고 `positions.scenario`에 복사돼 채용 건에 고정된다.
+
+**리포트 요약 문장과의 관계**: 요소 서술(`elements[].summary`)은 이 평가 호출이 쓰고 draft에서 다시 만들지 않는다. 리포트의 카드 장면(`cards[].scene`)은 LLM 없이 카드의 고정 문장 `report_template`을 그대로 쓴다. 평가 호출 외에 리포트용 요약 LLM 호출은 없다. 평가 호출이 실패해 요소의 모든 차원이 `evaluate_failed`면 요소 서술은 템플릿 고정 문장으로 대신하고, 차원 수준을 템플릿이나 다른 모델로 메우지 않는다.
+
+## 역할별 모델
+
+| 역할 | env | 쓰는 곳 |
+|---|---|---|
+| 페르소나 | `MODEL_PERSONA` | respond |
+| 턴 매니저 | `MODEL_TURN` | turn 규칙 6(규칙 결과 0명 + message 자극일 때만) |
+| 의도 분류 | `MODEL_INTENT` | intent, stance_check 문장 판정 |
+| 어시스턴트 | `MODEL_ASSISTANT` | assistant tool-calling 루프 |
+| 평가 에이전트 | `MODEL_EVALUATOR` | report-worker 평가 에이전트(요소별 차원 수준·근거·요약). 카드 장면 `cards[].scene`은 고정 문장이라 LLM을 쓰지 않는다 |
+
+비어 있으면 `OPENAI_MODEL`(기본 gpt-4o-mini). 키는 모델 id로 고른다(gpt-4o-mini → 제한 키, 그 외 gpt-* → 개인 키, gemini-* → Gemini 키). 규칙은 공용 LLM 래퍼(`app/agent/llm`, 워커는 같은 규칙의 사본) 한 곳이고, 래퍼가 호출마다 토큰과 환산 달러를 `usage.cost_usd`로 낸다(R5-11). 프롬프트·규칙 수정으로 안 되는 역할만 사용자 결정으로 올린다(`docs/decisions.md`). 이전 env(`MODEL_COLLEAGUE`·`MODEL_MANAGER`·`MODEL_OBSERVE`·`MODEL_REPORT`)는 폐기. env 이름 5개는 be-foundation이 `infra/.env.example`과 `roles.py`에 넣고 G-F에서 동결한다.
+
+### 실측 기준선 (agent-spike, gpt-4o-mini)
+
+| 항목 | p50 | p95 |
+|---|---|---|
+| 의도 분류 | 1.0초 | 1.2초 |
+| 페르소나 발언 | 1.2초 | 1.4초 |
+| 턴 LLM | 1.2초 | 1.5초 |
+
+60분 세션 LLM 비용 추정 $0.08~0.11, 의도 분류 정확도 0.85. 문서·보고서의 기준선이며 MVP 완료 조건은 아니다.
+
+## MVP 이후
+
+- 생성 전에 지원자 입력 중인지 먼저 확인해 버리는 생성 줄이기
+- 한 메시지의 복수 의도 분류
+- 대상 안 라벨이 없을 때 `confidence`를 low로 강제하는 후처리
+- 턴 LLM의 화자 쏠림 보정
+- websockets 버전 통일
 
 ## 복구
 
-`docs/common/harness.md` Recovery 행. 그래프는 `last_error`에 기록하고 `RunResult.fallback_used=True`를 돌려준다. 카운터와 세션 failed 전이는 api `SessionService`가 한다.
-
-- `send_document` 실패(upstream_unavailable·예외): 같은 run_id로 1회 재시도. 그래도 실패하면 카드 status=failed로 올려 필수 카드 실패 총 3회 규칙을 탄다(메시지 폴백으로 done 처리하지 않음). 끝내 실패하면 그 문서에 의존하는 항목(예: `draft_opened`)은 사유 `document_missing`의 기록 없음이고, `work_notes.sent`는 갱신하지 않는다. 생성 자체가 실패(지시 반영 검사 2회 실패)한 완성본은 카드 실패로 올려 총 3회 재실행을 탄다.
-- 반대 의견 대상 조회(get_shared_documents) 실패: 대체 대상 ②로 진행한다.
+`docs/common/harness.md` Recovery 행. 그래프는 `last_error`에 기록하고 `fallback_used=True`를 돌려준다. 카운터와 세션 failed 전이는 api `SessionService`.
+- 페르소나 발언 실패(LLM 재시도 2회 후): 그 발언 생략, `llm_failures+1`(연속 3회면 세션 failed, 성공 시 0). 카드 발언이면 `delivered`가 아니므로 다음 run이 이어서 말한다.
+- turn LLM 실패: 0명.
+- 의도 분류 실패: other.
+- 시간 초과: 그래프와 무관하게 api가 결정적으로 채운다.
+- MCP upstream_unavailable: 1회 재시도, 그래도 실패면 그 변경을 건너뛰고 실행 failed(스케줄러 재실행).
 
 ## 완료 기준
-- M1 최소 흐름: 지원자 메시지 1개 → respond → rag 검색 → post_message → WS 노출 (FakeAgentRunner 교체)
-- M2: 6분 세션 + 대본 3개로 카드 전부 정시(120분 환산: 분업 10, 도움 30, 중간 점검 45, 지연 60·공개 70, 변경 75, 리뷰·반대 의견 90, 진행 확인 DM 110), 분업 되돌림 1회 뒤 확정, 미합의 중 카드 도래 처리, 진행 확인 DM이 manager_dm 고정 문구로 나가고 팀 채널에는 없음, 제출 전 DM 미발송과 제출 뒤 end run으로 바로 done, 킥오프 동료 인사가 팀 채널 한 줄이고 DM 인사 없음, 압박 문구가 섞인 LLM 생성은 재생성·안전 문구, api 재시작 후 fired 이벤트 재실행과 /state 이어하기, 허용 밖 도구 거부, 미공개 문서 질문에 "아직 공유되지 않은 자료" 답변, 보내지 않은 지원자 문서 내용 질문에 "아직 못 봤어요" 답변, 팀장 DM의 판단 요청에 "주담당이 정해 주세요", 강제 LLM 실패 3회에 세션 failed, LangSmith trace에 run_id
-- 근거 정확성 픽스처: 질문별 기대 도구·허용 문서·인용 일치 검사 10건
-- 작업 기억: 대본 `all_five`에서 초안 v1(45분)에는 그 전 지시(도움 카드 때 사례 기준 "재참여")가, 완성본 v2(90분)에는 적응성 뒤 지시("후속 모임")까지 반영됨(핵심어 검사). 중간 점검 초안에 both 파트 골격이 포함됨. 주담당 답글 뒤 v3이 나감. 진행 질문 2회(대본 step)에 같은 progress로 답함. 대본이 동료 실행 담당 할 일을 만든 경우 그 할 일이 doing(분업)→done(리뷰), 할 일이 없으면 update_task 호출 없음. 같은 run_id 재실행에 버전이 늘지 않음
-- 반대 의견 대상: 주담당이 1번 문서를 보낸 대본에서는 그 문장을, 안 보낸 대본에서는 보드·채팅 방향을 가리키고 의견 본문은 카탈로그 고정 문장과 일치. 재촉 메시지 없음
-- 관찰: 카드 7장 각각 픽스처로 레이블·aux·evidence 타입(rubric.md 이름) 검사, 창 밖 메시지는 related_card일 때만 포함, 정직 카드는 facts 대조(동료 몫을 자기 것으로 말한 보고 → misattributes)
-- 최소 테스트(에이전트 몫): 할 일 0개 분업안 공유(division 자극에 set_division·update_task 없이 work_notes 갱신), 카드 전 계획(킥오프 직후 결정과 카드 뒤 결정의 planning_division 판정이 같음), 창 밖 약속 이행(45분 관찰 저장 뒤 50분 이행 → 종료 시 promise_kept PATCH), 무관한 편집(오탈자 수정만 → target_applied false → 반영 항목 0), 문서 제공 실패(send 2회 실패 → 카드 failed, draft_opened 사유 document_missing)
-- 선점 금지 6개 각각 픽스처 1건(계획성 창 일정 먼저 정하기 유도, 중간 점검 창 자료 재촉 유도, 지연 대안 유도, 변경 뒤 방향 정리 유도, 정직 창 팀장 직접 보고 유도, 지원자 단독 파트 대필 요청)
+
+완료 기준은 가짜 MCP·가짜 hub(SessionPorts 가짜 구현) 위의 단위 기준이다. WS·재시작은 web-integrate·e2e가 확인한다(R6-e).
+
+- 최소 흐름: 지원자 메시지 1개 → 의도 분류 → 토론 그래프(turn이 지명된 자리 선택) → respond → guard → stance_check → apply(post_message·set_stance) → 가짜 hub에 `typing` start/stop(FakeAgentRunner 교체).
+- 15분 세션 대본(가짜 시계): 단계 시작마다 고정 입장 화자가 말함(문제 상황은 카드 전 입장 표명 없음), 합의 3/4 즉시 지지자 자리의 `fill_slot` 한 번으로 칸과 공지(seq 5)가 함께 저장, 이미 합의가 있는 자극에서 respond·apply 호출 0회·공지용 `post_message` 0건, 이번 AI 발언으로 3/4가 되면 같은 run에서 채움, `fill_slot` 409면 칸·공지 0건, 같은 run_id 재실행은 기존 결과, 합의 전에는 칸을 채우지 않음(409 `no_consensus` 흐름 포함), 그래프가 timeout 채우기를 하지 않음, 카드 6장이 `card_due`로 발동하고 `record_observation`이 첫 카드 발언 게시 뒤 1회씩.
+- 카드 전달: 카드 화자 중 일부가 generation 변경으로 버려지면 다음 run(새 run_id의 card_due 포함)에서 그 화자가 이어서 말하고 observation은 중복되지 않음, 강한결의 공동 발언이 `card_ids` 두 개로 두 카드를 함께 전달하고 관찰 2건, 기준안이 card_due 시점의 지원자 지지 안과 다르게 잠기고 이후 바뀌지 않음.
+- 턴 규칙: 한 실행 화자 ≤ 2, 지명 응답 우선, `quiet`가 불리기 전 발언하지 않음(머뭇거림 카드 제외), 침묵 초대가 단계당 1회·서지안·`is_invite=true`, 턴 LLM이 규칙 0명 + message일 때만 호출됨.
+- typing·generation: 지원자 입력 중이면 10초 뒤에도 게시 0건이고 자극이 다시 enqueue됨, 게시 직전 generation 변경 시 남은 화자 버림.
+- 입장: 설득 가능 규칙(반대·대안 두 번에 단계당 1회 이동), `stubborn` 확정 전 불변, 지원자가 S2를 지지하면 `persuasion_solution`을 강한결이 S1로 맡고 서지안 입장은 S2 그대로, 계획 밖 입장 픽스처(자기 계획 안 `oppose` 포함)가 재생성 → 고정 문구로 바뀌고 게시 문장·저장 입장이 계획과 일치.
+- 경계: 페르소나 노드의 MCP 클라이언트에 assessment 도구가 없고 호출 시 거부, 키워드 확정 전 자료 질문에 `not_released` 처리, 페르소나 입력에 `cards_fired`·카드 진행·관찰·평가표·성향 이름·어시스턴트 대화가 없음(컨텍스트 스냅샷 검사), 지원자를 표시 이름으로 부름.
+- guard: 판정·결론 대리·점수 언급 픽스처가 재생성 → 안전 문구로 바뀜.
+- 비용: 하드 상한 초과 주입 시 respond LLM 호출 0, 안전 문구만.
+- 어시스턴트: 질문 픽스처에서 모델이 도구를 골라 호출(최대 3회), 응답에 `cited_material_ids`, 잠금 시 안내 문장.
+- 복구: 강제 LLM 실패 3회 연속에 세션 failed, 같은 run_id 재실행에 중복 메시지·안·입장 없음.
+- 의도 분류: 픽스처 20문장에서 스키마 위반 0과 실 모델 정확도 기준선 기록, `confidence` 출력, 단계 전환 뒤 꺼낸 이전 단계 메시지가 그 메시지 단계의 카탈로그로 분류·저장됨, 카탈로그 안을 지원자가 먼저 말하면 `scenario_option_key`로 판정, 실패 주입 시 other·fallback=true.
+- LangSmith trace에 `agent_run_id`, `agent_runs.decision`에 턴 결정 저장.
+- 평가 에이전트: 픽스처 세션에서 요소마다 호출 1회, 프롬프트 스냅샷에 대화 전체·그 요소 척도와 앵커만 있고 다른 요소 결과가 없음, 출력 스키마 위반 0, 근거 참조가 4종 문자열 형식, 모델이 요소 `level`을 내지 않음, 형식 오류 주입 시 요소 단위 재요청 1회, 확신도 상한 위반은 clamp. 같은 세션 3회 재평가의 차원 수준 변동 폭 기록(R7, `rubric.md` 9.2).

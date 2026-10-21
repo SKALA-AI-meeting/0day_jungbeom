@@ -1,37 +1,85 @@
 # 워커와 인프라
 
+2026-10-21 토론형 전환과 D18·D19 개정(BARS + 평가 에이전트, 브리프 "평가 결과 계약"), 같은 브리프의 "리뷰 반영 결정" R5-14·15 기준이다(R이 앞선 결정보다 우선). 차원 id·수준 앵커·기록 없음 사유·사실 지표·워커 검증 규칙은 `docs/common/rubric.md`, 리포트 형식·`save_evaluation` 입출력·근거 참조 형식·큐 메시지는 `contracts.md`가 정본이다.
+
 ## report-worker (`services/report-worker/`)
 
-리포트 생성은 작은 LangGraph 그래프다. thread `report:{session_id}`, PostgresSaver(워커는 이 thread만 접근).
+세션 종료 후 큐 작업으로 **세션 기록 수집 → 사실 지표 → 평가 에이전트의 차원별 수준 판단 → 리포트 초안 → 담당자 승인 대기 → 확정**을 한다. 작은 LangGraph 그래프, thread_id `report:{session_id}:{eval_round}`, PostgresSaver(워커는 이 thread만 접근). 평가 회차마다 thread가 따로라 새 `eval_round`는 이전 회차의 interrupt 체크포인트를 재사용하지 않는다. 리포트는 담당자가 평가할 때 보는 참고 자료이고 합격·불합격·순위·총점은 만들지 않는다.
 
 ```
-collect → draft → approval[interrupt] → finalize   (draft 생성 노드와 interrupt 노드를 분리: 재개 시 approval 노드만 다시 실행되고 draft 생성은 반복되지 않음)
+collect → aggregate → evaluate → draft → approval[interrupt] → finalize
 ```
 
-1. `report.generate` 소비(prefetch 1, manual ack). 본문 `{session_id, attempt}`. 처리 전에 thread `report:{session_id}`의 상태를 조회한다. 이미 interrupt에 멈춰 있으면 collect·draft를 건너뛰고 4단계(draft 저장)부터, final까지 끝났으면 ack만.
-2. **collect**: 내부 API로 session(mission_id·elements·completed_at), observations(카드 단위, (card_id, window_start). 종료 시 PATCH로 확정된 `promise_kept`가 이미 들어 있으므로 워커는 다시 계산하지 않는다), assistant_calls, assistant_reuse(반영된 파트만), messages(`meta.classification` 포함), documents·document_revisions·document_versions·document_shares·document_opens, final_document(섹션별 출처·버전·edited), tasks·task_events, doc_views, connection_gaps, honesty_facts(`GET /internal/sessions/{id}/honesty_facts`, `{shares, final_sections, section_owners, empty_sections, tasks_not_done, changed_after_adaptability: bool∣null}`. api가 계산. 워커는 재계산하지 않는다).
-3. **draft**: 맨 위에 `summary`(요소별 한 줄 관찰 문장과 `{met, unmet, no_record}`)를 두고, 선택 요소마다 섹션을 만들어 그 안에 **카드 소섹션**(요소당 1~2장)을 조립한다(situation은 카탈로그 카드, label→observed 문장 템플릿은 카탈로그 `label_texts`, evidence는 rubric.md의 근거 타입 그대로: message·assistant_call은 원문 인용, document는 "n번 문서 편집(t_min)"과 변화율(document_revisions에서), share는 "n번 문서 vN 보냄(t_min, 채널)", open은 "도현 n번 vN 열람(t_min)", task_event는 "n번 섹션 할 일·섹션 담당·상태·언제까지 변경(t_min)", doc_view는 문서명과 시각). 모든 근거에 `record_ref`(전체 기록 타임라인의 항목 id)를 붙여 화면이 "기록에서 보기"로 잇는다. label 매핑: 카드 레이블 → 그 문장; `no_evidence`·null → observed=null, `unclassified` → observed=null + evidence 그대로 표시. 기록 없음 사유는 **코드만** 낸다(`no_activity`·`classify_failed`·`event_not_fired`·`not_applicable`·`window_missed`·`document_missing`). 책임 주체 문장("지원자 활동 없음", "시스템: 문서 미제공" 등)으로의 매핑은 web이 한다. **평가표**: 카드마다 카탈로그 `rubric` 조건을 그 카드 observation의 label·aux·metrics에 대입해 항목 1/0/null을 계산하고, 요소 `auto` 합계는 카드 항목의 합이다(요소당 4항목: 2+2 또는 4. 순수 함수 `rubric.evaluate`, LLM 없음, 규칙은 docs/common/rubric.md). 항목마다 `basis ∈ metric∣label`(규칙 지표만으로 계산됐는지, AI 분류 레이블·aux가 들어갔는지)을 붙이고 근거를 붙인다(그 항목의 조건에 쓰인 지표·레이블의 evidence_ids만, 충족 항목에만). `only_if` 전제는 metrics `has_colleague_shares`·`has_incomplete_facts`·`has_report_message`로 판정한다. 카드 메시지 전달이 늦었으면(window_missed) 그 카드 항목 전부가 기록 없음이고, 동료 문서 전송이 끝내 실패했으면 그 문서에 의존하는 항목이 사유 `document_missing`이다. 카드 소섹션에는 `event_fired`와 근거 맥락(직전 페르소나 메시지, 카드 시각)을 넣고, 점수와 무관한 사실(aux_facts 지표, related_card가 이 카드인 창 밖 메시지)은 별도 목록이 아니라 같은 evidence 배열에 `flag ∈ aux_fact∣out_of_window`를 단 항목으로 넣는다. 정직 카드 소섹션은 honesty_facts를 사실로 표시하고(주석 "미완료는 최종본 섹션 기준이며, 사용자가 만든 할 일의 미완료는 참고 사실이다", rubric.md) 제출 메시지 원문을 옆에 둔다. **산출물** 섹션: 최종본(섹션마다 "어느 문서 v몇에서 가져옴"·주담당 편집 여부·본문)과 주고받은 문서 목록(문서·주인·버전·보낸 시각·열람 시각), 접속 끊김 구간. 합격·순위 표현은 없다. **AI 활용**은 라벨·비율 없이 시간순 사실만이다: 호출이 없으면 used=false, 있으면 `events: [{call_id, t_min, request, response, cited_docs, applied_part: part_no∣"final"∣null, record_ref}]`(applied_part는 assistant_reuse의 반영된 파트). LLM 요약·분류는 하지 않는다. 근거 id가 같은 세션 데이터인지 검증(아니면 제거). 텍스트 필드(observed·summary 문장)에 금지어 검사 후 draft를 state에 담는다(rubric 숫자 필드는 검사 대상 아님). 리포트 JSON에 `history`와 요소별 reviewer 소계는 없다. 검토 정보는 api가 GET 때 `review {memo, reviewer_name, reviewed_at}`와 `notes[]`(검토 후 메모)로 붙인다. 이어서 **approval** 노드가 `interrupt(draft)`로 멈춘다(이 시점에 체크포인트가 먼저 저장된다). 노드를 나눈 이유: LangGraph는 재개 시 interrupt가 있던 노드를 처음부터 다시 실행하므로, 같은 노드에 두면 LLM 요약이 재실행된다.
-4. 그래프가 멈춘 뒤 워커가 state의 draft로 `POST /report/draft`(멱등, api가 content_hash 저장) → report_ready → **ack**. 순서가 체크포인트 → draft 저장 → ack이므로 ACK 뒤에 승인이 와도 재개 대상이 항상 있다. draft 저장 전에 죽으면 재전달이 1단계의 상태 조회로 여기부터 다시 한다. 승인 전 final은 api가 409로 거부한다.
-5. `report.approve` 소비 → 같은 thread_id로 `Command(resume=True)` → **finalize**: 승인한 draft와 동일한 내용(해시 비교)으로 `POST /report/final` → reviewed → ack. thread에 멈춘 체크포인트가 없으면(generate가 아직 처리 전) nack 없이 15초 뒤 재발행.
-6. 실패·예외: attempt+1로 재발행(백오프 5·15·45초) 후 원본 ack. attempt≥3이면 `report.dlq`로 보낸다. "3회"는 최초 포함 총 3회.
-7. `report.dlq` 소비(같은 워커의 두 번째 소비자): `POST /report_failed` 호출 후 ack. api가 내려가 있으면 ack하지 않고 60초 뒤 재시도하므로 복구 후 세션이 failed로 반영된다.
+draft와 approval(interrupt)을 나눈 이유: LangGraph는 재개 시 interrupt가 있던 노드를 처음부터 다시 실행하므로, 같은 노드에 두면 draft 조립(근거 맥락 조회·검증)이 재실행된다.
+
+### 처리 순서
+
+1. `report.generate` 소비(prefetch 1, manual ack). 본문 `{session_id, attempt, eval_round}`(`eval_round`는 api가 정한 평가 회차, 첫 발행 1). 본문의 `eval_round`로 thread `report:{session_id}:{eval_round}`를 열고 그 상태를 본다: interrupt에 멈춰 있으면 6단계(draft 저장)부터, final까지 끝났으면 ack만, 체크포인트가 없으면 collect부터. 체크포인트 재개는 같은 `eval_round`의 재시도에만 일어난다.
+2. **collect**: assessment-mcp `get_session_record`로 평가 입력 묶음(대화 전체·칸 기록·기획안 제출본·카드 발생 observations·사실 지표·Contributions)을 한 번에 받고 `get_rubric`(세션에 복사된 척도와 버전), `get_contributions`를 읽는다. 리포트 머리용 세션 정보(seats·alias·display_name·completed_at·session_minutes)·어시스턴트 호출·접속 끊김은 내부 REST로 읽는다. 사실 지표는 api 계산값을 그대로 쓰고 워커는 재계산하지 않는다.
+3. **aggregate**(결정적): 사실 지표(`rubric.md` 6장)를 리포트 `facts`로 정리하고, 카드 창(`scenario-model.md` 4.2 `window`, 관찰의 발동 시각 기준)과 `contribution_check`(안별 실제 최초 제안자 / 기획안에 적힌 기여자)를 만든다. 이 단계는 수준을 정하지 않는다.
+4. **evaluate**(LLM, `MODEL_EVALUATOR`, temperature 0~0.2): 평가 에이전트가 **요소마다 별도 호출**(5요소 고정, R2)로 그 요소의 차원 전부를 판단한다. 입력은 세션 대화 전체와 칸 기록·기획안·카드 발생 기록·사실 지표·Contributions, 그 요소의 척도와 앵커(프롬프트 구성은 `agent/design.md` "평가 에이전트"). **다른 요소의 판단 결과는 입력에 넣지 않는다**(후광 방지). 카드 관찰 창은 핵심 장면 위치일 뿐 입력을 자르지 않는다.
+   - 먼저 현재 run_id로 저장된 평가가 있는지 내부 `GET /evaluations`로 본다(차원 행 + `evaluation_runs`의 요소 요약 `elements`). 있으면 LLM을 다시 부르지 않고 차원·요소 요약을 그대로 재사용한다(재전달 멱등, 저장 직후 체크포인트 전에 죽어도 요소 요약이 복구된다).
+   - **워커 검증**(`rubric.md` 7.3, 차원마다): `dimension_id`가 그 요소의 차원 목록 안이고 차원마다 정확히 한 행, `level`과 `no_record_reason` 중 하나만, **근거 없는 수준 금지**(수준이 있으면 `evidence_refs`가 같은 세션의 실제 행이고 수준 1~3은 지원자 근거 1개 이상, **4·5는 서로 다른 지원자 근거 2개 이상**, 맥락 참조는 개수에 안 셈, `hon_credit_record` 예외), `rationale`·`summary` 금지어(합격·불합격·순위·추천·척도 밖 점수 표현).
+   - **재요청은 요소 단위 1회**(R5-14, 이전의 "차원 단위 1회"를 대체): 형식 오류(스키마 위반·차원 누락·중복·금지어)나 근거 부재가 하나라도 있으면 그 요소 호출 전체를 실패 차원과 사유를 붙여 1회 다시 요청한다. 재요청 뒤에도 실패한 차원만 `level=null`, `no_record_reason=evaluate_failed`(화면 "시스템: 판단 실패")로 두고 나머지는 재요청 결과를 쓴다. 자동 대체 모델 없음, 워커가 수준·근거를 고쳐 쓰지 않음.
+   - **확신도 상한은 거부하지 않고 깎는다**(clamp): 근거 1개면 최대 medium, 설득 카드 하나만 발동이면 최대 medium, 보조 장면만이면 최대 low. 상한보다 높게 나오면 워커가 상한 값으로 바꿔 저장한다.
+   - LLM 전송 오류·타임아웃은 그 요소를 `evaluate_failed`로 만들지 않는다. 아무것도 저장하지 않고 작업을 실패시켜 큐 재시도(8단계)로 넘긴다.
+   - 요소 요약: `level`은 수준이 있는 차원 평균을 워커가 반올림(.5 올림, 전부 기록 없음이면 null), `summary` 1~2줄은 평가 에이전트가 쓴다. `dimension_count`·`no_record_count` 포함.
+   - 저장: assessment-mcp `save_evaluation{session_id, run_id, rubric_version, prompt_versions, model, dimensions[], elements[]}`를 5요소를 모두 마친 뒤 한 번. `run_id = uuid5(session_id, "evaluate:" + eval_round)`(큐 재시도는 같은 round라 같은 run_id). `prompt_versions`는 평가 프롬프트 파일(`prompts/evaluator/common.md`와 `prompts/evaluator/<element>.md` 5개)마다의 개별 해시 맵이다(형식 정본 `contracts.md` EvaluationSave, 단일 `prompt_version` 없음). api가 차원 행과 `evaluation_runs` 한 행(요소 요약 포함)을 함께 저장한다. 멱등 키 `(session_id, run_id)`.
+5. **draft**: Report 형식(`contracts.md`)으로 `elements[]`(element·level·summary), `dimensions[]`(수준·`no_record_reason`·`rationale`·`confidence`·근거), `facts`, `contribution_check`, `seats[]`(지원자 `display_name`, AI 자리 `display_name`·`avatar_url`·유형), `slots`, `cards[]`(card_id·element·fired_at·scene), `debrief.cards`(발동·창), `ai_usage`(시간순 사실만, 분류·비율 없음)를 만든다. 근거마다 원문(기획안 필드는 발췌)·오피스 시각·`record_ref`를 붙이고, 메시지 근거는 `get_transcript_span`(기본 앞 5·뒤 3)으로 앞뒤 맥락을 붙인다(보여 주기 용도, 판단 입력 아님). 요소 `summary`는 evaluate가 저장한 평가 에이전트 문장을 그대로 쓴다(draft에서 다시 만들지 않음). 카드 장면 `cards[].scene`은 LLM 없이 `positions.scenario`에 복사된 카드 `report_template`(`scenario-model.md` 1.1)을 그대로 넣는다. draft에는 LLM 호출이 없다. 요소의 모든 차원이 `evaluate_failed`라 `summary`가 없으면 고정 문장 "시스템: 판단 실패로 요약이 없습니다"를 쓴다. 텍스트 필드 금지어 검사, 모든 evidence 참조가 같은 세션의 실제 행인지 재확인. 총점·합계 필드는 없다.
+6. **approval**: `interrupt(draft)`로 멈춘다(체크포인트 먼저 저장). 워커가 state의 draft로 `POST /report/draft`(멱등, api가 content_hash 저장) → `report_ready` → **ack**. 순서가 체크포인트 → draft 저장 → ack이라 ack 뒤 승인이 와도 재개 대상이 있다.
+7. `report.approve{session_id, eval_round}` 소비 → 본문 `eval_round`의 thread `report:{session_id}:{eval_round}`로 `Command(resume=True)` → **finalize**: draft content를 **그대로** `POST /report/final`(해시 동일, R5-15) → `reviewed` → ack. 담당자 조정은 content에 섞지 않는다. api가 조회 때 `rubric_adjustments`를 병합한다. 멈춘 체크포인트가 없으면(generate가 아직) 15초 뒤 재발행.
+8. 실패·예외(LLM 전송 오류·타임아웃 포함): attempt+1로 재발행(백오프 5·15·45초) 후 원본 ack. attempt ≥ 3이면 `report.dlq`. "3회"는 최초 포함 총 3회. 평가 검증 실패는 이 큐 재시도가 아니라 4단계의 요소 단위 재요청·`evaluate_failed`로 처리한다.
+9. `report.dlq` 소비(같은 워커의 둘째 소비자): `POST /report_failed` 후 ack. api가 내려가 있으면 ack하지 않고 60초 뒤 재시도.
+
+담당자의 "리포트 다시 생성"은 api가 completed로 되돌리고 재발행한다. 저장된 평가에 `evaluate_failed`가 없으면 api가 `eval_round`를 그대로 두므로 같은 thread의 체크포인트에서 재개하고, evaluate에 닿으면 같은 run_id의 저장 평가를 재사용한다(LLM 재호출 없음). `evaluate_failed`가 섞여 있으면 api가 `eval_round`를 +1 해 발행하므로 **새 thread·새 run_id**로 collect부터 다시 돌고 evaluate를 새로 한다(R5-14). 이전 run의 행은 남고 리포트는 새 run 결과를 쓴다.
+
+### 모듈
+
+`report_worker/{consumer, graph, api, assessment, llm, evaluate, report, heartbeat, config}.py`. `assessment.py`(assessment-mcp 클라이언트, `X-Assessment-Token`)를 새로 두고, `evaluate.py`가 요소별 평가 호출·워커 검증·요소 단위 재요청·확신도 clamp·요소 평균을 맡는다(검증·clamp는 순수 함수로 분리해 단위 테스트). 이전 관찰 레이블·카드 7장 기반 로직, 이전 규칙 집계 모듈(`rubric.py`), 산출물(최종본 출처·문서 목록)·정직 사실(honesty_facts) 섹션은 삭제한다.
 
 ## RabbitMQ
-- exchange `dayzero`(direct). 큐 `report.generate`, `report.approve`(둘 다 durable, DLX → `report.dlq`), `report.dlq`.
-- 메시지 persistent. 관리 UI는 `127.0.0.1:15672`에만 바인딩.
+
+- exchange `dayzero`(direct). 큐 `report.generate`, `report.approve`(durable, DLX → `report.dlq`), `report.dlq`. 본문은 계약 "큐 메시지" 표.
+- persistent, publisher confirm 뒤 api가 `*_enqueued_at` 기록, manual ack, 같은 session_id 중복은 stage로 멱등. 미발행은 api 스케줄러가 60초마다 재발행.
+- 관리 UI는 `127.0.0.1:15672`에만 바인딩.
+
+## 서비스 디렉터리 변경
+
+| 변경 | 처리 |
+|---|---|
+| `services/business-mcp/` → `services/debate-mcp/` | 디렉터리·패키지(`debate_mcp`)·Dockerfile·pyproject 이름 변경, 도구 교체(`mcp/design.md`) |
+| `services/assessment-mcp/` 신규 | FastMCP 서버, `/health`, Dockerfile, pyproject·lockfile |
+| `services/rag-mcp/` | 도구·테이블 이름 변경(`material_chunks`, `keyword_key`) |
+| `services/report-worker/` | 그래프 토론형 재작성, assessment 클라이언트 추가 |
+| `services/api/` | `api/design.md` 구조. 정적 에셋 `/assets/missions/<id>/avatars/` 서빙(D13-3) |
+| `scenarios/missions/planning/` → `scenarios/missions/debate/` | 토론형 카탈로그(`mission.yaml`·`keywords.yaml`·`personas.yaml`·`cards.yaml`·`materials/`·`prompts/`·`assets/avatars/`) |
 
 ## Docker Compose (`infra/docker-compose.yml`)
-서비스: postgres, rabbitmq, api(8000 공개, 8001 내부), business-mcp, rag-mcp, report-worker, web(3000 공개). healthcheck: api·MCP는 `/health`, web은 `/api/health` 라우트, report-worker는 30초마다 갱신하는 `/tmp/heartbeat` 파일(90초 이상 오래되면 unhealthy). 의존은 `service_healthy`. 공개 포트는 web·api 8000·rabbitmq 관리(로컬 바인딩)뿐.
 
-## 환경변수
-`OPENAI_API_KEY, OPENAI_MODEL=gpt-4o-mini, DATABASE_URL, RABBITMQ_URL, JWT_SECRET, INTERNAL_TOKEN, API_INTERNAL_URL=http://api:8001, BUSINESS_MCP_URL, RAG_MCP_URL, EMBEDDING_MODEL, SCENARIOS_DIR, ENABLE_TEST_API, LANGCHAIN_*, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_WS_URL`
+서비스: postgres, rabbitmq, api(8000 공개, 8001 내부), debate-mcp(9101), rag-mcp(9102), assessment-mcp(9103), report-worker, web(3000 공개).
+
+- healthcheck: api·MCP 3개는 `/health`, web은 `/api/health`, report-worker는 30초마다 갱신하는 `/tmp/heartbeat`(90초 이상 오래되면 unhealthy).
+- 의존(`service_healthy`): api ← postgres·rabbitmq·debate-mcp·rag-mcp·assessment-mcp. report-worker ← postgres·rabbitmq·api·assessment-mcp. rag-mcp ← postgres. web ← api.
+- 공개 포트는 web 3000·api 8000·rabbitmq 관리(로컬 바인딩)뿐. MCP 3개는 `expose`만.
+- `../scenarios`를 api·rag-mcp에 읽기 전용 마운트(카탈로그·자료·아바타 에셋).
+- `docker-compose.dev.yml`(로컬 개발): postgres·rabbitmq·rag-mcp만 docker, 나머지는 로컬 hot reload. debate-mcp·assessment-mcp는 가벼우니 로컬 실행.
+
+## 환경변수 (`infra/.env.example`)
+
+MCP 접속 URL(`DEBATE_MCP_URL`·`RAG_MCP_URL`·`ASSESSMENT_MCP_URL`)의 정본은 `contracts.md` "MCP 도구"이고 아래 값이 기본값이다. report-worker는 `ASSESSMENT_MCP_URL`·`API_INTERNAL_URL`만 쓴다.
+
+`OPENAI_API_KEY, OPENAI_API_KEY_PERSONAL, GEMINI_API_KEY, OPENAI_MODEL=gpt-4o-mini, MODEL_INTENT, MODEL_TURN, MODEL_PERSONA, MODEL_ASSISTANT, MODEL_EVALUATOR, DATABASE_URL, RABBITMQ_URL, JWT_SECRET, INTERNAL_TOKEN, ASSESSMENT_MCP_TOKEN, API_INTERNAL_URL=http://api:8001, DEBATE_MCP_URL=http://debate-mcp:9101/mcp, RAG_MCP_URL=http://rag-mcp:9102/mcp, ASSESSMENT_MCP_URL=http://assessment-mcp:9103/mcp, EMBEDDING_MODEL, SCENARIOS_DIR, ENABLE_TEST_API, AGENT_RUNNER, HF_HOME, LANGCHAIN_*, WEB_ORIGIN, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_WS_URL`
+
+폐기: `BUSINESS_MCP_URL`, `MODEL_COLLEAGUE`, `MODEL_MANAGER`, `MODEL_OBSERVE`, `MODEL_REPORT`. be-foundation이 `.env.example`과 역할 표(`roles.py`)를 이 이름으로 교체하고 G-F에서 동결한다. `ASSESSMENT_MCP_TOKEN`은 api(결정적 노드 모듈)·report-worker·assessment-mcp에만 쓴다.
 
 ## 완료 기준
-- 픽스처로 draft 생성 후 그래프가 멈춤 → approve 메시지로 같은 thread 재개 → final 저장(draft와 동일 해시), 중복 approve는 멱등(reviewed면 상태 확인 후 ack), final 저장 후 ack 전 재전달은 200 기존 값
-- LLM 사용량을 `reports.usage`에 기록
-- 금지어·타 세션 근거 id 제거 테스트
-- `rubric.evaluate` 단위 테스트: 카드 7장 각각 픽스처 observations → 카드 항목 값·요소 합계(2+2 합산, 기록 없음 사유 코드 처리, 창 밖 related_card 메시지 포함, basis 표시, only_if 지표 3개, 적응성 반영 항목은 document_changed_after와 target_applied 둘 다 참일 때만, 종료 시 확정된 promise_kept 반영, document_missing 사유)
-- 리포트 형태: summary 요약표, evidence마다 record_ref, 점수 무관 근거는 flag(aux_fact∣out_of_window), history·reviewer 소계 없음, ai_usage는 시간순 사실만(라벨·비율 없음)
-- 산출물 섹션: 최종본 섹션 출처·주담당 편집 여부와 주고받은 문서 목록·접속 끊김 구간이 픽스처와 일치. 정직 소섹션에 honesty_facts(empty_sections·tasks_not_done·changed_after_adaptability null 포함)가 그대로 표시됨
-- api를 내린 상태에서 발행 → 3회 재시도 후 DLQ, 복구 후 report_failed 반영
-- `docker compose up`으로 전부 healthy
+
+- `docker compose up`으로 8개 서비스 전부 healthy, 공개 포트가 web·api 8000·rabbitmq 관리(로컬)뿐.
+- 픽스처 세션(지원자 메시지·칸 확정·기획안·관찰)으로: evaluate가 요소마다 LLM 호출 1회(5회, 다른 요소 결과가 프롬프트에 없음), temperature·`MODEL_EVALUATOR` 설정 확인, `save_evaluation` 1회에 척도 버전·`prompt_versions` 맵·모델 포함, 같은 작업 재전달에 LLM 재호출 없음(같은 `(session_id, run_id)`의 차원과 `evaluation_runs.elements` 재사용), save 직후 강제 종료 뒤 재실행에서 요소 요약 복구.
+- 워커 검증 단위 테스트(`rubric.md` 7.3): 근거 없는 수준, 수준 4·5에 근거 1개, 맥락 참조만 있는 근거, 다른 세션 메시지 참조, `level`·`no_record_reason` 동시 존재, 차원 누락·중복, 금지어 → 각각 실패하고 요소 호출 1회 재요청. 재요청 뒤에도 실패한 차원만 `evaluate_failed`(다른 차원은 재요청 결과). 확신도 상한 위반은 실패가 아니라 clamp된 값으로 저장. LLM 타임아웃 주입은 저장 0건·큐 재시도. 요소 level이 평균 반올림(.5 올림)과 같고 전부 기록 없음이면 null.
+- 리포트 형태: `elements[]` 5개, `dimensions[]` 19개(`rubric.md` 3장 id), 수준 있는 차원마다 근거 ≥ 1(4·5는 ≥ 2), evidence가 모두 같은 세션 행, 메시지 근거마다 `record_ref`와 앞 5·뒤 3 맥락, contribution_check가 `get_contributions`와 일치, facts 키가 `rubric.md` 6장과 같음, ai_usage 시간순 사실만, 총점·합계 필드 없음, 텍스트 필드 금지어 없음.
+- draft의 `cards[].scene`이 카드 `report_template`과 같고 draft 단계 LLM 호출이 0회.
+- 새 `eval_round` 발행은 이전 회차 thread가 interrupt에 멈춰 있어도 collect부터 실행하고 이전 draft를 저장하지 않음, 같은 `eval_round` 재전달만 체크포인트에서 재개.
+- draft 후 그래프가 멈춤 → 담당자 조정이 있는 상태로 approve → 같은 thread 재개 → final content 해시가 draft와 같음(조정은 조회 응답에만 병합), 중복 approve 멱등, final 저장 후 ack 전 재전달은 200 기존 값.
+- api를 내린 상태에서 발행 → 3회 재시도 후 DLQ, 복구 후 `report_failed` 반영. regenerate가 `evaluate_failed` 없는 저장 평가를 같은 `eval_round`로 재사용(LLM 재호출 없음)하고, 섞여 있으면 `eval_round`+1의 새 run_id로 다시 평가.
+- `reports.usage`에 LLM 사용량 기록.

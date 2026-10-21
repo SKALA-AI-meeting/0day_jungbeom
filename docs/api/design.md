@@ -1,93 +1,200 @@
 # api 설계 (FastAPI + LangGraph 모듈)
 
-## 구조와 소유
+2026-10-21 토론형 전환(`docs/handoff/briefs/brief-debate-pivot.md`)과 같은 브리프의 "리뷰 반영 결정"(R1~R7) 기준이다. R 결정이 앞선 결정과 다르면 R이 우선한다. 경로·필드·오류 코드는 `docs/common/contracts.md`, 테이블은 `data-model.md`, 단계·칸·카드 규칙은 `scenario-model.md`, 차원 id·수준 앵커·기록 없음 사유·사실 지표는 `rubric.md`(BARS)가 정본이다. 칸 결과는 `resolution: consensus | timeout`, 채운 사람은 자리 id `filled_by: candidate | p1 | p2 | p3`으로 쓴다(시간 초과도 공지한 자리 id, `system` 값은 없다). 트랙 이름과 파일 소유권은 `docs/plan.md`.
+
+## 구조
 
 ```
 services/api/app/
-  main.py              FastAPI 앱 2개: 공개 /admin,/s,/sessions,/ws · 내부 /internal                     [foundation]
-  run.py               uvicorn Server 두 개(8000, 8001)를 한 asyncio 루프에서 실행. hub·Lock·스케줄러 공유   [foundation]
-  config.py, db.py     env, SQLAlchemy async                                                   [foundation]
-  models/              테이블 모델                                                              [foundation]
-  auth.py              JWT, 역할 의존성, bcrypt, 초대 토큰 해시                                  [foundation]
-  services/session.py  SessionService: 상태 전이의 유일한 소유자                                 [foundation]
-  services/scenario.py 미션 카탈로그(`scenarios/missions/<id>/`) 로드(버전 해시), 요소→카드 조립, 이벤트·공개 예약 펼치기  [foundation]
-  hub.py               세션별 WS 연결, broadcast                                                [foundation]
-  queue.py             RabbitMQ publish(persistent), 재발행 재탐색                               [foundation]
-  masking.py           전화번호·이메일 마스킹                                                    [foundation]
-  agent/runner.py      AgentRunner Protocol + FakeAgentRunner                                   [foundation]
-  routers/admin.py     /admin/*                                                                 [api-admin]
-  routers/internal.py  /internal/*                                                              [api-admin]
-  routers/candidate.py /s/*, /sessions/*                                                        [api-candidate]
-  routers/ws.py        /ws/sessions/{id}                                                        [api-candidate]
-  scheduler.py         5초 루프                                                                 [api-candidate]
-  agent/               세션·어시스턴트 그래프, observe, prompts                                   [agent-session, agent-assistant, prompts]
-  Dockerfile, pyproject.toml, /health                                                           [foundation]
+  main.py, run.py        FastAPI 앱 2개(공개 8000: /admin,/s,/sessions,/ws,/assets · 내부 8001: /internal). 한 asyncio 루프에서 hub·메일박스·스케줄러 공유
+  config.py, db.py       env, SQLAlchemy async
+  models/                테이블 모델(data-model.md)
+  auth.py                JWT, 역할 의존성, bcrypt, 초대 토큰 해시
+  hub.py                 세션별 WS 연결, 세션별 단일 송신 큐(seq 부여), typing 상태(만료 6초)
+  mailbox.py             세션별 메일박스: asyncio Task 1개가 자극 큐를 직렬 소비(R5-1)
+  ports.py               SessionPorts: api/agent 경계(typing 전송·generation 조회·자극 enqueue, R6-d)
+  queue.py               RabbitMQ publish(persistent, publisher confirm)
+  masking.py             전화번호·이메일 마스킹
+  scheduler.py           5초 루프
+  services/
+    session.py           SessionService: 상태·단계 전이의 유일한 소유자
+    scenario.py          미션 카탈로그 로드(catalog_version), 고정 자리 3·카드 6장 조립, positions.scenario 복사, 자료 원문 시드
+    consensus.py         합의 판정·시간 초과 선택 함수(아래). api fill 검사와 DebateState가 같은 함수
+    timeout.py           단계 마감 결정적 채우기(R5-2, 그래프 없음)
+    debate.py            메시지 저장·generation 증가, 의도 분류 반영(안·입장), DebateState 계산, 칸 확정·fill
+    proposal.py          기획안 저장·proposal 시작 채우기·제출
+    facts.py             사실 지표 계산(rubric.md 6장), record 타임라인
+    budget.py            세션 LLM 비용 누적(`debate_cost_usd`·`cost_usd`)·하드 상한, DebateState `cost_left` 계산
+    office_clock.py      t_min ↔ 오피스 시각(유지)
+    runs.py              agent_runs 기록, run_agent
+  agent/                 debate/ · assistant/ · intent/ · guard/ · llm/ · mcp_client/ · runner.py (docs/agent/design.md)
+  routers/               admin.py · candidate.py · ws.py · internal.py
 ```
+
+삭제: `services/board.py`·`documents.py`·`events.py`(시각 예약 카드)·`releases.py`(자료 지연)·`reuse.py`(재사용 추정)·`views.py`(doc_views), `locks.py`(세션 Lock, R5-1에서 메일박스로 대체), `agent/session/`·`agent/observe/`(실시간 관찰 분류). `states.py`·`context.py`·`messages.py`는 토론형으로 고쳐 `debate.py`에 합친다. `ports.py`와 `services/api/pyproject.toml` 의존성(G-F 동결 버전은 `docs/plan.md` "agent-spike 결과"), G-F 교차 인터페이스 stub(`app/agent/intent` stub 등)은 be-foundation이 먼저 넣고 G-F 뒤 agent 트랙에 인계한다(R6-d).
 
 ## 인증
-`docs/common/contracts.md`의 인증 생명주기 표가 정본. 의존성 `require_admin`, `require_candidate(session_id 일치)`, `require_internal`. 내부 앱은 8001 포트에 따로 띄우고 compose에서 공개하지 않는다.
+
+`contracts.md` 인증 생명주기 표가 정본. 의존성 `require_admin`(company_id 필터), `require_candidate(session_id 일치)`, `require_internal`(X-Internal-Token). 내부 앱은 8001에 따로 띄우고 compose에서 공개하지 않는다. assessment-mcp는 자기 토큰(`X-Assessment-Token`)을 따로 검사하고, api 내부 API는 다른 MCP와 같이 X-Internal-Token으로 부른다.
+
+- 입장 `GET /s/{token}` 응답에 `session_id`와 초대 이름(표시 이름 기본값)을 함께 낸다. `POST /s/{token}/consent`·`POST /s/{token}/resume` 응답에도 `session_id`를 낸다(R5-19). 새 브라우저에서 완료 링크로 들어와도 `session_id`로 `/sessions/{id}/debrief`를 부를 수 있다.
+- 시작 전(`invited`, 동의 후) `GET /sessions/{id}/state`를 허용한다. 대기 화면의 팀 소개용으로 참여자 이름·아바타(`participants`)와 세션 길이·단계 예산만 채우고 메시지·칸·기획안은 비어 있다(R5-19).
+
+## 채용 건 조립 (`services/scenario.py`)
+
+`POST /admin/positions {name, session_minutes?, mission_id?}` 때 한 번 계산해 `positions.scenario`에 복사·고정한다(`scenario-model.md` 6장). **요소 선택은 MVP에 없다**(R2): 모든 채용 건이 5요소·카드 6장·차원 19개를 쓴다.
+
+1. 미션 폴더 해시 → `catalog_version`(`scenarios/version.py`, rag-mcp 색인과 같은 함수).
+2. 자리 3개는 **고정**(R2): `p1` 고집형 강한결, `p2` 소극형 윤하람, `p3` 비판형 서지안. `seats: [{seat, persona_type, name, avatar}]`로 저장(D13-3, `avatar`는 카탈로그 `personas.yaml`의 `avatar` 필드). 동조형·발산형과 요소 → 페르소나 결정 규칙은 MVP 이후 확장이다(`scenario-model.md`).
+3. 카드 6장(카드별 `offset_min`을 `session_minutes`에 비례 환산, 최소 20초), 키워드 후보 4개와 키워드별 문제·해결책 고정 안(해결책은 "방향" 단위)·자료 목록, 자리별 프롬프트·공통 규칙·금지 문구 패턴·고정 문장(칸 채우기·시간 초과·안전 문구), 단계 예산(10·18·18·14 비율)·마감 임박·침묵 초대 설정, 척도(차원 19개·수준 앵커·`rubric_version`)와 평가 프롬프트를 복사.
+4. 자료 원문 시드(R5-18): 카탈로그 `materials/<keyword>/*.md` 원문을 `catalog_version`별로 DB에 넣는다(이미 그 버전이 있으면 건너뜀). 목록·검색·본문 조회가 모두 같은 `catalog_version`을 쓴다. 카탈로그 파일을 바꿔도 기존 채용 건은 자기 버전 원문을 본다.
+
+응답과 지원자 쪽 API는 자리 id·`display_name`·`avatar_url`만 내보내고 `persona_type`은 관리자 리포트·디브리핑·내부 API에서만 낸다.
+
+## 이름과 프로필 이미지 (D13-3)
+
+- 지원자 표시 이름: 동의 화면에서 입력(기본값 초대 별칭, 1~20자, 공백 정리·마스킹). `POST /s/{token}/consent {display_name?}`에 받아 `sessions.display_name`에 저장, 비우면 별칭. 시작 뒤에는 바꾸지 않는다. `/state.participants`의 candidate 이름, 페르소나 컨텍스트의 호칭("OO님"), 디브리핑이 이 값을 쓴다. 관리자 리포트·목록은 별칭을 기본으로 쓰고 표시 이름이 다르면 함께 보인다.
+- AI 동료 프로필: 카탈로그 정적 에셋 `scenarios/missions/<id>/assets/avatars/`를 api 공개 앱이 `/assets/missions/<mission_id>/avatars/<file>`로 읽기 전용 서빙한다(StaticFiles, 캐시 헤더). 자리별 `avatar_url`은 조립 때 고정한 `avatar` 경로로 만든다. 파일 이름은 중립(`avatar-01.png` 등)이어야 하고 유형 이름을 쓰지 않는다(조립 때 검사, 유형 이름이 들어 있으면 조립 실패).
+- 지금 이미지는 임시이며 교체는 에셋 파일과 `avatar` 경로만 바꾼다. 진행 중 채용 건은 조립 때 고정한 경로를 계속 쓰므로, 교체 시 파일을 덮어쓰지 않고 새 파일 이름으로 추가한다.
+- 계약 필드(정본 `contracts.md` 공통·`data-model.md`): `/state.participants[]`·`GET /internal/sessions/{id}`·`get_debate_state.seats`·Report·debrief `seats[]`에 `display_name`·`avatar_url`(지원자는 `display_name`만), consent 요청 `display_name`, `sessions.display_name` 컬럼, `positions.scenario.seats[].avatar`.
+
+## 세션 메일박스와 generation (R5-1)
+
+세션 Lock·`lock_held`·`handled` 집합은 없다. 세션마다 **메일박스** 하나(asyncio Task 1개 + 자극 큐)가 그래프 자극을 들어온 순서대로 하나씩 처리한다.
+
+- 큐 **밖**에서는 지원자 메시지 저장, 같은 트랜잭션의 `sessions.generation` +1, `message` 자극 enqueue만 한다. `message` 자극의 generation은 이 저장이 올린 값이다(enqueue 때 다시 읽지 않음). 그 뒤 더 새 메시지가 저장되면 이 자극은 턴·발언만 skipped가 된다.
+- 메일박스는 `message` 자극마다 들어온 순서대로 **의도 분류와 안·지지 반영을 반드시 수행한다**. 분류와 반영은 저장된 `messages.phase`를 기준으로 한다. 자극이 낡았을 때(generation이 현재 값보다 작거나 메시지 단계가 현재 단계와 다름) 건너뛰는 것은 턴 선택·페르소나 발언 생성뿐이다(`agent_runs.status = skipped`). 그래서 연속 메시지에서도 앞 메시지의 안·입장·최초 제안 사실이 남는다.
+- 그래프는 화자마다 게시 직전에 SessionPorts로 generation을 다시 읽고, 실행 시작 때와 다르면 남은 화자를 버린다(새 메시지 자극이 다시 정한다).
+- `advance_phase`는 `phase_started` 자극을 큐에 넣기만 한다(직접 실행하지 않음).
+- 멱등은 `agent_runs.status`와 DB 멱등 키(메시지 (run_id, seq), 안, 입장, 칸 (session, phase), 관찰 (session, card_id))로만 한다. 이미 `finished`인 run_id는 다시 실행하지 않는다.
+- 메일박스는 메모리이므로 api는 단일 프로세스로 운영한다. 재시작하면 스케줄러가 미처리 run과 마감을 다시 집는다.
 
 ## SessionService
-`create_for_invite`, `consent`, `start`(이벤트·공개 예약 펼치기, 지원자 파트 문서 5개·최종본·section_owners 5행(owner null) 생성. 할 일은 만들지 않음), `confirm_division`(아래 문서와 보드), `submit(reason, message?)`(아래 제출 처리. 끝에서 바로 `complete`를 부름), `complete(reason)`(AgentRunner end(고정 run_id, 세션 Lock을 잡으므로 진행 중 run이 끝난 뒤 실행. 열린 창 닫기와 collab_help promise_kept 확정 포함) → 재사용 추정 계산 → `completed_at` 저장·completed 커밋 → 큐 발행(confirm 후 enqueued_at) → session.ended), `mark_report_ready`, `approve`(approving 커밋 → report.approve 발행 → approve_enqueued_at 기록), `mark_reviewed`, `cancel`(invited·in_progress에서 담당자가 취소. 시작 후 취소는 중도 포기로 기록하고 session.ended reason=cancelled), `fail(reason)`, `regenerate_report`(failed_stage=report인 세션을 completed로 되돌리고 report.generate 재발행). 모든 전이는 현재 상태를 검사하고 멱등이다.
 
-세션 상태: `invited → in_progress → completed → report_ready → approving → reviewed`, 어디서든 `failed`, 시작 전·진행 중 `cancelled`. 제출과 종료 사이에 대기 단계는 없다. `sessions.completed_at`이 실제 종료 시각의 유일한 원천이며 관찰 창 끝·디브리핑 기한·리포트가 모두 이 값을 쓴다.
+메서드: `create_for_invite`, `reissue`, `consent(display_name?)`, `start`, `advance_phase`, `submit(reason)`, `cancel`, `fail(stage, reason)`, `mark_report_ready`, `approve`, `mark_reviewed`, `regenerate`. 모든 전이는 현재 상태를 검사하고 멱등이다. 상태 머신은 `contracts.md`.
 
-채용 건(`positions`)은 `mission_id`(MVP는 기획안 미션 하나)와 `elements`(1~5개, 중복 없음)를 가진다. 조립은 선택 요소의 카드만 넣고, 흐름 카드(kickoff, division, review, report_request)는 요소 미선택이어도 관찰 없이 항상 넣는다(선택 시 planning_division·honesty_report로 승격). 배치 규칙은 `docs/common/scenario-model.md`.
+- `start`: `in_progress`, `phase=keyword`, `started_at`·`ends_at`·`phase_started_at`·`phase_deadline_at` 확정, 칸 3행(`empty`)·기획안 빈 초안 행 생성, 첫 시스템 안내(시나리오 `stage_start` 문구, 키워드 후보 4개 포함) 저장, `phase_started` enqueue.
+- `advance_phase(reason)`: 칸 확정과 **같은 트랜잭션**에서 `phase`·`phase_started_at`·`phase_deadline_at`(누적 고정: `started_at + 예산 1..k의 합 × session_minutes/60`) 갱신, 시스템 안내 저장. keyword 확정이면 그 키워드 자료를 연다. proposal 진입이면 기획안 앞 3칸 중 빈 칸을 확정 칸 값으로 채운다(revision+1). 커밋 뒤 WS `slot.confirmed` → `phase.changed` → `timer` → (`materials.opened`) → `message.new`, 이어서 `phase_started` enqueue.
+- `submit(reason: submitted∣timeout)`: 한 트랜잭션에서 기획안 `sections`를 `submitted`에 복사(불변), `submitted_at`, timeout이면 `auto_submitted=true`, `status=completed`·`phase=completed`·`completed_at`·`ended_at` → 큐 `report.generate` 발행(confirm 뒤 `report_enqueued_at`) → WS `session.ended{reason}`. 그 뒤 들어오는 내부 쓰기는 409 `conflict`이므로 진행 중 run의 아직 말하지 않은 화자는 게시되지 않고, 메일박스는 남은 자극을 버리고 멈춘다. 중간 상태는 없다.
+- `cancel`·`fail(stage, reason)`: `ended_at`을 함께 기록한다(R5-21). `fail`은 `failed_stage`(session∣report)와 담당자 행동 안내. 세션 실패는 리포트를 만들지 않는다.
+- `reissue`: 아래 "초대 재발급".
+- `regenerate`: failed_stage=report인 세션을 completed로 되돌리고 재발행. 최신 `evaluation_runs.has_failed`가 false면 `sessions.eval_round`를 그대로 두어 워커가 저장 평가를 재사용하고, true면 `eval_round`를 +1 해 새 run_id(`uuid5(session_id, "evaluate:"+eval_round)`)로 다시 평가하게 한다(R5-14). 큐 본문은 `{session_id, attempt, eval_round}`. 리포트 그래프 thread_id는 `report:{session_id}:{eval_round}`라 새 회차는 이전 interrupt 체크포인트를 쓰지 않는다. 승인 때 발행하는 `report.approve` 본문에도 draft를 만든 `eval_round`를 넣는다.
+
+## 지원자 메시지 처리 (`services/debate.py`)
+
+1. WS `message.send{client_msg_id, content}` → in_progress 확인(아니면 오류 프레임 `session_ending`) → 마스킹 → 저장(`(session_id, client_msg_id)` 멱등, `phase`, `origin`: 같은 단계에서 지원자를 부른 초대 메시지(`is_invite`) 뒤 첫 지원자 발언이면 `invited`, 아니면 `spontaneous`)과 `sessions.generation` +1을 한 커밋 → `message.ack{run_id}`·`message.new` 브로드캐스트(ack은 의도 분류를 기다리지 않는다) → `agent_runs` 행 `queued` → `message` 자극 enqueue.
+2. 메일박스가 그 자극을 꺼내면 낡았는지와 상관없이 먼저 **실시간 의도 분류**(`agent/intent`, `MODEL_INTENT`, 타임아웃 10초, 재시도 없음)를 한다. 입력은 메시지·**저장된 `messages.phase`**·그 단계의 **카탈로그 안 전체**(아직 발언되지 않은 것 포함, `scenario_option_key`와 라벨)와 그 단계의 이미 생긴 안 목록·직전 5개(R5-6). 메일박스가 밀린 사이 단계가 바뀌어도 현재 단계의 카탈로그로 분류하지 않는다. 출력은 `confidence: high|low`를 포함한다(R4·R5-22). `message_intents` 저장 → 토론 상태 반영:
+   - `propose`: 대상이 카탈로그 안이면 그 `scenario_option_key`로 안 행을 찾거나 만든다(없으면 proposer=candidate, source_message_id=이 메시지). 이후 AI가 같은 안을 propose해도 같은 행을 쓰므로 최초 제안자가 보존된다. 카탈로그 밖이면 `new_option_label`로 자유 안을 만든다. 그다음 support.
+   - `agree`+target이면 support, `oppose`+target이면 oppose. `question`·`other`는 입장 없음.
+   - 실패·스키마 위반은 `intent=other`·`fallback=true`로 두고 진행.
+3. 자극이 낡지 않았으면 이어서 토론 그래프 `stimulus=message` 실행(AgentRunner). 낡았으면 그래프를 부르지 않고 `skipped`로 닫는다(뒤의 메시지 자극이 함께 처리). 그래프 결과의 게시·안·입장·칸 채우기는 debate-mcp → 내부 API로 들어온다.
+
+**typing (R5-9)**: 지원자 클라이언트는 입력 중 5초마다 WS `typing{state: start}`를 다시 보낸다. hub는 저장하지 않고 메모리에 마지막 갱신 시각만 두며 6초 동안 갱신이 없으면 만료(stop)로 본다. DebateState의 `candidate.typing`과 그래프의 끼어들기 대기가 이 값을 읽는다. 페르소나 typing은 그래프가 SessionPorts로 hub에 보낸다(`typing{participant, state}`), `/state.typing`은 hub 상태.
+
+**WS 순서 (R5-10)**: 모든 서버 프레임은 세션별 단일 송신 큐를 거치며 봉투에 세션 단위 `seq`(1씩 증가)를 붙인다. 클라이언트는 `seq`가 비면 `/state`를 다시 읽는다. 다른 경로에서 소켓에 직접 쓰지 않는다.
+
+## 합의 판정과 시간 초과 선택 (`services/consensus.py`)
+
+순수 함수 `judge(options, stances, intents, participants, default_option) -> {consensus_option_id, timeout_option_id, current_support}`. 수치·우선순위는 `scenario-model.md`가 정본이고 계약은 입력과 결과만 고정한다.
+
+- 현재 지지 = **참여자당 하나**. 다른 안을 support하면 이전 지지를 대체하고, 같은 안에 대한 후속 `oppose`는 그 지지를 철회한다(R5-7). 지원자 입장은 `confidence: high`인 `agree`·`propose`만 지지로 센다(R4).
+- consensus: 지원자 포함 4명 중 3명 이상 지지. 성립 즉시 판정한다(합의 대기 시간 없음, R4).
+- timeout: 지지자 최다 → 동률이면 지원자 지지 안 → 먼저 제안된 안 → 없으면 단계 기준안(키워드는 `default_keyword`, 문제 상황은 잠긴 기준안). 기준안 행이 없으면 채우기 전에 만든다(proposer는 채우는 자리).
+- 같은 함수가 DebateState와 내부 `POST /slots/fill` 검사에 쓰인다. 그래서 AI는 합의 전에 칸을 채우지 못한다(409 `no_consensus`).
+
+## 칸 (`confirm`·`fill`·시간 초과)
+
+칸 상태는 `empty | confirmed` 두 개다(R5-5). 지원자 초안 저장(`PUT slots`)·`filled` 상태·WS `slot.filled`는 없다. 지원자가 칸에 입력 중인 값은 화면에만 있고 확정할 때 한 번 보낸다.
+
+- `POST /sessions/{id}/slots/{phase}/confirm{value}`: 현재 단계만. keyword는 후보 4개의 옵션 키로만 확정(422 `invalid_keyword`). problem·solution은 **확정 경로에 LLM이 없다**: 의도 분류가 만든 안 목록과 정규화 문자열 일치, 또는 카탈로그 키와 일치하면 그 `option_id`, 아니면 `option_id=null`(새 안을 만들지 않음). `filled_by=candidate`, `resolution=consensus`, 그 순간 지지 현황 스냅샷(`support`) 저장 → `advance_phase("confirmed")`. 같은 값 재요청은 200 기존 결과, 다르면 409 `slot_confirmed`.
+- 내부 `POST /internal/sessions/{id}/slots/fill{option_id, seat, content, run_id}` → `{slot, phase, message}`(debate-mcp `fill_slot`): 그래프의 합의 채우기 전용. 경로에 단계가 없고 대상 단계는 option의 phase다. `filled_by` 인자는 없고 `seat`가 공지 화자이자 `filled_by`다(`resolution=consensus`). 판정 순서: 같은 run_id로 이미 확정됐으면 기존 칸과 공지를 그대로 돌려준다. 아니면 409 `phase_not_open` → `slot_confirmed` → `no_consensus` 순서로 검사한다. 통과하면 **한 트랜잭션**에서 칸 confirmed → 공지 메시지 저장(sender=seat, `content`, (run_id, seq 5), `meta.kind=consensus_fill`) → `advance_phase("confirmed")`(generation +1). 커밋 뒤 WS는 `message.new`(공지) → `slot.confirmed` → `phase.changed` → `timer` 순서로 보낸다(이어서 시스템 안내 `message.new`). 409면 칸·공지 모두 저장하지 않는다. 시간 초과 채우기는 그래프가 하지 않는다(아래).
+- 모든 확정은 `status = empty`인 행만 바꾸는 조건부 갱신이다. 지원자 확정·합의 채우기·시간 초과가 겹치면 먼저 커밋한 쪽만 이기고 나머지는 409 `slot_confirmed`.
+
+**시간 초과 채우기 (`services/timeout.py`, R5-2)**: 그래프가 아니라 api가 결정적으로 직접 한다. 스케줄러가 마감 지난 `empty` 칸을 찾으면 `judge`의 `timeout_option_id`(필요하면 기준안 행 생성) → 시나리오 고정 문장(R7: "시간이 다 돼서 대화에서 가장 많이 모인 의견인 X로 할게요.", 이름만 치환)을 우선순위 자리 이름으로 게시(고정 자리에서는 서지안 `p3`, 우선순위 정본은 `scenario-model.md`) → 칸 확정(`resolution=timeout`, `filled_by`=게시한 자리) → `advance_phase("timeout")`. LLM 없음, 멱등 키 `(session, phase)`.
+
+## 기획안
+
+- `GET/PUT /sessions/{id}/proposal`: in_progress 언제든 저장. `revision`이 다르면 409 `conflict`. 6칸 모두 문자열.
+- `POST .../proposal/submit`: phase=proposal에서만(아니면 409 `phase_not_open`). `submit("submitted")`. 멱등.
+- 제출 이후 쓰기(메시지·칸·기획안·어시스턴트)는 409 `session_ending`.
+
+## 자료와 어시스턴트
+
+- `GET /sessions/{id}/materials`: keyword 칸 확정 전 `locked=true`·빈 목록. 확정 키워드의 자료 목록은 `positions.scenario`의 키워드별 자료.
+- `GET .../materials/{material_id}`: 열린 자료가 아니면 423 `not_released`. 본문은 채용 건 `catalog_version`으로 DB에 시드된 원문(R5-18). `material_views` 기록.
+- 내부 `GET /internal/sessions/{id}/materials`(+본문): rag-mcp가 잠금·키워드·catalog_version을 확인하고 본문을 읽는 원천.
+- `POST /sessions/{id}/assistant{prompt}`: 세션 60회 초과 429 `assistant_limit`. 요청·응답 메시지(channel=assistant)와 `assistant_calls`(도구 호출 내역 포함) 기록, 어시스턴트 그래프 실행(메일박스 밖, 토론 그래프와 독립). 어시스턴트는 tool-calling 루프다(`agent/design.md`, R5-13).
+
+## 비용 (`services/budget.py`, R5-11)
+
+LLM 래퍼가 호출마다 낸 `usage.cost_usd`를 api가 두 컬럼에 누적한다. `sessions.debate_cost_usd`는 세션 중 토론 LLM 비용(하드 상한 판단용), `sessions.cost_usd`는 리포트까지 포함한 전체 관측값이다(목표 $0.5). 토큰 수는 `agent_runs.usage`에서 관측만 하고 세션 중 응답을 끊지 않는다. `budget.py`가 DB에서 `debate_cost_usd`를 읽어 `cost_left = SESSION_COST_HARD_USD(기본 $2) − debate_cost_usd`를 DebateState에 담는다. 0 이하면 그 세션의 페르소나는 LLM을 부르지 않고 자리별 고정 안전 문구만 게시한다. 의도 분류·어시스턴트는 그대로 둔다.
 
 ## 스케줄러 (5초)
+
 ```
-events:   status=pending AND due_at<=now → 같은 due_at 행을 card order로 묶어 하나의 run_id 생성·fired 커밋 → agent_runs started → runner.run(event, event_ids, run_id) → ok면 행마다 자기 event_id의 메시지가 있는지 확인해 done / 실패 시 attempts+1(총 3회까지 같은 run_id로 재실행, 아니면 failed+세션 fail)
-runs:     agent_runs.status=started AND started_at < now-120s → 같은 run_id로 재실행
-retry:    status=fired AND fired_at < now-60s → 재실행 (재시작 복구)
-releases: release_at<=now AND released_at null → 기록 → document.released
-timeouts: in_progress AND ends_at<=now AND submitted_at null → submit("timeout")
-closing:  in_progress AND submitted_at not null AND completed_at null → complete() (제출 처리 중 중단된 세션. 종료 run_id 고정, 멱등)
-outbox:   status=completed AND report_enqueued_at null → report.generate 재발행
-          status=approving AND approve_enqueued_at null → report.approve 재발행
-purge:    completed_at(또는 failed·cancelled 시각) + 90일 지난 세션의 메시지·문서·관찰·리포트와 invites 이메일·sessions 행 삭제. 삭제 예정일 `purge_at`은 목록에 표시
+deadline:  in_progress AND phase ∈ 토론 단계 AND now ≥ phase_deadline_at AND 칸 empty
+           → timeout.fill(phase) (api 결정적, 그래프 자극 아님)
+warning:   단계 마감 L/30 전 → 시스템 안내 1건(scenario time_warning 문구, 남은 시간 표기, LLM 없음, (session, phase, "warning") 멱등)
+idle:      토론 단계에서 그 단계 `invite_delivered`가 false이고 침묵 초대 조건(scenario-model 3.1: 지원자 마지막 메시지 또는 단계 시작 후
+           일정 시간, 또는 단계 기본 시간 절반이 지났는데 지원자 의견 없음)이 참 → stimulus=idle enqueue.
+           같은 단계의 idle이 큐에 대기 중이면 넣지 않는다. 매 틱 조건을 다시 보므로 이전 idle이 초대 없이 끝났어도 다시 들어간다(R5-3)
+card_due:  토론 단계에서 세션 카드의 예정 시각(phase_started_at + offset_min, 최소 20초) 도달
+           AND 그 카드의 단계가 현재 단계 AND 담당 자리 전원이 delivered가 아님 → stimulus=card_due{card_id} (enqueue마다 새 uuid4 run_id).
+           같은 card_id의 card_due가 큐에 있거나 실행 중이면 넣지 않는다. 멱등은 `session_cards.delivered_seats`로 판단
+expiry:    in_progress AND now ≥ ends_at → submit("timeout")
+runs:      agent_runs.status=started AND started_at < now-200s(역할별 타임아웃 합 + 여유) → 같은 run_id로 재실행
+outbox:    completed AND report_enqueued_at null → report.generate 재발행 / approving AND approve_enqueued_at null → report.approve 재발행
+purge:     ended_at + 90일 지난 세션 삭제(completed·failed·cancelled 모두, data-model.md 보관 표, R5-21)
 ```
-세션별 Lock으로 메시지 자극과 직렬화. 같은 due_at 이벤트는 card order로 한 run에 처리.
 
-세션별 due_at 직렬 처리(2026-10-20 리뷰 반영): events·retry의 카드 실행은 세션마다 "미완료(fired) 또는 due된 pending 중 due_at이 가장 이른 묶음" 하나만 다룬다. 그 묶음이 done·failed·skipped가 되기 전에는 뒤 묶음을 fired로 만들지 않는다. 미완료 묶음은 이 프로세스에서 실행 중이면 기다리고, 아니면(재시작) fired_at < now-60s일 때 같은 run_id로 재실행한다. 카드의 최종 failed와 세션 fail은 한 트랜잭션이고, failed 필수 카드가 남은 in_progress 세션은 다음 tick이 fail로 수렴시킨다. runs(120초) 재실행은 메시지 실행만 대상이다. 시작 공개 문서는 `start()`가 released_at을 바로 기록하므로 releases는 지연 공개만 다룬다.
+그래프 자극은 4종(`message`·`phase_started`·`idle`·`card_due`)이고 정본은 `contracts.md` "그래프 자극"이다. `timeout`과 `room_quiet`는 없다(R5-2·R5-3). 카드 트리거는 시각 기반 `card_due` 하나뿐이다(이벤트 트리거 없음, R5-4). 침묵 초대 전달 여부는 단계별 `invite_delivered` 플래그로 추적한다(초대 메시지가 실제 게시될 때 api가 켬).
 
-## 제출 처리
-`/submit {message?}`(한서윤에게 보내기) 또는 timeout → `submit(reason, message)`. 종료 규칙은 하나다: **제출하면 같은 요청 안에서 종료한다.**
-- 세션 Lock 안에서 `submitted_at` 커밋, 최종본 version 생성. 이후 문서·최종본·보드·어시스턴트 쓰기는 409 `session_ending`, 메시지는 WS `session_ending`.
-- 한서윤 DM(`manager_dm`)에 제출 메시지 저장: sender candidate, 본문은 `message`(없으면 빈 문자열), `meta.shared_doc`에 최종본 version, `meta.classification.kind = report`(api가 붙임, 분류기 거치지 않음). timeout은 본문 없이 같은 처리.
-- 한서윤 고정 답장 "받았어요, 수고하셨어요."를 manager_dm에 저장(LLM 없음, 실패 처리 불필요).
-- `honesty_report`(또는 흐름 `report_request`) 행이 아직 pending이면 DM을 보내지 않고 `fired_at=done_at=submitted_at`으로 done 처리한다. 정직 창은 이 시각부터다.
-- 이어서 `complete("submitted"∣"timeout")`: end run(마지막 창 닫기·promise_kept 확정) → `assistant_reuse` 계산 → `completed_at` 저장·completed 커밋 → 큐 발행 → WS `session.ended`. 중간에 죽으면 스케줄러 closing 항목이 다시 부른다.
-- 재입장: `POST /s/{token}/resume`은 in_progress만 허용한다. 접속 끊김 구간은 WS 연결 해제·재연결 시각을 `connection_gaps`(session_id, disconnected_at, reconnected_at)에 기록하고 notice 채널에 시스템 줄로 남긴다(관찰 근거 아님, 리포트 사실).
+## 내부 API
 
-`estimate_reuse(response: str, revisions: list[Revision]) -> (applied: bool, part_no, revision)` (순수 함수, `app/services/reuse.py`). 결과는 "어시스턴트 응답이 어느 파트에 반영됐는가"라는 사실 표시에만 쓰고, 등급·비율은 리포트에 내지 않는다:
-- 정규화: 공백·구두점 제거, 소문자. 응답 정규화 길이가 20자 미만이면 applied=false.
-- 비교 대상: 그 호출 **이후** 지원자가 저장한 모든 지원자 문서(파트 문서·최종본)의 모든 `document_revisions`(스냅샷 본문).
-- ratio = (응답과 revision의 공통 부분 문자열 중 길이 20자 이상인 것들의 합) / 응답 정규화 길이. `difflib.SequenceMatcher.get_matching_blocks` 사용. 파트·revision 중 최대 ratio가 0.3 이상이면 applied=true이고 그 (part_no, revision)을 돌려준다.
-- 저장: `assistant_reuse`에는 호출×파트별 `applied`만 저장한다(ratio·revision 컬럼 없음). 내부 `GET /assistant_reuse`는 `[{call_id, doc_id, part_no}]`로 반영된 파트만 돌려준다.
+`contracts.md` 내부 REST 표 그대로. 구현 메모:
+- `POST /messages`: (run_id, seq) 멱등. `is_invite=true`면 그 단계 `invite_delivered=true`(두 번째는 409). `card_ids`(배열)가 있으면 배열의 카드마다 `session_cards.delivered_seats`에 sender 자리를 더한다(R5-4, 같은 자리 중복 없음). 한 발언이 두 카드의 첫 발언을 겸하면 두 카드 id를 함께 보낸다. sender p1~p3·system만.
+- `POST /options`·`/stances`: 현재 단계만. AI의 안·입장은 게시한 자기 메시지(`source_message_id`)에 묶인다. 시나리오 안은 `(session_id, phase, scenario_option_key)`로 지원자가 먼저 만든 행을 그대로 돌려준다.
+- `POST /observations`: 카드 발동 기록. 첫 카드 발언이 게시된 뒤에만 들어온다(`trigger_message_id` = 그 메시지). 공동 전달 메시지면 카드마다 1건씩 남는다. (session_id, card_id) 멱등.
+- `GET /contributions`: 안 행의 proposer가 최초 제안자(안은 처음 말한 순간 한 번만 만든다).
+- `GET /proposal`: in_progress면 현재 초안(debate-mcp `get_draft`), completed 이후면 제출본(`submitted`, `submitted_at`·`auto_submitted` 포함). report-worker가 직접 부른다.
+- 평가 입력 묶음 전용 엔드포인트는 없다. assessment-mcp `get_session_record`가 기존 내부 GET(`/sessions/{id}`, `/messages` 페이지 반복, `/slots`, `/proposal`, `/observations`, `/facts`, `/contributions`)을 모아 SessionRecord를 만든다(`contracts.md`). completed 전 호출은 assessment-mcp가 `GET /sessions/{id}`의 status를 보고 `conflict`로 거절한다.
+- `GET /transcript_span`: 근거 메시지 앞뒤 맥락(기본 앞 5·뒤 3). 리포트 표시용.
+- `POST /internal/sessions/{id}/evaluations`(`save_evaluation`): completed 이후만. `(session_id, run_id)`가 이미 있으면 저장하지 않고 기존 값(`existing=true`). **api는 형식과 세션 소속만 검증한다**(R5-14): 차원 19개 밖 `dimension_id`, 차원 중복, `level`·`no_record_reason` 동시 존재, 사유 코드 밖 값, 다른 세션 행을 가리키는 `evidence_refs`는 422 `invalid_input`. 근거 수·확신도 상한 같은 판단 규칙은 워커가 저장 전에 처리한다(상한 위반은 거부가 아니라 워커가 깎음). 한 트랜잭션에서 차원마다 `evaluations` 행, 실행 단위로 `evaluation_runs` 한 행(session_id, run_id, rubric_version, `prompt_versions` jsonb(평가 프롬프트 파일별 개별 해시 맵, 형식은 `contracts.md` EvaluationSave), model, `elements` jsonb, created_at)을 저장한다. 요소 요약은 이 행에서 다시 읽을 수 있다.
+- `GET /evaluations`: 저장된 차원 행과 `evaluation_runs`의 `elements`를 함께 돌려준다(워커 재실행 시 요소 요약 복구).
+- `POST /report/final`: draft content를 그대로 받는다(해시 동일, R5-15). 담당자 조정은 저장 content에 섞지 않고 조회 때 병합한다.
+- `GET /facts`: `services/facts.py`가 `rubric.md` 6장 지표를 규칙으로 계산.
+- `GET /rubric`: `positions.scenario`의 척도 복사본(5요소 차원 19개·앵커·사유 코드·카드 창, `rubric_version`).
 
-## 문서와 보드
-문서 주고받기 모델(`docs/frontend/design-direction.md`). 문서마다 주인이 하나라 충돌이 없다.
+## 관리자
 
-- `documents`(session_id, owner ∈ candidate∣colleague, part_no 또는 final, revision, content). 세션 시작 시 지원자 파트 문서 5개와 최종본(섹션 5개 골격, 킥오프 템플릿)을 만들고(분업과 무관, 안 쓰는 파트는 빈 채로 남음), 동료 문서는 첫 send_document에서 만든다.
-- 저장: `PUT /sessions/{id}/my-documents/{part_no∣final}`은 내 문서만. revision+1 하고 `document_revisions`(doc_id, revision, by, content, length, diff_ratio, created_at)에 자동 저장마다 append한다. 최종본 섹션 편집·가져오기도 revisions에 남긴다(관찰·재사용 추정이 과거 본문을 복원하는 유일한 원천). 내부 `GET /internal/sessions/{id}/document_revisions`로 읽는다.
-- 보내기: `POST /sessions/{id}/my-documents/{part_no}/share {channel}`은 `document_versions`에 현재 revision을 가리키는 vN(version+1)을 고정하고 `document_shares`(문서·버전·채널·시각) 행과 채널의 문서 카드 메시지(`meta.shared_doc {doc_id, version}`)를 한 트랜잭션으로 만든다. 동료 쪽은 내부 `POST /internal/sessions/{id}/docs/send {doc_id∣part_no, content, channel, event_id, seq, run_id}`로 문서 revision+1·버전 고정·문서 카드 메시지 1건(event_id·seq 포함)을 같은 트랜잭션에서 만든다. 멱등은 문서 (doc_id, run_id)·메시지 (run_id, seq)이고 seq는 파트별 고정(파트 번호×10)이라 같은 run에서 여러 파트를 보내도 겹치지 않는다. 같은 키 재요청은 기존 version과 message_id를 돌려준다.
-- 열기: `POST /sessions/{id}/documents/{doc_id}/open {version}`은 동료가 보낸 버전만 돌려주고 `document_opens`(문서·버전·시각)를 기록한다. 공유되지 않은 버전은 404. 내부 `GET /internal/sessions/{id}/docs/shared`가 동료·팀장 도구 `get_shared_documents`의 원천이고(지원자 문서는 보낸 버전만), `GET /internal/sessions/{id}/docs`가 워커·observe용 전체다.
-- 최종본: `PUT /sessions/{id}/my-documents/final {sections}`(직접 편집, 바뀐 섹션만 edited=true)와 `PUT /sessions/{id}/final/sections/{part_no}/import {source_doc_id, version}`(그 버전 내용으로 섹션을 **덮어쓰고** source_doc_id·source_version 기록, edited=false. 뒤에 붙이기는 없음). 제출은 최종본을 한서윤에게 보내는 것이고 섹션 출처 스냅샷이 리포트 산출물이 된다.
-- 보드: `tasks`(id, section_part_no 필수 1~5, title, assignee ∈ candidate∣colleague∣both∣null, status, order?, due_min?)와 `task_events`. 세션 시작 시 0행이다. 지원자 `POST /sessions/{id}/tasks`로 만들고(섹션 연결 필수) `PUT /sessions/{id}/tasks/{task_id}`로 바꾸며 바뀐 필드마다 task_event를 남긴다. 섹션 담당은 `PUT /sessions/{id}/sections/{part_no}/owner`(draft)로 따로 정한다. depends_on은 미션 `parts`에서 온다(3번은 2번). 동료 `update_task`는 보드에 있는 동료 실행 담당 할 일의 status만 바꾼다(분업 확정 때 doing, 그 섹션 v2를 보낸 뒤 done). 할 일이 없으면 부르지 않는다.
-- 분업 확정(`confirm_division`, 분업안 공유가 정상 경로): `POST /sessions/{id}/division/share`가 섹션 담당 draft 5개와 `division_min`(2번 candidate, 3번 colleague 또는 both, 4·5 중 하나 colleague 단독)을 한꺼번에 검사해 불변 스냅샷을 만들고(decided_by=candidate, task_event, 팀 채널 분업안 메시지, WS `division.confirmed`, AgentRunner에 `division` 자극) 위반이면 422 `invalid_division`과 `details.violations`(어긴 섹션 전부)를 돌려준다. 채팅으로 정한 분업은 동료의 `set_division`(내부 `PUT /division`)이 같은 검사로 스냅샷을 만든다(할 일 행은 만들지 않음). 확정 뒤 변경은 draft 수정 후 재공유로 적용한다. 미확정이면 다음 카드에서 동료가 기본안을 set_division으로 확정한다(decided_by=colleague_default). 내부 `GET /internal/sessions/{id}/board`가 보드의 원천.
-- submitted_at 이후 문서·최종본·보드 쓰기는 409 `session_ending`. 회사 문서 본문 조회는 `doc_views` 기록. 공개 예정 시각은 `/state`와 `GET /sessions/{id}/documents`의 `documents[].release_at_min`으로 준다(아직 공개 전인 지연 공개만. 지연 알림 전에는 킥오프 예고 시각, 알림 뒤에는 실제 공개 시각. 선택 요소 수에 따라 달라지므로 화면이 고정 시각을 쓰지 않게). `/state`의 `session`에는 `alias`·`session_minutes`·`office_start`·`office_end`·`completed_at`이 있다.
-- 정직 사실: `GET /internal/sessions/{id}/honesty_facts`가 contracts.md의 형태(`shares, final_sections, section_owners, empty_sections, tasks_not_done, changed_after_adaptability`)를 돌려준다. empty_sections는 본문이 빈 최종본 섹션 전부(담당과 무관), tasks_not_done은 사용자가 만든 할 일 중 done이 아닌 것(점수 무관 추가 사실, 할 일이 없으면 빈 배열), changed_after_adaptability는 적응성 카드 뒤 지원자 문서 revision·share 유무(적응성 미선택이면 null). 그래프 observe는 같은 서비스 함수를 직접 부르고, report-worker는 이 GET으로 받는다.
-- 종료 설문: `POST /sessions/{id}/debrief/survey {answers: [{q, value}]}`(2문항, 납득도)를 `debrief_surveys`에 저장한다. 세션 JWT 또는 debrief_token, 한 번만(재요청은 기존 값).
+- `GET /admin/catalog`: 요소 5장(이름·뜻·"이렇게 봅니다", 읽기용 설명), 세션 길이 옵션. 선택 기능이 없으므로 `if_unselected`는 없다. 페르소나 유형·카드·차원 앵커는 내지 않는다.
+- `POST /admin/positions`: 위 조립. session_minutes 60∣15(422 `invalid_input`, R3).
+- `GET /admin/positions/{id}/candidates`: 상태 묶음·요소별 수준 칩(요소마다 최종 수준 1~5 또는 null, 담당자 조정 반영)·확신도 low 차원 수·출처(`auto`/`reviewer`)·시각·메시지 수·`purge_at`(= `ended_at` + 90일)·실패 안내. 합계·정렬 키·순위 없음.
+- `POST /admin/positions/{id}/invites`: 신규 초대와 재응시(`previous_session_id`, 새 세션). 계약대로.
+- `POST /admin/sessions/{id}/reissue`(R5-20): 같은 세션·같은 별칭을 유지하고 초대 토큰과 만료만 교체한다. 이전 토큰은 즉시 무효. 시작 전(`invited`)·만료 세션에서만, 그 외 409. 응답은 초대와 같은 `{session_id, invite_url, expires_at, notice_text}`. 재응시(새 세션)와 구분된다.
+- `GET /admin/sessions/{id}/report`: 저장된 content에 `reviewer_name`·`review`·`notes`·`connection_gaps`·`purge_at`·`proposal`과 담당자 조정(`rubric_adjustments`)을 병합. content는 불변이고 final은 draft와 같은 content다(R5-15). 응답 구조(정본 `contracts.md` Report):
+  - `elements[]`: `element`, `level`(1~5∣null, 자동), `summary`, `dimension_count`, `no_record_count`, `adjusted_level?`(조정된 차원으로 다시 계산한 평균 반올림)
+  - `dimensions[]`: `dimension_id`, `element`, `level`∣null, `no_record_reason?`, `rationale`, `confidence`(high∣medium∣low∣null), `adjusted_level?`, `adjusted_no_record_reason?`, `adjust_memo?`, `evidence[]`(참조 문자열, 종류, 원문 또는 기획안 필드 발췌, 오피스 시각, 단계, `record_ref`, 메시지면 앞 5·뒤 3 맥락, 맥락용 여부)
+  - `facts`(`rubric.md` 6장), `contribution_check`(안별 실제 최초 제안자 / 기획안에 적힌 기여자), `seats[]`, `slots`, `cards[]`, `ai_usage`, `debrief{cards, survey}`(카드 발동·관찰 창은 워커, 설문은 api가 GET 때 병합)
+  - **총점·합계 필드 없음.** 요소 수준끼리 더하거나 평균하지 않는다.
+- `POST /admin/sessions/{id}/review {reviewer_name, adjustments: [{dimension_id, level: 1~5∣null, no_record_reason?, memo}]}`(R5-16): **차원 단위** 조정. 검증 오류는 모두 **422**(`invalid_input` 계열, 코드 이름은 계약 오류 코드 체계): `reviewer_name` 비어 있음, `memo` 비어 있음, `level=null`인데 `no_record_reason` 없음, 차원 목록 밖·중복 `dimension_id`, level 범위 밖. `rubric_adjustments`에 `(session_id, dimension_id, level, no_record_reason, memo, adjusted_by, adjusted_at)` 저장, 요소 `adjusted_level`은 조정 반영 차원 평균 반올림으로 다시 계산(자동 서술은 그대로). 조정 없이 승인만도 가능. 이미 approving·reviewed면 같은 본문 200, 다르면 409 `already_reviewed`(422보다 우선). 검토 완료 뒤 값 재조정 금지(메모 추가만). approving 커밋 → `report.approve{session_id, eval_round}` 발행(본문 정본 `contracts.md` 큐 메시지).
+- `GET /admin/sessions/{id}/record`: `message`·`slot`·`phase`·`assistant_call`·`material_view`·`proposal_submit`·`connection_gap` 타임라인. `ref`가 리포트 `record_ref`와 같은 값.
+- 취소·regenerate·notes는 계약대로.
 
-## 관리자 보충
-- 재초대(`previous_session_id`)는 이전 세션이 failed(session)·만료·cancelled일 때만 받고 아니면 422 `invalid_previous_session`. 같은 채용 건의 별칭 중복은 409 `conflict`(재초대는 이전 응시의 별칭을 잇는다). 리포트 실패(failed_stage=report)는 재초대가 아니라 `POST /admin/sessions/{id}/report/regenerate`로 `regenerate_report`를 부른다.
-- `POST /admin/sessions/{id}/cancel`은 invited뿐 아니라 in_progress도 받는다(시작 후 취소 = 중도 포기).
-- 목록 `GET /admin/positions/{id}/candidates`는 score를 세 수 `{met, unmet, no_record}`(분모 만점 없음)로, 상태 묶음 `display_group ∈ 대기∣진행∣검토 필요∣완료∣문제`, `started_at`·`ends_at`·`email`·`last_activity_at`·`message_count`·`purge_at`을 함께 준다.
-- 리포트 GET은 저장된 draft/final에 `rubric` 항목별 `reviewer`·`memo`·`adjusted`와 `review {memo, reviewer_name, reviewed_at}`, `notes[]`를 병합한다. 검토 후 메모 `POST /admin/sessions/{id}/report/notes {text}`는 reviewed 뒤에도 허용하며 값은 바꾸지 않는다(`report_notes` 행 append). 리뷰 본문의 `reviewer_name`은 필수.
-- 전체 기록 `GET /admin/sessions/{id}/record`는 대화(채널별)·문서 보내기/열기·보드 변경·어시스턴트 호출·접속 끊김을 한 타임라인 `[{record_ref, t_min, kind, channel?, actor, summary, payload}]`로 돌려주고, 리포트의 evidence `record_ref`가 이 항목을 가리킨다.
-- 입력 검증 오류는 422(elements·mission_id·division·previous_session·요청 본문)다. 예외는 리뷰 본문 규칙 위반으로 contracts.md대로 400(`invalid_item`·`memo_required`·`duplicate_item`)을 쓴다. 샘플 리포트는 web의 정적 픽스처 페이지라 api 경로가 없다.
+## 디브리핑
+
+`GET /sessions/{id}/debrief`: 첫 문장은 고정 문구 "같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 반응을 봅니다"(R1). 이어서 실제 발동한 카드(`observations`)마다 시나리오 디브리핑 문장, 평가 요소 이름과 "이렇게 봅니다" 한 줄(척도 세부·차원 앵커는 공개하지 않음), 지원자 본인 발언 원문(토론 단계마다 가장 긴 지원자 메시지 1개, 최대 3개, 결정적 선택, 읽기 전용 회고, R7), 자리별 `display_name`·`avatar_url`·성향 설명(지원자는 `display_name`만), 평가 결과 비공개 안내, 이의 제기 경로(문의 창구와 절차 한 줄, R1·R7), 끊김 구간, 보관 안내, 제출 기획안, 설문 상태(2문항 + 자유 의견 한 칸, R7). 세션 실패면 중단 안내만. 기한 = `ended_at` + 7일.
 
 ## 완료 기준
-- foundation: `docker compose up`에서 api healthy, 모델·마이그레이션(document_revisions, connection_gaps, sessions.completed_at, tasks.section_part_no NOT NULL 포함), SessionService 단위 테스트(전이 전부·멱등, 제출 즉시 completed·cancelled·regenerate 포함), 시작 시 할 일 0행·section_owners 5행·지원자 문서 5개·최종본 생성, 조립 결과가 scenario-model.md 수치와 일치(요소 5개 선택 시 120분 기준 분업 10, 도움 30, 중간 점검 45, 지연 60·공개 70, 변경 75, 리뷰·반대 의견 90, 진행 확인 DM 110), FakeAgentRunner로 메시지→내부 저장→hub 브로드캐스트(단위 테스트, WS 라우터는 api-candidate)
-- api-admin: 관리자·내부 엔드포인트가 계약 예시대로, 기업 간 격리, elements 검증(1~5개, 0개·6개·중복 422), mission_id 검증(없는 미션 422), 권한 밖 변경 403, 승인 전 final 409, 재초대는 failed·expired·cancelled에만(아니면 409), regenerate는 리포트 실패 세션만, 시작 후 cancel, 목록 세 수·시각·이메일·활동, 검토 후 notes 추가에 값 불변, record 타임라인의 record_ref가 리포트 evidence와 일치, honesty_facts 필드 전부, send의 event_id·seq 멱등(같은 run에서 파트 2개 보내도 메시지 2건·재호출에 버전 불변)
-- api-candidate: 지원자 엔드포인트·WS(ack, 증분, 재연결 후 /state), 6분 테스트 세션에서 이벤트가 이벤트 시점 기준 ±10초 내 fired→done, 문서 보내기→문서 카드 메시지·버전 1 증가, 자동 저장마다 document_revisions 1행, 공유 안 된 버전 열기 404, 최종본 가져오기에 출처 기록(덮어쓰기), 할 일 0개로 분업안 공유 확정(division.confirmed·task_event·division 자극, 위반은 422와 violations 전부), section_part_no 없는 할 일 생성 422, 제출이 메시지 유무와 무관하게 바로 completed(제출 메시지 kind=report·고정 답장·completed_at 저장), 진행 확인 DM 전 제출 시 DM 없이 honesty 행 done, 진행 중 resume·/state 복원, connection_gaps 기록, 만료 시 큐 발행, 재시작 후 fired 이벤트 재실행, 미발행 세션 재발행
+
+- 기반: `docker compose up`에서 api healthy, 토론형 스키마 마이그레이션(삭제 테이블 제거, options·stances·slots(`empty|confirmed`)·message_intents(`confidence`)·proposals·observations·evaluations·`evaluation_runs`·차원 단위 rubric_adjustments 새 형태, `sessions.display_name`·`generation`·`ended_at`, 버전별 자료 원문), SessionService 단위 테스트(전이 전부·멱등, 제출 즉시 completed·자동 제출 `auto_submitted`·시작 후 취소·실패와 취소의 `ended_at`·regenerate·reissue 토큰 교체).
+- 조립: 자리 3개가 강한결·윤하람·서지안 고정, 카드 6장·차원 19개, `offset_min` 환산 최소 20초, `avatar` 파일 이름에 유형 이름이 없음, 자료 원문이 `catalog_version`별로 시드. 지원자 응답(`/state`, entry, consent, start)에 `persona_type`이 없다.
+- 이름·입장: 입장·consent·resume 응답에 `session_id`, 입장 응답에 초대 이름, 시작 전 `/state`에 참여자 이름·아바타, consent의 `display_name`이 `/state.participants`·디브리핑에 쓰이고 비우면 별칭, `/assets/...` 이미지가 200.
+- 메일박스: 가짜 시계·가짜 그래프로 자극이 직렬 처리됨, 메시지 저장 시 generation +1이고 그 자극의 generation이 저장 값, `message.ack`이 의도 분류 전에 나감, `agent_runs`가 `queued`로 저장된 뒤 enqueue, 단계 전환 뒤 꺼낸 이전 단계 메시지가 그 메시지 단계의 카탈로그로 분류·저장되고 턴·발언만 skipped, 게시 직전 generation이 바뀌면 남은 화자 버림, `phase_started`는 enqueue만, 같은 run_id의 finished run은 재실행 안 됨, 낡은 message 자극도 의도 분류·안·지지 반영은 되고 그래프만 skipped, 200초 넘은 started run 재실행.
+- 단계·칸: 지원자 확정 → `slot.confirmed`·`phase.changed`·`timer` 순서와 keyword 확정 시 `materials.opened`, 마감 누적 이월, keyword 후보 밖 422, problem·solution 확정의 문자열·카탈로그 키 연결과 불일치 시 `option_id=null`(LLM 호출 0), AI fill의 합의 전 409 `no_consensus`(칸·공지 0건), AI fill 성공 시 칸 확정과 공지(seq 5, `consensus_fill`)가 같은 트랜잭션이고 WS가 `message.new` → `slot.confirmed` → `phase.changed` → `timer`, 같은 run_id 재호출은 기존 칸·공지, 409 검사 순서 `phase_not_open` → `slot_confirmed` → `no_consensus`, 동시 확정 시 하나만 성공, 마감 시 api 결정적 채우기(우선순위 자리 이름·R7 문구·LLM 0), proposal 진입 시 기획안 앞 3칸 채우기.
+- 합의 판정 단위 테스트: 3/4 즉시 성립(대기 없음), confidence low인 지원자 agree 미집계, 다른 안 support가 이전 지지를 대체, 같은 안 후속 oppose가 지지 철회, 카탈로그 안을 지원자가 먼저 말하면 같은 option_id·proposer=candidate이고 이후 AI propose도 같은 행.
+- 메시지·WS: ack·증분·재연결 후 `/state`, `origin`(초대 뒤 첫 발언만 invited), 의도 분류 → 안·입장 반영, 분류 실패 시 other, 모든 프레임에 연속 `seq`, typing 6초 만료.
+- 시간(가짜 시계 단위 테스트 + 15분 실 스택 1~2개, R3): 단계 마감 → `phase.changed` 15초 안, 마감 임박 안내 1건, 침묵 초대 조건에서 `invite_delivered=false`인 동안 idle 재enqueue(대기 중이면 중복 없음), 카드 예정 시각에 card_due, 담당 전원 delivered 전까지 새 run_id로 재enqueue(큐·실행 중이면 중복 없음), `ends_at` 자동 제출과 큐 발행.
+- 자료·어시스턴트: 키워드 확정 전 목록 잠김·본문 423, 확정 뒤 그 키워드 자료만(채용 건 버전 원문), 열람 기록, 어시스턴트 60회 초과 429.
+- 비용: `debate_cost_usd` 하드 상한 $2 초과 주입 시 페르소나가 고정 안전 문구만 게시, 세션 진행은 계속. 리포트 비용은 `cost_usd`에만 더해지고 `cost_left`에 영향 없음.
+- 관리자·내부: 엔드포인트가 계약 예시대로, 기업 간 격리, review `reviewer_name`·차원 단위 조정·메모 필수·검증 오류 422·409 우선, 리포트 응답에 총점·합계 필드 없음, final content 해시 = draft, record의 `ref`와 리포트 `record_ref` 일치, evaluations `(session_id, run_id)` 멱등·형식 422·`evaluation_runs` 1행, observations 멱등, `card_ids` 두 개 메시지가 두 카드의 `delivered_seats`를 함께 갱신, reissue 후 옛 토큰 무효, 재시작 후 미처리 마감·제출·미발행 재처리, purge가 `ended_at` 기준으로 failed·cancelled도 지움.

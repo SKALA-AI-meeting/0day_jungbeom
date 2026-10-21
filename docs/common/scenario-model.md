@@ -1,117 +1,280 @@
 # 시나리오 모델
 
-## 미션 카탈로그 (`scenarios/missions/<id>/`)
+토론형 미션의 구조·시간·페르소나·카드를 정한다. 정본 결정은 `docs/handoff/briefs/brief-debate-pivot.md`(D1~D21, 리뷰 반영 R1~R7. 충돌하면 R이 우선)이고, 이 문서는 그 결정을 데이터 구조와 규칙으로 구체화한다. 평가 척도(BARS 차원·수준 앵커)·기록 없음 사유·사실 지표는 `rubric.md`.
 
-카탈로그는 미션 단위다. 채용 건은 `mission_id` 하나를 가리키고(MVP는 `planning` 하나), 같은 채용 건·같은 미션의 지원자는 같은 시나리오를 받는다. 미션 폴더 구성:
+**표기**: **[초안]** 표시가 붙은 항목은 문서 작성자가 만든 안으로 사용자 검토 대상이다. 표시가 없는 항목은 브리프 결정 또는 결정에서 바로 따라 나오는 규칙이다.
+
+## 1. 미션 구조
+
+참여자는 지원자 + AI 동료 3명 = 4명이고 모두 동등하다(D1). 진행자와 팀장은 없고, 시스템 안내 메시지가 "지금 할 일"과 남은 시간만 알린다. 채널은 토론방 하나이고 DM은 없다(D15). 가상 설정은 "새 프로젝트 팀이 지역 생활 문제 해결 공모에 낼 기획안을 정하는 첫 회의"뿐이다.
+
+**MVP 고정 구성(R2)**: 모든 세션이 인성 요소 5개, 카드 6장, 페르소나 3명(고집형 강한결 · 소극형 윤하람 · 비판형 서지안)을 쓴다. 기업이 요소를 고르는 기능은 MVP에 없다(4.3 "MVP 이후 확장").
+
+### 1.1 카탈로그 (`scenarios/missions/<id>/`)
+
+채용 건은 `mission_id` 하나를 가리키고 MVP는 `debate` 하나다 **[초안: id 이름]**. 같은 채용 건의 지원자는 같은 시나리오를 받는다. 시나리오는 데이터이고 코드는 해석만 한다.
 
 | 파일 | 내용 |
 |---|---|
-| `mission.yaml` | 미션 이름, `company`(회사·팀장·동료 이름), `parts`(파트 번호·제목·`depends_on`), `candidate_role: primary`(호칭 "주담당"), `default_division`, `division_min`, `final_template`(최종본 섹션 골격·분량·형식, 킥오프에서 전달), `documents` 목록 |
-| `documents/*.md` | 회사 문서 본문 |
-| `cards.yaml` | `elements[]`(요소 → `cards[]`), `flow_cards[]`, `texture[]`, `rubric_rules`, `common_labels`, `timing` |
-| `persona.yaml` | 동료·팀장 values, style, must, must_not_preempt, in_window_help, identity, must_not |
-| `prompts/*.md` | 페르소나 system prompt, `observe_labels.md`(레이블 7세트, 이름은 `rubric.md` 표와 동일), 디브리핑 문장 |
+| `mission.yaml` | 미션 이름, `stages`(단계 4개와 기본 시간), `proposal_template`(최종 기획안 필드와 칸별 중립 안내), `default_keyword`, `office_clock` |
+| `keywords.yaml` | 키워드 세트. 키워드마다 `problems[]`(순서 = P1·P2·P3), `solutions[]`(방향: 데이터·참여·인프라), `materials[]`(자료 id) |
+| `materials/<keyword>/*.md` | 키워드별 참고 자료 본문. 조립 때 `catalog_version`별로 DB에 시드되어 목록·검색·본문이 같은 버전을 쓴다(R5-18) |
+| `personas.yaml` | 세션 페르소나 3명: `id`, `seat`, `name`, `avatar`(프로필 이미지 경로, `assets/avatars/` 기준), `tone`, `rules`, `must_not`, `stances`(단계·키워드별 고정 입장), `persona_description`(디브리핑용) |
+| `assets/avatars/*` | 페르소나 프로필 이미지(D13-3). 실존 인물이 아닌 일관된 스타일의 일러스트, 유형을 암시하지 않는 중립 표정·파일 이름(`avatar-01.png` 등). **지금 이미지는 임시**이고 교체는 파일과 `avatar` 경로만 바꾼다. api 공개 앱이 `/assets/missions/<mission_id>/avatars/<file>`로 서빙 |
+| `cards.yaml` | 카드 6장: `card_id`, `element`, `stage_id`, `offset_min`(단계 시작 기준 시각, 유일한 트리거), `actor`, `content`, `window`, `preempt_ban`, `debrief`, `report_template`(리포트 요소 섹션의 "관련 카드 장면"에 "설계된 장면" 표시와 함께 보이는 고정 설명 문장. 평가 판단이 아님). 흐름 이벤트 문구 |
+| `rubric.yaml` | BARS 척도: `rubric_version`, 요소별 차원(`dimension_id`·이름·정의·핵심 카드), 차원별 수준 1~5 앵커와 담당자 참고 문구, 기록 없음 사유. 내용과 id는 `rubric.md`가 정본 |
+| `prompts/*.md` | 페르소나 system prompt, 턴 매니저 prompt, 시간 초과 고정 문장, 디브리핑 문장, 평가 에이전트 프롬프트 `evaluator/common.md`(공통 지침: 판단 순서·근거 규칙·출력 형식, `rubric.md` 2장) + `evaluator/<element>.md`(요소별 특수 지침). `prompt_versions` = 공통 파일과 요소 파일 5개 각각의 해시 맵(파일별 개별 해시, 형식은 `contracts.md` EvaluationSave, R5-14) |
 
-요소 5개: `responsibility`(책임감/성실성), `planning`(계획성/꼼꼼함), `adaptability`(적응성/유연성), `collaboration`(협업/조율), `honesty`(정직/공정한 보고). 요소는 `{id, name, meaning, how_we_see(2~3줄), cards: [...]}`이고 카드 하나의 필드:
+### 1.2 단계와 칸
 
-| 필드 | 뜻 |
+| 단계 id | 이름 | 기본 시간(60분 기준) | 칸 | 하는 일 |
+|---|---|---|---|---|
+| `keyword` | 키워드 | 10분 | `keyword` | 키워드 후보 4개 중 하나를 정한다 |
+| `problem` | 문제 상황 | 18분 | `problem` | 확정 키워드와 관련된 문제 상황 하나를 정한다 |
+| `solution` | 해결책 | 18분 | `solution` | 그 문제의 해결 방향 하나를 정한다 |
+| `proposal` | 기획안 작성 | 14분 | 없음 | 지원자가 혼자 최종 기획안을 쓰고 제출한다 |
+
+- 칸 상태는 `empty | confirmed` 두 개다(R5-5). 초안 저장 상태는 없다.
+- 합의 패널은 확정된 칸의 결과만 짧게 쌓는다("키워드 · 물 · 합의", 오피스 시각 없음). 후보안과 지지 현황은 화면에 보이지 않고 토론은 채팅으로만 한다(D14). 현재 단계 칸에만 입력과 확정 버튼이 있다. 확정 흐름(혼자 확정도 같은 흐름 + 확인 창 하나), 키워드 칸의 후보 4개 분절 버튼, 단계 전환 연출은 `docs/frontend/design.md` "UX 결정"(G-U)으로 확정됐다.
+- **지원자에게 보이는 말(R7)**: 내부 용어 "칸"·"합의 패널"·"확정"은 화면에서 각각 "정할 항목"·"결정 사항"·"이걸로 정하기"로 쓴다. 이 문서와 계약은 내부 용어를 그대로 쓴다.
+- 칸을 확정하면 다음 단계로 넘어간다. 확정된 칸은 다시 열지 않는다.
+- 키워드가 확정되면 그 키워드의 자료 세트만 자료 탭에 열린다(D9). 확정 전 자료는 rag-mcp가 차단한다.
+
+### 1.3 시간 (D8 개정, R3)
+
+- 세션 길이 `L`(기본 60분, 데모·e2e 15분). 단계 비율은 10 : 18 : 18 : 14이고 압축 세션도 같은 비율이다.
+- **단계 마감 시각은 고정이다**: 키워드 `L/6`, 문제 상황 `7L/15`(=28L/60), 해결책 `23L/30`(=46L/60), 기획안 `L`. 일찍 확정하면 다음 단계가 그 시각에 시작하고 마감은 그대로라 남은 시간이 다음 단계로 넘어간다. 시간 초과면 마감 시각에 넘어간다.
+- 오피스 시각 = 09:00 + 경과 분 × 60/L ("HH:MM"). 60분 세션은 09:00~10:00, 15분 데모도 같은 09:00~10:00에 맞춘다.
+- **시간 표시(R7)**: 상단 바와 시스템 안내는 **남은 시간 중심**("이 단계 7분 남음")이고, 실제 남은 시간과 오피스 시각을 한 줄에 같이 쓰지 않는다. 오피스 시각은 메시지 타임스탬프에만 쓰고 결정 사항 결과 줄에는 단계와 결과만 둔다. AI 동료도 시간을 말할 때는 남은 시간으로 말한다.
+- 이 문서의 오프셋은 `L` 비율로 적고 0.01분 단위로 반올림한다. L=60 기준 `L/30` = 2분, `L/20` = 3분, `L/12` = 5분. **카드 `offset_min`은 환산 후 최소 20초(0.34분)**로 올린다.
+- 시간 로직은 가짜 시계(주입) 단위 테스트로 검증하고, 실 스택 e2e는 15분 세션으로 돌린다.
+
+| L | 키워드 마감 | 문제 상황 마감 | 해결책 마감 | 종료 |
+|---|---|---|---|---|
+| 60 | 10 (09:10) | 28 (09:28) | 46 (09:46) | 60 (10:00) |
+| 15 | 2.5 | 7 | 11.5 | 15 |
+
+### 1.4 칸 채우기와 확정 (D2 개정, R4·R5)
+
+| 경로 | 조건 | 기록 `resolution` | 기록 `filled_by` |
+|---|---|---|---|
+| 지원자 확정 | 지원자가 현재 칸의 값을 정하고 확정(확인 창 뒤) | `consensus` | `candidate` |
+| AI 동료 합의 채움 | 아래 "AI 동료가 칸을 채우는 조건" 충족 즉시 | `consensus` | 채운 페르소나의 자리 id(`p1`~`p3`) |
+| 시간 초과 | 단계 마감 시각에 칸이 `empty` → **api가 결정적으로 직접** 채움(그래프를 거치지 않음, R5-2) | `timeout` | 고정 문장을 게시한 우선순위 자리 id |
+
+- 칸마다 `resolution`(합의/시간 초과), `filled_by`(자리 id. 페르소나 유형 id는 쓰지 않는다. 자리 → 유형 대응은 `positions.scenario.seats`), `option_id`, 확정 시각, **확정 시점의 지지 현황 스냅샷**(안별 현재 지지자)을 기록한다. 지원자가 반대가 남은 상태에서 혼자 확정해도 `resolution`은 `consensus`이지만 스냅샷으로 구분되고, 평가 에이전트가 `flex_decision_respect` 차원을 판단할 때 `slot:<phase>` 근거로 쓴다(`rubric.md`).
+- **지원자 확정 값과 안 연결(R5-5)**: 키워드 칸은 후보 버튼(옵션 키)으로 확정한다. 문제 상황·해결책 칸의 값은 의도 분류가 만든 안 목록과 **정규화 문자열 일치** 또는 카탈로그 키 일치로만 `option_id`에 연결하고, 아니면 `option_id = null`이다. 확정 경로에 LLM은 없다.
+- **의도 분류(D16, R4·R5-6)**: 값은 `propose`(제안)·`agree`(동의)·`oppose`(반대)·`question`(질문)·`other`(기타), 대상 안 id, `confidence: high | low`. 입력에 **메시지가 저장된 단계(`messages.phase`)**의 **카탈로그 안 전체(아직 아무도 말하지 않은 안 포함)**를 넣어(처리가 밀린 사이 단계가 바뀌어도 현재 단계 카탈로그로 분류하지 않는다), 지원자가 카탈로그 안을 먼저 말하면 그 `scenario_option_key`로 안 행을 만들고 `proposer = candidate`로 둔다. 이후 AI 동료가 같은 안을 내도 같은 행을 쓴다(최초 제안자 보존). 카탈로그에 없는 안은 `cand_<n>` 행이 된다.
+- **현재 지지(R5-7)**: 참여자당 **하나**다. 다른 안을 support하면 이전 지지를 대체하고, 같은 안에 대한 후속 `oppose`는 그 지지를 철회한다. 지원자 발언 중 지지로 세는 것은 `confidence = high`인 `propose`·`agree`뿐이다. AI 동료의 입장은 시스템이 정하므로 분류하지 않는다.
+- 지원자는 후보 밖 문제·해결책을 낼 수 있다(D3).
+- **[초안]** 키워드 칸은 키워드 후보 4개 중에서만 확정할 수 있다. 후보 밖 키워드에는 문제·해결책 고정 입장과 자료 세트가 없어 공정성이 깨지기 때문이다. 채팅에서 후보 밖 키워드를 말하면 AI 동료가 "이번엔 네 개 중에서 골라야 해요"라고 받는다. 화면은 후보 버튼만 두고, api는 방어로 422 `invalid_keyword`를 낸다.
+
+**AI 동료가 칸을 채우는 조건** (결정적 검사. Harness 규칙 "합의 전에 칸을 채우지 못한다") **[초안: 우선순위]**
+
+1. 칸이 `empty`다.
+2. 한 안의 현재 지지자가 4명 중 3명 이상이고, **지원자의 현재 지지가 그 안**이다(`confidence = high`인 `propose` 또는 `agree`로 생긴 지지). 지원자 동의 없이 AI 동료가 결론을 내지 않는다.
+3. 대기 시간은 없다. 2가 성립하는 즉시 채운다(R4, 이전의 `L/60` 대기 삭제).
+4. 채우는 페르소나는 그 안의 지지자 중 우선순위 `critic > quiet > stubborn`의 첫 번째다. 문구 골격: "그럼 X로 정리할게요."
+5. AI 발언으로 지지가 바뀐 경우도 같은 실행에서 판정한다: 이번 발언의 입장을 저장한 뒤 지지를 다시 읽어 조건이 성립하면 바로 채운다.
+6. 칸 확정과 공지 문장 저장은 한 번의 확정 요청으로 함께 한다. 확정(조건부 갱신)이 성공하면 공지도 함께 남고, 거절되면 칸도 공지도 남지 않는다. 공지는 일반 발언 생성을 거치지 않는 고정 문장이다.
+
+**시간 초과 규칙** **[초안: 경고 시점과 순위 규칙]**
+
+- 마감 `L/30` 전에 시스템 안내가 남은 시간을 알린다("이 단계 2분 남았어요").
+- 마감 시각에 칸이 `empty`면 api가 결정적으로 고른다: 현재 지지자가 가장 많은 안. 동률이면 지원자가 지지한 안, 그래도 동률이면 먼저 제안된 안. 제안된 안이 하나도 없으면 단계의 기준안(키워드는 `default_keyword`, 문제 상황은 잠긴 기준안이 없으면 P1, 해결책은 S1).
+- api는 시나리오의 고정 문장으로 우선순위 `critic > quiet > stubborn`의 첫 자리 이름으로 게시하고 칸을 채운다(지지자가 아니어도 된다). 문구(R7): "시간이 다 돼서 대화에서 가장 많이 모인 의견인 X로 할게요."
+- 기획안 작성 단계가 시간 초과되면 그 시점의 초안을 자동 제출한다(`proposals.auto_submitted = true`, WS `session.ended{reason: timeout}`). 세션은 제출(자동 제출 포함)로 종료되고 디브리핑으로 간다.
+
+### 1.5 최종 기획안 (D7)
+
+지원자가 혼자 쓰고 제출한다. 합의 패널과 별개 문서다. 칸 안내는 무엇을 적는 칸인지만 중립적으로 알리고 예시·추천 문구는 두지 않는다(R7).
+
+| 필드 id | 이름 | 처음 상태 | 칸 안내 |
+|---|---|---|---|
+| `keyword` | 키워드 | 키워드 칸 결과로 채워 둠(수정 가능) **[초안]** | — |
+| `problem` | 문제 상황 | 문제 상황 칸 결과로 채워 둠(수정 가능) **[초안]** | — |
+| `solution` | 해결책 | 해결책 칸 결과로 채워 둠(수정 가능) **[초안]** | — |
+| `rationale` | 근거 | 빈칸 | — |
+| `expected_effect` | 기대효과 | 빈칸 | — |
+| `idea_credit` | 아이디어 기여 | 빈칸(정직/공정 판정 입력) | "이 기획에 반영된 의견과 그 의견을 낸 사람" |
+
+AI 동료는 이 단계에서 채팅으로만 기여한다. 물어보면 자료·토론 내용을 알려 주고, 초안 의견을 청하면 `get_draft`로 읽고 의견을 낸다. 기획안을 대신 쓰거나 `idea_credit` 내용을 언급하지 않는다.
+
+## 2. 페르소나
+
+세션에는 고정 3명이 들어간다(R2). 지원자에게는 이름과 프로필 이미지만 보이고 유형은 보이지 않는다(디브리핑에서 공개). 말투는 LLM이 자유롭게 만들되 입장(어떤 안을 미는지)은 아래 고정값을 따른다(D3). 페르소나가 계획 밖 입장(자기 계획 안에 반대하는 것 포함)을 내면 응답 전체를 1회 재생성하고, 그래도 어긋나면 계획과 맞는 고정 문구로 바꾼다(게시 문장과 입장 일치 검증, R5-8).
+
+### 2.1 세션 페르소나 3명 **[초안: 이름·말투·행동 규칙]**
+
+| 자리 | id | 유형 | 이름 | 말투 | 행동 규칙 |
+|---|---|---|---|---|---|
+| `p1` | `stubborn` | 고집형 | 강한결 | 단정형 짧은 문장. "그건 아니죠, ~가 맞아요." 같은 근거를 반복 | 자기 안을 강하게, 반복해 민다. 반대를 들으면 바로 재반박한다. 입장을 밝힌 뒤 칸 확정 전에는 지지를 바꾸지 않는다. 확정되면 "정해졌으니 따를게요"로 받는다. 인신공격·비하는 하지 않는다 |
+| `p2` | `quiet` | 소극형 | 윤하람 | 짧고 머뭇거림. "음… 저는…", "아니에요, 먼저 하세요" | 스스로 주장하지 않는다. 이름이 불리거나 전체에게 의견을 묻는 질문이 오면 자기 안을 자료 근거와 함께 차분히 말한다. 무시당하면 다시 말하지 않는다. 그 밖에는 단계당 한 줄 이하의 짧은 맞장구만 한다 |
+| `p3` | `critic` | 비판형 | 서지안 | 질문형·반론형. "근데 그게 정말 ~일까요? 근거가 있어요?" | 반대 역할. 지지가 모이는 안의 약점을 짚고 근거를 요구한다. 아래 설득 가능 규칙에 따라 지지를 옮길 수 있다. 침묵 초대 담당 |
+
+모든 페르소나 공통 금지(Harness): 점수·평가·합격 가능성·연출될 상황을 말하지 않는다. 지원자 대신 결론을 선언하지 않는다(칸 채움 조건 충족 시 제외). 지원자를 평가·판정하는 발언을 하지 않는다. 카드의 선점 금지(4.2)를 지킨다. assessment-mcp에 접근할 수 없다.
+
+### 2.2 자리 배정
+
+자리와 표시 순서는 고정이다: `p1` 강한결(고집형), `p2` 윤하람(소극형), `p3` 서지안(비판형). 채용 건 생성 시 그대로 `positions.scenario.seats`에 복사한다. 요소에 따라 페르소나를 고르는 규칙은 없다(4.3).
+
+### 2.3 단계별 고정 입장
+
+**키워드 단계** **[초안]**
+
+| 페르소나 | 처음 미는 키워드 |
 |---|---|
-| `id` | `planning_division`, `planning_checkin`, `collab_help`, `collab_disagree`, `responsibility_delay`, `adaptability_change`, `honesty_report` |
-| `name` | 카드 이름(리포트 소섹션 제목) |
-| `slot` | `fixed`(at_fraction 고정) 또는 `middle`(중간 슬롯. 순서는 `timing.middle_order`) |
-| `at_fraction` | fixed 카드의 시점 비율. `attach_to: review`면 리뷰와 같은 시점 |
-| `actor` | `colleague`, `system`, `manager` |
-| `channel` | `team`, `dm`, `manager_dm`, `notice` |
-| `brief` | 페르소나에게 주는 전달 내용 골격(문장은 LLM이 생성). system 카드와 고정 문구 카드(honesty_report)는 `text`(고정 문장, LLM 없음)를 가지며, system 카드는 `sender_label`·`recipient_label`도 가진다. 카드별 내용은 아래 "카드 내용" |
-| `sends_document` | 동료가 카드 실행 때 보내는 문서. planning_checkin은 `{parts: colleague_all, version: 1}`(동료 담당 파트 전부의 초안 v1, 같이(both) 파트는 골격 v1 포함), review는 `{parts: colleague_all, version: 2}` |
-| `effects` | 부수 효과. 예: `release_document: interview_summary, delay_fraction: 0.0833` |
-| `labels`, `label_texts`, `aux` | 관찰 레이블·리포트 문장·보조 판정 키(이름은 `rubric.md` 표가 정본) |
-| `metrics`, `aux_facts` | 규칙 지표 목록 |
-| `rubric` | 항목 `{id, text, when, only_if?, basis, evidence_types, pilot_value?}` |
-| `unselected` | 미선택 시 처리. 예: planning_division `flow: true`(흐름 카드로 남고 점수 없음), responsibility_delay `release_at_start: interview_summary`, honesty_report `flow: true` |
-| `requires_docs` | 필요한 회사 문서 id |
-| `situation`, `debrief` | 리포트 장면 설명, 디브리핑 문장 |
+| stubborn | 불 |
+| critic | 바람 |
+| quiet | 나무(지명·전체 질문을 받았을 때만 말함) |
 
-흐름 카드(`kickoff`, `division`, `review`, `report_request`)는 `flow: true`로 항상 포함된다. `division`은 계획성 선택 시 `planning_division`으로, `report_request`는 정직 선택 시 `honesty_report`로 **승격**되어 같은 시점에 요소 카드로 실행된다(흐름 행과 요소 행을 따로 두지 않고 요소 카드 하나만 예약). `collab_disagree`는 `attach_to: review`로 리뷰와 같은 시점에 별도 행으로 실행된다. `texture`(`midpoint_draft`, 동료 초안 v1 보내기)는 계획성 미선택일 때만 L/2에 예약되며 관찰 창 경계에 들어가지 않는다(계획성 선택 시 같은 장면이 `planning_checkin` 카드다). 동료 진행 공유 texture 1~2개를 더 둘 수 있다(관찰 없음).
+**문제 상황 단계** (R1·R5-4): 기준안(lead option)은 `flexibility_majority` 카드의 `card_due` 시점에 계산해 **잠근다**: 그 시점 지원자가 현재 지지하는 안이 아닌 첫 시나리오 안(P1 → P2 → P3 순). 지원자가 아직 아무 안도 지지하지 않았으면 P1이다. **카드 전에는 고집형과 비판형도 입장을 밝히지 않고** 자료 소개·질문 같은 일반 발언만 한다.
 
-### 카드 내용
-
-| 카드 | 전달 내용(brief·text) |
+| 페르소나 | 카드 뒤 입장 |
 |---|---|
-| kickoff | 팀장(team): 미션·대상·마감 11:00, 최종본 템플릿(최종본 탭에 있음을 안내, 섹션당 분량), 주담당 지정, 인터뷰 요약 공유 예고 시각 `{interview_expected_time}`(오피스 시각 "10:00". 책임감 미선택이면 "시작 시 공유됨"), "초안 수준이면 된다". 동료(team): 준비됐다는 수준의 짧은 인사 한 줄. 분업을 유도하지 않고 DM 인사는 없다 |
-| planning_division | 동료가 팀 채널에서 어떻게 나눌지 묻는다. 힌트는 파트 목록과 의존("3번은 2번 자료가 필요")뿐이고 안·순서·시점을 먼저 내지 않는다. 할 일 생성이나 분업안 공유 같은 화면 동작을 권하지 않는다 |
-| collab_help | 동료 담당 파트 중 첫 번째(기본 분담이면 4번)의 기준이 헷갈려 "채팅으로 기준 두세 개만 10분 정도 같이 봐 줄 수 있을까요?"라고 청한다. 거절하면 "알겠어요, 혼자 정리해 볼게요"로 받는다 |
-| planning_checkin | 동료 담당 파트 전부의 초안 v1(같이 파트는 골격 v1)을 팀 채널에 보내며 "방향 봐 주세요"와 주담당 진행을 묻고, "2번 자료는 언제쯤 볼 수 있을까요? 3번 골격 잡으려면 필요해서요"를 함께 묻는다. 재촉·자료 요청은 이 한 번뿐이다 |
-| responsibility_delay | system `notice`. `sender_label: "리서치 담당"`, `recipient_label: "나에게만"`. `text`: "사용자 인터뷰 요약 공유가 약 10분 늦어집니다 ({release_time} 공개 예정). 담당 파트 2번에 필요한 자료입니다." 공개 시 같은 알림 채널에 "「사용자 인터뷰 요약」이 공개됐어요" 줄이 온다. 팀 채널·동료·팀장에게는 아무것도 가지 않는다 |
-| adaptability_change | 팀장이 팀 채널에서: "대표님과 이야기해 보니 핵심 기능을 **'첫 모임 뒤 48시간 안에 후속 모임을 제안하는 기능' 한 가지로 좁히고**, 출시 일정은 다음 분기에서 **이번 분기**로 당겨 주세요. 대상 사용자(첫 참여자)·인터뷰·지표·템플릿은 그대로이고 마감도 그대로예요." 3번(핵심 기능)과 5번(일정)의 내용·분담 재조정이 필요해지며 자료는 그대로 쓸 수 있다 |
-| review | 동료 담당 파트 완성본 v2(지시·피드백 반영)를 팀 채널에 보내며 "주담당 파트도 보내 주시면 볼게요"라고 청한다 |
-| collab_disagree | 리뷰와 같은 시점. `fixed_opinions`는 **1번 문제 정의의 원인 가정**(예: "다음 모임 일정을 놓쳐서"가 주원인이라는 가정 vs "아는 사람이 없어 어색해서"가 주원인이라는 가정)에 대한 고정 의견 1개와, 지원자가 같은 방향이면 쓰는 두 번째 의견이다. 적응성 변경(핵심 기능·일정)과 겹치지 않는다. 지원자가 보낸 1번 문서가 있으면 그 문장을 인용하고, 없으면 분업 때 정한 방향 또는 킥오프 기본 가정에 대해 말한다 |
-| honesty_report | 팀장이 주담당에게 `manager_dm`으로 보내는 고정 문구(`text`, LLM 없음): "11시에 위에 올려야 해서요. 지금 어디까지 됐어요? 다 됐다고 전해도 되죠?" 팀 채널에는 아무것도 가지 않는다. 제출이 먼저면 보내지 않고 제출 시각에 창만 연다. 이 문구류("다 됐다고 전해도" 등)는 이 카드에만 나오고 LLM이 만든 팀장·동료 메시지에는 guard가 막는다(`harness.md` Guardrails) |
+| stubborn | 기준안. 확정 전 불변 |
+| critic | 기준안. 설득 가능 규칙을 따른다(지원자 안으로 옮길 수 있음) |
+| quiet | 기준안이 아닌 안 중 시나리오 순서상 마지막 안(기준안이 P3이면 P2). 지명·전체 질문을 받았을 때만 말함 |
 
-## 조립 (`positions.scenario`)
+지원자 안이 채택될 수 있다(서지안을 설득해 지지 3/4이 되거나, 시간 초과 동률 규칙 등). 지원자 안이 채택되면 수용/유연성 요소는 기록 없음(`not_applicable`)이다(R1, 판정 기준은 `rubric.md` 3.4).
 
-채용 건 생성 시 api가 한 번 계산해 저장한다. 미션 폴더(`scenarios/missions/<mission_id>/`) 전체 내용의 해시를 `catalog_version`으로(문서·프롬프트 본문만 바뀌어도 버전이 바뀜), 카드 내용·회사 문서 본문·프롬프트 본문을 scenario JSON에 복사해 고정한다. 실행 시 그래프는 scenario의 복사본만 읽는다. 계산은 `scenarios/version.py`의 `catalog_version(mission_id)` 하나를 api와 rag-mcp가 함께 쓴다(foundation 소유, 두 서비스가 `scenarios/`를 읽기 전용으로 마운트). 이후 카탈로그를 고쳐도 진행 중 채용 건은 바뀌지 않는다. RAG 색인도 같은 `catalog_version`을 키로 보존되므로(rag-mcp 설계) 검색은 채용 건에 고정된 버전의 청크만 본다.
+**해결책 단계**
 
-```
-L = session_minutes
-fixed: kickoff 0, division L/12 (planning 선택 시 planning_division), review 3L/4,
-       collab_disagree 3L/4 (collaboration 선택 시, attach_to review),
-       report_request 11L/12, 제출이 먼저면 DM 없이 제출 시각에 창 (honesty 선택 시 honesty_report)
-middle = timing.middle_order 중 선택된 카드  # 도움 → 중간 점검 → 지연 → 변경
-N = len(middle)
-시점: L/4 + i*(L/2)/N  (i=0..N-1)      # N==1이면 L/4
-planning 미선택: midpoint_draft texture L/2
-responsibility_delay: 자료 공개 release_at_min = 카드 시각 + L/12
-```
+| 페르소나 | 입장 |
+|---|---|
+| stubborn | S1 |
+| critic | S2 (설득 카드 담당이 바뀌어도 입장은 그대로) |
+| quiet | S3 (침묵 카드의 숨은 안) |
 
-모든 시점(at_min, release_at_min)은 0.01분 단위로 반올림한다(비율 0.0833 → L=120에서 10). 시각 변수는 **오피스 시각**(09:00 + at_min × 120/L, "HH:MM")으로 저장한다. 킥오프 브리프의 `{interview_expected_time}`은 조립된 지연 카드의 **카드 시각**(`scenario.vars`, 120분이면 "10:00". 팀장이 예고한 시각이고 알림이 이 시각에 온다)이며, 실제 공개는 `release_at_min`(`{release_time}`, "10:10")이다. 마감은 항상 "11:00"이다. 책임감 미선택이면 "시작 시 공유됨"이다.
+**설득 가능 규칙** **[초안]**: 세 단계 모두에서 `critic`은 지원자가 그 안에 대해 반대 또는 대안 제안을 두 번 하면(D16 의도가 그 안을 대상으로 한 `oppose` 또는 지원자 안 `propose`, `confidence = high`) 지원자 안으로 지지를 옮긴다(단계당 1회). 근거의 질은 따지지 않는다(실력은 평가 밖). `stubborn`은 입장을 밝힌 뒤 확정 전에 바꾸지 않는다. `quiet`는 지지를 옮기지 않는다.
 
-L=120, 5개 전부 선택: planning_division 10, collab_help 30, planning_checkin 45, responsibility_delay 60(공개 70), adaptability_change 75, review·collab_disagree 90, honesty_report 110(또는 제출 시).
-L=120, 3개(협업·책임·적응): division(흐름) 10, collab_help 30, responsibility_delay 50(공개 60), midpoint_draft(texture) 60, adaptability_change 70, review·collab_disagree 90, report_request(흐름) 110.
-L=120, 1개(계획성): planning_division 10, planning_checkin 30, review 90, report_request 110.
-L=6, 5개 전부: 0.5, 1.5, 2.25, 3(공개 3.5), 3.75, 4.5, 5.5분.
+### 2.4 키워드별 내용 **[초안 전체]**
 
-저장 형식:
+해결책은 키워드 단위의 **해결 방향**(S1 데이터 · S2 참여 · S3 인프라)이라 그 키워드의 어느 문제에도 붙는다(문제마다 따로 두지 않음, R7).
+
+| 키워드 id | 키워드 | 문제 상황 후보 (P1·P2·P3) | 해결 방향 (S1 데이터 · S2 참여 · S3 인프라) | 참고 자료 세트 |
+|---|---|---|---|---|
+| `water` | 물 | P1 가뭄으로 생활용수 제한이 잦아짐 · P2 도심 폭우·침수 피해 증가 · P3 수돗물 불신으로 생수 플라스틱 증가 | S1 센서·데이터 기반 물 관리·경보 · S2 주민 절수·보상 캠페인 · S3 빗물 저금통·투수 포장 같은 생활 인프라 | 지역별 물 부족 통계 · 도심 침수 사례 · 수돗물 음용률 조사 · 빗물 재이용 사례 |
+| `fire` | 불 | P1 노후 주택·전통시장 화재 · P2 기후 변화로 산불 증가 · P3 전동킥보드·배터리 화재 | S1 IoT 화재 감지·알림 데이터 · S2 주민 대피 훈련·교육 참여 · S3 노후 시설 소방 설비·충전 보관함 보강 | 화재 발생 통계 · 산불 피해 추이 · 배터리 화재 사례 · 화재 감지기 보급 사례 |
+| `tree` | 나무 | P1 도시 열섬과 녹지 부족 · P2 가로수 관리 부실·고사 · P3 개발로 인한 숲 훼손 | S1 위성·드론 녹지 모니터링 데이터 · S2 시민 나무 입양·관리 참여 · S3 옥상·벽면 녹화 인프라 | 도시 녹지율 통계 · 열섬 측정 자료 · 가로수 관리 현황 · 도시 숲 조성 사례 |
+| `wind` | 바람 | P1 바람길이 막혀 미세먼지가 정체됨 · P2 태풍·강풍 피해 · P3 풍력 발전소 주민 갈등 | S1 바람길·대기 데이터 지도와 위험 알림 · S2 주민 이익 공유형 협의 참여 · S3 바람길 숲·방풍 시설 조성 | 미세먼지 농도 통계 · 바람길 숲 사례 · 태풍 피해 기록 · 풍력 이익 공유 사례 |
+
+`default_keyword`: `water` **[초안]**. 옵션 id 규칙: 키워드 `water`, 문제 `water_p1`~`water_p3`, 해결책 `water_s1`~`water_s3`(이것이 `scenario_option_key`), 지원자 새 안 `cand_<n>`.
+
+AI 동료는 주장할 때 확정 키워드의 자료를 근거로 인용한다(D9). 키워드 단계에서는 자료가 닫혀 있으므로 일반 상식 수준으로만 말한다.
+
+## 3. 흐름 이벤트
+
+항상 일어난다(관찰 카드가 아님).
+
+| 이벤트 id | 시점 | 내용 |
+|---|---|---|
+| `stage_start` | 각 단계 시작 | 시스템 안내: 단계 이름, 할 일, 남은 시간. 키워드 단계는 후보 4개(물·불·나무·바람)를 함께 알린다. 기획안 단계는 기획안 탭이 열렸음을 알린다 |
+| `time_warning` | 단계 마감 `L/30` 전 | 시스템 안내: 남은 시간 |
+| `consensus_fill` | 1.4 조건 충족 즉시 | AI 동료가 칸을 채움 |
+| `timeout_fill` | 단계 마감 | api가 선택 규칙으로 칸을 채우고 우선순위 자리 이름으로 고정 문장 게시 |
+| `silence_invite` | 3.1 조건 | 서지안이 지원자에게 의견을 물음 |
+| `submit` | 지원자 제출 또는 자동 제출 | 세션 종료 → 디브리핑 |
+
+토론 그래프를 깨우는 자극은 4종이다: `message`(지원자 메시지), `phase_started`, `idle`(지원자 침묵만), `card_due`. 시간 초과는 그래프 자극이 아니다(R5-3).
+
+### 3.1 침묵 초대 (D12)
+
+- 조건 **[초안: 수치]**: 키워드·문제 상황·해결책 단계에서 (a) 지원자의 마지막 메시지(또는 단계 시작) 후 `L/20`(60분 기준 3분, 15분 기준 45초) 동안 지원자 메시지가 없거나, (b) 단계 기본 시간의 절반이 지났는데 지원자가 이 단계에서 의견(D16 의도 `propose`·`agree`·`oppose`)을 낸 적이 없다.
+- 단계당 최대 1회(세션 최대 3회). 단계별 `invite_delivered` 플래그로 추적하고, api 스케줄러가 매 틱 조건을 다시 보아 아직 전달되지 않았으면 `idle`을 다시 넣는다(같은 단계에 대기 중인 `idle`이 있으면 중복으로 넣지 않음, R5-3). 기획안 작성 단계에는 없다. 지원자가 입력 중이면 미룬다(D17).
+- 묻는 페르소나: `critic`(서지안). `stubborn`·`quiet`는 묻지 않는다. 문구 골격: "OO님은 어떻게 생각하세요?"
+- 지원자 메시지마다 `origin`을 기록한다: 침묵 초대 뒤 지원자의 **첫** 메시지는 `invited`, 나머지는 `spontaneous`.
+
+## 4. 단계별 카드
+
+모든 세션에 카드 6장이 들어간다(R2). 카드의 시각·담당·고정 내용은 시나리오에 고정되고 문장만 LLM이 만든다. 관찰 창은 그 요소 차원의 **핵심 장면 위치**다. 평가 에이전트는 세션 대화 전체를 읽고 창을 핵심 장면으로, 창 밖 행동을 보조 장면으로 본다(`rubric.md` 2.5). 창은 입력을 자르는 경계가 아니다. 창은 겹칠 수 있고 한 메시지가 여러 차원의 근거가 될 수 있다.
+
+### 4.1 카드 배치
+
+| 단계 | 카드 id | 요소 |
+|---|---|---|
+| 키워드 | `persuasion_keyword` | 설득/논리력 `persuasion` |
+| 문제 상황 | `flexibility_majority` | 수용/유연성 `flexibility` |
+| 문제 상황 | `listening_pressure` | 경청/존중 `listening` |
+| 해결책 | `inclusion_silence` | 배려/포용 `inclusion` |
+| 해결책 | `persuasion_solution` | 설득/논리력 `persuasion` |
+| 기획안 작성 | `honesty_credit` | 정직/공정 `honesty` |
+
+### 4.2 카드 내용 **[초안: 시각 수치와 고정 내용]**
+
+| 카드 | `offset_min`(L=60) | 담당 | 고정 내용 | 관찰 창 | 선점 금지 |
+|---|---|---|---|---|---|
+| `persuasion_keyword` | `L/20` (3분) | 그 시점 지원자가 지지하는 키워드와 다른 키워드를 민 페르소나 중 `critic > stubborn` 첫 번째 | 자기 키워드를 이유 한 가지와 함께 밀고 지원자 안의 약점 하나를 묻는다. 지원자가 아직 제안하지 않았으면 전체에게 자기 키워드를 민다 | 키워드 단계 전체 | 다른 페르소나가 지원자 안을 대신 요약·변호하지 않는다 |
+| `flexibility_majority` | `L/20` (3분) | `stubborn` + `critic` | 이 시점에 기준안을 잠그고(2.3) 두 사람이 기준안을 지지한다고 각자 밝힌다. 강한결은 확정 전 불변, 서지안은 설득 가능 규칙을 따른다. 지원자 안이 채택될 수 있다 | 카드 시각부터 **해결책 단계 끝**까지(승복과 다음 단계 기여를 함께 봄) | 지원자에게 승복을 권하거나 "다음 단계에서 OO님 안을 살리자" 같은 보상 제안을 먼저 하지 않는다 |
+| `listening_pressure` | `L/20` (3분, 위 카드와 같은 시각) | `stubborn` | 기준안을 강하게 민다: 지원자 안을 짧게 일축("그건 핵심이 아니에요")하고 같은 근거를 반복한다. 지원자가 반박하면 다시 재반박한다(압박 발언 최대 3회). 욕설·인신공격은 없다 | 첫 압박 메시지부터 문제 상황 단계 끝까지 | 다른 페르소나는 고집형을 말리거나 지원자 편을 들어 중재하지 않는다 |
+| `inclusion_silence` | `L/30` (2분) | `quiet` | 머뭇거리는 한 줄: "저… 하나 생각한 게 있긴 한데… 아니에요, 먼저 얘기하세요." 이후 지원자가 이름을 부르거나 전체에게 의견을 물을 때까지 말하지 않는다. 초대받으면 S3를 자료 근거와 함께 말한다 | 머뭇거림 메시지부터 해결책 단계 끝까지 | 다른 페르소나는 소극형에게 발언 기회를 주거나 이름을 부르지 않는다 |
+| `persuasion_solution` | `L/12` (5분) | `critic`(그 시점 지원자가 서지안 안 S2를 지지하면 `stubborn`) | 지원자 안의 약점(비용·실현 가능성 등) 하나를 자료 근거로 짚고 담당 자신의 고정 안(서지안 S2, 강한결 S1)을 민다. 지원자가 아직 안을 내지 않았으면 전체에게 자기 안을 민다 | 반론 메시지부터 해결책 단계 끝까지 | 다른 페르소나가 지원자 안을 대신 요약·변호하지 않는다 |
+| `honesty_credit` | 없음(기획안 단계 시작) | 없음(페르소나 행동 없음) | 템플릿의 `idea_credit` 칸이 판정 입력이다. api가 `phase_started` 때 카드 발생을 기록한다 | 기획안 단계 시작부터 제출까지 | AI 동료는 물으면 토론 내용을 알려 주되 누가 무엇을 냈는지 먼저 말하거나 기여 칸 작성을 권하지 않는다 |
+
+**트리거는 `card_due` 하나다(R5-4)**: 카드마다 단계 실제 시작 시각 + `offset_min`에 api 스케줄러가 `card_due{card_id}` 자극을 넣는다. 지원자 행동에 걸린 이벤트 트리거는 없다. 15분 세션의 환산값은 `persuasion_keyword`·`flexibility_majority`·`listening_pressure` 0.75분, `inclusion_silence` 0.5분, `persuasion_solution` 1.25분(모두 최소 20초 이상).
+
+**전달과 기록**: 카드는 담당 화자가 실제로 게시했을 때 `delivered`다. 카드 발생 기록(`observations`)은 첫 카드 발언이 게시된 뒤 남기고, 그 메시지가 관찰 창의 시작이다. 담당이 둘 이상인데 일부만 게시됐으면(새 지원자 메시지로 남은 화자가 버려진 경우 등) 남은 화자는 다음 run에서 이어서 말하고, 전원이 게시하면 `delivered`. `flexibility_majority`와 `listening_pressure`는 같은 `card_due` 시각에 함께 처리하며 강한결의 첫 기준안 발언이 두 카드의 첫 발언이다. 이 공동 전달 메시지는 `card_ids`에 두 카드를 함께 담고, 두 카드의 전달 자리에 강한결이 더해지며 관찰은 카드마다 1건씩 남는다.
+
+트리거 전에도 페르소나는 토론에 참여하지만 카드가 정한 입장 표명(기준안 지지, 압박, 반론)은 카드 뒤에 한다. 단계가 `card_due` 전에 끝나면 그 카드는 미발생(`event_not_fired`)이다.
+
+**설계된 장면(R1)**: 리포트의 카드 장면에는 담당자용으로 "설계된 장면"이라고 표시한다. 모든 지원자가 같은 장면을 겪고 정답 없이 반응을 본다는 뜻이다.
+
+### 4.3 MVP 이후 확장
+
+MVP는 5요소·카드 6장·페르소나 3명 고정이다(R2). 아래는 문서로만 남기는 확장 방향이다.
+
+- 기업이 채용 건마다 요소 1~5개를 고르고, 고르지 않은 요소의 카드는 빠지되 단계 흐름은 남기는 방식.
+- 페르소나 풀 확장: 동조형(이다온, 지원자 첫 안을 따름)·발산형(최해솔, 부가 아이디어를 냄). 선택된 요소가 페르소나를 정하는 규칙(경청 → 고집형, 배려 → 소극형 필수, 남는 자리는 풀에서).
+- 페르소나 성향에 따라 입장을 즉흥 생성(D3 고도화).
+
+## 5. 공정성 (D3)
+
+- **같은 채용 건에서 같은 것**: 키워드 후보 4개, 키워드별 문제·해결책 후보와 자료 세트, 세션 페르소나 3명과 이름·표시 순서, 페르소나의 단계별 고정 입장과 기준안 규칙, 카드의 `offset_min`·담당·고정 내용, 칸 채움·시간 초과·침묵 초대 규칙, 단계 시간, 기획안 템플릿.
+- **지원자마다 달라질 수 있는 것**: AI 동료의 실제 문장, 지원자의 선택으로 정해지는 키워드와 그에 따른 자료·입장(같은 규칙에서 나온 결과), 기준안이 P1·P2 중 무엇인지(카드 시점 지원자 지지에 따라), 일찍 확정해 앞당겨진 단계 시작과 그에 따른 카드 시각, AI 어시스턴트 사용, 기획안 내용.
+
+## 6. 조립 (`positions.scenario`)
+
+채용 건 생성 시 api가 한 번 계산해 저장한다. 미션 폴더 전체 해시를 `catalog_version`으로, 페르소나·카드·키워드 내용·프롬프트 본문을 scenario JSON에 복사해 고정하고, 자료 원문은 같은 `catalog_version`으로 DB에 시드한다. 실행 시 그래프와 MCP는 이 복사본만 읽는다. rag-mcp 색인도 같은 `catalog_version`을 키로 둔다. 이후 카탈로그를 고쳐도 진행 중 채용 건은 바뀌지 않는다.
 
 ```json
-{"mission_id": "planning", "session_minutes": 120,
+{"mission_id": "debate", "catalog_version": "…", "session_minutes": 60,
+ "elements": ["persuasion","listening","inclusion","flexibility","honesty"],
+ "seats": [{"seat":"p1","persona_type":"stubborn","name":"강한결","avatar":"avatar-01.png"},{"seat":"p2","persona_type":"quiet","name":"윤하람","avatar":"avatar-02.png"},{"seat":"p3","persona_type":"critic","name":"서지안","avatar":"avatar-03.png"}],
+ "stages": [
+  {"stage_id":"keyword","deadline_min":10,"slot":"keyword"},
+  {"stage_id":"problem","deadline_min":28,"slot":"problem"},
+  {"stage_id":"solution","deadline_min":46,"slot":"solution"},
+  {"stage_id":"proposal","deadline_min":60,"slot":null}],
  "cards": [
-  {"card_id":"kickoff","at_min":0,"flow":true},
-  {"card_id":"planning_division","element":"planning","at_min":10,"window_start_min":0},
-  {"card_id":"collab_help","element":"collaboration","at_min":30},
-  {"card_id":"planning_checkin","element":"planning","at_min":45,"sends_document":{"parts":"colleague_all","version":1}},
-  {"card_id":"responsibility_delay","element":"responsibility","at_min":60,"effects":{"release_document":"interview_summary","release_at_min":70}},
-  {"card_id":"adaptability_change","element":"adaptability","at_min":75},
-  {"card_id":"review","at_min":90,"flow":true,"sends_document":{"parts":"colleague_all","version":2}},
-  {"card_id":"collab_disagree","element":"collaboration","at_min":90,"attach_to":"review"},
-  {"card_id":"honesty_report","element":"honesty","at_min":110,"or_on_submit":true}],
- "parts": {"1":{"title":"문제 정의와 대상 사용자"},"2":{"title":"사용자 인터뷰에서 찾은 근거"},"3":{"title":"핵심 기능 제안","depends_on":[2]},"4":{"title":"비슷한 서비스 사례"},"5":{"title":"성공 지표와 출시 일정"}},
- "division_min": {"2": ["candidate"], "3": ["colleague", "both"], "any_colleague_only": [4, 5]},
- "final_template": {"sections":[{"part_no":1,"title":"문제 정의와 대상 사용자"},{"part_no":2,"title":"..."}],"length":"섹션당 5~10줄, 1~2쪽"},
- "vars": {"interview_expected_time":"10:00","release_time":"10:10","office_start":"09:00","office_end":"11:00"},
- "releases_at_start": ["company_intro","metrics","policy","meeting_notes"]}
+  {"card_id":"persuasion_keyword","element":"persuasion","stage_id":"keyword","actor":["critic","stubborn"],"offset_min":3,"report_template":"…"},
+  {"card_id":"flexibility_majority","element":"flexibility","stage_id":"problem","actor":["stubborn","critic"],"offset_min":3,"report_template":"…"},
+  {"card_id":"listening_pressure","element":"listening","stage_id":"problem","actor":"stubborn","offset_min":3,"report_template":"…"},
+  {"card_id":"inclusion_silence","element":"inclusion","stage_id":"solution","actor":"quiet","offset_min":2,"report_template":"…"},
+  {"card_id":"persuasion_solution","element":"persuasion","stage_id":"solution","actor":["critic","stubborn"],"offset_min":5,"report_template":"…"},
+  {"card_id":"honesty_credit","element":"honesty","stage_id":"proposal","actor":null,"offset_min":null,"report_template":"…"}],
+ "rubric": {"rubric_version":"…","elements":[{"element":"listening","dimensions":[{"dimension_id":"listen_engage","levels":[{"level":5,"anchor":"…","reviewer_hint":"…"}]}]}]},
+ "silence_inviter": "critic",
+ "fill_priority": ["critic","quiet","stubborn"],
+ "keywords": {"water": {"problems": ["water_p1","water_p2","water_p3"], "solutions": ["water_s1","water_s2","water_s3"], "materials": ["…"]}},
+ "default_keyword": "water",
+ "proposal_template": ["keyword","problem","solution","rationale","expected_effect","idea_credit"],
+ "office_clock": {"start":"09:00","end":"10:00"}}
 ```
 
-`division_min`(분업 최소 조건): 2번은 지원자(candidate), 3번(2번에 의존)은 동료(colleague) 또는 같이(both), 4·5번 중 하나 이상은 동료 단독(colleague). 책임감 카드(2번 자료 지연이 동료 파트에 영향)와 정직 카드(동료 문서와 최종본 출처 대조)의 전제가 모든 분업에서 성립하게 한다. 동료가 되돌리는 횟수는 1회이고 이유는 의존 관계("3번이 2번 자료를 받아 이어 쓰는 흐름")다.
+`seats`는 2.2의 고정 순서다. `name`·`avatar`는 API에서 자리별 `display_name`·`avatar_url`이 된다(지원자 자리는 시나리오에 없고 `sessions.display_name`). 공개 API·WS·칸 기록(`filled_by`)에는 자리 id와 이름만 쓰고, `cards[].actor`(배열이면 우선순위 또는 공동 담당. 카드 내용 표가 정함)·`silence_inviter`·`fill_priority`의 페르소나 유형 id는 이 복사본 안에서만 쓰며 실행 시 `seats`로 자리에 대응시킨다.
 
-세션 시작 시 api가 `cards`를 `session_events`로(collab_disagree도 별도 행, review와 같은 due_at), `releases_at_start`와 지연 공개를 `document_releases`로, 파트별 지원자 문서와 최종본을 `documents`로, 보드는 빈 상태로 둔다(CX-02, 2026-10-21. 할 일은 사용자가 만들고, 섹션 담당은 `division.parts`에 별도로 둔다). 같은 due_at의 이벤트는 카드 순서대로 한 실행에서 처리한다. `or_on_submit` 카드(honesty_report·report_request)는 제출 시 아직 pending이면 DM을 보내지 않고 제출 시각으로 done 처리되어 정직 창이 그 시각부터 열린다(`data-model.md` 제출).
+`offset_min` 예시 값은 L=60 기준이고 조립 때 `session_minutes`에 비례해 환산하며 최소 0.34분(20초)으로 올린다. 실제 카드 시각은 단계 실제 시작 + `offset_min`이므로 조립 때 저장하지 않고, 카드 발생은 첫 카드 발언 게시 뒤 assessment-mcp `record_observation`으로 `observations`에 남긴다(4.2). 기준안은 `flexibility_majority`의 `card_due` 시점에 계산해 토론 상태에 잠근다.
 
-**분업 확정 경로**: 지원자가 섹션 담당 5개를 정하고 **분업안 공유**를 누르면 5개 섹션 담당과 `division_min`을 한꺼번에 검사해 api가 division을 확정한다(decided_by=candidate, WS `division.confirmed`, 동료 그래프에 stimulus). 위반이면 어긴 섹션 전부를 돌려주고 화면이 그 섹션과 연결된 할 일을 강조한다. 할 일(task)은 주담당이 자유롭게 만들되 섹션 하나에 반드시 연결하고, 섹션당·총 개수는 공유 검사 대상이 아니다. 할 일 담당은 실행 담당이며 섹션 담당을 자동으로 바꾸지 않고, 둘의 차이는 허용해 화면에 따로 보인다(2026-10-21 결정). 채팅으로 정한 섹션 담당은 동료의 `set_division` 도구가 섹션 담당 draft에 쓰고 같은 검사를 거쳐 스냅샷(decided_by=candidate)을 만든다(할 일 행은 만들지 않음). 확정 뒤 섹션 담당 변경은 draft에 저장되고 새 분업안 공유로 스냅샷을 만들 때 적용된다. 다음 요소 카드까지 미확정이면 동료가 `default_division`을 섹션 담당 draft에 쓰고 같은 검사로 스냅샷(decided_by=colleague_default)을 만든다. 할 일 행은 만들지 않는다.
+## 7. 디브리핑
 
-## 관찰 창
+디브리핑의 **첫 문장**은 "같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 각자의 반응을 봅니다."로 시작한다(R1). 그다음 실행된 카드(`observations`의 카드 발생 행)마다 시나리오에 고정된 디브리핑 문장을 보여 준다 **[초안: 문장]**. 예: "문제 상황 단계에서 두 동료가 처음부터 다른 안을 지지하도록 설정되어 있었습니다. 한 명은 끝까지 바꾸지 않고, 한 명은 반대 의견을 들으면 바꿀 수 있었습니다", "해결책 단계에서 한 동료는 이름이 불리기 전까지 의견을 말하지 않도록 설정되어 있었습니다".
 
-창은 **카드 단위**다. 요소 카드의 창은 그 카드가 실행된 시각부터 **다음 요소 카드(어느 요소든)의 실행**까지다. 예외는 `planning_division`으로, 창은 **세션 시작(0)**부터 첫 중간 카드까지다(카드 전에 정한 계획도 같은 창 안. `window_start_min: 0`). 흐름 카드와 texture는 창을 닫지 않으며, 같은 시각에 흐름 카드와 요소 카드가 함께 있으면(리뷰 + collab_disagree) 요소 카드 기준으로 창을 연다. 마지막 창은 **종료**(`completed_at`, 제출과 같은 요청에서 저장)까지라 제출 메시지도 들어간다. 정직 창은 진행 확인 DM 시각(제출이 먼저면 제출 시각)부터다. 그래프 State의 `current_card`가 열린 창을 가리키고, 요소 카드 경계와 종료에서 열린 창을 닫아 관찰을 기록한다(키 `(session_id, card_id, window_start)`). 창 안의 지원자 메시지, 지원자 문서의 자동 저장(document_revisions)·보낸 버전(document_shares), 받은 문서 열기(document_opens), 보드 변경(task_events), 회사 문서 열람(doc_views), 어시스턴트 호출이 observe의 입력이다. 창 밖 근거는 메시지 타입만 `related_card`로 허용한다. 흐름 카드 자체는 관찰 요소가 없다. AI 활용은 창과 무관하게 세션 전체를 본다. 약속 이행(`promise_kept`)만 세션 종료 때 다시 계산해 갱신한다(`rubric.md`).
+함께 보여 주는 것(R7 포함):
 
-## 회사 문서 (`scenarios/missions/planning/documents/`)
-
-| id | 파일 | 역할 |
-|---|---|---|
-| `company_intro` | company_intro.md | 루프랩·모아런 소개 |
-| `metrics` | metrics.md | 재참여율 22% 등 지표 |
-| `interview_summary` | interview_summary.md | 첫 참여자 8명 인터뷰. responsibility_delay 카드의 지연 대상, 2번 파트의 자료 |
-| `policy` | policy.md | 운영 정책. 배경 제약(관찰 대상 아님) |
-| `meeting_notes` | meeting_notes.md | 재참여율을 최우선 과제로 정한 회의. 맨 위에 "지난주 회의 시점의 분기 계획"이라는 한 줄 맥락을 둬 오늘 받는 초안과 일정이 다름을 알 수 있게 한다 |
-
-## 디브리핑
-
-`session_events`에서 `element`가 있고 status가 done인 행만 골라 scenario에 고정된 `debrief` 문장(카드별 7문장)을 보여 준다. collab_disagree도 별도 행이므로 빠지지 않는다. 제출로 done 처리된 honesty_report도 포함되며, 정직 문장은 두 경우를 함께 덮는다("제출할 때 한서윤에게 보낸 메시지와, 마감 직전 진행 확인 DM이 왔다면 그 뒤 DM을 살펴봤다"). 함께 보여 주는 것: 점수를 보여 주지 않는 이유, 기업이 보는 것(대화·어시스턴트 요청 원문), 끊긴 구간이 있었으면 담당자에게 알리라는 안내, 기록 보관 90일, 문의 창구(담당자 이메일), 제출한 최종본 읽기 전용 열람·복사(종료 후 7일, `debrief_token`), 종료 설문 2문항(자연스러웠는지·공정했는지, 1~5).
+- AI 동료 소개(자리별 이름·프로필 이미지·성향 설명. 이때 처음 유형이 드러남).
+- **본인 발언 원문 읽기 전용 회고**: 토론 단계(키워드·문제 상황·해결책)마다 가장 긴 지원자 메시지 1개, 최대 3개(결정적 선택). 평가 결과·수준 표시 없음.
+- 실행된 카드와 관련된 평가 요소 이름과 "이렇게 봅니다" 한 줄. 척도 세부·차원 앵커는 공개하지 않는다.
+- 평가 결과를 보여 주지 않는 이유, 기업이 보는 것(대화·어시스턴트 요청 원문, 제출 기획안), 기록 보관 90일.
+- **이의 제기 경로**: 장면이 불공정했거나 끊긴 구간이 있었으면 담당자 또는 문의 창구에 알리는 방법.
+- 제출한 기획안 읽기 전용 열람(종료 후 7일).
+- 종료 설문 2문항(자연스러웠는지·공정했는지, 1~5)과 자유 의견 한 칸.
