@@ -2,14 +2,13 @@
 
 다음 오케스트레이터(에이전트 세션, **다른 로컬 머신일 수 있음**)가 이 문서만 읽고 바로 이어가기 위한 상태 기록이다. 읽는 순서: 이 문서 → `AGENTS.md` → `docs/plan.md` → `docs/dev-process.md` → `docs/decisions.md`의 2026-10-20 절들 → 필요한 역할 문서.
 
-## 현재 상태 (2026-10-21 07:40, P3 중간 마무리 — 다른 머신에서 이어감)
+## 현재 상태 (2026-10-21, 지원자 흐름 재정의 전환)
 
-- **main 최신**: P0·P1·P2 전부 병합(web-redesign·scenario-redesign·web-polish·agent-assistant·agent-session M2·web-integrate 1·2라운드·api-fix) + P3의 fix-p3(결함 5건)와 e2e-runner(러너·단언·픽스처 mock 완성, 실 스택 2단계 **중간**). 테스트: `make test` 전부 통과(api 166·business-mcp 9·rag-mcp 10·report-worker 27·web 13), `make test-e2e`(mock) 통과, `make lint` 통과. catalog_version **`80517d9fb102c7df`**(fix-p3가 팀장 문구를 바꿈).
-- **실 스택으로 확인된 것**: web-integrate 2라운드가 실제 세션 그래프·어시스턴트 그래프·실 LLM으로 한 세션(카드 7장·실제 분류 종료·리포트 근거 83개 일치)을 브라우저 자동화로 통과(`apps/web/e2e/session.mjs`, 30단계·99 checks). e2e-runner는 all_five(세션 failed → 결함 1·2·3)와 division_refuse(통과) 2개만 실 실행.
-- **남은 일(다른 머신)**: ① e2e 2단계 재개(`reports/e2e-runner-report.md` "다른 머신에서 재개" 절) → 찍힌 결함을 fix 트랙으로(아래 "P3에서 모인 fix 요청"과 e2e 보고서 결함 1~4: review 카드 v2 실패가 세션 전체를 failed로, 중간 점검 재촉 위반, 관찰 근거 선택) ② P5 docs-final ∥ docs-service(캡처는 `node apps/web/e2e/session.mjs`로 재생성) ③ P4 파일럿(사용자 일정). 개발은 Codex pane, 리뷰는 Claude Opus 1회(사용자 결정).
-- **열린 pane·worktree 없음**(이 머신). 공용 DB `dayzero`는 새 스키마에 e2e 세션 데이터가 들어 있음(다른 머신은 빈 DB에서 시작). rag-mcp는 재설계 코드로 재빌드돼 있음(다른 머신은 첫 `make infra-up`에 빌드).
-- **사용자가 할 것**: `infra/.env`·`.env.local` 두 파일을 새 머신 `infra/`에 복사(값은 이 머신에서 복사해 둠). 직접 돌려보기는 아래 "직접 서비스 돌려보기".
-- 알려진 미처리: 6k 토큰 요약 접기(agent-session), active_runs·progress 채널 계약, fix-p3 리뷰 참고 3건, 사용자 mock 확인(건너뜀, 나중에 일괄 수정).
+- **main 최신**: P0~P2 전부와 P3의 fix-p3·e2e-runner(실 스택 2단계 중간)까지 병합. `make test`(api 166·business-mcp 9·rag-mcp 10·report-worker 27·web 13)·`make test-e2e`(mock)·`make lint` 통과. catalog_version `80517d9fb102c7df`. 코드는 아직 옛 흐름(미리 채운 보드 5행, `reporting`·5분 보고 대기, 팀 채널 보고 요청)이다.
+- **방향 전환**: 지원자 실사용 점검(CX-01~13)과 `track/docs-flow` 리뷰 결과로 사용자가 지원자 흐름을 다시 정했다. 확정 결정 F1~F12는 `docs/handoff/briefs/brief-flow-docs-2.md`. 요지: 빈 보드에서 할 일 생성(섹션 필수)·분업안 공유 시 전체 검증, 완료 → 한서윤에게 보내기 → 고정 답장 → 즉시 completed, 10:50 한서윤 개인 DM 고정 문구(정직), 금지 문구 결정적 검사, 채널 역할 분리, 오피스 시각 09:00~11:00, 메인 탭 전환·Markdown 자료 뷰어, 행동 유도 문구 금지. `reporting`·종료 버튼·5분 fallback·보고 요청 채널 분기는 없어진다.
+- **진행 중**: `track/docs-flow`(worktree `../Day-0_zaeho.worktrees/docs-flow`)에서 PRD·`docs/common/*`·decisions·fixes·역할별 설계 문서를 브리프대로 고치는 중(G0), 같은 브랜치에 `docs/plan.md` "전환 계획"과 이 문서 갱신. 미커밋.
+- **실행 방식(이 전환부터)**: 구현·문서는 Claude 서브에이전트, herdr pane은 Codex 리뷰만. 트랙마다 worktree·`track/<이름>`, 동시 개발 4개 이하. 07:10 결정(개발 Codex, 리뷰 Claude Opus)은 이 방식으로 대체한다. 세부는 `docs/plan.md` "전환 계획".
+- 알려진 미처리(전환 범위 밖): active_runs·progress 채널 계약, 6k 토큰 요약 접기, fix-p3 리뷰 참고 3건, e2e 2단계 재개(전환 뒤 flow-verify가 새 대본으로 대신함).
 
 ## 다른 머신에서 시작하기
 
@@ -41,19 +40,22 @@
 7. 브라우저 자동 한 세션: `cd apps/web && node e2e/session.mjs`(스크린샷 `apps/web/e2e/shots/`). 대본 e2e: `make test-e2e`(mock) / 실 스택은 `tests/e2e/README.md`.
 8. 끝나면 네 앱 종료: `lsof -ti:8000,8001,9101,3000 -sTCP:LISTEN | xargs kill; pkill -f report_worker`.
 
-## 다음 행동: P1 개발 시작 (사용자 승인 뒤)
+## 다음 행동: 지원자 흐름 전환 (`docs/plan.md` "전환 계획")
 
-사용자가 "P0까지 끝내고 멈춰라"고 했으므로 **P1은 사용자가 시작하라고 할 때** 띄운다. 파도·소유권·관문은 `docs/plan.md`(P0~P5 표, 테스트 6건 배정, 공용 파일 담당), 절차는 `docs/dev-process.md`, 체크리스트는 아래 "오케스트레이터 체크리스트".
+1. **지금 병렬로 띄운다** (서로 파일이 겹치지 않음)
+   - docs-flow 마무리(G0): 문서 커밋 → herdr Codex 리뷰 pane(`REVIEW.md`) → 차단 반영 → main 병합. grep 정합 검사 통과 확인.
+   - **ui-layout**: `sh scripts/worktree.sh ui-layout`, Claude 서브에이전트. CX-05 Markdown 뷰어 → CX-08 메인 탭 → CX-13·CX-06 기본안, 프론트만·mock. Claude Opus UI/UX 리뷰 → Codex 리뷰 → main 병합. web 기능 트랙보다 먼저 병합한다.
+   - **investigate-cx10**: 완료(`track/investigate-cx10` 5367ba7, `docs/handoff/reports/investigate-cx10.md`). 원인은 분류기가 자료 공개 질문을 `progress_query`로 분류 → 진행 템플릿 응답·`work_notes.progress` 오염. 계약 변경 없음(`harness.md` Context 허용 목록 한 줄은 G0). 수정은 flow-agent(classify 강등, 결정적 자료 상태 메모, 팀장에도 적용)·flow-scenario(colleague.md 7·8절, CX-10 픽스처, 킥오프 시각 변수 오피스 시각 포맷). 보고서 브랜치는 main에 병합한다.
+2. **G0 병합 뒤**
+   - **contracts(G1)**: `tests/fixtures/contracts/` 갱신 + `services/api/app/services/office_clock.py` → 통합 브랜치 `track/flow`의 첫 커밋. 기대 실패 목록(테스트 → 담당 트랙)을 보고서에 받는다.
+   - **arch-page**: `docs/share/architecture.html`을 한 페이지(6뷰)로 다시 만든다. 구현과 병렬, main 병합.
+3. **G1 뒤 (T2, 최대 4)**: flow-scenario(먼저 병합, 새 catalog_version 공지) ∥ flow-api ∥ flow-agent ∥ flow-web(ui-layout main 병합 + `track/flow` rebase 뒤). flow-scenario가 끝나면 flow-worker. 모두 `track/flow`에 squash 병합하고 병합마다 기대 실패 목록을 대조한다.
+4. **T3**: flow-verify(e2e 대본·실 스택 6분 1회) → 기대 실패 0 + `make test`·`make lint`·`make test-e2e` 통과 → `track/flow`를 main에 병합. 병렬로 **playtest**(게이트 아님): 블라인드 지원자 에이전트 3성향(정석형·서두름형·헤매는 형)이 `make_session.py` 10~15분·요소 2~3개 세션을 실제 화면으로 완주 → `tests/playtest/records/`와 통합 요약 → CX 후보는 사람이 정한다. 실 스택은 한 번에 하나라 flow-verify 실 실행과 시간을 나눈다. 이후 큰 UI 변경마다 반복.
+5. 그다음 P5 docs-final ∥ docs-service(최종 구현 기준), P4 파일럿(사용자 일정).
 
-### P1 기동 절차
-1. **브리프 2개 작성** → `docs/handoff/briefs/brief-web-redesign.md`, `brief-scenario-redesign.md`. 아래 템플릿대로 기준 커밋(main 최신), 계약 커밋(같은 값), catalog_version(scenario가 새로 발급), 허용 파일(plan.md 소유권 행), 사전 승인 공용 변경, 테스트 격리명, 검증 방식을 적는다. 읽을 것에 반드시: AGENTS.md, PRD.md, `docs/common/contracts.md`·`scenario-model.md`·`rubric.md`·`data-model.md`, 역할 문서(`docs/frontend/design-direction.md`·`design-system.md`·`design.md` / `docs/api/design.md`·`mcp`·`worker-infra`·`agent`), `docs/handoff/reviews/review-redesign-triage.md`, `review-plan.md` 3·4절, `docs/handoff/reports/fixtures-align-report.md`.
-2. **worktree 2개**: `sh scripts/worktree.sh web-redesign`, `sh scripts/worktree.sh scenario-redesign`. 각 worktree에 `infra/.env`·`.env.local` 복사.
-3. **탭 2개**(트랙마다 하나): `herdr tab create --workspace $HERDR_WORKSPACE_ID --cwd <worktree> --label <트랙>` → 루트 pane에 `herdr pane run <pane> "cd <worktree>"` → `herdr agent start <트랙> --kind claude --pane <pane> -- --permission-mode auto`(폴더 신뢰 확인에 멈추면 `agent send-keys enter`) → `herdr agent prompt <트랙> "<브리프 경로>를 읽고 시작"`. 리뷰 pane은 같은 탭 오른쪽에 `pane split --direction right`로 만들고 Codex(`-m gpt-6.1-sol -c model_reasoning_effort=high -s workspace-write -a never -c features.fast_mode=false`)를 띄워 완료 보고 뒤 리뷰 브리프를 보낸다. 결과는 worktree의 `REVIEW.md`.
-4. **web-redesign 관문**: 구현 완료 → UI/UX 전문가 페르소나 리뷰(Claude Opus 서브에이전트 또는 pane, 실제 mock 화면·스크린샷, 결과 `docs/handoff/reviews/review-uiux-view.md`) → 반영 → Codex 리뷰 → 반영 → **사용자가 `NEXT_PUBLIC_MOCK=1 pnpm dev`로 확인**(http://localhost:3000/s/live, 관리자는 아무 이메일·비밀번호) → 피드백 반영 → 병합. 사용자 확인을 기다리는 동안 scenario-redesign은 계속한다.
-5. **scenario-redesign 관문**: 내부 관문 3개(미션·스키마 → API·도구 계약 검증 → 워커·픽스처 인수)마다 중간 보고 → Codex 리뷰 → `make test`·`make lint` → 병합. 병합 시 catalog_version·7카드 레이블·fixed_opinions·선점/팀장 DM 픽스처·대본 초기본을 인수하고 `scenarios/missions/` 문구는 prompts, `scenarios/e2e/`는 e2e-runner로 소유권 반환(P1 관문).
-6. 둘 다 병합되고 사용자 mock 확인이 끝나면 P2(agent-session ∥ agent-assistant ∥ web-integrate ∥ web-polish).
+브리프는 아래 "pane 브리프 템플릿"을 서브에이전트 브리프로 그대로 쓴다(기준 커밋은 main 또는 `track/flow` 해시). 브리프 파일은 `docs/handoff/briefs/brief-<트랙>.md`.
 
-### 이전 라운드의 미처리 변경 요청 (재설계로 정리됨)
+## 이전 라운드의 미처리 변경 요청 (재설계로 정리됨)
 - 해결됨: 분류 저장 도구(`record_observation`·`update_observation`으로 계약화), 팀장 허용 목록(contracts), State 필드 수(18), harness의 MCP 클라이언트 문구(직접 만든 McpClient), worker `card_t_min`(카드 소섹션에 카드 시각 포함).
 - scenario-redesign이 맡음: `app/run.py` 기동 시 runner 초기화·종료 시 aclose, `tests/conftest.py`·`services/api/tests/conftest.py` 갱신(공용 변경 담당 1명 지정).
 - web-redesign이 맡음: `lib/api.ts`의 미사용 `idempotencyKey` 제거, State의 파트 제목·`virtual_company`·`session_id`(contracts의 새 State 형태로 해결).
@@ -85,7 +87,7 @@
 
 ## 사용자 결정 (2026-10-21 07:10): 개발을 Codex로, 리뷰는 가볍게, 파일럿 전까지 빨리
 
-- 이후 개발 pane은 Codex(`gpt-6.1-sol`, `-s workspace-write -a never`)로 띄우고, 리뷰는 Claude Opus 한 번(차단만, 재확인 루프 최소)으로 한다. 작성 모델 ≠ 리뷰 모델 유지. 진행 중이던 Claude pane(e2e-runner)은 그대로 끝낸다.
+- (지원자 흐름 전환부터는 `docs/plan.md` "전환 계획"의 실행 방식으로 대체됨) 이후 개발 pane은 Codex(`gpt-6.1-sol`, `-s workspace-write -a never`)로 띄우고, 리뷰는 Claude Opus 한 번(차단만, 재확인 루프 최소)으로 한다. 작성 모델 ≠ 리뷰 모델 유지. 진행 중이던 Claude pane(e2e-runner)은 그대로 끝낸다.
 - 목표: P3(e2e·fix) 완료 → P5 docs → 파일럿(P4)은 사용자 일정.
 
 ## pane 브리프 템플릿
@@ -109,6 +111,7 @@
 
 ## Herdr 운영 규칙 (사용자 결정)
 
+- **지원자 흐름 전환부터**: 구현·문서는 Claude 서브에이전트(각자 worktree), herdr pane은 Codex 리뷰만 띄운다. 아래 개발 pane 규칙은 리뷰 pane과 이전 파도 기록용이다.
 - **트랙마다 탭 하나** (`herdr tab create --workspace $HERDR_WORKSPACE_ID --cwd <worktree> --label <트랙>`). 루트 pane의 쉘이 홈에서 열리는 경우가 있으니 `herdr pane run <pane> "cd <worktree>"` 뒤에 `agent start`. 같은 탭 오른쪽에 리뷰 pane. 병합되면 탭째 닫는다. 오케스트레이터 탭에 pane을 늘리지 않는다.
 - 개발 pane: Claude(`--permission-mode auto`; 구현 sonnet/medium, 어려운 것 opus/high). 리뷰 pane: Codex `-m gpt-6.1-sol -c model_reasoning_effort=high -s workspace-write -a never -c features.fast_mode=false`. read-only 샌드박스면 파일 저장이 막히고 좁은 pane 출력은 회수가 안 되므로 workspace-write로 띄우고 **결과를 worktree의 `REVIEW.md`(추적 안 함, 병합 전 삭제)에 쓰게 한다.** 리뷰 프롬프트에 "소스 수정·git 변경·외부 게시 금지"를 적는다.
 - **개발과 리뷰는 전부 보이는 pane으로** 띄운다. 오케스트레이터의 Agent 서브에이전트와 `codex exec`(`</dev/null` 필수)는 아주 간단한 일(한 파일 정리, 조회·대조, 짧은 리뷰)에만 쓴다.
@@ -148,11 +151,19 @@
 | P2 보충 | api-fix | 병합 완료(어시스턴트 마스킹·60회 직렬화·run.py 수명주기·테스트 세션 회사 지정) | codex exec 리뷰 필수 2 반영 | 7bd2b86 |
 | P3 | fix-p3 | 병합 완료(결함 5건 수정, 6번 채널 계약은 보류). catalog_version `80517d9fb102c7df` | Opus 가벼운 리뷰 차단 0·참고 3 | 95c64bd |
 | P3 | e2e-runner | 1단계 병합 + 2단계 중간(all_five failed·division_refuse 통과) 병합. 재개는 보고서 절 | 리뷰 생략(테스트 코드, 사용자 결정) | 43b9f7f |
+| 전환 | docs-flow (G0) | 진행 중 (미커밋) | Codex 리뷰 대기 | |
+| 전환 | ui-layout | 대기 (바로 시작 가능) | | |
+| 전환 | investigate-cx10 | 완료(보고서, 계약 변경 없음 → flow-agent·flow-scenario 범위) | — | track/investigate-cx10 5367ba7 (main 병합 대기) |
+| 전환 | contracts (G1, `track/flow` 첫 커밋) | 대기 (G0 뒤) | | |
+| 전환 | arch-page | 대기 (G0 뒤) | | |
+| 전환 | flow-scenario · flow-api · flow-agent · flow-web · flow-worker | 대기 (G1 뒤) | | |
+| 전환 | flow-verify → `track/flow` main 병합 | 대기 | | |
+| 전환 | playtest (게이트 아님, 큰 UI 변경마다 반복) | 대기 (T3) | | |
 | P4 | pilot | 대기 | | |
 | P5 | docs-final ∥ docs-service | 대기 (최종 기준점, 캡처 묶음) | | |
 | W4 | docs-final | 대기 | | |
 | 공유 | docs-share | 병합 완료 (docs/share) | — | 72a9400 |
 
-## 결정 요약 (자세한 것은 docs/decisions.md 2026-10-20 절들)
+## 결정 요약 (자세한 것은 docs/decisions.md 2026-10-20·2026-10-21 절들)
 
-초점 "같이 일하기 좋은 사람". 요소 5개 중 1~5개 선택, 요소당 카드 최대 2장: 계획성(분업·계획 0~, 중간 점검 45), 협업(도움 30, 반대 의견 90), 책임감(지연 60, 공개 70), 적응성(방향 변경 75: 핵심 기능 축소·일정 당김), 정직(보고 110 또는 제출 시). 실력은 점수 제외. 문서 주고받기(documents·versions·shares·opens·revisions·final_document), 보드가 분업 경로(tasks 5행 null 시작, both 허용, division_min 2 주담당·3 동료/같이·4·5 중 하나 동료 단독), 보고는 팀 채널(감지는 팀장 DM도), 세션 상태 reporting(5분), 관찰 창은 카드 단위(키 card_id), 창 밖 근거는 메시지만, 반대 의견 내용 고정, 선점 금지 6건, 팀장 DM 상시(정답 요청은 돌림). 리포트: summary 세 수, 카드 소섹션, basis, record_ref, 전체 기록 화면, 샘플·인쇄, AI 활용 시간순 사실. 호칭 주담당. 모델: 기본 gpt-4o-mini, 역할별 env, 프롬프트로 안 되는 역할만 상향. 개발·리뷰는 pane, 리뷰 서브에이전트는 Opus, 간단한 일만 서브에이전트·codex exec.
+초점 "같이 일하기 좋은 사람". 요소 5개 중 1~5개 선택, 요소당 카드 최대 2장: 계획성(분업·계획 0~, 중간 점검 45), 협업(도움 30, 반대 의견 90), 책임감(지연 60, 공개 70), 적응성(방향 변경 75: 핵심 기능 축소·일정 당김), 정직(10:50 한서윤 개인 DM 고정 문구, 근거는 제출 메시지와 그 DM 이후 한서윤 DM 메시지). 실력은 점수 제외. 문서 주고받기(documents·versions·shares·opens·revisions·final_document), 보드가 분업 경로(빈 보드 시작, 할 일은 섹션 필수 연결, 분업안 공유 시 섹션 담당 5개 + division_min 2 주담당·3 동료/같이·4·5 중 하나 동료 단독을 전체 검증), 종료는 완료 → 한서윤에게 보내기(선택 메시지, DM `kind=report`) → 고정 답장 → 즉시 completed, 오피스 시각 09:00~11:00, 관찰 창은 카드 단위(키 card_id), 창 밖 근거는 메시지만, 반대 의견 내용 고정, 선점 금지 6건, 팀장 DM 상시(정답 요청은 돌림). 리포트: summary 세 수, 카드 소섹션, basis, record_ref, 전체 기록 화면, 샘플·인쇄, AI 활용 시간순 사실. 호칭 주담당. 모델: 기본 gpt-4o-mini, 역할별 env, 프롬프트로 안 되는 역할만 상향. 전환부터 구현·문서는 Claude 서브에이전트, Codex 리뷰만 herdr pane, UI/UX 리뷰는 Opus 서브에이전트.
