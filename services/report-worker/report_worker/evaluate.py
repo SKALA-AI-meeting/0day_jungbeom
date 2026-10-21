@@ -15,6 +15,7 @@
 
 import hashlib
 import json
+import logging
 import math
 import re
 from dataclasses import dataclass
@@ -25,6 +26,8 @@ import yaml
 
 from report_worker.llm import LLM, complete_tracked
 
+log = logging.getLogger("report_worker.evaluate")
+
 ELEMENTS = ("persuasion", "listening", "inclusion", "flexibility", "honesty")
 CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
 # 모델이 쓸 수 있는 기록 없음 사유. evaluate_failed는 워커만 쓴다
@@ -32,10 +35,14 @@ MODEL_REASONS = frozenset(
     {"no_activity", "not_applicable", "event_not_fired", "auto_submitted_blank"}
 )
 CREDIT_DIMENSION = "hon_credit_record"  # contribution 참조도 근거 개수에 드는 예외(rubric.md 3.5)
-FAILED_SUMMARY = "시스템: 판단 실패로 요약이 없습니다"
-FAILED_RATIONALE = (
-    "형식 오류 또는 근거 부재로 이 요소를 1회 다시 요청했지만 유효한 판단이 나오지 않았습니다."
+FAILED_SUMMARY = (
+    "근거가 충분한 판단이 나오지 않아 요약을 쓰지 않았습니다. 원문 기록 확인을 권장합니다"
 )
+FAILED_RATIONALE = (
+    "근거가 충분한 판단이 나오지 않아 수준을 매기지 않았습니다. "
+    "원문 기록 확인을 권장합니다. (사유: {code})"
+)
+CAPPED_MARK = " (근거 1개로 수준 상한 3 적용)"
 REF_PATTERN = re.compile(r"^(msg|slot|proposal|contribution):(.+)$")
 
 
@@ -140,7 +147,7 @@ def fix_refs(output: Any, refs: RefIndex) -> Any:
 def check_dimension(row: Any, refs: RefIndex, forbidden: list[re.Pattern]) -> str | None:
     """차원 한 행의 실패 사유. 통과하면 None."""
     if not isinstance(row, dict):
-        return "차원 행이 객체가 아님"
+        return "format: 차원 행이 객체가 아님"
     dimension_id = row.get("dimension_id")
     level = row.get("level")
     reason = row.get("no_record_reason")
@@ -148,32 +155,35 @@ def check_dimension(row: Any, refs: RefIndex, forbidden: list[re.Pattern]) -> st
     rationale = row.get("rationale")
     confidence = row.get("confidence")
     if not isinstance(evidence, list) or not all(isinstance(r, str) for r in evidence):
-        return "evidence_refs는 문자열 배열이어야 함"
+        return "format: evidence_refs는 문자열 배열이어야 함"
     if not isinstance(rationale, str) or not rationale.strip():
-        return "rationale이 비어 있음"
+        return "format: rationale이 비어 있음"
     if has_forbidden(rationale, forbidden):
-        return "rationale에 금지어(합격·순위·추천·점수 표현)"
+        return "forbidden: rationale에 금지어(합격·순위·추천·점수 표현)를 쓰지 않는다"
     bad = [r for r in evidence if not refs.exists(r)]
     if bad:
-        return f"세션에 없는 근거 참조 {bad}"
+        return f"ref_not_in_session: 참조 {bad}가 세션에 없다. 세션 기록의 ref 문자열만 쓴다"
     if level is None:
         if reason not in MODEL_REASONS:
-            return f"기록 없음 사유가 올바르지 않음: {reason!r}"
+            return f"format: 기록 없음 사유가 올바르지 않음 {reason!r}"
         if confidence is not None:
-            return "기록 없음이면 confidence는 null"
+            return "format: 기록 없음이면 confidence는 null"
         return None
     if isinstance(level, bool) or not isinstance(level, int) or not 1 <= level <= 5:
-        return f"level은 1~5 정수 또는 null: {level!r}"
+        return f"format: level은 1~5 정수 또는 null {level!r}"
     if reason is not None:
-        return "level과 no_record_reason을 함께 씀"
+        return "format: level과 no_record_reason은 둘 중 하나만 쓴다"
     if confidence not in CONFIDENCE_ORDER:
-        return f"confidence 값이 올바르지 않음: {confidence!r}"
+        return f"format: confidence 값이 올바르지 않음 {confidence!r}"
     units = refs.counted_units(evidence, dimension_id)
     if units < 1:
-        return "수준이 있는데 지원자 근거가 없음"
-    if level >= 4 and units < 2:
-        return "수준 4·5에 서로 다른 지원자 근거가 2개 미만"
-    return None
+        return (
+            "no_candidate_evidence: 지원자 근거 없음 — 수준 대신 no_record_reason을 내거나 "
+            "지원자 근거(지원자 msg·지원자가 확정한 slot·proposal)를 단다"
+        )
+    return (
+        None  # 수준 4·5인데 지원자 근거 단위가 1개면 거부하지 않고 evaluate_element가 3으로 깎는다
+    )
 
 
 @dataclass
@@ -191,20 +201,22 @@ def validate_output(
 ) -> Validation:
     result = Validation({}, {}, None)
     if not isinstance(output, dict) or not isinstance(output.get("dimensions"), list):
-        result.errors["_format"] = "출력이 {element, summary, dimensions[]} 형식이 아님"
+        result.errors["_format"] = "format: 출력이 {element, summary, dimensions[]} 형식이 아님"
         return result
     summary = output.get("summary")
     if not isinstance(summary, str) or not summary.strip():
-        result.errors["summary"] = "summary가 비어 있음"
+        result.errors["summary"] = "format: summary가 비어 있음"
     elif has_forbidden(summary, forbidden):
-        result.errors["summary"] = "summary에 금지어(합격·순위·추천·점수 표현)"
+        result.errors["summary"] = (
+            "forbidden: summary에 금지어(합격·순위·추천·점수 표현)를 쓰지 않는다"
+        )
     else:
         result.summary = summary
     seen: dict[str, int] = {}
     for row in output["dimensions"]:
         dimension_id = row.get("dimension_id") if isinstance(row, dict) else None
         if dimension_id not in dimension_ids:
-            result.errors["_format"] = f"척도에 없는 차원 {dimension_id!r}"
+            result.errors["_format"] = f"format: 척도에 없는 차원 {dimension_id!r}"
             continue
         seen[dimension_id] = seen.get(dimension_id, 0) + 1
         error = check_dimension(row, refs, forbidden)
@@ -214,9 +226,9 @@ def validate_output(
             result.valid[dimension_id] = normalize(row)
     for dimension_id in dimension_ids:
         if seen.get(dimension_id, 0) == 0:
-            result.errors[dimension_id] = "차원 누락"
+            result.errors[dimension_id] = "missing: 차원 누락 — 모든 차원을 한 행씩 낸다"
         elif seen[dimension_id] > 1:
-            result.errors[dimension_id] = "차원 중복"
+            result.errors[dimension_id] = "duplicate: 차원 중복 — 차원마다 한 행만 낸다"
             result.valid.pop(dimension_id, None)
     return result
 
@@ -232,13 +244,18 @@ def normalize(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def failed_row(dimension_id: str) -> dict[str, Any]:
+def reason_code(error: str | None) -> str:
+    """검증 사유 문자열 앞의 코드. 없으면 format."""
+    return error.split(":", 1)[0] if error and ":" in error else "format"
+
+
+def failed_row(dimension_id: str, code: str = "format") -> dict[str, Any]:
     return {
         "dimension_id": dimension_id,
         "level": None,
         "no_record_reason": "evaluate_failed",
         "evidence_refs": [],
-        "rationale": FAILED_RATIONALE,
+        "rationale": FAILED_RATIONALE.format(code=code),
         "confidence": None,
     }
 
@@ -396,9 +413,13 @@ async def evaluate_element(
         dimension_id = dimension["dimension_id"]
         row = checked.valid.get(dimension_id)
         if row is None:
-            rows.append(failed_row(dimension_id))
+            code = reason_code(checked.errors.get(dimension_id) or checked.errors.get("_format"))
+            log.info("evaluate_failed dimension=%s reason=%s", dimension_id, code)
+            rows.append(failed_row(dimension_id, code))
             continue
         units = ctx.refs.counted_units(row["evidence_refs"], dimension_id)
+        if row["level"] is not None and row["level"] >= 4 and units < 2:
+            row = {**row, "level": 3, "rationale": row["rationale"] + CAPPED_MARK}
         cap = confidence_cap(dimension, units, ctx.element_cards(element), ctx.fired_cards)
         rows.append(clamp(row, cap))
     if all(r["no_record_reason"] == "evaluate_failed" for r in rows):

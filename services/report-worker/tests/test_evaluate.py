@@ -4,6 +4,7 @@ import copy
 
 import pytest
 from report_worker.evaluate import (
+    CAPPED_MARK,
     FAILED_SUMMARY,
     EvalContext,
     RefIndex,
@@ -102,7 +103,6 @@ BROKEN = {
         _duplicate,
         _forbidden,
     ],
-    "listen_engage": [_level4_one_unit],
 }
 CASES = [(d, f) for d, fs in BROKEN.items() for f in fs]
 
@@ -121,6 +121,38 @@ async def test_invalid_dimension_retries_element_once_then_evaluate_failed(dimen
     others = [r for d, r in rows.items() if d != dimension_id]
     assert all(r["no_record_reason"] != "evaluate_failed" for r in others)  # 나머지는 재요청 결과
     assert summary["dimension_count"] == 4 and summary["no_record_count"] == 1
+
+
+async def test_level4_with_one_candidate_unit_is_capped_to_3_medium_not_rejected():
+    out = copy.deepcopy(element_outputs()["listening"])
+    _level4_one_unit(out)
+    row = dim(out, "listen_engage")
+    row["level"], row["confidence"] = 4, "high"
+    rows, _, llm, usage = await run("listening", out)
+    assert len(llm.calls) == 1 and usage["element_retries"] == 0
+    capped = rows["listen_engage"]
+    assert capped["level"] == 3 and capped["confidence"] == "medium"
+    assert capped["rationale"].endswith(CAPPED_MARK)
+    assert capped["evidence_refs"] == ["msg:m-15", "msg:m-13"]
+
+
+async def test_retry_prompt_names_dimension_and_reject_reason():
+    bad = copy.deepcopy(element_outputs()["listening"])
+    _no_evidence(bad)
+    _, _, llm, _ = await run("listening", bad, copy.deepcopy(bad))
+    retry = llm.calls[1][2].split("[재요청]", 1)[1]
+    assert "listen_understand: no_candidate_evidence: 지원자 근거 없음" in retry
+    assert "no_record_reason" in retry
+
+
+async def test_failed_row_rationale_has_guidance_and_reason_code():
+    bad = copy.deepcopy(element_outputs()["listening"])
+    _other_session(bad)
+    rows, _, _, _ = await run("listening", bad, copy.deepcopy(bad))
+    assert rows["listen_understand"]["rationale"] == (
+        "근거가 충분한 판단이 나오지 않아 수준을 매기지 않았습니다. "
+        "원문 기록 확인을 권장합니다. (사유: ref_not_in_session)"
+    )
 
 
 async def test_retry_result_replaces_first_output():
