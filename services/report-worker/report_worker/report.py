@@ -124,6 +124,7 @@ def aggregate(
             "option_id": s.get("option_id"),
             "filled_by": s["filled_by"],
             "resolution": s["resolution"],
+            "outcome": s["outcome"],
             "t_min": s["t_min"],
             "first_proposer": first_by_phase.get(s["phase"]) if s.get("option_id") else None,
             "support": [

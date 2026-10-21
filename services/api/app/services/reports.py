@@ -35,7 +35,7 @@ from app.models import (
     Slot,
 )
 from app.services import budget
-from app.services.common import Effects, conflict, invalid, iso, purge_at, t_min
+from app.services.common import Effects, conflict, invalid, iso, purge_at, slot_outcome, t_min
 from app.services.views import gaps, seats_typed
 
 COMPLETED_PLUS = ("completed", "report_ready", "approving", "reviewed", "failed")
@@ -509,7 +509,7 @@ async def record(db: AsyncSession, session: Session) -> list[dict[str, Any]]:
     for s in (await db.scalars(select(Slot).where(Slot.session_id == session.id))).all():
         if s.status == "confirmed":
             by = s.filled_by
-            add(s.confirmed_at, "slot", by, f"{s.phase}: {s.value} ({s.resolution})", s.phase)
+            add(s.confirmed_at, "slot", by, f"{s.phase}: {s.value} ({slot_outcome(s)})", s.phase)
     for c in (
         await db.scalars(select(AssistantCall).where(AssistantCall.session_id == session.id))
     ).all():
@@ -520,7 +520,12 @@ async def record(db: AsyncSession, session: Session) -> list[dict[str, Any]]:
         add(v.viewed_at, "material_view", "candidate", v.material_id, v.id)
     proposal = await db.get(Proposal, session.id)
     if proposal and proposal.submitted_at:
-        summary = "자동 제출" if proposal.auto_submitted else "기획안 제출"
+        blanks = len(proposal.submit_blank_sections or [])
+        if proposal.auto_submitted:
+            summary = f"자동 제출 · 빈 칸 {blanks}개"
+        else:
+            warned = "경고 확인 후 제출" if proposal.blank_warning_shown else "경고 없이 제출"
+            summary = f"제출 · 빈 칸 {blanks}개({warned})"
         add(proposal.submitted_at, "proposal_submit", "candidate", summary, session.id)
     for g in (
         await db.scalars(select(ConnectionGap).where(ConnectionGap.session_id == session.id))

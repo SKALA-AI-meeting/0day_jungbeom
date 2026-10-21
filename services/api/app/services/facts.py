@@ -195,6 +195,8 @@ async def compute(db: AsyncSession, session: Session, position: Position) -> dic
             if oid in by_option and by_option[oid].proposer in ("p1", "p2", "p3")
         ],
         "credit_field_filled": bool(credit) and credit != "없음",
+        "blank_sections_at_submit": (proposal.submit_blank_sections or []) if proposal else [],
+        "blank_warning_acknowledged": proposal.blank_warning_shown if proposal else None,
         "assistant_calls": [
             {
                 "call_id": str(c.id),

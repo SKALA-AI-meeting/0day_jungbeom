@@ -67,7 +67,9 @@ async def tick_session(ctx: AppContext, session_id: uuid.UUID) -> None:
         position = await db.get(Position, invite.position_id)
         now = ctx.clock.now()
         if now >= session.ends_at:
-            await session_service.submit(db, session, "timeout", now, fx)
+            await session_service.submit(
+                db, session, "timeout", now, fx, position.scenario["proposal_template"]
+            )
         elif session.phase in sc.DEBATE_PHASES and now >= session.phase_deadline_at:
             await timeout.fill(db, session, position, ctx.clock, fx)
         elif session.phase in sc.DEBATE_PHASES:

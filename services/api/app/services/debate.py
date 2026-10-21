@@ -40,6 +40,7 @@ from app.services.common import (
     not_found,
     serialize_message,
     slot_full,
+    slot_outcome,
     slot_public,
     t_min,
 )
@@ -708,6 +709,7 @@ def slot_event(session: Session, slot: Slot) -> dict[str, Any]:
         "value": slot.value,
         "filled_by": slot.filled_by,
         "resolution": slot.resolution,
+        "outcome": slot_outcome(slot),
         "t_min": t_min(session, slot.confirmed_at) or 0.0,
     }
 

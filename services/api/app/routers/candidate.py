@@ -335,12 +335,25 @@ async def put_proposal(
         return result
 
 
+class SubmitIn(BaseModel):
+    blank_warning_shown: bool | None = None
+
+
 @router.post("/sessions/{session_id}/proposal/submit")
-async def submit(session_id: uuid.UUID, ctx: Ctx, _: Candidate) -> dict[str, Any]:
+async def submit(
+    session_id: uuid.UUID, ctx: Ctx, _: Candidate, body: SubmitIn | None = None
+) -> dict[str, Any]:
     fx = Effects()
     async with ctx.session_factory() as db:
-        session, _position, _i = await load_context(db, session_id, lock=True)
-        result = await proposal_service.submit(db, session, ctx.clock, fx)
+        session, position, _i = await load_context(db, session_id, lock=True)
+        result = await proposal_service.submit(
+            db,
+            session,
+            position.scenario["proposal_template"],
+            ctx.clock,
+            fx,
+            body.blank_warning_shown if body else None,
+        )
         await db.commit()
     await ctx.apply(session_id, fx)
     return result

@@ -174,6 +174,7 @@ async def state(
                 "value": None,
                 "filled_by": None,
                 "resolution": None,
+                "outcome": None,
                 "t_min": None,
             }
             for p in sc.DEBATE_PHASES

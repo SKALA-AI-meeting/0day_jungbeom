@@ -83,6 +83,7 @@
       "value": "물",
       "filled_by": "candidate",
       "resolution": "consensus",
+      "outcome": "candidate_decision",
       "t_min": 8.2
     },
     {
@@ -91,6 +92,7 @@
       "value": "도심 폭우·침수 피해 증가",
       "filled_by": "p3",
       "resolution": "consensus",
+      "outcome": "consensus",
       "t_min": 25.4
     },
     {
@@ -99,6 +101,7 @@
       "value": "센서·데이터 기반 물 관리·경보",
       "filled_by": "p3",
       "resolution": "timeout",
+      "outcome": "timeout",
       "t_min": 46.0
     }
   ],

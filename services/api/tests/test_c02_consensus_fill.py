@@ -43,6 +43,7 @@ async def test_fill_in_same_run_after_candidate_agrees(api, ctx, runner, classif
     body = r.json()
     assert body["phase"] == "solution"
     assert (body["slot"]["filled_by"], body["slot"]["resolution"]) == ("p3", "consensus")
+    assert body["slot"]["outcome"] == "consensus"
     frames = [f for f in api.frames_since(sess, mark) if f["type"] != "typing"]
     filled = types(frames)
     start = filled.index("message.new", filled.index("message.ack") + 2)

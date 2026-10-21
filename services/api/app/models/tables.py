@@ -226,6 +226,8 @@ class Proposal(Base):
     auto_submitted: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    submit_blank_sections: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    blank_warning_shown: Mapped[bool | None] = mapped_column(Boolean)
 
 
 class AgentRun(Base):

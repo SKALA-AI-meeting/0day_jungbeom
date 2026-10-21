@@ -35,7 +35,7 @@ async def test_timeout_fills_most_supported_option_without_graph(
     notice, slot = frames[0]["payload"], frames[1]["payload"]
     assert notice["sender"] == "p3" and notice["content"].startswith("시간이 다 돼서")
     assert "도심 폭우·침수 피해 증가" in notice["content"]
-    assert (slot["resolution"], slot["filled_by"]) == ("timeout", "p3")
+    assert (slot["resolution"], slot["filled_by"], slot["outcome"]) == ("timeout", "p3", "timeout")
     assert frames[2]["payload"]["reason"] == "timeout"
     assert [s.type for _, s, _ in runner.calls[calls:]] == ["phase_started"]
 

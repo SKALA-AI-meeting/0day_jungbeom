@@ -92,10 +92,16 @@ async def start(
 
 
 async def submit(
-    db: AsyncSession, session: Session, reason: str, now: datetime, fx: Effects
+    db: AsyncSession,
+    session: Session,
+    reason: str,
+    now: datetime,
+    fx: Effects,
+    template: list[str],
+    warning_shown: bool | None = None,
 ) -> Proposal:
     """제출·자동 제출: 한 트랜잭션에서 제출본 고정 → completed → (커밋 뒤) 큐 발행 →
-    session.ended."""
+    session.ended. 빈 칸은 막지 않고 칸 id만 기록한다(자동 제출이면 경고 표시 여부 null)."""
     proposal = await db.get(Proposal, session.id, with_for_update=True)
     if session.status in ENDED_STATUSES - {"cancelled", "failed"}:
         return proposal
@@ -104,6 +110,10 @@ async def submit(
     proposal.submitted = dict(proposal.sections)
     proposal.submitted_at = now
     proposal.auto_submitted = reason == "timeout"
+    proposal.submit_blank_sections = [
+        f for f in template if not (proposal.submitted.get(f) or "").strip()
+    ]
+    proposal.blank_warning_shown = None if proposal.auto_submitted else bool(warning_shown)
     session.status = "completed"
     session.phase = "completed"
     session.submitted_at = now

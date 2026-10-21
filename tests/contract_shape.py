@@ -178,6 +178,7 @@ NO_RECORD = Enum(
 LEVEL = Enum(1, 2, 3, 4, 5)
 CONFIDENCE = Enum("high", "medium", "low")
 RESOLUTION = Enum("consensus", "timeout")
+OUTCOME = Enum("consensus", "candidate_decision", "timeout")  # 표시용 칸 결과
 STIMULUS = Enum("message", "phase_started", "idle", "card_due")
 INTENT = Enum("propose", "agree", "oppose", "question", "other")
 ORIGIN = Enum("spontaneous", "invited")
@@ -240,6 +241,7 @@ _SLOT_PUBLIC = {
     "value": Opt(str),
     "filled_by": Opt(PARTICIPANT),
     "resolution": Opt(RESOLUTION),
+    "outcome": Opt(OUTCOME),
     "t_min": Opt(NUM),
 }
 _SLOT_FULL = {
@@ -249,6 +251,7 @@ _SLOT_FULL = {
     "option_id": Opt(str),
     "filled_by": Opt(PARTICIPANT),
     "resolution": Opt(RESOLUTION),
+    "outcome": Opt(OUTCOME),
     "support": Opt(SUPPORT),
     "confirmed_at": Opt(TS),
     "t_min": Opt(NUM),
@@ -256,10 +259,12 @@ _SLOT_FULL = {
 
 
 def _confirmed_slot(slot: dict) -> str | None:
-    """confirmed 칸은 value·filled_by·resolution·t_min이 있어야 한다."""
+    """confirmed 칸은 value·filled_by·resolution·outcome·t_min이 있어야 한다."""
     if slot["status"] != "confirmed":
         return None
-    empty = [k for k in ("value", "filled_by", "resolution", "t_min") if slot.get(k) is None]
+    empty = [
+        k for k in ("value", "filled_by", "resolution", "outcome", "t_min") if slot.get(k) is None
+    ]
     return f"confirmed slot missing {empty}" if empty else None
 
 
@@ -528,6 +533,8 @@ FACTS = {
     "messages_after_rejection": int,
     "ai_adopted_units": [{"phase": SLOT_PHASE, "option_id": str, "proposer": SEAT}],
     "credit_field_filled": bool,
+    "blank_sections_at_submit": [str],
+    "blank_warning_acknowledged": Opt(bool),
     "assistant_calls": [{"call_id": str, "t_min": NUM, "cited_material_ids": [str]}],
     "material_views": [{"material_id": str, "t_min": NUM}],
     "connection_gaps": [GAP],
@@ -596,6 +603,7 @@ REPORT = {
             "option_id": Opt(str),
             "filled_by": PARTICIPANT,
             "resolution": RESOLUTION,
+            "outcome": OUTCOME,
             "t_min": NUM,
             "first_proposer": Opt(PARTICIPANT),
             "support": [{"option_id": str, "label": str, "supporters": [PARTICIPANT]}],
@@ -836,6 +844,7 @@ WS_SERVER = {
         "value": str,
         "filled_by": PARTICIPANT,
         "resolution": RESOLUTION,
+        "outcome": OUTCOME,
         "t_min": NUM,
     },
     "phase.changed": {

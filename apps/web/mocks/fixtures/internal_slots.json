@@ -6,6 +6,7 @@
     "option_id": "opt-kw-water",
     "filled_by": "candidate",
     "resolution": "consensus",
+    "outcome": "candidate_decision",
     "support": [
       {
         "option_id": "opt-kw-water",
@@ -30,6 +31,7 @@
     "option_id": "opt-pb-p2",
     "filled_by": "p3",
     "resolution": "consensus",
+    "outcome": "consensus",
     "support": [
       {
         "option_id": "opt-pb-p2",
@@ -50,6 +52,7 @@
     "option_id": "opt-sl-s1",
     "filled_by": "p3",
     "resolution": "timeout",
+    "outcome": "timeout",
     "support": [
       {
         "option_id": "opt-sl-s1",
