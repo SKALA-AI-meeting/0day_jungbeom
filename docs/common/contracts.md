@@ -472,7 +472,8 @@ close code: 4401(토큰 문제 → resume 후 재연결), 4403(다른 세션, �
 |---|---|---|
 | 본문 스키마·타입, 19개 차원이 빠짐없이 한 행씩(중복·없는 id 없음), level 1~5와 `no_record_reason` 배타·사유 코드 값, 기록 없음이면 confidence null, 요소 5행 | api(저장 전) | 422 `invalid_input`, 저장 안 함 |
 | 모든 `evidence_refs`가 형식 4종이고 **같은 세션의 실제 행** | api(저장 전) | 422 `invalid_input` |
-| LLM 출력 형식 오류(파싱·스키마, 위 api 항목과 같은 규칙을 저장 전에 미리 봄), level이 있으면 근거 최소 개수(`rubric.md` 2.2) | 워커(저장 전) | 그 **요소**를 1회 다시 요청 → 그래도 실패한 차원만 `evaluate_failed` |
+| LLM 출력 형식 오류(파싱·스키마, 위 api 항목과 같은 규칙을 저장 전에 미리 봄), level이 있는데 지원자 근거 단위 0개(`rubric.md` 2.2) | 워커(저장 전) | 그 **요소**를 차원별 거부 사유와 함께 1회 다시 요청 → 그래도 실패한 차원만 `evaluate_failed`(`rationale`에 사유 코드) |
+| level 4·5인데 서로 다른 지원자 근거 단위 1개(`rubric.md` 2.2) | 워커 | 거부하지 않고 level 3·confidence 최대 medium으로 깎는다, `rationale` 끝에 상한 적용 표시 |
 | 확신도 상한(`rubric.md` 2.4) | 워커 | 거부하지 않고 상한으로 깎는다(clamp), `rationale`은 그대로 |
 | 요소 level = 차원 평균 반올림(.5 올림) | 워커가 계산해 채움 | — (모델 값을 쓰지 않음) |
 | `rationale`·`summary` 금지어(합격·불합격·순위·추천·점수) | 워커 | 그 요소 1회 재요청 → 실패 차원 `evaluate_failed`, 실패한 summary는 고정 문장 |
