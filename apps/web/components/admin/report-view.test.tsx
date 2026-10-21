@@ -179,7 +179,7 @@ test("전체 기록: 근거 앵커 줄 하이라이트, 오피스 시각, 단계
   );
   expect(html).toMatch(/id="message-m-06" aria-current="true"/);
   expect(html).toContain("리포트로 돌아가기");
-  expect(html).toContain("키워드 확정: 물 · 합의");
+  expect(html).toContain("키워드 확정: 물 · 지원자 결정");
   expect(html).toContain("자료 열람: 지역별 물 부족 통계");
   expect(html).toContain("09:46");
 });
