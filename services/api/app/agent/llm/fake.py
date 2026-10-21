@@ -110,10 +110,11 @@ TURN_SEAT = (
 class DeterministicLLM(BaseLLM):
     model = "fake"
 
-    def __init__(self, role: str, temperature: float = 0.0) -> None:
+    def __init__(self, role: str, temperature: float = 0.0, retries: int = 0) -> None:
         self.role = role
         self.temperature = temperature
-        self.retry_delays = ()
+        # 역할 표와 같은 시도 횟수, 대기 없음(LLM_FAULT 주입이 실 모델과 같은 재시도·폴백을 타게)
+        self.retry_delays = (0.0,) * retries
 
     async def _call(
         self,

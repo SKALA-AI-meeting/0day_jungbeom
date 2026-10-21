@@ -265,3 +265,18 @@ async def test_llm_fake_same_input_same_result():
         await h.generate()
         runs.append(h.assessment.saved[0])
     assert runs[0] == runs[1]
+
+
+async def test_llm_fault_evaluator_timeout_requeues_then_succeeds(h, monkeypatch):
+    from report_worker import llm
+
+    assert llm.parse_fault("evaluator:timeout:1") == {"evaluator": 1}
+    monkeypatch.setattr(llm, "FAULTS", {"evaluator": 1})
+    await h.generate()
+    assert h.assessment.calls.count("save_evaluation") == 0 and h.api.drafts == []
+    assert h.published[-1] == (
+        "report.generate",
+        {"session_id": "sess-1", "attempt": 2, "eval_round": 1},
+    )
+    await h.generate(attempt=2)
+    assert h.assessment.calls.count("save_evaluation") == 1 and len(h.api.drafts) == 1

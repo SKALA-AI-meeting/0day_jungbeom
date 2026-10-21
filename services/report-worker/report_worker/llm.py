@@ -8,6 +8,7 @@
 import asyncio
 import json
 import logging
+import os
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -25,6 +26,25 @@ log = logging.getLogger("report_worker.llm")
 
 class LLMUnavailable(Exception):
     """최초 포함 3회 모두 전송 실패·타임아웃. 큐 재시도 신호."""
+
+
+def parse_fault(value: str | None) -> dict[str, int]:
+    """`LLM_FAULT=<role>:timeout:<N>` → {role: N}. 형식이 다르면 무시한다(e2e 장애 주입 전용)."""
+    parts = (value or "").strip().split(":")
+    if len(parts) == 3 and parts[1] == "timeout" and parts[2].isdigit():
+        return {parts[0]: int(parts[2])}
+    return {}
+
+
+# 프로세스 시작 때 한 번 읽는다. 남은 횟수는 프로세스 메모리에서 줄어든다.
+FAULTS = parse_fault(os.environ.get("LLM_FAULT"))
+
+
+def take_fault(role: str) -> bool:
+    if FAULTS.get(role, 0) <= 0:
+        return False
+    FAULTS[role] -= 1
+    return True
 
 
 @dataclass
@@ -53,6 +73,9 @@ def empty_usage(model: str) -> dict:
 
 
 async def complete_tracked(llm: LLM, system: str, user: str, usage: dict) -> str:
+    # 장애 주입은 재시도까지 소진한 평가 호출 1회로 센다(실제 호출 없이 큐 재시도 경로로)
+    if take_fault("evaluator"):
+        raise LLMUnavailable("LLM_FAULT: evaluator timeout")
     started = time.monotonic()
     usage["llm_calls"] += 1
     try:

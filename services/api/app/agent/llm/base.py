@@ -9,6 +9,7 @@ docs/common/harness.md Recovery·Observability 행. 모델은 역할별(roles.py
 import asyncio
 import json
 import logging
+import os
 import time
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
@@ -39,6 +40,25 @@ def cost_usd(model: str, tokens_in: int, tokens_out: int) -> float:
 
 class LLMUnavailable(Exception):
     """최초 포함 모든 시도가 실패. 규칙 폴백 신호."""
+
+
+def parse_fault(value: str | None) -> dict[str, int]:
+    """`LLM_FAULT=<role>:timeout:<N>` → {role: N}. 형식이 다르면 무시한다(e2e 장애 주입 전용)."""
+    parts = (value or "").strip().split(":")
+    if len(parts) == 3 and parts[1] == "timeout" and parts[2].isdigit():
+        return {parts[0]: int(parts[2])}
+    return {}
+
+
+# 프로세스 시작 때 한 번 읽는다. 남은 횟수는 프로세스 메모리에서 줄어든다.
+FAULTS = parse_fault(os.environ.get("LLM_FAULT"))
+
+
+def take_fault(role: str | None) -> bool:
+    if role is None or FAULTS.get(role, 0) <= 0:
+        return False
+    FAULTS[role] -= 1
+    return True
 
 
 @dataclass
@@ -128,6 +148,7 @@ class BaseLLM:
     model: str = MODEL
     retry_delays: Sequence[float] = RETRY_DELAYS
     temperature: float = DEFAULT_TEMPERATURE
+    role: str | None = None  # make_llm이 넣는다(LLM_FAULT 대상 판정)
 
     @property
     def records(self) -> list[CallRecord]:
@@ -154,6 +175,9 @@ class BaseLLM:
                 await asyncio.sleep(self.retry_delays[attempt - 1])
             started = time.monotonic()
             try:
+                # 장애 주입: 시도 1회를 실제 호출 없이 타임아웃으로(재시도·폴백 경로는 그대로)
+                if take_fault(self.role):
+                    raise TimeoutError("LLM_FAULT")
                 message = await self._call(
                     list(messages),
                     tools=tools,

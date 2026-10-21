@@ -79,11 +79,11 @@ def make_llm(role: str, env: Mapping[str, str] | None = None) -> BaseLLM:
     config = role_config(role)
     env = _env(env)
     if env.get("LLM_FAKE") == "1":
-        return DeterministicLLM(role, temperature=config.temperature)
+        return DeterministicLLM(role, temperature=config.temperature, retries=config.retries)
     model = model_for(role, env)
     key, base_url = key_for(model, env)
     delays = tuple(RETRY_DELAYS[: config.retries])
-    return OpenAILLM(
+    llm = OpenAILLM(
         key,
         model,
         timeout=config.timeout,
@@ -91,6 +91,8 @@ def make_llm(role: str, env: Mapping[str, str] | None = None) -> BaseLLM:
         base_url=base_url,
         temperature=config.temperature,
     )
+    llm.role = role
+    return llm
 
 
 def _env(env: Mapping[str, str] | None) -> Mapping[str, str]:

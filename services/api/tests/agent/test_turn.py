@@ -311,3 +311,18 @@ async def test_unexpected_error_after_respond_stops_typing(harness):
     run = await h.run("phase_started")
     assert run.status == "failed" and not run.ok
     assert ("p1", "start") in h.ports.typing_sent and h.ports.typing_sent[-1] == ("p1", "stop")
+
+
+async def test_llm_fault_persona_timeout_skips_one_speaker(harness, monkeypatch):
+    from app.agent.llm import base, make_llm
+
+    assert base.parse_fault("persona:timeout:3") == {"persona": 3}
+    monkeypatch.setattr(base, "FAULTS", {"persona": 3})
+    h = harness("keyword")
+    h.runner.llms.persona = make_llm("persona", {"LLM_FAKE": "1"})
+    mid = h.candidate("한결님, 지안님?", intent_of("question", to=("p1", "p3")))
+    run = await h.run("message", message_id=mid)
+    # 첫 화자는 최초+재시도 2회가 모두 타임아웃 → 발언 생략, 다음 화자는 정상 게시
+    assert run.error.startswith("persona_llm_unavailable:p1") and run.usage["retries"] == 2
+    assert [m["sender"] for m in h.posted()] == ["p3"]
+    assert base.FAULTS == {"persona": 0}
