@@ -1,8 +1,8 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { api, auth, streamTask } from '../api'
-import ChatBubble from '../components/ChatBubble.vue'
-import { COMP_COLOR, MODE_LABEL, MODE_POS, MS_LABEL, SIGNAL, kappaWord } from '../constants'
+import { api, auth, streamTask } from '../../api'
+import ChatBubble from '../../components/ChatBubble.vue'
+import { COMP_COLOR, MODE_LABEL, MODE_POS, MS_LABEL, SIGNAL, kappaWord } from '../../constants'
 
 const props = defineProps({ id: String })
 const d = ref(null)
@@ -139,7 +139,7 @@ function jumpMsg(idx) {
     <section class="main">
       <header class="head">
         <div>
-          <RouterLink to="/admin" class="small">← 목록</RouterLink>
+          <RouterLink to="/admin" class="small">← 대시보드</RouterLink>
           <h1>{{ d.alias }} <small class="muted">· {{ d.scenario.category }} — {{ d.scenario.title }}</small></h1>
         </div>
         <div class="hr">

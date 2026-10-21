@@ -1,5 +1,6 @@
 package dev.dayzero.backend.web;
 
+import dev.dayzero.backend.domain.Account;
 import dev.dayzero.backend.domain.AiTask;
 import dev.dayzero.backend.domain.Invite;
 import dev.dayzero.backend.repo.InviteRepository;
@@ -22,7 +23,12 @@ public final class Controllers {
 
     public record SignupReq(@NotBlank @Size(max = 100) String companyName, @Email @NotBlank String email, @NotBlank @Size(min = 8, max = 72) String password) {}
     public record LoginReq(@NotBlank String email, @NotBlank String password) {}
-    public record StartReq(@Size(max = 20) String alias, @NotBlank String scenarioId) {}
+    public record StartReq(@NotBlank String scenarioId, @Size(max = 64) String inviteToken) {}
+    public record CandidateSignupReq(@NotBlank @Size(max = 64) String inviteToken, @Email @NotBlank @Size(max = 200) String email,
+                                     @NotBlank @Size(min = 8, max = 72) String password, @NotBlank @Size(min = 2, max = 20) String nickname,
+                                     @NotBlank String desiredJob, String industry, @NotNull @Min(0) @Max(40) Integer experienceYears,
+                                     @Size(max = 300) String bio, @NotNull Boolean consent) {}
+    public record DecisionReq(boolean approved, @Size(max = 500) String comment) {}
     public record NotesReq(@Size(max = 10000) String text) {}
     public record TaskReq(@NotBlank String type, String sessionId, @Size(max = 1500) String text, @Size(max = 10) String choiceId) {}
     public record ApprovalReq(boolean approved, @Size(max = 500) String comment) {}
@@ -32,15 +38,73 @@ public final class Controllers {
     @RequestMapping("/api/auth")
     public static class Auth {
         private final AuthService auth;
-        public Auth(AuthService auth) { this.auth = auth; }
+        private final AccountService accounts;
+        public Auth(AuthService auth, AccountService accounts) { this.auth = auth; this.accounts = accounts; }
 
+        /** Company admin signup (creates the company). */
         @PostMapping("/signup") public Map<String, Object> signup(@Valid @RequestBody SignupReq r) { return auth.signup(r.companyName(), r.email(), r.password()); }
         @PostMapping("/login") public Map<String, Object> login(@Valid @RequestBody LoginReq r) { return auth.login(r.email(), r.password()); }
+
+        /** Candidate signup from an invite. The account starts PENDING_REVIEW and the agent screens it. */
+        @PostMapping("/candidate/signup")
+        public ResponseEntity<Map<String, Object>> candidateSignup(@Valid @RequestBody CandidateSignupReq r) {
+            Map<String, Object> out = new LinkedHashMap<>(accounts.signup(new AccountService.SignupData(r.inviteToken(), r.email(), r.password(), r.nickname(),
+                    r.desiredJob(), r.industry(), r.experienceYears(), r.bio(), r.consent())));
+            @SuppressWarnings("unchecked") Map<String, Object> acc = (Map<String, Object>) out.get("account");
+            out.put("token", auth.candidateToken(accounts.load(((Number) acc.get("id")).longValue())));
+            out.put("role", "CANDIDATE");
+            return ResponseEntity.status(HttpStatus.CREATED).body(out);
+        }
+
+        @PostMapping("/candidate/login")
+        public Map<String, Object> candidateLogin(@Valid @RequestBody LoginReq r) {
+            Account a = accounts.login(r.email(), r.password());
+            return Map.of("token", auth.candidateToken(a), "role", "CANDIDATE", "account", accounts.view(a));
+        }
+
         @GetMapping("/me") public Map<String, Object> me(@AuthenticationPrincipal AuthUser u) {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("role", u.role()); m.put("subject", u.subject());
             if (u.isAdmin()) m.put("company", auth.companyOf(u).name);
+            if (u.isCandidate()) m.put("account", accounts.view(accounts.mine(u)));
             return m;
+        }
+    }
+
+    /** The signed-in candidate's own account, review progress and sessions. */
+    @RestController
+    @RequestMapping("/api/me")
+    public static class Me {
+        private final AccountService accounts;
+        private final SessionService sessions;
+        private final TaskService tasks;
+        private final SseHub hub;
+        public Me(AccountService accounts, SessionService sessions, TaskService tasks, SseHub hub) {
+            this.accounts = accounts; this.sessions = sessions; this.tasks = tasks; this.hub = hub;
+        }
+
+        @GetMapping public Map<String, Object> me(@AuthenticationPrincipal AuthUser u) { return accounts.view(accounts.mine(u)); }
+
+        @GetMapping("/sessions") public List<Map<String, Object>> list(@AuthenticationPrincipal AuthUser u) { return sessions.accountSessions(accounts.mine(u)); }
+
+        @PostMapping("/sessions")
+        public ResponseEntity<Map<String, Object>> start(@AuthenticationPrincipal AuthUser u, @Valid @RequestBody StartReq r) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(sessions.startForAccount(accounts.mine(u), r.scenarioId(), r.inviteToken()));
+        }
+
+        /** Review progress for the candidate: stage names only — the agent's flags and the admin's notes never reach this stream. */
+        @GetMapping(value = "/review/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+        public SseEmitter review(@AuthenticationPrincipal AuthUser u) {
+            Map<String, Object> me = accounts.view(accounts.mine(u));
+            Object id = me.get("reviewTaskId");
+            if (id == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "검토 작업이 없어요.");
+            AiTask t = tasks.get((String) id); // the account's own review task (id taken from its own account row)
+            return hub.subscribe(t.id, tasks.replay(t.id), t.finished(), e -> switch (e.type()) {
+                case "PROGRESS" -> e;
+                case "APPROVAL_REQUIRED" -> new SseHub.Ev(e.seq(), "PROGRESS", Map.of("stage", "admin_review", "label", "담당자 확인을 기다리는 중", "status", "waiting"));
+                case "DONE", "FAILED" -> new SseHub.Ev(e.seq(), e.type(), Map.of());
+                default -> null;
+            });
         }
     }
 
@@ -49,8 +113,7 @@ public final class Controllers {
     public static class Public {
         private final AgentClient agent;
         private final SessionService sessions;
-        private final AuthService auth;
-        public Public(AgentClient agent, SessionService sessions, AuthService auth) { this.agent = agent; this.sessions = sessions; this.auth = auth; }
+        public Public(AgentClient agent, SessionService sessions) { this.agent = agent; this.sessions = sessions; }
 
         @GetMapping("/meta") public Map<String, Object> meta() { return agent.meta(); }
 
@@ -62,14 +125,6 @@ public final class Controllers {
 
         @GetMapping("/invites/{token}") public Map<String, Object> invite(@PathVariable String token) { return sessions.inviteInfo(token); }
 
-        /** Starts a session from an invite and returns a candidate token scoped to that session. */
-        @PostMapping("/invites/{token}/sessions")
-        public ResponseEntity<Map<String, Object>> start(@PathVariable String token, @Valid @RequestBody StartReq r) {
-            if (r.alias() == null || r.alias().isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "별칭을 입력해 주세요.");
-            Map<String, Object> out = new LinkedHashMap<>(sessions.startFromInvite(token, r.alias(), r.scenarioId()));
-            out.put("token", auth.candidateToken((String) out.get("sessionId")));
-            return ResponseEntity.status(HttpStatus.CREATED).body(out);
-        }
     }
 
     @RestController
@@ -143,7 +198,19 @@ public final class Controllers {
         private final SessionService sessions;
         private final AuthService auth;
         private final InviteRepository invites;
-        public Admin(SessionService sessions, AuthService auth, InviteRepository invites) { this.sessions = sessions; this.auth = auth; this.invites = invites; }
+        private final InboxService inbox;
+        private final AccountService accounts;
+        public Admin(SessionService sessions, AuthService auth, InviteRepository invites, InboxService inbox, AccountService accounts) {
+            this.sessions = sessions; this.auth = auth; this.invites = invites; this.inbox = inbox; this.accounts = accounts;
+        }
+
+        /** Issue checklist: what the agent asked a person to decide (shown first after login). */
+        @GetMapping("/inbox") public Map<String, Object> inbox(@AuthenticationPrincipal AuthUser u) { return inbox.inbox(u); }
+        @GetMapping("/accounts") public List<Map<String, Object>> accounts(@AuthenticationPrincipal AuthUser u) { return accounts.companyAccounts(u); }
+        @PostMapping("/accounts/{id}/decision")
+        public Map<String, Object> decide(@AuthenticationPrincipal AuthUser u, @PathVariable Long id, @Valid @RequestBody DecisionReq r) {
+            return accounts.manualDecision(u, id, r.approved(), r.comment());
+        }
 
         @GetMapping("/sessions") public List<Map<String, Object>> list(@AuthenticationPrincipal AuthUser u) { return sessions.adminRows(u); }
         @GetMapping("/sessions/{id}") public Map<String, Object> get(@AuthenticationPrincipal AuthUser u, @PathVariable String id) { return sessions.adminView(u, id); }
@@ -160,7 +227,7 @@ public final class Controllers {
         private static Map<String, Object> inviteMap(Invite i) {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("token", i.token); m.put("alias", i.alias); m.put("email", i.email); m.put("reusable", i.reusable);
-            m.put("expiresAt", i.expiresAt); m.put("usedAt", i.usedAt); m.put("path", "/i/" + i.token);
+            m.put("expiresAt", i.expiresAt); m.put("usedAt", i.usedAt); m.put("path", "/join/" + i.token);
             return m;
         }
     }
@@ -171,7 +238,11 @@ public final class Controllers {
     public static class Internal {
         private final SessionService sessions;
         private final TaskService tasks;
-        public Internal(SessionService sessions, TaskService tasks) { this.sessions = sessions; this.tasks = tasks; }
+        private final AccountService accounts;
+        public Internal(SessionService sessions, TaskService tasks, AccountService accounts) { this.sessions = sessions; this.tasks = tasks; this.accounts = accounts; }
+
+        @GetMapping("/accounts/{id}") public Map<String, Object> account(@PathVariable Long id) { return accounts.internalView(id); }
+        @PostMapping("/accounts/{id}/decision") public Map<String, Object> decision(@PathVariable Long id, @RequestBody Map<String, Object> body) { return accounts.decide(id, body); }
 
         @GetMapping("/sessions/{id}/state") public Map<String, Object> state(@PathVariable String id) { return sessions.state(id); }
         @GetMapping("/conditions") public List<Map<String, Object>> conditions() { return sessions.conditions(); }

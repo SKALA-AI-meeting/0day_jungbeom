@@ -29,7 +29,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(a -> a
                 .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                 .requestMatchers("/actuator/health", "/error").permitAll()
-                .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/meta", "/api/scenarios/**", "/api/invites/**").permitAll()
+                .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/candidate/signup", "/api/auth/candidate/login",
+                        "/api/meta", "/api/scenarios/**", "/api/invites/**").permitAll()
                 .requestMatchers("/internal/**").hasRole("INTERNAL")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated())

@@ -64,22 +64,37 @@ public class SessionService {
         return null;
     }
 
+    /** Start a session for an ACTIVE account. The invite (the account's own, or one passed in) is consumed here. */
     @Transactional
-    public Map<String, Object> startFromInvite(String token, String alias, String scenarioId) {
-        Invite inv = invites.findByToken(token).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "초대 링크를 찾을 수 없어요."));
+    public Map<String, Object> startForAccount(Account a, String scenarioId, String inviteToken) {
+        if (!"ACTIVE".equals(a.status)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "계정 검토가 끝난 뒤에 평가를 시작할 수 있어요.");
+        Invite inv = (inviteToken == null || inviteToken.isBlank()) ? a.invite
+                : invites.findByToken(inviteToken).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "초대 링크를 찾을 수 없어요."));
+        if (inv == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "초대 링크가 필요해요.");
+        if (!Objects.equals(inv.company.id, a.company.id)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "다른 회사의 초대 링크예요.");
         String problem = inviteProblem(inv);
-        if (problem != null) throw new ResponseStatusException(HttpStatus.GONE, "expired".equals(problem) ? "링크가 만료되었습니다." : "이미 사용한 초대 링크예요.");
+        if (problem != null) throw new ResponseStatusException(HttpStatus.GONE, "expired".equals(problem) ? "링크가 만료되었습니다." : "이 초대로는 이미 평가를 시작했어요. 내 평가에서 이어서 진행해 주세요.");
         if (agent.scenario(scenarioId) == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 시나리오예요.");
         ChatSession s = new ChatSession();
         s.id = newId();
         s.company = inv.company;
         s.invite = inv;
-        s.alias = (inv.alias != null && !inv.alias.isBlank()) ? inv.alias : alias.strip();
+        s.account = a;
+        s.alias = a.nickname;
         s.scenarioId = scenarioId;
         sessions.save(s);
         if (!inv.reusable) { inv.usedAt = OffsetDateTime.now(); invites.save(inv); }
-        AiTask start = tasks.create("START", s.id, s.company.id, "candidate:" + s.id, Map.of());
+        AiTask start = tasks.create("START", s.id, s.company.id, a.id, "account:" + a.id, Map.of());
         return Map.of("sessionId", s.id, "startTaskId", start.id, "company", s.company.name);
+    }
+
+    public List<Map<String, Object>> accountSessions(Account a) {
+        return sessions.findByAccountIdOrderByCreatedAtDesc(a.id).stream().map(s -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", s.id); m.put("scenarioId", s.scenarioId); m.put("status", s.status); m.put("milestoneIdx", s.milestoneIdx);
+            m.put("createdAt", s.createdAt); m.put("endedAt", s.endedAt);
+            return m;
+        }).toList();
     }
 
     @Transactional
@@ -101,7 +116,8 @@ public class SessionService {
 
     public ChatSession authorized(String id, AuthUser u) {
         ChatSession s = load(id);
-        boolean ok = (u.isCandidate() && id.equals(u.sessionId())) || (u.isAdmin() && Objects.equals(u.companyId(), s.company.id));
+        boolean ok = (u.isCandidate() && s.account != null && Objects.equals(s.account.id, u.accountId()))
+                || (u.isAdmin() && Objects.equals(u.companyId(), s.company.id));
         if (!ok) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "이 세션에 접근할 수 없어요.");
         return s;
     }
@@ -130,7 +146,7 @@ public class SessionService {
             s.choiceJson = json.write(Map.of("option", choiceId, "pole", choiceId, "msg_idx", idx, "ts", epoch(m.createdAt)));
             sessions.save(s);
         }
-        AiTask t = tasks.create("TURN", sessionId, s.company.id, u.subject(), Map.of("text", m.text, "user_idx", idx, "choice_id", choiceId == null ? "" : choiceId));
+        AiTask t = tasks.create("TURN", sessionId, s.company.id, u.accountId(), u.subject(), Map.of("text", m.text, "user_idx", idx, "choice_id", choiceId == null ? "" : choiceId));
         return Map.of("taskId", t.id, "userMessage", messageMap(m));
     }
 

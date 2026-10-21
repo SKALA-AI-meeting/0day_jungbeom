@@ -1,4 +1,6 @@
-"""Task execution (one agent job = one trace). START | TURN | REPORT (RUN or RESUME after approval).
+"""Task execution (one agent job = one trace). START | TURN | REPORT | ACCOUNT_REVIEW (RUN, or RESUME after approval).
+
+New task types register a handler in HANDLERS (run, and resume if the graph can pause for a person).
 
 Data in and out goes through business-mcp (Spring /internal/**); the agent never writes the business DB.
 Retry: the caller (HTTP background loop or RabbitMQ consumer) retries retryable failures; only the final
@@ -21,6 +23,7 @@ from .harness.observability import Tracer
 from .harness.runtime import TaskContext
 from .llm import get_llm
 from .personas import allocate
+from .account_review import build_account_review_graph
 from .report_graph import build_report_graph
 from .scenarios import MILESTONE_KEYS, get_scenario
 
@@ -58,6 +61,7 @@ async def graphs() -> dict:
         saver = await memory.open_checkpointer()
         _graphs["turn"] = build_graph(saver)
         _graphs["report"] = build_report_graph(saver)
+        _graphs["account_review"] = build_account_review_graph(saver)
     return _graphs
 
 
@@ -110,13 +114,14 @@ async def run_with_retries(msg: dict) -> None:
 
 async def _run(msg: dict, ctx: TaskContext) -> dict:
     kind, mode = msg["type"], msg.get("mode", "RUN")
-    if kind == "START":
-        return await _start(msg)
-    if kind == "TURN":
-        return await _turn(msg, ctx)
-    if kind == "REPORT":
-        return await (_report_resume(msg) if mode == "RESUME" else _report_run(msg))
-    raise NonRetryable(f"unknown task type {kind}")
+    handler = HANDLERS.get(kind)
+    if handler is None:
+        raise NonRetryable(f"unknown task type {kind}")
+    if mode == "RESUME":
+        if handler.get("resume") is None:
+            raise NonRetryable(f"{kind} cannot be resumed")
+        return await handler["resume"](msg)
+    return await handler["run"](msg, ctx)
 
 
 def _names(st: dict, scn: dict) -> dict:
@@ -201,8 +206,36 @@ async def _report_run(msg: dict) -> dict:
     return {"saved": bool(out.get("saved"))}
 
 
+async def _graph_run(name: str, msg: dict, initial: dict) -> dict:
+    out = await (await graphs())[name].ainvoke(initial, config=_report_cfg(msg, name))
+    if out.get("__interrupt__"):
+        return {"_interrupt": out["__interrupt__"][0].value}
+    return out
+
+
+async def _review_run(msg: dict, ctx: TaskContext) -> dict:
+    account_id = int((msg.get("payload") or {}).get("account_id") or msg.get("accountId"))
+    out = await _graph_run("account_review", msg, {"account_id": account_id})
+    return out if "_interrupt" in out else {"result": out.get("result"), "route": out.get("route")}
+
+
+async def _review_resume(msg: dict) -> dict:
+    decision = msg.get("resume") or {"approved": False}
+    out = await (await graphs())["account_review"].ainvoke(Command(resume=decision), config=_report_cfg(msg, "account_review.resume"))
+    return {"approved": bool(decision.get("approved")), "decision": "approved" if decision.get("approved") else "rejected", "result": out.get("result")}
+
+
 async def _report_resume(msg: dict) -> dict:
     g = (await graphs())["report"]
     decision = msg.get("resume") or {"approved": False}
     out = await g.ainvoke(Command(resume=decision), config=_report_cfg(msg, "report.resume"))
     return {"approved": bool(decision.get("approved")), "saved": bool(out.get("saved"))}
+
+
+# Task registry: add a type here (and a TaskHandler on the Spring side) to plug in a new agent workflow.
+HANDLERS: dict[str, dict] = {
+    "START": {"run": lambda msg, ctx: _start(msg), "resume": None},
+    "TURN": {"run": _turn, "resume": None},
+    "REPORT": {"run": lambda msg, ctx: _report_run(msg), "resume": _report_resume},
+    "ACCOUNT_REVIEW": {"run": _review_run, "resume": _review_resume},
+}

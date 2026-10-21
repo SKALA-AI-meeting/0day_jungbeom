@@ -3,13 +3,14 @@ package dev.dayzero.backend.domain;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
-/** An agent job (START | TURN | REPORT). Created with 202, executed by the agent, progress relayed as SSE. */
+/** An agent job (START | TURN | REPORT | ACCOUNT_REVIEW). Created with 202, executed by the agent, progress relayed as SSE. */
 @Entity
 @Table(name = "ai_tasks")
 public class AiTask {
     @Id public String id;
     public String sessionId;
     public Long companyId;
+    public Long accountId;
     public String type;
     public String status = "QUEUED"; // QUEUED RUNNING WAITING_APPROVAL DONE FAILED REJECTED
     public String threadId;

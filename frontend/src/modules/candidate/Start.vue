@@ -1,15 +1,14 @@
 <script setup>
+// Pick a situation and enter the team channel. Signed-in ACTIVE accounts only; job/industry start from the profile.
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { api, auth } from '../api'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { api } from '../../api'
 
-const props = defineProps({ token: { type: String, default: '' } })
+const route = useRoute()
 const router = useRouter()
-const inviteToken = computed(() => props.token || 'demo') // '/' uses the seeded reusable demo invite
-const invite = ref(null)
+const me = ref(null)
 const meta = ref(null)
-const alias = ref((() => { try { return localStorage.getItem('dz_alias') || '' } catch { return '' } })())
-const mode = ref('dilemma') // 'dilemma' = 직무·산업 맞춤 (PR2), 'category' = PR1 상황 카테고리
+const mode = ref('dilemma') // 'dilemma' = 직무·산업 맞춤, 'category' = 상황 카테고리
 const picked = ref(null)
 const job = ref(null)
 const industry = ref(null)
@@ -20,10 +19,11 @@ const error = ref('')
 
 onMounted(async () => {
   try {
-    ;[meta.value, invite.value] = await Promise.all([api.meta(), api.invite(inviteToken.value)])
-    if (invite.value.alias) alias.value = invite.value.alias
+    ;[meta.value, me.value] = await Promise.all([api.meta(), api.me()])
+    job.value = me.value.desiredJob
+    industry.value = me.value.industry || null
   } catch (e) {
-    error.value = '서버에 연결하지 못했어요. 백엔드가 실행 중인지 확인해 주세요.'
+    error.value = e.message || '서버에 연결하지 못했어요.'
   }
 })
 
@@ -35,16 +35,15 @@ watch([job, industry], async ([j, i]) => {
 const scenario = computed(() =>
   mode.value === 'dilemma' ? preview.value : meta.value?.scenarios.find((s) => s.id === picked.value),
 )
-const ready = computed(() => alias.value.trim() && scenario.value && agreed.value && !busy.value && invite.value?.valid)
+const fromProfile = computed(() => me.value && job.value === me.value.desiredJob && industry.value === (me.value.industry || null))
+const ready = computed(() => scenario.value && agreed.value && !busy.value && me.value?.status === 'ACTIVE')
 const ICON = { delay: '⏱️', scope: '🔀', conflict: '⚖️', workload: '🤝' }
 
 async function start() {
   busy.value = true
   error.value = ''
   try {
-    try { localStorage.setItem('dz_alias', alias.value.trim()) } catch { /* ignore */ }
-    const s = await api.startSession(inviteToken.value, alias.value.trim(), scenario.value.id)
-    auth.setCandidate(s.sessionId, s.token)
+    const s = await api.startSession(scenario.value.id, route.query.invite)
     router.push({ path: `/s/${s.sessionId}`, query: { task: s.startTaskId } })
   } catch (e) {
     error.value = e.message
@@ -58,24 +57,23 @@ async function start() {
     <h1>팀 채널에 합류해 볼까요?</h1>
     <p class="sub">AI 팀원 두 명과 3자 대화방에서 진행 중인 일을 함께 풀어 갑니다. 정답은 없고, 평소 하던 대로 대화하면 돼요.</p>
     <p v-if="error" class="chip red">{{ error }}</p>
-    <p v-if="invite && !invite.valid" class="chip red">{{ invite.message }}</p>
-    <p v-else-if="invite" class="muted small">초대한 회사: <b>{{ invite.company }}</b>{{ props.token ? '' : ' (데모 초대 링크)' }}</p>
-
-    <section class="card step">
-      <div class="step-h"><b>1</b> 사용할 별칭</div>
-      <input class="text" v-model="alias" maxlength="20" placeholder="예: 지원자A (실명 대신 별칭을 써 주세요)" />
-    </section>
+    <p v-if="me && me.status !== 'ACTIVE'" class="chip amber">
+      계정 확인이 끝나야 시작할 수 있어요. <RouterLink to="/me/review">진행 상황 보기</RouterLink>
+    </p>
 
     <section class="card step">
       <div class="step-h">
-        <b>2</b> 상황 고르기
+        <b>1</b> 상황 고르기
         <div class="tabs">
           <button :class="{ on: mode === 'dilemma' }" @click="mode = 'dilemma'">직무·산업 맞춤</button>
           <button :class="{ on: mode === 'category' }" @click="mode = 'category'">상황 카테고리</button>
         </div>
       </div>
       <template v-if="mode === 'dilemma'">
-        <p class="muted small hint">지원하는 직무와 산업을 고르면, 그 일에서 자주 생기는 상황이 주어져요.</p>
+        <p class="muted small hint">
+          지원하는 직무와 산업을 고르면, 그 일에서 자주 생기는 상황이 주어져요.
+          <span v-if="fromProfile" class="chip gray">가입할 때 고른 값으로 맞춰 두었어요</span>
+        </p>
         <div class="lbl">직무</div>
         <div class="pills">
           <button v-for="j in meta?.dilemma.jobs" :key="j.id" class="pill" :class="{ on: job === j.id }" @click="job = j.id">{{ j.label }}</button>
@@ -103,13 +101,13 @@ async function start() {
     </section>
 
     <section v-if="scenario" class="card step">
-      <div class="step-h"><b>3</b> 오늘의 상황</div>
+      <div class="step-h"><b>2</b> 오늘의 상황</div>
       <span v-if="scenario.kind === 'dilemma'" class="chip blue">{{ scenario.category }}</span>
       <h3 class="st">{{ scenario.title }}</h3>
       <p class="bg">{{ scenario.background }}</p>
       <p class="muted small">{{ scenario.brief }}</p>
       <div class="people">
-        <div class="person"><span class="av me">나</span><div><b>{{ alias || '지원자' }}</b><small>같은 팀원 (오늘 합류)</small></div></div>
+        <div class="person"><span class="av me">나</span><div><b>{{ me?.nickname || '지원자' }}</b><small>같은 팀원 (오늘 합류)</small></div></div>
         <div v-for="p in scenario.personas" :key="p.id" class="person">
           <span class="av">{{ p.emoji }}</span><div><b>{{ p.name }}</b><small>{{ p.role }} · AI</small></div>
         </div>
@@ -147,11 +145,6 @@ async function start() {
 .tabs button.on { background: var(--panel); color: var(--brand); box-shadow: var(--shadow); }
 .hint { margin: -4px 0 10px; }
 .lbl { font-size: 12px; font-weight: 700; color: var(--muted); margin: 10px 0 6px; }
-.pills { display: flex; flex-wrap: wrap; gap: 8px; }
-.pill { border: 1.5px solid var(--line); background: var(--panel); color: var(--ink); padding: 8px 14px; border-radius: 999px; font-weight: 600; }
-.pill small { color: var(--muted); font-weight: 500; margin-left: 4px; }
-.pill:hover { border-color: var(--brand); }
-.pill.on { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
 .bg { margin: 0 0 8px; }
 .people { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0; }
 .person { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border: 1px solid var(--line); border-radius: 999px; }

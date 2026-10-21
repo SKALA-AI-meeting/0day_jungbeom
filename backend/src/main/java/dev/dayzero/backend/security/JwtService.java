@@ -26,13 +26,14 @@ public class JwtService {
         var b = Jwts.builder().subject(u.subject()).claim("role", u.role())
                 .issuedAt(Date.from(now)).expiration(Date.from(now.plus(ttlMinutes, ChronoUnit.MINUTES)));
         if (u.companyId() != null) b.claim("cid", u.companyId());
-        if (u.sessionId() != null) b.claim("sid", u.sessionId());
+        if (u.accountId() != null) b.claim("aid", u.accountId());
         return b.signWith(key).compact();
     }
 
     public AuthUser parse(String token) {
         Claims c = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
         Number cid = c.get("cid", Number.class);
-        return new AuthUser(c.getSubject(), c.get("role", String.class), cid == null ? null : cid.longValue(), c.get("sid", String.class));
+        Number aid = c.get("aid", Number.class);
+        return new AuthUser(c.getSubject(), c.get("role", String.class), cid == null ? null : cid.longValue(), aid == null ? null : aid.longValue());
     }
 }

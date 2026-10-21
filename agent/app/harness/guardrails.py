@@ -2,6 +2,8 @@
 
 Tool policy (also in docs/architecture/harness.md):
   approval required : business.save_report        (the report is shown to the company -> a person approves it)
+                      business.decide_account     unless basis is auto_clean (approve) or auto_schema (reject):
+                                                  only clear-cut cases are decided without a person
   automatic writes  : business.init_session, business.append_turn, business.save_detection
                       (conversation log bookkeeping; the business rules are enforced again by Spring Boot)
   read-only         : every rag.* and detector.describe_rubric / get_session_detections
@@ -10,15 +12,23 @@ from __future__ import annotations
 
 import re
 
-APPROVAL_REQUIRED = {"business.save_report"}
+APPROVAL_REQUIRED = {"business.save_report", "business.decide_account"}
+AUTO_BASIS = {"auto_clean": "approved", "auto_schema": "rejected"}
 
 
 class ApprovalRequired(PermissionError):
     pass
 
 
-def require_approval(tool: str, approved: bool) -> None:
-    if tool in APPROVAL_REQUIRED and not approved:
+def needs_approval(tool: str, args: dict | None = None) -> bool:
+    if tool == "business.decide_account":
+        a = args or {}
+        return AUTO_BASIS.get(a.get("basis")) != a.get("decision")
+    return tool in APPROVAL_REQUIRED
+
+
+def require_approval(tool: str, approved: bool, args: dict | None = None) -> None:
+    if needs_approval(tool, args) and not approved:
         raise ApprovalRequired(f"{tool} needs human approval (interrupt) before it can run")
 
 

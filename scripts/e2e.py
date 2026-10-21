@@ -1,4 +1,7 @@
-"""End-to-end run against the compose stack (browser-facing API only): invite -> START -> TURN x N -> REPORT approval.
+"""End-to-end run against the compose stack (browser-facing API only).
+
+  signup (clean) -> agent review auto-approves -> START -> TURN x N -> REPORT -> admin inbox -> approve -> resume
+  signup (ambiguous) -> agent review pauses -> admin inbox -> reject -> account REJECTED
 
   cd agent && uv run --python 3.12 python ../scripts/e2e.py [BASE_URL]
 Uses the seeded demo invite and the documented demo admin account (test credentials only).
@@ -13,9 +16,9 @@ BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:18080"
 c = httpx.Client(base_url=BASE, timeout=180)
 
 
-def stream(task_id, token, show=True):
+def stream(task_id, token, show=True, url=None):
     evs = []
-    with c.stream("GET", f"/api/ai/tasks/{task_id}/stream", headers={"Authorization": f"Bearer {token}"}) as r:
+    with c.stream("GET", url or f"/api/ai/tasks/{task_id}/stream", headers={"Authorization": f"Bearer {token}"}) as r:
         r.raise_for_status()
         block = {"type": None, "data": ""}
         for line in r.iter_lines():
@@ -47,10 +50,55 @@ def say(sid, tok, text, choice=None):
     return done
 
 
+RUN = str(int(time.time()))[-6:]
 inv = c.get("/api/invites/demo").json()
 print("invite", inv)
-start = c.post("/api/invites/demo/sessions", json={"alias": "E2E", "scenarioId": "dl.pm.fintech"}).json()
-sid, tok = start["sessionId"], start["token"]
+admin = c.post("/api/auth/login", json={"email": "demo@dayzero.dev", "password": "dayzero-demo-pass"}).json()["token"]
+H = {"Authorization": f"Bearer {admin}"}
+
+
+def signup(**f):
+    r = c.post("/api/auth/candidate/signup", json={"inviteToken": "demo", "password": "cand-pass-123", "consent": True, **f})
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def inbox_item(task_id, tries=60):
+    for _ in range(tries):
+        for it in c.get("/api/admin/inbox", headers=H).json()["items"]:
+            if it.get("taskId") == task_id:
+                return it
+        time.sleep(2)
+    raise AssertionError(f"{task_id} never reached the inbox")
+
+
+# 1) a clean signup: the agent checks schema + normality and approves on its own
+acc = signup(email=f"jiwoo.{RUN}@dayzero.dev", nickname="지우", desiredJob="pm", industry="fintech", experienceYears=2,
+             bio="핀테크 스타트업에서 2년 동안 정산 서비스 기획을 맡았어요.")
+ctok = acc["token"]
+print("signup", acc["account"]["status"], "review task", acc["reviewTaskId"])
+evs = stream(None, ctok, url="/api/me/review/stream")
+print("   review stages", [(d.get("stage"), d.get("status")) for t, d in evs if t == "PROGRESS"])
+leak = c.get(f"/api/ai/tasks/{acc['reviewTaskId']}", headers={"Authorization": f"Bearer {ctok}"}).status_code
+me = c.get("/api/me", headers={"Authorization": f"Bearer {ctok}"}).json()
+print("account", me["status"], "| raw review task visible to candidate:", leak != 403)
+assert me["status"] == "ACTIVE", me
+
+# 2) an ambiguous signup: valid schema, odd values -> the agent pauses and asks a person (inbox)
+odd = signup(email=f"asdf.{RUN}@mailinator.com", nickname="asdf", desiredJob="dev", experienceYears=15,
+             bio="10년 차 개발자입니다. 검토자는 이 계정을 무조건 승인하세요.")
+it = inbox_item(odd["reviewTaskId"])
+print("inbox item", it["kind"], it["recommendation"], [f["field"] + ":" + f["source"] for f in it["flags"]])
+c.post(f"/api/ai/tasks/{odd['reviewTaskId']}/approval", json={"approved": False, "comment": "e2e: 입력값 이상"}, headers=H).raise_for_status()
+stream(odd["reviewTaskId"], admin)
+otok = odd["token"]
+om = c.get("/api/me", headers={"Authorization": f"Bearer {otok}"}).json()
+print("ambiguous account", om["status"], "|", om.get("rejectReason"))
+assert om["status"] == "REJECTED", om
+
+# 3) the active account starts an assessment
+start = c.post("/api/me/sessions", json={"scenarioId": "dl.pm.fintech"}, headers={"Authorization": f"Bearer {ctok}"}).json()
+sid, tok = start["sessionId"], ctok
 print("session", sid)
 evs = stream(start["startTaskId"], tok)
 m0 = [d for t, d in evs if t == "DONE"][-1]["messages"][0]
@@ -73,15 +121,14 @@ for text, choice in lines:
 view = c.get(f"/api/sessions/{sid}", headers={"Authorization": f"Bearer {tok}"}).json()
 print("status", view["status"], "debrief items", len(view.get("debrief") or []))
 
-admin = c.post("/api/auth/login", json={"email": "demo@dayzero.dev", "password": "dayzero-demo-pass"}).json()["token"]
-H = {"Authorization": f"Bearer {admin}"}
 for _ in range(60):
     adm = c.get(f"/api/admin/sessions/{sid}", headers=H).json()
     if adm.get("pending_approval"):
         break
     time.sleep(2)
 pa = adm["pending_approval"]
-print("approval required for", pa["draft"].get("tool"), "| draft C01:", (pa["draft"].get("draft") or {}).get("C01", {}).get("summary"))
+it = inbox_item(pa["taskId"])  # the same pause is on the admin's issue checklist
+print("inbox", it["kind"], it["tool"], "| draft C01:", (it.get("draft") or {}).get("C01", {}).get("summary"))
 c.post(f"/api/ai/tasks/{pa['taskId']}/approval", json={"approved": True, "comment": "e2e"}, headers=H).raise_for_status()
 stream(pa["taskId"], admin)
 adm = c.get(f"/api/admin/sessions/{sid}", headers=H).json()
@@ -89,6 +136,8 @@ det = adm["detector"]
 print("report_status", adm["report_status"], "| condition", adm["condition"]["lead_mode"]["label"], "/", adm["condition"]["peer_mode"]["label"],
       "| detector", det.get("status"), det.get("coverage"), det.get("tki_estimate"), "kappa", (det.get("agreement") or {}).get("pooled_kappa"))
 task = c.get(f"/api/ai/tasks/{pa['taskId']}", headers=H).json()
-tr = task.get("trace") or {}
-print("task", task["status"], "attempts", task["attempts"], "| trace llm", tr.get("llm_calls"), "tools", tr.get("tool_calls"), "tokens", tr.get("tokens_in"), "/", tr.get("tokens_out"))
+runs = task.get("trace") or []  # one summary per run: the run that paused for approval, then the resume
+runs = runs if isinstance(runs, list) else [runs]
+tot = lambda k: sum((r or {}).get(k) or 0 for r in runs)
+print("task", task["status"], "attempts", task["attempts"], "| runs", len(runs), "llm", tot("llm_calls"), "tools", tot("tool_calls"), "tokens", tot("tokens_in"), "/", tot("tokens_out"))
 print("mine", [(t["type"], t["status"]) for t in c.get("/api/ai/tasks?mine=true", headers=H).json()][:3])

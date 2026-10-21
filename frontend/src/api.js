@@ -1,17 +1,7 @@
 // The browser talks only to Spring Boot (/api/**). AI work is a task: 202 + taskId, progress over SSE.
-const store = {
-  get: (k) => { try { return localStorage.getItem(k) } catch { return null } },
-  set: (k, v) => { try { localStorage.setItem(k, v) } catch { /* private mode: keep in memory only */ } },
-  del: (k) => { try { localStorage.removeItem(k) } catch { /* ignore */ } },
-}
+import { auth } from './state/auth'
 
-export const auth = {
-  admin: () => store.get('dz_admin_jwt'),
-  setAdmin: (t) => store.set('dz_admin_jwt', t),
-  clearAdmin: () => store.del('dz_admin_jwt'),
-  candidate: (sid) => store.get(`dz_cand_${sid}`),
-  setCandidate: (sid, t) => store.set(`dz_cand_${sid}`, t),
-}
+export { auth }
 
 async function req(method, url, body, token) {
   const res = await fetch(url, {
@@ -20,6 +10,7 @@ async function req(method, url, body, token) {
     body: body ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) {
+    if (res.status === 401 && token) auth.expired(token) // a stale token: sign that role out and send it to its login
     const err = new Error((await res.json().catch(() => ({}))).detail || `요청 실패 (${res.status})`)
     err.status = res.status
     throw err
@@ -27,39 +18,54 @@ async function req(method, url, body, token) {
   return res.status === 204 ? null : res.json()
 }
 
-const cand = (sid) => auth.candidate(sid)
+const cand = () => auth.candidate()
 const admin = () => auth.admin()
 
 export const api = {
+  // public
   meta: () => req('GET', '/api/meta'),
   preview: (scenarioId) => req('GET', `/api/scenarios/${scenarioId}`),
   invite: (token) => req('GET', `/api/invites/${encodeURIComponent(token)}`),
-  startSession: (token, alias, scenarioId) => req('POST', `/api/invites/${encodeURIComponent(token)}/sessions`, { alias, scenarioId }),
 
-  getSession: (sid) => req('GET', `/api/sessions/${sid}`, null, cand(sid)),
-  saveNotes: (sid, text) => req('PUT', `/api/sessions/${sid}/notes`, { text }, cand(sid)),
-  finish: (sid) => req('POST', `/api/sessions/${sid}/finish`, null, cand(sid)),
-  submitTurn: (sid, text, choiceId) => req('POST', '/api/ai/tasks', { type: 'TURN', sessionId: sid, text, choiceId }, cand(sid)),
+  // candidate account
+  candidateSignup: (data) => req('POST', '/api/auth/candidate/signup', data),
+  candidateLogin: (email, password) => req('POST', '/api/auth/candidate/login', { email, password }),
+  me: () => req('GET', '/api/me', null, cand()),
+  mySessions: () => req('GET', '/api/me/sessions', null, cand()),
+  startSession: (scenarioId, inviteToken) => req('POST', '/api/me/sessions', { scenarioId, inviteToken: inviteToken || null }, cand()),
+
+  // candidate session
+  getSession: (sid) => req('GET', `/api/sessions/${sid}`, null, cand()),
+  saveNotes: (sid, text) => req('PUT', `/api/sessions/${sid}/notes`, { text }, cand()),
+  finish: (sid) => req('POST', `/api/sessions/${sid}/finish`, null, cand()),
+  submitTurn: (sid, text, choiceId) => req('POST', '/api/ai/tasks', { type: 'TURN', sessionId: sid, text, choiceId }, cand()),
   myTasks: (token) => req('GET', '/api/ai/tasks?mine=true', null, token),
 
+  // admin
   signup: (companyName, email, password) => req('POST', '/api/auth/signup', { companyName, email, password }),
   login: (email, password) => req('POST', '/api/auth/login', { email, password }),
-  me: () => req('GET', '/api/auth/me', null, admin()),
+  adminMe: () => req('GET', '/api/auth/me', null, admin()),
+  inbox: () => req('GET', '/api/admin/inbox', null, admin()),
+  accounts: () => req('GET', '/api/admin/accounts', null, admin()),
+  decideAccount: (id, approved, comment) => req('POST', `/api/admin/accounts/${id}/decision`, { approved, comment }, admin()),
   adminList: () => req('GET', '/api/admin/sessions', null, admin()),
   adminGet: (sid) => req('GET', `/api/admin/sessions/${sid}`, null, admin()),
   adminInvites: () => req('GET', '/api/admin/invites', null, admin()),
   adminInvite: (alias, email) => req('POST', '/api/admin/invites', { alias, email: email || null }, admin()),
   requestReport: (sid) => req('POST', '/api/ai/tasks', { type: 'REPORT', sessionId: sid }, admin()),
   approve: (taskId, approved, comment) => req('POST', `/api/ai/tasks/${taskId}/approval`, { approved, comment }, admin()),
+  task: (taskId, token) => req('GET', `/api/ai/tasks/${taskId}`, null, token),
 }
 
-/**
- * Subscribe to a task's progress events (TOKEN, TOOL_START, TOOL_END, APPROVAL_REQUIRED, DONE, FAILED).
- * Uses fetch so the bearer token stays in a header (EventSource cannot set headers).
- */
-export async function streamTask(taskId, token, onEvent) {
-  const res = await fetch(`/api/ai/tasks/${taskId}/stream`, { headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' } })
-  if (!res.ok || !res.body) throw new Error(`진행 상황을 받지 못했어요 (${res.status})`)
+/** Read a text/event-stream with fetch so the bearer token stays in a header (EventSource cannot set headers). */
+export async function streamSSE(url, token, onEvent) {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' } })
+  if (!res.ok || !res.body) {
+    if (res.status === 401) auth.expired(token)
+    const err = new Error(`진행 상황을 받지 못했어요 (${res.status})`)
+    err.status = res.status
+    throw err
+  }
   const reader = res.body.getReader()
   const dec = new TextDecoder()
   let buf = ''
@@ -81,3 +87,8 @@ export async function streamTask(taskId, token, onEvent) {
     }
   }
 }
+
+/** Progress events of one task (TOKEN, TOOL_START, TOOL_END, PROGRESS, APPROVAL_REQUIRED, DONE, FAILED). */
+export const streamTask = (taskId, token, onEvent) => streamSSE(`/api/ai/tasks/${taskId}/stream`, token, onEvent)
+/** The signed-in candidate's account review, stage names only. */
+export const streamReview = (onEvent) => streamSSE('/api/me/review/stream', auth.candidate(), onEvent)

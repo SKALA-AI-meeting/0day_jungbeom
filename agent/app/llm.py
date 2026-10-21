@@ -105,6 +105,7 @@ class BaseLLM:
     async def speak(self, scn, pid: str, messages, names, directive: str, meta: dict | None = None) -> dict: ...
     async def observe(self, scn, milestone: str, messages, names, user_text: str) -> list[ObsItem]: ...
     async def summarize(self, scn, observations: list[dict], notes: str) -> SummaryOut: ...
+    async def review_account(self, account: dict): ...
 
 
 def clean_line(text: str) -> str:
@@ -241,6 +242,17 @@ class OpenAILLM(BaseLLM):
         return await self._structured("summarize", SummaryOut, [("system", sys), ("human", human)])
 
 
+    async def review_account(self, account):
+        from .account_review import Plausibility
+        from .harness import instructions
+
+        sys = instructions.render("account_review")
+        human = instructions.render("account_review_input", nickname=account.get("nickname"), email=account.get("email"),
+                                    desired_job=account.get("desired_job"), industry=account.get("industry") or "(없음)",
+                                    experience_years=account.get("experience_years"), bio=account.get("bio") or "(없음)")
+        return await self._structured("account_review", Plausibility, [("system", sys), ("human", human)])
+
+
 class MockLLM(BaseLLM):
     """Deterministic stand-in; keeps the graph, SSE and UI testable offline."""
 
@@ -294,6 +306,11 @@ class MockLLM(BaseLLM):
             if re.search(pat, user_text):
                 out.append(ObsItem(competency=cid, behavior=beh, quote=first, signal="neutral"))
         return out[:3]
+
+    async def review_account(self, account):
+        from .account_review import Plausibility
+
+        return Plausibility(overall="clean", concerns=[])  # rules alone decide in offline tests
 
     async def summarize(self, scn, observations, notes):
         def line(cid):

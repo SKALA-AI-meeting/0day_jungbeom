@@ -4,8 +4,9 @@ It never touches a database: every tool calls Spring Boot's internal API (/inter
 + X-Internal-Key), so business rules stay in one place (Spring). HTTP errors become ToolError with the
 Spring message, which the agent's harness treats as non-retryable for 4xx.
 
-  조회  get_session_state, list_conditions
-  변경  init_session, append_turn, save_detection, save_report (save_report needs human approval in the agent)
+  조회  get_session_state, list_conditions, get_account
+  변경  init_session, append_turn, save_detection, save_report, decide_account
+        (save_report, and decide_account except auto_clean / auto_schema, need human approval in the agent)
 """
 from __future__ import annotations
 
@@ -92,6 +93,23 @@ async def save_detection(session_id: str, msg_idx: int, detection: dict) -> dict
 async def save_report(session_id: str, report: dict) -> dict:
     """[변경·승인 필요] 리포트를 저장해 기업 관리자에게 공개한다. Agent는 사람이 승인한 뒤에만 호출한다."""
     return await _req("PUT", f"/internal/sessions/{_sid(session_id)}/report", {"report": report})
+
+
+@mcp.tool
+async def get_account(account_id: int) -> dict:
+    """[조회] 지원자 계정의 가입 정보(별칭, 이메일, 희망 직무, 관심 산업, 경력, 자기소개, 동의, 상태)."""
+    if int(account_id) <= 0:
+        raise ToolError("400 account_id가 올바르지 않아요.")
+    return await _req("GET", f"/internal/accounts/{int(account_id)}")
+
+
+@mcp.tool
+async def decide_account(account_id: int, decision: str, basis: str, reason: str = "", review: dict | None = None) -> dict:
+    """[변경·조건부 승인] 계정 심사 결과를 반영한다. decision=approved|rejected, basis=auto_clean|auto_schema|admin_approved|admin_rejected.
+    Spring이 상태(심사 대기만 변경)와 결정-근거 일치를 다시 검증한다."""
+    if decision not in ("approved", "rejected"):
+        raise ToolError("400 decision은 approved 또는 rejected예요.")
+    return await _req("POST", f"/internal/accounts/{int(account_id)}/decision", {"decision": decision, "basis": basis, "reason": reason, "review": review or {}})
 
 
 if __name__ == "__main__":

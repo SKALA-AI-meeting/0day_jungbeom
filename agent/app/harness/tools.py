@@ -40,7 +40,7 @@ def enabled(server: str) -> bool:
 
 async def call(server: str, tool: str, args: dict, *, approved: bool = False, quiet: bool = False):
     name = f"{server}.{tool}"
-    guardrails.require_approval(name, approved)
+    guardrails.require_approval(name, approved, args)
     ctx = runtime.current()
     if ctx:
         ctx.limits.check_tool(ctx.tool_counts, name)

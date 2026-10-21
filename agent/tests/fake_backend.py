@@ -10,6 +10,14 @@ MILESTONES = ["communicate", "coordinate", "compromise", "persuade"]
 class FakeBackend:
     def __init__(self) -> None:
         self.sessions: dict[str, dict] = {}
+        self.accounts: dict[int, dict] = {}
+
+    def account(self, **fields) -> dict:
+        aid = len(self.accounts) + 1
+        a = {"id": aid, "company": "테스트", "email": f"user{aid}@corp.kr", "nickname": "김지원", "desired_job": "pm", "industry": None,
+             "experience_years": 1, "bio": "", "consent": True, "status": "PENDING_REVIEW", "invite_alias": None, "created_at": time.time(), **fields}
+        self.accounts[aid] = a
+        return a
 
     def create(self, sid: str, scenario_id: str, alias: str = "지원자") -> dict:
         s = {"id": sid, "alias": alias, "company": "테스트", "scenario_id": scenario_id, "status": "active", "milestone_idx": 0,
@@ -33,6 +41,20 @@ class FakeBackend:
         assert req.headers.get("X-Internal-Key")
         parts = req.url.path.strip("/").split("/")
         body = json.loads(req.content) if req.content else None
+        if parts[1] == "accounts":
+            a = self.accounts.get(int(parts[2]))
+            if a is None:
+                return httpx.Response(404, json={"detail": "계정을 찾을 수 없어요."})
+            if len(parts) == 3:
+                return httpx.Response(200, json={k: v for k, v in a.items() if k not in ("review",)})
+            basis = {"auto_clean": "approved", "auto_schema": "rejected", "admin_approved": "approved", "admin_rejected": "rejected"}
+            if basis.get(body["basis"]) != body["decision"]:
+                return httpx.Response(400, json={"detail": "결정과 근거가 맞지 않아요."})
+            if a["status"] not in ("PENDING_REVIEW", "REVIEW_ERROR"):
+                return httpx.Response(409, json={"detail": "이미 결정된 계정이에요."})
+            a["status"] = "ACTIVE" if body["decision"] == "approved" else "REJECTED"
+            a["review"] = {**(body.get("review") or {}), "basis": body["basis"]}
+            return httpx.Response(200, json={"status": a["status"]})
         if parts[1] == "conditions":
             return httpx.Response(200, json=[s["condition"] for s in self.sessions.values() if s["condition"]])
         sid = parts[2]

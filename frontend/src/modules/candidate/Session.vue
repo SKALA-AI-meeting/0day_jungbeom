@@ -1,9 +1,9 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { api, auth, streamTask } from '../api'
-import ChatBubble from '../components/ChatBubble.vue'
-import MilestoneStepper from '../components/MilestoneStepper.vue'
+import { api, auth, streamTask } from '../../api'
+import ChatBubble from '../../components/ChatBubble.vue'
+import MilestoneStepper from '../../components/MilestoneStepper.vue'
 
 const props = defineProps({ id: String })
 const route = useRoute()
@@ -37,17 +37,13 @@ async function refresh() {
 }
 
 async function load() {
-  if (!auth.candidate(props.id)) {
-    error.value = '이 세션의 입장 정보가 없어요. 초대 링크로 다시 들어와 주세요.'
-    return
-  }
   meta.value = await api.meta()
   const s = await refresh()
   // resume a task that is still running (page reload, or the opening line right after start)
   let active = route.query.task
   if (!active && s.busy) {
-    const mine = await api.myTasks(auth.candidate(props.id))
-    active = mine.find((t) => ['QUEUED', 'RUNNING'].includes(t.status))?.id
+    const mine = await api.myTasks(auth.candidate())
+    active = mine.find((t) => t.sessionId === props.id && ['QUEUED', 'RUNNING'].includes(t.status))?.id
   }
   if (active) follow(active)
 }
@@ -62,7 +58,7 @@ watch(() => [messages.value.length, typing.value, messages.value.at(-1)?.text], 
 async function follow(taskId) {
   sending.value = true
   try {
-    await streamTask(taskId, auth.candidate(props.id), (ev) => {
+    await streamTask(taskId, auth.candidate(), (ev) => {
       const d = ev.data || {}
       if (ev.type === 'TOKEN') {
         let m = messages.value.find((x) => x.idx === d.idx)

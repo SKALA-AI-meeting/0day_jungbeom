@@ -42,8 +42,8 @@ public class AuthService {
         return tokenFor(u);
     }
 
-    public String candidateToken(String sessionId) {
-        return jwt.issue(new AuthUser("candidate:" + sessionId, "CANDIDATE", null, sessionId));
+    public String candidateToken(dev.dayzero.backend.domain.Account a) {
+        return jwt.issue(new AuthUser("account:" + a.id, "CANDIDATE", a.company.id, a.id));
     }
 
     public Company companyOf(AuthUser u) {
@@ -52,6 +52,6 @@ public class AuthService {
 
     private Map<String, Object> tokenFor(AdminUser u) {
         String token = jwt.issue(new AuthUser("admin:" + u.id, "ADMIN", u.company.id, null));
-        return Map.of("token", token, "email", u.email, "company", u.company.name);
+        return Map.of("token", token, "email", u.email, "company", u.company.name, "role", "ADMIN");
     }
 }

@@ -10,6 +10,7 @@ public class ChatSession {
     @Id public String id;
     @ManyToOne(optional = false) @JoinColumn(name = "company_id") public Company company;
     @ManyToOne @JoinColumn(name = "invite_id") public Invite invite;
+    @ManyToOne @JoinColumn(name = "account_id") public Account account;
     public String alias;
     public String scenarioId;
     public String status = "active";

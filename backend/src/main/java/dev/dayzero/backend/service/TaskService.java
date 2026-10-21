@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,20 +33,32 @@ public class TaskService {
     private final TaskDispatcher dispatcher;
     private final Json json;
     private final Map<String, AtomicInteger> seq = new ConcurrentHashMap<>();
+    private final ApplicationEventPublisher publisher;
 
-    public TaskService(AiTaskRepository tasks, TaskEventRepository events, ChatSessionRepository sessions, SseHub hub, TaskDispatcher dispatcher, Json json) {
-        this.tasks = tasks; this.events = events; this.sessions = sessions; this.hub = hub; this.dispatcher = dispatcher; this.json = json;
+    public TaskService(AiTaskRepository tasks, TaskEventRepository events, ChatSessionRepository sessions, SseHub hub, TaskDispatcher dispatcher, Json json,
+                       ApplicationEventPublisher publisher) {
+        this.tasks = tasks; this.events = events; this.sessions = sessions; this.hub = hub; this.dispatcher = dispatcher; this.json = json; this.publisher = publisher;
     }
 
     @Transactional
     public AiTask create(String type, String sessionId, Long companyId, String createdBy, Map<String, Object> payload) {
+        return create(type, sessionId, companyId, null, createdBy, payload);
+    }
+
+    @Transactional
+    public AiTask create(String type, String sessionId, Long companyId, Long accountId, String createdBy, Map<String, Object> payload) {
         AiTask t = new AiTask();
         t.id = UUID.randomUUID().toString();
         t.type = type;
         t.sessionId = sessionId;
         t.companyId = companyId;
+        t.accountId = accountId;
         t.createdBy = createdBy;
-        t.threadId = "REPORT".equals(type) ? "report:" + sessionId + ":" + t.id : type.toLowerCase() + ":" + t.id;
+        t.threadId = switch (type) {
+            case "REPORT" -> "report:" + sessionId + ":" + t.id;
+            case "ACCOUNT_REVIEW" -> "account:" + accountId + ":" + t.id;
+            default -> type.toLowerCase() + ":" + t.id;
+        };
         t.payloadJson = json.write(payload);
         tasks.save(t);
         afterCommit(() -> send(t, "RUN", null));
@@ -56,10 +69,26 @@ public class TaskService {
         return tasks.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "작업을 찾을 수 없어요."));
     }
 
+    private static final Set<String> HIDDEN_FROM_CANDIDATE = Set.of("REPORT", "ACCOUNT_REVIEW");
+
     public void authorize(AiTask t, AuthUser u) {
-        boolean ok = (u.isAdmin() && Objects.equals(u.companyId(), t.companyId))
-                || (u.isCandidate() && Objects.equals(u.sessionId(), t.sessionId) && !"REPORT".equals(t.type));
-        if (!ok) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "이 작업에 접근할 수 없어요.");
+        if (!canSee(t, u)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "이 작업에 접근할 수 없어요.");
+    }
+
+    /**
+     * Admin: any task of their company. Candidate: tasks of their own sessions, except REPORT and ACCOUNT_REVIEW — the
+     * review's flags and the admin's notes are for the company; the candidate follows it through /api/me/review/stream.
+     */
+    public boolean canSee(AiTask t, AuthUser u) {
+        if (u.isAdmin()) return Objects.equals(u.companyId(), t.companyId);
+        if (!u.isCandidate() || u.accountId() == null) return false;
+        if (HIDDEN_FROM_CANDIDATE.contains(t.type) || t.sessionId == null) return false;
+        return sessions.findById(t.sessionId).map(s -> s.account != null && Objects.equals(s.account.id, u.accountId())).orElse(false);
+    }
+
+    /** Human-in-the-loop inbox: every task paused at a change tool, oldest first. */
+    public List<AiTask> waitingApproval(Long companyId) {
+        return tasks.findByCompanyIdAndStatusOrderByCreatedAtAsc(companyId, "WAITING_APPROVAL");
     }
 
     public List<SseHub.Ev> replay(String taskId) {
@@ -68,7 +97,16 @@ public class TaskService {
 
     /** "My history": a candidate sees the tasks of their own session; an admin sees the company's tasks (system-made ones included). */
     public List<AiTask> mine(AuthUser u) {
-        return u.isAdmin() ? tasks.findTop30ByCompanyIdOrderByCreatedAtDesc(u.companyId()) : tasks.findTop30ByCreatedByOrderByCreatedAtDesc(u.subject());
+        if (u.isAdmin()) return tasks.findTop30ByCompanyIdOrderByCreatedAtDesc(u.companyId());
+        List<AiTask> out = new ArrayList<>(tasks.findTop30ByCreatedByOrderByCreatedAtDesc(u.subject()));
+        out.removeIf(t -> HIDDEN_FROM_CANDIDATE.contains(t.type));
+        if (u.accountId() != null) {
+            for (var s : sessions.findByAccountIdOrderByCreatedAtDesc(u.accountId()))
+                for (AiTask t : tasks.findBySessionIdOrderByCreatedAtDesc(s.id))
+                    if (!HIDDEN_FROM_CANDIDATE.contains(t.type) && out.stream().noneMatch(x -> x.id.equals(t.id))) out.add(t);
+        }
+        out.sort(Comparator.comparing((AiTask x) -> x.createdAt).reversed());
+        return out.size() > 30 ? out.subList(0, 30) : out;
     }
 
     /** Agent -> Spring progress events (batched). Updates task status and relays to subscribers. */
@@ -91,7 +129,8 @@ public class TaskService {
             switch (type) {
                 case "APPROVAL_REQUIRED" -> { t.status = "WAITING_APPROVAL"; t.resultJson = json.write(data); reportStatus(t, "awaiting_approval"); }
                 case "DONE" -> {
-                    boolean rejected = Boolean.FALSE.equals(d.get("approved"));
+                    // a rejected report is not published (REJECTED); a rejected account is still a finished review (DONE)
+                    boolean rejected = Boolean.FALSE.equals(d.get("approved")) && !"ACCOUNT_REVIEW".equals(t.type);
                     t.status = rejected ? "REJECTED" : "DONE";
                     t.resultJson = json.write(data);
                     if (d.get("attempt") instanceof Number a) t.attempts = a.intValue();
@@ -109,7 +148,11 @@ public class TaskService {
             }
             t.updatedAt = OffsetDateTime.now();
             hub.publish(taskId, new SseHub.Ev(n, type, data), terminal);
-            if (terminal) seq.remove(taskId);
+            if (terminal) {
+                seq.remove(taskId);
+                tasks.save(t);
+                publisher.publishEvent(new TaskFinishedEvent(t, t.status)); // end of the loop -> domain hooks
+            }
         }
         tasks.save(t);
     }
@@ -156,6 +199,7 @@ public class TaskService {
         m.put("type", t.type);
         m.put("mode", mode);
         m.put("sessionId", t.sessionId);
+        m.put("accountId", t.accountId);
         m.put("threadId", t.threadId);
         m.put("payload", json.map(t.payloadJson));
         if (resume != null) m.put("resume", resume);

@@ -1,14 +1,15 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { api, auth } from '../api'
-import { MS_LABEL } from '../constants'
+import { RouterLink } from 'vue-router'
+import { api, auth } from '../../api'
+import { MS_LABEL } from '../../constants'
+import { inbox } from '../../state/inbox'
 
-const router = useRouter()
 const rows = ref([])
 const tasks = ref([])
 const invites = ref([])
-const me = ref(null)
+const accounts = ref([])
+const meta = ref(null)
 const error = ref('')
 const inv = ref({ alias: '', email: '' })
 const created = ref(null)
@@ -16,18 +17,16 @@ let timer
 
 async function load() {
   try {
-    ;[rows.value, tasks.value, invites.value] = await Promise.all([api.adminList(), api.myTasks(auth.admin()), api.adminInvites()])
+    ;[rows.value, tasks.value, invites.value, accounts.value] = await Promise.all([
+      api.adminList(), api.myTasks(auth.admin()), api.adminInvites(), api.accounts(),
+    ])
     error.value = ''
   } catch (e) {
-    if (e.status === 401 || e.status === 403) {
-      auth.clearAdmin()
-      router.replace('/admin/login')
-    } else error.value = e.message || '목록을 불러오지 못했어요.'
+    if (e.status !== 401) error.value = e.message || '목록을 불러오지 못했어요.' // 401 is routed to login by the API client
   }
 }
 onMounted(async () => {
-  if (!auth.admin()) return router.replace('/admin/login')
-  me.value = await api.me().catch(() => null)
+  meta.value = await api.meta().catch(() => null)
   await load()
   timer = setInterval(load, 5000)
 })
@@ -46,10 +45,11 @@ async function createInvite() {
 async function copy(text) {
   try { await navigator.clipboard.writeText(text) } catch { /* select manually */ }
 }
-function logout() {
-  auth.clearAdmin()
-  router.replace('/admin/login')
-}
+
+const ACCOUNT = { ACTIVE: ['green', '활성'], PENDING_REVIEW: ['blue', '확인 중'], REVIEW_ERROR: ['amber', '검토 실패'], REJECTED: ['red', '반려'] }
+const BASIS = { auto_clean: '에이전트 자동 승인', auto_schema: '요건 불충족 자동 반려', admin_approved: '담당자 승인', admin_rejected: '담당자 반려' }
+const basisOf = (a) => (a.review?.manual_by ? (a.status === 'ACTIVE' ? '담당자 직접 승인' : '담당자 직접 반려') : BASIS[a.review?.basis])
+const jobLabel = (id) => meta.value?.dilemma.jobs.find((x) => x.id === id)?.label || id
 
 const MS = ['communicate', 'coordinate', 'compromise', 'persuade']
 const STATUS = { active: ['blue', '진행 중'], completed: ['green', '완료'] }
@@ -67,16 +67,21 @@ const fmt = (t) => new Date(typeof t === 'number' ? t * 1000 : t).toLocaleString
 
 <template>
   <main class="page">
-    <div class="top"><h1>지원자 목록</h1><span v-if="me" class="muted small">{{ me.company }} · <button class="btn sm" @click="logout">로그아웃</button></span></div>
+    <h1>대시보드</h1>
     <p class="sub">세션별 진행 단계와 관찰 근거를 한눈에 확인합니다. 점수나 합격 표시는 없습니다.</p>
     <p v-if="error" class="chip red">{{ error }}</p>
+    <Transition name="drop">
+      <RouterLink v-if="inbox.count" to="/admin/inbox" class="banner">
+        <span class="pulse" /> 에이전트가 결정을 기다리는 항목 <b>{{ inbox.count }}건</b> · 이슈 체크리스트 열기 →
+      </RouterLink>
+    </Transition>
 
     <section class="card">
       <p v-if="!rows.length" class="muted">아직 세션이 없어요. 지원자 화면에서 대화를 시작해 보세요.</p>
       <table v-else>
         <thead><tr><th>별칭</th><th>시나리오</th><th>가치 축 · 선택</th><th>진행</th><th>상태</th><th>메시지</th><th>근거</th><th>리포트</th><th>시작</th></tr></thead>
         <tbody>
-          <tr v-for="r in rows" :key="r.id" @click="$router.push(`/admin/${r.id}`)">
+          <tr v-for="r in rows" :key="r.id" @click="$router.push(`/admin/sessions/${r.id}`)">
             <td><b>{{ r.alias }}</b></td>
             <td>{{ r.category }}</td>
             <td>
@@ -98,10 +103,28 @@ const fmt = (t) => new Date(typeof t === 'number' ? t * 1000 : t).toLocaleString
       </table>
     </section>
 
+    <section class="card accts">
+      <h3>지원자 계정 <small class="muted">에이전트가 가입 요건과 입력값을 확인한 결과예요</small></h3>
+      <p v-if="!accounts.length" class="muted">아직 가입한 지원자가 없어요. 아래에서 초대 링크를 만들어 보내 보세요.</p>
+      <table v-else class="tasks">
+        <thead><tr><th>별칭</th><th>이메일</th><th>직무 · 경력</th><th>상태</th><th>근거</th><th>가입</th></tr></thead>
+        <tbody>
+          <tr v-for="a in accounts.slice(0, 10)" :key="a.id" @click="['PENDING_REVIEW', 'REVIEW_ERROR'].includes(a.status) && inbox.count && $router.push('/admin/inbox')">
+            <td><b>{{ a.nickname }}</b></td>
+            <td class="muted small">{{ a.email }}</td>
+            <td class="small">{{ jobLabel(a.desiredJob) }} · {{ a.experienceYears }}년</td>
+            <td><span class="chip" :class="ACCOUNT[a.status]?.[0]">{{ ACCOUNT[a.status]?.[1] || a.status }}</span></td>
+            <td class="muted small">{{ basisOf(a) || (a.status === 'PENDING_REVIEW' ? '에이전트 확인 중' : '–') }}<template v-if="a.review?.flags?.length"> · 확인 {{ a.review.flags.length }}건</template></td>
+            <td class="muted small">{{ fmt(a.createdAt) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
     <section class="two">
       <div class="card">
         <h3>지원자 초대</h3>
-        <p class="muted small">1회용 링크를 만들어요. 72시간 뒤 만료돼요.</p>
+        <p class="muted small">1회용 링크를 만들어요. 지원자는 이 링크에서 가입하고, 72시간 뒤 만료돼요.</p>
         <form class="invite" @submit.prevent="createInvite">
           <input id="inv-alias" v-model="inv.alias" class="text" maxlength="20" placeholder="별칭 (선택)" />
           <input id="inv-email" v-model="inv.email" class="text" type="email" placeholder="이메일 (선택)" />
@@ -115,12 +138,12 @@ const fmt = (t) => new Date(typeof t === 'number' ? t * 1000 : t).toLocaleString
         </ul>
       </div>
       <div class="card">
-        <h3>내 AI 작업 이력</h3>
-        <p class="muted small">리포트 생성·승인처럼 내가 요청한 작업이에요. (GET /api/ai/tasks?mine=true)</p>
+        <h3>AI 작업 이력</h3>
+        <p class="muted small">계정 확인·대화·리포트처럼 회사 안에서 실행된 에이전트 작업이에요. (GET /api/ai/tasks?mine=true)</p>
         <p v-if="!tasks.length" class="muted">아직 요청한 작업이 없어요.</p>
         <table v-else class="tasks">
           <tbody>
-            <tr v-for="t in tasks.slice(0, 8)" :key="t.id" @click="t.sessionId && $router.push(`/admin/${t.sessionId}`)">
+            <tr v-for="t in tasks.slice(0, 8)" :key="t.id" @click="t.sessionId && $router.push(`/admin/sessions/${t.sessionId}`)">
               <td><span class="chip" :class="TASK[t.status]">{{ t.status }}</span></td><td>{{ t.type }}</td>
               <td class="muted small">{{ fmt(t.createdAt) }}</td><td class="muted small">{{ t.error || traceOf(t) }}</td>
             </tr>
@@ -132,7 +155,14 @@ const fmt = (t) => new Date(typeof t === 'number' ? t * 1000 : t).toLocaleString
 </template>
 
 <style scoped>
-.top { display: flex; justify-content: space-between; align-items: baseline; }
+.banner { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 12px 16px; border-radius: 12px; background: #fef3c7; color: #92400e; font-weight: 600; }
+.banner:hover { text-decoration: none; filter: brightness(0.98); }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); animation: ping 1.4s ease-in-out infinite; }
+@keyframes ping { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn) 55%, transparent); } 50% { box-shadow: 0 0 0 7px transparent; } }
+.drop-enter-active { transition: opacity 0.3s, transform 0.3s; }
+.drop-enter-from { opacity: 0; transform: translateY(-6px); }
+.accts { margin-top: 16px; }
+.accts h3 small { font-weight: 500; font-size: 12px; margin-left: 6px; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
 .invite { display: flex; gap: 8px; flex-wrap: wrap; }
 .invite .text { flex: 1; min-width: 140px; }
