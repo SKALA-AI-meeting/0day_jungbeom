@@ -464,10 +464,14 @@ def test_fixed_phrases_match_doc():
     assert set(fp["notices"]) >= {"evaluation", "staging", "future", "identity"}
 
 
-def test_stance_fallback_covers_seats():
+def test_stance_fallback_covers_seats(personas):
     sf = load("prompts/stance_fallback.yaml")
+    persuadable = {p["id"]: bool(p.get("persuadable")) for p in personas["session"]}
     for t in SESSION_TYPES:
-        assert set(sf[t]) == {"keyword", "problem_before_card", "problem", "solution", "proposal"}
+        base = {"keyword", "problem_before_card", "problem", "solution", "proposal"}
+        assert set(sf[t]) - {"moved"} == base
+        # 이동 직후 문구는 설득 가능 자리에만 둔다
+        assert ("moved" in sf[t]) == persuadable[t]
         for key, v in sf[t].items():
             assert v["stance"] in {"support", "none"}
             assert ("{option}" in v["text"]) == (v["stance"] == "support"), (t, key)

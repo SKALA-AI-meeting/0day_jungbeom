@@ -207,7 +207,10 @@ class FakeServer:
         handler = getattr(self, f"t_{name}", None)
         if handler is None:
             return fail("not_found", name)
-        return handler(**args)
+        try:
+            return handler(**args)
+        except TypeError as exc:  # 실 MCP처럼 모델이 낸 잘못된 인자는 오류 결과로 돌려준다
+            return fail("invalid_input", str(exc))
 
     async def _all_specs(self) -> dict[str, dict[str, Any]]:
         schema = {"type": "object", "properties": {"query": {"type": "string"}}}

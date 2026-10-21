@@ -1,4 +1,6 @@
 // 관리자 화면 표기 규칙: 시각(오피스 시각), 단계·유형·사유 문장(rubric.md 5장), 차원 정의, 삭제 예정일.
+import { resolutionLabel, type Outcome } from "@/lib/resolution";
+
 import type { NoRecordReason, PhaseId, Sender } from "./types";
 
 const dateTime = new Intl.DateTimeFormat("ko-KR", {
@@ -54,8 +56,6 @@ export const PHASE_TEXT: Record<PhaseId, string> = {
   solution: "해결책",
   proposal: "기획안 작성",
 };
-
-export const RESOLUTION_TEXT = { consensus: "합의", timeout: "시간 초과" } as const;
 
 export const ORIGIN_TEXT = { spontaneous: "자발", invited: "초대 후" } as const;
 
@@ -151,9 +151,9 @@ export function readableSummary(summary: string) {
       (_, p: PhaseId) => `${PHASE_TEXT[p]} 단계 시작`,
     )
     .replace(
-      /^(keyword|problem|solution) 확정: (.*) \((consensus|timeout)\)$/,
-      (_, p: PhaseId, v: string, r: "consensus" | "timeout") =>
-        `${PHASE_TEXT[p]} 확정: ${v} · ${RESOLUTION_TEXT[r]}`,
+      /^(keyword|problem|solution) 확정: (.*) \((consensus|candidate_decision|timeout)\)$/,
+      (_, p: PhaseId, v: string, r: Outcome) =>
+        `${PHASE_TEXT[p]} 확정: ${v} · ${resolutionLabel({ resolution: "consensus", outcome: r }) ?? ""}`,
     )
     .replace(/^자료 열람: (\w+)$/, (_, id: string) => `자료 열람: ${materialTitle(id)}`);
 }

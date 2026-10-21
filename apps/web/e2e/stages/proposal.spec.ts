@@ -31,6 +31,9 @@ test("디바운스 저장 → 제출 확인 → 잠김 → 디브리핑", async 
   await shot(page, "proposal", "02-저장됨");
 
   await page.getByRole("button", { name: "제출", exact: true }).click();
+  // 기대효과가 비어 있어 빈칸 경고가 먼저 뜬다
+  await expect(page.getByRole("dialog")).toContainText("비워 둔 칸이 있어요");
+  await page.getByRole("dialog").getByRole("button", { name: "그대로 제출" }).click();
   await expect(page.getByRole("dialog")).toContainText("제출하면 수정할 수 없어요");
   await shot(page, "proposal", "03-제출 확인");
   await page.getByRole("dialog").getByRole("button", { name: "제출" }).click();

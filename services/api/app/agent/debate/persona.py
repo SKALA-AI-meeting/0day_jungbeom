@@ -7,7 +7,9 @@ docs/agent/design.md "페르소나 에이전트"·"계획 밖 입장", harness.m
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 from typing import Any
 
 from langchain_core.messages import (
@@ -19,7 +21,7 @@ from langchain_core.messages import (
 )
 
 from app.agent.catalog import SEATS, Catalog, render
-from app.agent.debate.rules import StancePlan, option_by_id, option_by_key
+from app.agent.debate.rules import StancePlan, option_by_id, option_by_key, support_of
 from app.agent.llm import BaseLLM, Trace, Usage, parse_json_object
 from app.agent.mcp_client import ToolScope, for_model
 
@@ -27,6 +29,9 @@ log = logging.getLogger(__name__)
 
 MAX_TOOL_CALLS = 3  # 응답당(harness.md Tools)
 RECENT_MESSAGES = 30
+MEMORY_MESSAGES = 3
+REPEAT_SIMILARITY = 0.8  # 내 최근 발언과 이 이상 같으면 반복(testing.md 반복률 임계와 같음)
+REPEAT_VIOLATION = "[내 기억]의 내 말과 거의 같은 문장 반복. 새 근거를 하나 들거나 다른 표현으로"
 PHASE_NAMES = {
     "keyword": "키워드",
     "problem": "문제 상황",
@@ -34,7 +39,7 @@ PHASE_NAMES = {
     "proposal": "기획안 작성",
 }
 PURPOSE_TEXT = {
-    "respond": "지원자에게 답한다",
+    "respond": "지원자의 방금 말(근거·질문)을 먼저 짧게 받아 답한 뒤 자기 생각을 말한다",
     "push_option": "[내 입장 계획]의 안을 주장한다",
     "react": "앞선 동료 발언에 짧게 반응한다",
     "invite": '지원자에게 의견을 묻는다(짧게, "{name}님은 어떻게 생각하세요?" 골격)',
@@ -90,6 +95,7 @@ def build_messages(
     card_text: str | None,
     bans: list[str],
     violation: str | None = None,
+    notice: str | None = None,
 ) -> list[BaseMessage]:
     """자리별 컨텍스트(common_rules.md "코드가 붙이는 블록" 순서)."""
     state = visible_state(ds)
@@ -136,6 +142,8 @@ def build_messages(
     if plan.declared:
         ident = plan.option_id or plan.key
         move = " 지원자 안으로 옮김." if plan.moved else ""
+        if move_pending(plan, ds):
+            move += " 이번 발언에서 이 안을 지지한다고 밝힌다."
         lock = " 지지를 바꾸지 않는다." if not plan.can_move else ""
         blocks.append(f"[내 입장 계획]\n이번 단계에서 미는 안: {plan.label} ({ident}).{move}{lock}")
     else:
@@ -145,11 +153,16 @@ def build_messages(
 
     goal = PURPOSE_TEXT.get(purpose, purpose).replace("{name}", candidate)
     blocks.append(f"[이번 목적]\n{purpose}: {goal}")
+    if notice:
+        blocks.append(
+            f'[정해진 안내]\n이번 발언 맨 앞에 코드가 "{notice}"를 붙인다. '
+            "이 문장을 다시 쓰지 말고 이어질 한두 문장만 쓴다. 이전에 안내했다고 말하지 않는다."
+        )
     if card_text:
         blocks.append(f"[카드 지시]\n{card_text}")
     if bans:
         blocks.append("[지킬 것]\n" + "\n".join(f"- {b}" for b in bans))
-    mine = [m["content"] for m in transcript if m.get("sender") == seat][-3:]
+    mine = my_lines(transcript, seat)
     if mine:
         blocks.append("[내 기억]\n" + "\n".join(f"- 내가 한 말: {c}" for c in mine))
     recent = transcript[-RECENT_MESSAGES:]
@@ -160,6 +173,28 @@ def build_messages(
             f"[다시 쓰기]\n앞 응답은 쓸 수 없다: {violation}. 규칙에 맞게 처음부터 다시 쓴다."
         )
     return [SystemMessage(system), HumanMessage("\n\n".join(blocks))]
+
+
+def my_lines(transcript: list[dict[str, Any]], seat: str) -> list[str]:
+    return [m["content"] for m in transcript if m.get("sender") == seat][-MEMORY_MESSAGES:]
+
+
+def _normal(text: str) -> str:
+    return re.sub(r"[\W_]+", "", text)
+
+
+def repeats(content: str, mine: list[str]) -> bool:
+    """내 최근 발언과 거의 같은 문장인지(정규화 문자열 유사도)."""
+    text = _normal(content)
+    return bool(text) and any(
+        SequenceMatcher(None, text, _normal(m)).ratio() >= REPEAT_SIMILARITY for m in mine
+    )
+
+
+def with_notice(content: str, notice: str | None) -> str:
+    if not notice or notice in content:
+        return content
+    return f"{notice} {content}".strip()
 
 
 def _display(participant: Any, names: dict[str, str]) -> str:
@@ -177,21 +212,22 @@ async def generate(
     tools: ToolScope | None,
     usage: Usage,
     trace: Trace,
+    spent: int = 0,
 ) -> tuple[Draft, list[dict[str, Any]]]:
     """도구 루프(응답당 최대 3회) → 구조화 출력. LLMUnavailable은 호출자에게 올린다.
 
-    반환 (초안, 도구 호출 기록).
+    spent는 같은 응답의 앞선 생성이 이미 쓴 도구 횟수다. 반환 (초안, 도구 호출 기록).
     """
     specs = await tools.specs() if tools is not None else []
     history = list(messages)
     calls: list[dict[str, Any]] = []
     while True:
-        bind = specs if specs and len(calls) < MAX_TOOL_CALLS else None
+        bind = specs if specs and spent + len(calls) < MAX_TOOL_CALLS else None
         message = await llm.ainvoke(history, usage=usage, trace=trace, tools=bind, json_mode=True)
         if message.tool_calls and bind:
             history.append(message)
             for call in message.tool_calls:
-                if len(calls) >= MAX_TOOL_CALLS:
+                if spent + len(calls) >= MAX_TOOL_CALLS:
                     result = {"ok": False, "error": {"code": "forbidden", "message": "tool limit"}}
                 else:
                     result = await tools.call(call["name"], dict(call.get("args") or {}))
@@ -272,6 +308,32 @@ def sentence_violation(judged: dict[str, Any] | None, plan: StancePlan) -> str |
     return None
 
 
+def move_pending(plan: StancePlan, ds: dict[str, Any]) -> bool:
+    """지원자 안으로 옮긴 계획인데 그 자리 지지가 아직 그 안으로 기록되지 않았는지."""
+    return bool(plan.moved and plan.option_id) and support_of(ds, plan.seat) != plan.option_id
+
+
+def move_unstated(
+    draft: Draft, plan: StancePlan, ds: dict[str, Any], judged: dict[str, Any] | None
+) -> str | None:
+    """지원자 안으로 옮긴 계획이 아직 기록되지 않았으면 이번 발언이 그 안 지지를 밝혀야 한다.
+
+    옛 안 oppose만 내고 지지를 밝히지 않으면 이동이 저장되지 않아 합의가 나지 않는다(세션 3e987267).
+    """
+    if not move_pending(plan, ds):
+        return None
+    stance = draft.stance or {}
+    proposed = resolve_target(ds, (draft.proposes or {}).get("scenario_option_key"))
+    if (
+        stance.get("stance") == "support"
+        and resolve_target(ds, stance.get("option_id")) & plan.targets
+    ):
+        return None
+    if proposed & plan.targets or sentence_supports_plan(judged, plan):
+        return None
+    return "지원자 안으로 옮겼는데 그 안 지지를 밝히지 않음"
+
+
 def sentence_supports_plan(judged: dict[str, Any] | None, plan: StancePlan) -> bool:
     if not judged or judged.get("confidence") != "high" or not plan.declared:
         return False
@@ -279,10 +341,17 @@ def sentence_supports_plan(judged: dict[str, Any] | None, plan: StancePlan) -> b
     return judged.get("intent") in ("propose", "agree") and bool(target & plan.targets)
 
 
-def stance_fallback(catalog: Catalog, seat: str, plan: StancePlan) -> Draft:
-    """계획과 맞는 자리별 고정 문구(stance_fallback.yaml)와 그 입장."""
+def stance_fallback(
+    catalog: Catalog, seat: str, plan: StancePlan, pending_move: bool = False
+) -> Draft:
+    """계획과 맞는 자리별 고정 문구(stance_fallback.yaml)와 그 입장. 이동 직후면 moved 문구."""
     table = catalog.stance_fallback.get(catalog.type_of(seat)) or {}
-    entry = table.get(plan.fallback_key) or table.get(plan.phase) or {}
+    entry = (
+        (pending_move and table.get("moved"))
+        or table.get(plan.fallback_key)
+        or table.get(plan.phase)
+        or {}
+    )
     text = render(str(entry.get("text") or catalog.safe_phrase(seat)), option=plan.label or "")
     stance = None
     if entry.get("stance") == "support" and plan.declared:

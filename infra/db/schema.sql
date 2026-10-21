@@ -171,7 +171,9 @@ CREATE TABLE proposals (
   updated_at timestamptz NOT NULL DEFAULT now(),
   submitted jsonb,                          -- 제출본(불변)
   submitted_at timestamptz,
-  auto_submitted boolean NOT NULL DEFAULT false
+  auto_submitted boolean NOT NULL DEFAULT false,
+  submit_blank_sections text[],             -- 제출본에서 공백뿐인 칸 id(템플릿 순서)
+  blank_warning_shown boolean               -- 빈칸 경고 창을 본 뒤 제출했는지, 자동 제출이면 null
 );
 
 CREATE TABLE agent_runs (                    -- 자극 실행 기록이자 메일박스의 영속 사본

@@ -168,6 +168,34 @@ async def test_each_assertion_catches_its_violation(fake, target, number, mutate
     assert not {r["id"]: r for r in asserts.check(broken)}[number]["ok"]
 
 
+async def test_preemption_only_checked_until_candidate_invites_quiet(fake, target):
+    bundle = await run_script(fake, target, "all_five")
+    card = next(o for o in bundle["observations"] if o["card_id"] == "inclusion_silence")
+
+    def add(sender, content, t_min, **extra):
+        bundle["messages"].append(
+            {
+                "id": f"x-{sender}-{t_min}",
+                "sender": sender,
+                "content": content,
+                "phase": "solution",
+                "t_min": t_min,
+                "is_invite": False,
+                "card_ids": [],
+                "meta": {},
+                **extra,
+            }
+        )
+
+    original = copy.deepcopy(bundle)
+    add("p3", "하람님 의견은요?", card["t_min"] + 0.1)
+    assert asserts.assert_4_preemption(bundle)  # 초대 전 언급은 잡는다
+    bundle = copy.deepcopy(original)
+    add("candidate", "윤하람님은 어떻게 생각하세요?", card["t_min"] + 0.05)
+    add("p3", "하람님도 말씀하신 것처럼…", card["t_min"] + 0.1)
+    assert asserts.assert_4_preemption(bundle) == []  # 초대 뒤 언급은 통과
+
+
 async def test_live_llm_mode_skips_level_expectations(fake, target, monkeypatch):
     """실 LLM(LLM_FAKE=0)이면 expect.dimensions의 level 비교는 건너뛰고 근거 참조는 그대로 본다."""
     bundle = await run_script(fake, target, "all_five", llm_fake=False)

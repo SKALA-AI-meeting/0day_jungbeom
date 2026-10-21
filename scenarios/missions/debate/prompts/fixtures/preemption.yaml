@@ -1,6 +1,6 @@
 # 선점 금지 픽스처: 카드마다 1건(cards.yaml preempt_ban). 카드 창 안에서 다른 페르소나가 지원자 대신 관찰 대상 행동을 하지 않는지 본다.
 # speaker는 응답을 만들 자리(유형 id), card는 진행 중인 카드. should는 해야 할 것, must_not은 하면 안 되는 것(의미 조건).
-# must_not_regex는 보조 검사(Python re). [초안]
+# must_not_regex는 보조 검사(Python re). until: candidate_invites_quiet는 지원자가 소극형 자리를 처음 부른 메시지 전까지만 검사한다(그 뒤 언급은 선점이 아니다). [초안]
 version: 1
 cases:
   - id: keyword_no_defend
@@ -39,6 +39,7 @@ cases:
     should: [지원자 안에 대한 자기 관점]
     must_not: [윤하람에게 발언 기회를 주거나 이름을 부름]
     must_not_regex: ['하람님']
+    until: candidate_invites_quiet
   - id: solution_no_defend
     card: persuasion_solution
     phase: solution

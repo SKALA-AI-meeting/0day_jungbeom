@@ -135,7 +135,7 @@
     "t_min": 8.2,
     "type": "slot",
     "by": "candidate",
-    "summary": "keyword 확정: 물 (consensus)",
+    "summary": "keyword 확정: 물 (candidate_decision)",
     "ref": {
       "type": "slot",
       "id": "keyword",
@@ -476,7 +476,7 @@
     "t_min": 57.0,
     "type": "proposal_submit",
     "by": "candidate",
-    "summary": "기획안 제출",
+    "summary": "제출 · 빈 칸 0개(경고 없이 제출)",
     "ref": {
       "type": "proposal_submit",
       "id": "sess-1",

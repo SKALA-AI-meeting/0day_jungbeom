@@ -99,6 +99,22 @@ def serialize_message(session: Session, m: Message) -> dict[str, Any]:
     }
 
 
+def slot_outcome(slot: Slot) -> str | None:
+    """표시용 칸 결과(저장하지 않음). 지원자 확정은 확정 순간 확정 안 지지자가 4명 중 3명
+    이상일 때만 합의, AI 합의 채우기는 항상 합의."""
+    if slot.status != "confirmed":
+        return None
+    if slot.resolution == "timeout":
+        return "timeout"
+    if slot.filled_by != "candidate":
+        return "consensus"
+    supporters = next(
+        (r["supporters"] for r in slot.support or [] if r["option_id"] == str(slot.option_id)),
+        [],
+    )
+    return "consensus" if slot.option_id and len(supporters) >= 3 else "candidate_decision"
+
+
 def slot_public(session: Session, slot: Slot) -> dict[str, Any]:
     return {
         "phase": slot.phase,
@@ -106,6 +122,7 @@ def slot_public(session: Session, slot: Slot) -> dict[str, Any]:
         "value": slot.value,
         "filled_by": slot.filled_by,
         "resolution": slot.resolution,
+        "outcome": slot_outcome(slot),
         "t_min": t_min(session, slot.confirmed_at),
     }
 

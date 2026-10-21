@@ -61,6 +61,11 @@ test("샘플 리포트 화면: 사유 문장 5종, 미발생 카드, 담당자 �
   const html = renderToStaticMarkup(<ReportView report={sample} recordHref={href} sample />);
   for (const text of Object.values(NO_RECORD_TEXT)) expect(html).toContain(text);
   expect(html).toContain("이벤트 미발생");
+  // 요약표 표시 설명, 판단 보류 개수, 판단 보류 차원 행의 원문 기록 링크
+  expect(html).toContain("확신도 low로 판단한 차원 수");
+  // 픽스처의 판단 보류 차원은 flexibility 하나뿐이다
+  expect(html.match(/판단 보류 \d/g)).toEqual(["판단 보류 1"]);
+  expect(html).toMatch(/href="\/r"[^>]*>원문 기록/);
   expect(html).toContain("담당자 조정됨");
   expect(html).toContain("메모 · 09:06 발언 앞뒤에서");
   expect(html).not.toContain("검토 완료");
@@ -179,7 +184,24 @@ test("전체 기록: 근거 앵커 줄 하이라이트, 오피스 시각, 단계
   );
   expect(html).toMatch(/id="message-m-06" aria-current="true"/);
   expect(html).toContain("리포트로 돌아가기");
-  expect(html).toContain("키워드 확정: 물 · 합의");
+  expect(html).toContain("키워드 확정: 물 · 지원자 결정");
   expect(html).toContain("자료 열람: 지역별 물 부족 통계");
   expect(html).toContain("09:46");
+});
+
+test("사실 지표에 제출 때 빈 칸과 빈칸 경고 확인이 나오고, 칸 결과는 outcome으로 보인다", () => {
+  const r: Report = {
+    ...sample,
+    facts: { ...sample.facts, blank_sections_at_submit: ["rationale", "idea_credit"] },
+    slots: sample.slots.map((s) => ({
+      ...s,
+      resolution: "consensus",
+      outcome: "candidate_decision",
+    })),
+  };
+  (r.facts as Record<string, unknown>).blank_warning_acknowledged = null;
+  const html = renderToStaticMarkup(<ReportView report={r} recordHref={href} sample />);
+  expect(html).toContain("근거 · 아이디어 기여");
+  expect(html).toContain("자동 제출");
+  expect(html).toContain("지원자 결정");
 });

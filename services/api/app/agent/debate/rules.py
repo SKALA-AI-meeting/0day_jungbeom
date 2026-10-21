@@ -4,6 +4,7 @@ LLM 없는 순수 함수만 둔다. 입력은 DebateState(contracts.md, load가 
 원칙 "결정은 결정적 코드가, 말투는 LLM이".
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -372,6 +373,21 @@ def recent_streak_seat(transcript: list[dict[str, Any]]) -> str | None:
     return None
 
 
+def called_seats(text: str, addressed: list[str], catalog: Catalog) -> list[str]:
+    """지명 응답 순서: 메시지에서 "이름님"으로 먼저 부른 자리부터, 분류 addressed_to의 나머지는
+    뒤에. 분류가 놓친 호명도 넣는다(분류 순서가 호명 순서와 달라 다른 자리가 먼저 답하던 문제).
+    """
+    found: list[tuple[int, str]] = []
+    for seat in SEATS:
+        name = catalog.name_of(seat)
+        given = name[1:] if len(name) >= 3 else name
+        hit = re.search(f"(?:{re.escape(name)}|{re.escape(given)})\\s*님", text)
+        if hit:
+            found.append((hit.start(), seat))
+    order = [seat for _, seat in sorted(found)]
+    return order + [s for s in addressed if s in SEATS and s not in order]
+
+
 def rule_decision(
     stimulus: dict[str, Any],
     ds: dict[str, Any],
@@ -414,7 +430,15 @@ def rule_decision(
     quiet = catalog.seat_of("quiet")
     # 3. 지명 응답(최대 2명). 소극형은 이름이 불렸거나 전체 질문일 때만
     if kind == "message" and intent:
-        named = [s for s in intent.get("addressed_to") or [] if s in SEATS]
+        text = next(
+            (
+                str(m.get("content") or "")
+                for m in transcript
+                if str(m.get("id")) == str(stimulus.get("message_id"))
+            ),
+            "",
+        )
+        named = called_seats(text, intent.get("addressed_to") or [], catalog)
         if intent.get("intent") == "question" and not named and phase in DEBATE_PHASES:
             named = [s for s in (quiet, catalog.seat_of("critic")) if s]
             decision["reason"] = "전체 질문"

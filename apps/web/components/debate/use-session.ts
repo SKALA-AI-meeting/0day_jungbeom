@@ -8,6 +8,7 @@ import { toast } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { SessionSocket, type ConnectionStatus } from "@/lib/ws";
 
+import { submitBody } from "./proposal-editor";
 import { initialView, reduce, type PanelTab } from "./reducer";
 import { createSaver } from "./saver";
 import type {
@@ -231,23 +232,30 @@ export function useDebateSession(auth: SessionAuth, initial: StateSnapshot) {
     [saveJob],
   );
 
-  const submit = useCallback(async () => {
-    // 저장 대기분을 먼저 PUT한 뒤 제출
-    if (dirty.current && !(await saver.current.flush())) {
+  /** 저장 대기분을 먼저 PUT한다(409면 최신 초안으로 바뀜). 검사할 최신 초안을 돌려주고, 저장 못 하면 null */
+  const prepareSubmit = useCallback(async (): Promise<Sections | null> => {
+    if (!(await saver.current.flush())) {
       toast("저장하지 못했어요. 잠시 뒤 다시 제출해 주세요");
-      return;
+      return null;
     }
-    try {
-      await api(`${path}/proposal/submit`, {
-        method: "POST",
-        token: authRef.current.getToken(),
-        body: {},
-      });
-      dispatch({ type: "ended", reason: "submitted" });
-    } catch (error) {
-      toast(errorText(error));
-    }
-  }, [path]);
+    return draftRef.current;
+  }, []);
+
+  const submit = useCallback(
+    async (blankWarningShown = false) => {
+      try {
+        await api(`${path}/proposal/submit`, {
+          method: "POST",
+          token: authRef.current.getToken(),
+          body: submitBody(blankWarningShown),
+        });
+        dispatch({ type: "ended", reason: "submitted" });
+      } catch (error) {
+        toast(errorText(error));
+      }
+    },
+    [path],
+  );
 
   useEffect(() => {
     // 세션이 끝나면 예약 저장을 멈춘다
@@ -264,7 +272,7 @@ export function useDebateSession(auth: SessionAuth, initial: StateSnapshot) {
     confirmSlot,
     openMaterial,
     ask,
-    proposal: { draft, savedAt, saving, editSection, submit },
+    proposal: { draft, savedAt, saving, editSection, prepareSubmit, submit },
     endReason: view.ended as EndReason | null,
   };
 }

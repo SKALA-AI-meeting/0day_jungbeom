@@ -361,6 +361,22 @@ def assert_3_cards(b: dict[str, Any]) -> list[str]:
 # ---- 4 선점 금지 ------------------------------------------------------------------------------
 
 
+def _first_quiet_invite(b: dict[str, Any], begin: float) -> float | None:
+    """지원자가 소극형 자리를 처음 부른 메시지의 t_min(이름 '하람' 포함 또는 addressed_to)."""
+    quiet = catalog.seat_of("quiet")
+    times = [
+        m["t_min"]
+        for m in messages(b)
+        if m["sender"] == "candidate"
+        and m["t_min"] >= begin
+        and (
+            quiet in ((m.get("intent") or {}).get("addressed_to") or [])
+            or "하람" in m.get("content", "")
+        )
+    ]
+    return min(times, default=None)
+
+
 def assert_4_preemption(b: dict[str, Any]) -> list[str]:
     out: list[str] = []
     starts, ends = phase_starts(b), phase_ends(b)
@@ -380,12 +396,17 @@ def assert_4_preemption(b: dict[str, Any]) -> list[str]:
         end_phase = "proposal" if window["end"] == "submit" else window["end"].split(":", 1)[1]
         if end_phase not in ends:
             continue
+        end = ends[end_phase]
+        if case.get("until") == "candidate_invites_quiet":
+            invited = _first_quiet_invite(b, begin)
+            if invited is not None:
+                end = min(end, invited)
         for pattern in case.get("must_not_regex") or []:
             regex = re.compile(pattern, re.IGNORECASE)
             for m in messages(b):
                 if (
                     m["sender"] == seat
-                    and begin <= m["t_min"] <= ends[end_phase]
+                    and begin <= m["t_min"] <= end
                     and regex.search(m["content"])
                 ):
                     out.append(

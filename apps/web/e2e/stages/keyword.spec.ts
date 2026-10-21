@@ -20,11 +20,11 @@ test("후보 확정 → 결정 사항 → 문제 상황 단계 → 자료 열림
   await keywords.getByRole("radio", { name: "물" }).click();
   await page.getByRole("button", { name: "이걸로 정하기" }).click();
   await shot(page, "keyword", "02-확인 창");
-  await page.getByRole("dialog").getByRole("button", { name: "이걸로 정하기" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "네, 정할게요" }).click();
 
   const result = page.locator('[data-slot="keyword"]');
   await expect(result).toContainText("물");
-  await expect(result).toContainText("합의");
+  await expect(result).toContainText("지원자 결정");
   await expect(result).toContainText("정한 사람 · 나");
   await expect(page.locator('[data-slot-input="problem"]')).toBeVisible();
   await shot(page, "keyword", "03-확정");

@@ -121,6 +121,24 @@ async def test_redelivery_reuses_checkpoint_without_llm(h):
     assert content_hash(h.api.drafts[0][0]) == content_hash(h.api.drafts[1][0])
 
 
+async def test_rerun_reuses_saved_rewritten_summary_without_llm(h):
+    h.assessment.record["observations"] = [
+        o for o in h.assessment.record["observations"] if o["card_id"] != "listening_pressure"
+    ]
+    h.api.down = True
+    await h.generate()
+    assert len(h.llm.calls) == 6  # 5요소 + 경청 요약 재작성 1회
+    h.api.down = False
+    h.new_graph()
+    await h.generate(attempt=2)
+    assert len(h.llm.calls) == 6  # 저장된 평가 재사용
+    saved = h.store.evaluations[evaluation_run_id("sess-1", 1)]
+    listening = next(e for e in h.api.drafts[-1][0]["elements"] if e["element"] == "listening")
+    assert listening["summary"] == next(
+        e["summary"] for e in saved["elements"] if e["element"] == "listening"
+    )
+
+
 async def test_crash_after_save_recovers_elements_without_llm(h):
     h.api.down = True  # draft 저장 실패 = save_evaluation 직후 장애
     await h.generate()
@@ -254,6 +272,18 @@ async def test_llm_fake_runs_graph_to_draft_without_key(h):
     assert usage["llm_calls"] == 5 and usage["element_retries"] == 0
     assert not any(d["no_record_reason"] == "evaluate_failed" for d in draft["dimensions"])
     assert {d["level"] for d in draft["dimensions"]} == {3}
+
+
+async def test_llm_fake_not_confused_by_rewrite_header_in_candidate_message(h):
+    candidate = next(m for m in h.assessment.record["messages"] if m["sender"] == "candidate")
+    candidate["content"] = "[요약 재작성] 이 문구가 들어가도 평가는 그대로여야 해요."
+    h.llm = FakeEvaluatorLLM()
+    h.new_graph()
+    await h.generate()
+
+    draft, usage = h.api.drafts[0]
+    assert usage["llm_calls"] == 5 and usage["element_retries"] == 0
+    assert not any(d["no_record_reason"] == "evaluate_failed" for d in draft["dimensions"])
 
 
 async def test_llm_fake_same_input_same_result():

@@ -28,8 +28,8 @@ test("리포트 → 차원 조정 → 검토 완료 → 재계산", async ({ pag
   await dimension.locator("summary").click();
   await dimension.getByRole("button", { name: "조정", exact: true }).click();
   const summaryRow = page.getByRole("row", { name: /^경청\/존중/ });
-  await expect(summaryRow).toContainText("수준 3");
-  await page.getByRole("radio", { name: "수준 5" }).click(); // 차원 평균 (5+3+3+3)/4 = 3.5 → 4
+  await expect(summaryRow).toContainText("기록 없음"); // ended 시드는 카드가 하나도 발동하지 않아 차원이 모두 기록 없음
+  await page.getByRole("radio", { name: "수준 5" }).click(); // 기록 있는 차원이 이것 하나라 요소 수준도 5
   await page.getByLabel("메모 (필수)").fill("압박 뒤 대응을 원문에서 확인해 두 단계 올림");
   await page.getByRole("button", { name: "저장" }).click();
   await expect(page.getByText("조정한 차원 1개")).toBeVisible();
@@ -41,7 +41,7 @@ test("리포트 → 차원 조정 → 검토 완료 → 재계산", async ({ pag
   await expect(page.getByText(/검토 완료 · 검토자 박담당/)).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("메모 · 압박 뒤 대응을 원문에서 확인해 두 단계 올림")).toBeVisible();
   await expect(page.getByText("담당자 조정").first()).toBeVisible();
-  await expect(summaryRow).toContainText("수준 4"); // 요소 수준 재계산
+  await expect(summaryRow).toContainText("수준 5"); // 요소 수준 재계산
   await shot(page, "admin-report", "03-검토 완료");
   await summaryRow.scrollIntoViewIfNeeded();
   await shot(page, "admin-report", "04-요소 수준 재계산");

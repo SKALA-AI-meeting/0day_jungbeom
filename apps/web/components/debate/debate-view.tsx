@@ -7,6 +7,7 @@ import { CircleCheck, Clock3, HelpCircle, X } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button, Tabs, Wordmark, cn } from "@/components/ui";
+import { resolutionLabel } from "@/lib/resolution";
 
 import { ChatRoom } from "./chat";
 import { DecisionPanel } from "./decision-panel";
@@ -27,7 +28,10 @@ export function PhaseBar({ snap }: { snap: StateSnapshot }) {
         const slot = snap.slots.find((s) => s.phase === phase);
         const done = i < currentIndex || (slot?.status === "confirmed" && phase !== current);
         const now = phase === current;
-        const timeout = slot?.resolution === "timeout";
+        const label = slot?.resolution
+          ? resolutionLabel({ resolution: slot.resolution, outcome: slot.outcome })
+          : null;
+        const timeout = label === "시간 초과";
         return (
           <li key={phase} className="flex items-center gap-2">
             {i > 0 && <span aria-hidden className="h-px w-5 bg-line" />}
@@ -46,10 +50,8 @@ export function PhaseBar({ snap }: { snap: StateSnapshot }) {
                 ))}
               {PHASE_LABEL[phase]}
               {/* 지난 단계는 아이콘 + 글자로 결과를 보인다(색만으로 구분하지 않음) */}
-              {done && (
-                <span className="text-caption font-normal text-muted">
-                  · {timeout ? "시간 초과" : "합의"}
-                </span>
+              {done && label && (
+                <span className="text-caption font-normal text-muted">· {label}</span>
               )}
             </span>
           </li>
@@ -156,6 +158,7 @@ export function DebateView({
         canSubmit={snap.session.phase === "proposal"}
         locked={locked}
         onChange={session.proposal.editSection}
+        prepareSubmit={session.proposal.prepareSubmit}
         onSubmit={session.proposal.submit}
       />
     ),

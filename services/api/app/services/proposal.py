@@ -61,12 +61,21 @@ async def put(
     return {"revision": proposal.revision, "updated_at": iso(proposal.updated_at)}
 
 
-async def submit(db: AsyncSession, session: Session, clock: Clock, fx: Effects) -> dict[str, Any]:
+async def submit(
+    db: AsyncSession,
+    session: Session,
+    template: list[str],
+    clock: Clock,
+    fx: Effects,
+    warning_shown: bool | None = None,
+) -> dict[str, Any]:
     if session.status == "in_progress" and session.phase != "proposal":
         raise conflict("phase_not_open", "submit only in proposal phase")
     if session.status in ("cancelled", "failed", "invited"):
         raise conflict("conflict", f"cannot submit from {session.status}")
-    proposal = await session_service.submit(db, session, "submitted", clock.now(), fx)
+    proposal = await session_service.submit(
+        db, session, "submitted", clock.now(), fx, template, warning_shown
+    )
     return {
         "status": "completed",
         "completed_at": iso(session.completed_at),

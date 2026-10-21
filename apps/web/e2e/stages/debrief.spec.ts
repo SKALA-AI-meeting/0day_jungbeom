@@ -16,9 +16,8 @@ test("디브리핑: 첫 문장·내 발언·설문", async ({ page }) => {
   ).toBeVisible();
   await shot(page, "debrief", "01-첫 문장");
 
-  const mine = page.locator("section", {
-    has: page.getByRole("heading", { name: "내 발언 돌아보기" }),
-  });
+  const mine = page.locator("details", { hasText: "내 발언 돌아보기" }); // 접힌 구간이라 details다
+  await mine.locator("summary").click();
   const count = await mine.locator("li").count();
   expect(count).toBeGreaterThan(0);
   expect(count).toBeLessThanOrEqual(3);

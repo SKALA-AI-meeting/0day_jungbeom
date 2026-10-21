@@ -195,7 +195,9 @@ async def _step(db, session, position, invite, clock, fx, index: int, step: dict
             db, session, sections, proposal.revision, position.scenario["proposal_template"], clock
         )
     if step.get("submit"):
-        await proposal_service.submit(db, session, clock, fx)
+        await proposal_service.submit(
+            db, session, position.scenario["proposal_template"], clock, fx
+        )
 
 
 async def _say(db, session, position, clock, fx, index: int, step: dict) -> None:

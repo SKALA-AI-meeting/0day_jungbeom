@@ -4,7 +4,7 @@
 
 1. 시작(설치된 chromium 1243에 맞춰 1.63.0 고정): `uv run --with playwright==1.63.0 python tests/playtest/driver.py start --url http://localhost:3100/ --out <dir> --name <name>` (포트 기본 9400, 환경변수 `PLAYTEST_PORT`나 `--port`로 바꾼다. 포트가 다르면 이후 명령에도 같은 `--port`를 준다)
 2. 보기: `python3 tests/playtest/driver.py shot <이름>`은 PNG 경로를 출력하니 Read 도구로 열어 본다. `text`는 보이는 본문 텍스트
-3. 조작: `click "<보이는 텍스트>"`, `fill "<라벨 또는 placeholder>" "<값>"`, `type "<값>"`, `press Enter`, `goto <url>`, `wait <초>`(최대 10). 텍스트로 안 잡히면 `css=<selector>`
+3. 조작: `click "<보이는 텍스트>"`, `fill "<라벨 또는 placeholder>" "<값>"`, `select "<라벨 또는 css=>" "<옵션 텍스트>"`(select 요소), `type "<값>"`, `press Enter`, `goto <url>`, `wait <초>`(최대 10). 텍스트로 안 잡히면 `css=<selector>`
 4. 끝: `stop`이 영상을 `<out>/<name>.webm`으로 저장하고 서버를 종료한다
 5. 대화상자(alert/confirm)는 자동으로 닫히고 `<out>/server.log`에 남는다
 
