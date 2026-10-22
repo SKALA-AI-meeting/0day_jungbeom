@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Day Zero api: 인증, 화면 API, WebSocket, 스케줄러, 에이전트 모듈"
 requires-python = ">=3.12,<3.13"
 # S6 동결(docs/decisions.md "agent-spike 반영" S6): openai·fastmcp·mcp·pydantic·uvicorn·pytest는 고정 버전,
-# langgraph·langchain 계열은 기존 lock 값 유지. 이후 추가는 오케스트레이터 승인.
+# langgraph·langchain 계열은 기존 lock 값 유지. 이후 추가는 PR 리뷰에서 정한다.
 dependencies = [
   "fastapi>=0.115",
   "uvicorn[standard]==0.54.0",
