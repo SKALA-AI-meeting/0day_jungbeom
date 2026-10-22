@@ -15,6 +15,7 @@
 2. **카탈로그 수정**: `mission.yaml`·`keywords.yaml`·`personas.yaml`·`cards.yaml`·`rubric.yaml`·`materials/<keyword>/*.md`·`prompts/` 중 해당 파일.
    - `rubric.yaml`의 차원·앵커·담당자 참고 문구·기록 없음 사유는 rubric.md 3장·5장 표와 글자 그대로 같아야 한다.
    - 키워드·카드 표는 scenario.md 2.4·4.2 표와 같아야 한다.
+   - 카드를 더하거나 `card_id`를 바꾸면 카드별 지시·선점 금지 사전이 있는 `services/api/app/agent/debate/rules.py`도 함께 고친다(카드별 담당과 고정 내용은 [architecture/agents.md](../architecture/agents.md) 카드 표).
    - 아바타는 파일을 덮어쓰지 않고 새 중립 이름(`avatar-NN.png`)으로 더한 뒤 `personas.yaml`의 `avatar`를 바꾼다(진행 중 채용 건이 옛 경로를 쓰기 때문).
 3. **정합 검사**: `make test`(루트의 `scenarios/missions/debate/tests`가 카탈로그 ↔ 문서 표, 프롬프트 픽스처를 대조한다). 계약 예시(`tests/fixtures/contracts/`)에 카탈로그 값이 들어 있으면 함께 고친다.
 4. **프롬프트 확인**: 페르소나·의도 분류·평가 프롬프트를 바꿨으면 `make eval-live`로 실제 모델 결과를 한 번 남긴다(기준선과 비교). 평가 프롬프트를 바꾸면 `prompt_versions` 해시가 바뀌어 리포트에 새 버전이 기록된다.
