@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Day Zero 제품 가이드</title>
+<meta name="description" content="Day Zero를 처음 보는 사람이 화면·규칙·내부 동작을 한 페이지로 이해하고 확장 작업을 시작할 수 있게 정본 문서를 요약한 가이드">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 레이아웃: 시각 보고서(docs/share/visual-report)와 같은 토큰. 단일 칼럼 + 단계마다 화면|설명 2열, 좁으면 1열 */
+:root {
+  --paper: #f6f7f5;
+  --sheet: #ffffff;
+  --ink: #1c2421;
+  --muted: #5b6862;
+  --line: #d9dfdb;
+  --accent: #1f6f5c;
+  --accent-soft: #e3f0eb;
+  --pass: #1f7a4a;
+  --warn: #9a6a00;
+  --crit: #b03a2e;
+  --chip-pass: #e2f2e8;
+  --chip-warn: #f6eccf;
+  --chip-crit: #f6e0dc;
+  --admin: #9a6a00;
+  --admin-soft: #f6eccf;
+  --svc: #3d5a80;
+  --svc-soft: #e4ebf3;
+  --mark: #d9480f;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --step--1: 0.82rem;
+  --step-0: 0.98rem;
+  --step-1: 1.18rem;
+  --step-2: 1.5rem;
+  --step-3: 2.05rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121715; --sheet: #19201d; --ink: #e4ebe7; --muted: #9aa8a1; --line: #2c3632;
+    --accent: #5cc2a4; --accent-soft: #1d332c; --pass: #6fcf97; --warn: #e0b54a; --crit: #ef8a7c;
+    --chip-pass: #1d3326; --chip-warn: #3a2f12; --chip-crit: #3c201c;
+    --admin: #e0b54a; --admin-soft: #3a2f12; --svc: #8fb3e0; --svc-soft: #1d2633; --mark: #f76707;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121715; --sheet: #19201d; --ink: #e4ebe7; --muted: #9aa8a1; --line: #2c3632;
+  --accent: #5cc2a4; --accent-soft: #1d332c; --pass: #6fcf97; --warn: #e0b54a; --crit: #ef8a7c;
+  --chip-pass: #1d3326; --chip-warn: #3a2f12; --chip-crit: #3c201c;
+  --admin: #e0b54a; --admin-soft: #3a2f12; --svc: #8fb3e0; --svc-soft: #1d2633; --mark: #f76707;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper); color: var(--ink);
+  font-family: var(--font-body); font-size: var(--step-0); line-height: 1.65;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 40px 80px; display: grid; gap: 64px; }
+h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; margin: 0; }
+h1 { font-size: var(--step-3); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: var(--step-2); font-weight: 700; }
+h3 { font-size: var(--step-1); font-weight: 600; }
+h4 { font-size: var(--step-0); font-weight: 600; }
+p { margin: 0; max-width: 72ch; }
+ul, ol { margin: 0; }
+.eyebrow { font-family: var(--font-mono); font-size: var(--step--1); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+.small { font-size: var(--step--1); }
+code, .mono { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header.top { display: grid; gap: 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: var(--step--1); font-family: var(--font-mono); }
+.notice { border-left: 3px solid var(--warn); background: var(--chip-warn); padding: 10px 14px; border-radius: 0 6px 6px 0; max-width: 80ch; font-size: 0.94rem; }
+
+nav.jump { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line); margin-inline: -4px; padding: 10px 4px; display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: var(--step--1); }
+nav.jump a { text-decoration: none; color: var(--muted); }
+nav.jump a:hover { color: var(--accent); }
+
+section { display: grid; gap: 22px; scroll-margin-top: 64px; min-width: 0; }
+.lede { display: grid; gap: 8px; }
+.canon { font-size: var(--step--1); color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px; }
+.canon a { margin-right: 10px; white-space: nowrap; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.box { background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.box ul, .box ol { padding-left: 1.1em; display: grid; gap: 5px; }
+.box.no { border-left: 3px solid var(--crit); }
+.principle .k { font-family: var(--font-mono); font-size: var(--step--1); color: var(--accent); }
+
+.chip { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.chip.pass { background: var(--chip-pass); color: var(--pass); }
+.chip.warn { background: var(--chip-warn); color: var(--warn); }
+.chip.crit { background: var(--chip-crit); color: var(--crit); }
+.chip.admin { background: var(--admin-soft); color: var(--admin); }
+.chip.cand { background: var(--accent-soft); color: var(--accent); }
+.chip.svc { background: var(--svc-soft); color: var(--svc); }
+
+/* 흐름도 */
+.flow { background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.flow svg { display: block; width: 100%; height: auto; }
+.flow .narrow { display: none; max-width: 420px; margin: 0 auto; }
+@media (max-width: 700px) { .flow .wide { display: none; } .flow .narrow { display: block; } }
+.f-lane-admin { fill: var(--admin-soft); opacity: 0.55; }
+.f-lane-svc { fill: var(--svc-soft); opacity: 0.7; }
+.f-lane-cand { fill: var(--accent-soft); opacity: 0.6; }
+.f-box { fill: var(--sheet); stroke-width: 1.5; }
+.f-box.admin { stroke: var(--admin); }
+.f-box.svc { stroke: var(--svc); }
+.f-box.cand { stroke: var(--accent); }
+.f-t { fill: var(--ink); font-family: var(--font-body); font-size: 14px; font-weight: 600; }
+.f-s { fill: var(--muted); font-family: var(--font-body); font-size: 11px; font-weight: 400; }
+.f-lab { font-family: var(--font-body); font-size: 13px; font-weight: 700; }
+.f-lab.admin { fill: var(--admin); } .f-lab.svc { fill: var(--svc); } .f-lab.cand { fill: var(--accent); }
+.f-arr { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.f-dash { stroke: var(--svc); stroke-width: 1.2; stroke-dasharray: 3 3; fill: none; }
+.f-head { fill: var(--muted); }
+.f-note { fill: var(--muted); font-family: var(--font-body); font-size: 11px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: var(--step--1); color: var(--muted); margin-top: 8px; }
+
+/* 단계 */
+.stage { display: grid; gap: 18px; padding-top: 24px; border-top: 1px solid var(--line); min-width: 0; }
+.stage-head { display: grid; gap: 6px; }
+.stage-head h3 { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.screen { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+.marks { padding-left: 0; list-style: none; display: grid; gap: 8px; counter-reset: none; }
+.marks li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 0.94rem; }
+.marks li b.n { width: 22px; height: 22px; border-radius: 50%; background: var(--mark); color: #fff; font: 600 12px/22px var(--font-mono); text-align: center; margin-top: 2px; }
+
+button.zoomable { all: unset; display: block; cursor: zoom-in; border-radius: 6px; min-width: 0; }
+button.zoomable:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.frame { position: relative; display: block; }
+.frame img { width: 100%; display: block; border-radius: 6px; border: 1px solid var(--line); }
+.mk { position: absolute; transform: translate(-50%, -50%); width: 22px; height: 22px; border-radius: 50%; background: var(--mark); color: #fff; font: 600 12px/22px var(--font-mono); text-align: center; box-shadow: 0 0 0 2px #fff, 0 1px 3px rgba(0,0,0,0.35); pointer-events: none; }
+figure { margin: 0; display: grid; gap: 6px; min-width: 0; }
+figcaption { font-size: var(--step--1); color: var(--muted); }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.info { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.info .box h4 { color: var(--muted); font-size: var(--step--1); font-family: var(--font-mono); letter-spacing: 0.04em; }
+.req { display: grid; gap: 8px; }
+.req-row { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 4px 14px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 0.92rem; }
+.req-row:first-child { border-top: 0; }
+.req-row ul { padding-left: 1.1em; display: grid; gap: 2px; font-size: var(--step--1); }
+.prep { background: var(--admin-soft); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; }
+
+/* 표 */
+.table-box { border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); overflow: hidden; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: var(--step--1); background: var(--paper); }
+tr:last-child td { border-bottom: 0; }
+td ul { padding-left: 1.1em; display: grid; gap: 3px; }
+
+.steps { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+.steps li { background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; display: grid; gap: 2px; min-width: 0; flex: 1 1 180px; position: relative; }
+.steps li .t { font-weight: 600; font-size: 0.94rem; }
+.steps li .s { font-size: var(--step--1); color: var(--muted); }
+.steps li .i { font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent); }
+.steps.admin-step li.h { border-color: var(--admin); background: var(--admin-soft); }
+
+pre { margin: 0; background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-family: var(--font-mono); font-size: 0.84rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+dialog { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; }
+dialog::backdrop { background: rgba(0,0,0,0.78); }
+dialog .zoom-box { display: grid; gap: 8px; justify-items: end; }
+dialog .frame { display: inline-block; }
+dialog .frame img { width: auto; height: auto; max-width: 94vw; max-height: 86vh; }
+dialog .close { font: inherit; font-size: var(--step--1); background: var(--sheet); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 4px 12px; cursor: pointer; }
+
+footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 4px; }
+
+@media (max-width: 760px) {
+  .screen { grid-template-columns: minmax(0, 1fr); }
+  .req-row { grid-template-columns: minmax(0, 1fr); }
+  .wrap { padding-block: 24px 56px; gap: 48px; }
+  table.stack, table.stack thead, table.stack tbody, table.stack tr, table.stack td { display: block; }
+  table.stack thead { display: none; }
+  table.stack tr { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  table.stack tr:last-child { border-bottom: 0; }
+  table.stack td { border: 0; padding: 4px 12px; }
+  table.stack td::before { content: attr(data-label); display: block; font-size: var(--step--1); color: var(--muted); font-weight: 600; }
+}
+@media (max-width: 520px) {
+  .mk { width: 16px; height: 16px; font-size: 10px; line-height: 16px; box-shadow: 0 0 0 1.5px #fff; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Day Zero · 제품 가이드</div>
+    <h1>Day Zero 제품 가이드</h1>
+    <p>지원자가 AI 동료 3명(강한결 · 윤하람 · 서지안)과 채팅으로 토론해 키워드 → 문제 상황 → 해결책을 정하고 기획안을 내면, 그 과정의 행동으로 토론 태도를 보는 채용 서비스입니다. 이 페이지 하나로 화면과 규칙, 뒤에서 도는 방식, 확장할 때 고칠 곳을 훑을 수 있게 정본 문서를 요약했습니다. 규칙의 정본은 각 절 끝에 링크한 문서입니다.</p>
+    <p class="notice"><b>실제 세션은 60분</b>(단계 10 · 18 · 18 · 14분)입니다. 이 페이지의 화면 예시는 <b>15분 시연 세션</b>(같은 비율, 2.5 · 4.5 · 4.5 · 3.5분)을 결정적 LLM 모드(<code>LLM_FAKE=1</code>)로 찍은 것이라 동료 문장과 리포트 서술이 고정 문장입니다. 실제 모델 화면은 "실제 LLM" 표시가 붙은 두 장입니다.</p>
+    <div class="meta"><span>2026-10-22</span><span>main 8bb2d49 기준</span><span>LLM 기본 gpt-4o-mini</span><span>공유용 요약 · 정본 아님</span></div>
+  </header>
+
+  <nav class="jump" aria-label="절 이동">
+    <a href="#why">1 왜</a>
+    <a href="#flow">2 전체 흐름</a>
+    <a href="#stages">3 단계별</a>
+    <a href="#exceptions">4 예외 흐름</a>
+    <a href="#inside">5 뒤에서 도는 방식</a>
+    <a href="#extend">6 확장하려면</a>
+    <a href="#limits">7 제한·다음 과제</a>
+  </nav>
+
+  <!-- 1 -->
+  <section id="why">
+    <div class="lede">
+      <div class="eyebrow">1 · 왜</div>
+      <h2>자기 보고 대신 토론에서 실제로 한 말을 봅니다</h2>
+    </div>
+    <div class="box">
+      <ul>
+        <li>기업은 인성과 협업 태도를 중요하게 보지만, 재는 도구는 지원자의 자기 보고와 짧은 질의응답 면접에 기대고 있습니다.</li>
+        <li>자기 보고식 인성검사는 "나는 다른 의견을 존중한다"처럼 꾸며 답할 수 있습니다.</li>
+        <li>잘못된 채용은 비싸고, 작은 팀일수록 더 아픕니다.</li>
+        <li>지원자는 자신을 보여 줄 기회도, 결과의 이유도 얻지 못한 채 끝납니다.</li>
+      </ul>
+    </div>
+
+    <h3>핵심 원칙</h3>
+    <div class="grid">
+      <div class="box principle"><span class="k">행동 관찰</span><p>내 안과 다른 안의 경쟁, 강하게 밀어붙이는 동료, 머뭇거리는 동료, 남의 아이디어를 적어야 하는 기획안 같은 장면을 실제로 만들고 지원자의 반응을 기록합니다.</p></div>
+      <div class="box principle"><span class="k">태도만 평가</span><p>설득/논리력 · 경청/존중 · 배려/포용 · 수용/유연성 · 정직/공정 5요소만 봅니다. 안의 질, 근거의 정확성, 기획안 품질은 평가에 넣지 않습니다.</p></div>
+      <div class="box principle"><span class="k">같은 채용 건 = 같은 장면</span><p>키워드 후보, 페르소나 3명, 동료별 단계 고정 입장, 카드 6장의 시각·규칙은 채용 건을 만들 때 복사해 고정합니다. 달라지는 것은 동료의 실제 문장과 지원자의 선택에서 나온 결과뿐입니다.</p></div>
+      <div class="box principle"><span class="k">결정은 코드, 말투는 LLM</span><p>누가 어떤 안을 밀지, 합의 판정, 시간 초과 때 고를 안, 칸 채우기 허용은 결정적 코드가 정합니다. LLM은 의도 분류, 화자 선택 보조, 발언 문장만 만듭니다.</p></div>
+      <div class="box principle"><span class="k">리포트는 참고 자료</span><p>세션이 끝나면 AI 평가 에이전트가 공개된 행동 기준 척도로 지원자 행동 근거를 들어 차원별 수준을 판단하고, 담당자가 그것을 참고해 차원 단위로 조정하며 최종 평가합니다.</p></div>
+    </div>
+
+    <div class="box no">
+      <h3>하지 않는 것</h3>
+      <ul>
+        <li>점수·총점·합계를 만들지 않습니다. 요소 수준은 차원 수준을 읽기 쉽게 요약한 값이고 서로 더하지 않습니다.</li>
+        <li>합격·불합격 판정, 지원자 간 순위나 정렬을 만들지 않습니다.</li>
+        <li>실력(안의 질, 근거의 정확성, 기획안 품질)을 평가하지 않습니다.</li>
+        <li>AI 동료·어시스턴트·시스템 안내는 평가 기준이나 연출될 상황을 말하지 않고, 평가 대상 행동을 유도하지 않으며, 지원자 대신 결론을 내리지 않습니다.</li>
+        <li>지원자 행동 근거가 없으면 수준을 매기지 않고 "기록 없음"과 사유로 둡니다.</li>
+      </ul>
+    </div>
+    <p class="canon">정본: <a href="../../../PRD.md">PRD.md</a> 1·2·5장 <a href="../../product/rubric.md">product/rubric.md</a> 1·2장 <a href="../../decisions.md">decisions.md</a></p>
+  </section>
+
+  <!-- 2 -->
+  <section id="flow">
+    <div class="lede">
+      <div class="eyebrow">2 · 전체 흐름</div>
+      <h2>담당자 → 지원자 → 서비스 → 담당자</h2>
+      <p class="muted">담당자가 채용 건을 만들고 지원자를 초대하면, 지원자는 한 번의 세션에서 네 단계를 거쳐 기획안을 내고 디브리핑을 받습니다. 서비스는 세션 내내 기록하고, 끝나면 큐 작업으로 리포트 초안을 만들어 담당자 검토를 기다립니다.</p>
+    </div>
+    <figure class="flow">
+      <svg class="wide" viewBox="0 0 1000 364" role="img" aria-labelledby="flow-t flow-d">
+        <title id="flow-t">Day Zero 전체 흐름</title>
+        <desc id="flow-d">담당자가 채용 건을 만들고 초대 링크를 전달한다. 지원자는 입장·동의·대기 뒤 키워드, 문제 상황, 해결책, 기획안 단계를 거쳐 디브리핑을 받는다. 서비스는 토론 단계 동안 기록하고 제출 뒤 리포트를 생성한다. 담당자가 리포트를 검토·조정하고 검토 완료하면 서비스가 최종본을 확정한다.</desc>
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="f-head" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <rect class="f-lane-admin" x="0" y="10" width="1000" height="104" rx="6"/>
+        <rect class="f-lane-svc" x="0" y="130" width="1000" height="104" rx="6"/>
+        <rect class="f-lane-cand" x="0" y="250" width="1000" height="104" rx="6"/>
+        <text class="f-lab admin" x="14" y="66">담당자</text>
+        <text class="f-lab svc" x="14" y="186">서비스</text>
+        <text class="f-lab cand" x="14" y="306">지원자</text>
+
+        <!-- 담당자 -->
+        <rect class="f-box admin" x="96" y="34" width="96" height="56" rx="8"/>
+        <text class="f-t" x="144" y="58" text-anchor="middle">채용 건 생성</text>
+        <text class="f-s" x="144" y="76" text-anchor="middle">이름·세션 길이</text>
+        <rect class="f-box admin" x="209" y="34" width="96" height="56" rx="8"/>
+        <text class="f-t" x="257" y="58" text-anchor="middle">지원자 초대</text>
+        <text class="f-s" x="257" y="76" text-anchor="middle">72시간 링크</text>
+        <rect class="f-box admin" x="774" y="34" width="96" height="56" rx="8"/>
+        <text class="f-t" x="822" y="58" text-anchor="middle">리포트 검토</text>
+        <text class="f-s" x="822" y="76" text-anchor="middle">차원 조정·메모</text>
+        <rect class="f-box admin" x="887" y="34" width="96" height="56" rx="8"/>
+        <text class="f-t" x="935" y="58" text-anchor="middle">검토 완료</text>
+        <text class="f-s" x="935" y="76" text-anchor="middle">검토자 이름</text>
+
+        <!-- 서비스 -->
+        <rect class="f-box svc" x="322" y="154" width="435" height="56" rx="8"/>
+        <text class="f-t" x="539" y="177" text-anchor="middle">세션 기록과 결정적 판정</text>
+        <text class="f-s" x="539" y="196" text-anchor="middle">메시지·의도·칸 확정·카드·끊김 기록 · 합의·마감은 코드</text>
+        <rect class="f-box svc" x="774" y="154" width="96" height="56" rx="8"/>
+        <text class="f-t" x="822" y="178" text-anchor="middle">리포트 생성</text>
+        <text class="f-s" x="822" y="196" text-anchor="middle">평가·초안</text>
+        <rect class="f-box svc" x="887" y="154" width="96" height="56" rx="8"/>
+        <text class="f-t" x="935" y="178" text-anchor="middle">최종본 확정</text>
+        <text class="f-s" x="935" y="196" text-anchor="middle">승인한 초안</text>
+
+        <!-- 지원자 -->
+        <rect class="f-box cand" x="209" y="274" width="96" height="56" rx="8"/>
+        <text class="f-t" x="257" y="298" text-anchor="middle">입장</text>
+        <text class="f-s" x="257" y="316" text-anchor="middle">동의·대기</text>
+        <rect class="f-box cand" x="322" y="274" width="96" height="56" rx="8"/>
+        <text class="f-t" x="370" y="298" text-anchor="middle">키워드</text>
+        <text class="f-s" x="370" y="316" text-anchor="middle">10분</text>
+        <rect class="f-box cand" x="435" y="274" width="96" height="56" rx="8"/>
+        <text class="f-t" x="483" y="298" text-anchor="middle">문제 상황</text>
+        <text class="f-s" x="483" y="316" text-anchor="middle">18분</text>
+        <rect class="f-box cand" x="548" y="274" width="96" height="56" rx="8"/>
+        <text class="f-t" x="596" y="298" text-anchor="middle">해결책</text>
+        <text class="f-s" x="596" y="316" text-anchor="middle">18분</text>
+        <rect class="f-box cand" x="661" y="274" width="96" height="56" rx="8"/>
+        <text class="f-t" x="709" y="298" text-anchor="middle">기획안</text>
+        <text class="f-s" x="709" y="316" text-anchor="middle">14분·제출</text>
+        <rect class="f-box cand" x="774" y="274" width="96" height="56" rx="8"/>
+        <text class="f-t" x="822" y="298" text-anchor="middle">디브리핑</text>
+        <text class="f-s" x="822" y="316" text-anchor="middle">설명·설문</text>
+
+        <!-- 화살표 -->
+        <path class="f-arr" d="M192,62 L207,62" marker-end="url(#ah)"/>
+        <path class="f-arr" d="M257,90 L257,272" marker-end="url(#ah)"/>
+        <text class="f-note" x="263" y="186">초대 링크</text>
+        <path class="f-arr" d="M305,302 L320,302" marker-end="url(#ah)"/>
+        <path class="f-arr" d="M418,302 L433,302" marker-end="url(#ah)"/>
+        <path class="f-arr" d="M531,302 L546,302" marker-end="url(#ah)"/>
+        <path class="f-arr" d="M644,302 L659,302" marker-end="url(#ah)"/>
+        <path class="f-arr" d="M757,302 L772,302" marker-end="url(#ah)"/>
+        <path class="f-dash" d="M370,274 L370,210"/>
+        <path class="f-dash" d="M483,274 L483,210"/>
+        <path class="f-dash" d="M596,274 L596,210"/>
+        <path class="f-dash" d="M709,274 L709,210"/>
+        <path class="f-arr" d="M757,182 L772,182" marker-end="url(#ah)"/>
+        <path class="f-arr" d="M822,154 L822,92" marker-end="url(#ah)"/>
+        <text class="f-note" x="828" y="126">초안</text>
+        <path class="f-arr" d="M870,62 L885,62" marker-end="url(#ah)"/>
+        <path class="f-arr" d="M935,90 L935,152" marker-end="url(#ah)"/>
+        <text class="f-note" x="941" y="126">승인</text>
+      </svg>
+
+      <svg class="narrow" viewBox="0 0 370 666" role="img" aria-labelledby="flow-t2 flow-d2">
+        <title id="flow-t2">Day Zero 전체 흐름(세로)</title>
+        <desc id="flow-d2">채용 건 생성, 지원자 초대, 입장, 키워드, 문제 상황, 해결책, 기획안, 디브리핑, 리포트 생성, 리포트 검토, 검토 완료와 최종본 확정 순서. 토론 단계 동안 서비스가 세션을 기록한다.</desc>
+        <defs>
+          <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="f-head" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <g>
+          <text class="f-lab admin" x="4" y="34">담당자</text>
+          <rect class="f-box admin" x="66" y="10" width="262" height="40" rx="8"/><text class="f-t" x="80" y="35">채용 건 생성 <tspan class="f-s">이름·세션 길이</tspan></text>
+          <text class="f-lab admin" x="4" y="92">담당자</text>
+          <rect class="f-box admin" x="66" y="68" width="262" height="40" rx="8"/><text class="f-t" x="80" y="93">지원자 초대 <tspan class="f-s">72시간 링크 복사</tspan></text>
+          <text class="f-lab cand" x="4" y="150">지원자</text>
+          <rect class="f-box cand" x="66" y="126" width="262" height="40" rx="8"/><text class="f-t" x="80" y="151">입장 <tspan class="f-s">안내·동의·대기</tspan></text>
+          <text class="f-lab cand" x="4" y="208">지원자</text>
+          <rect class="f-box cand" x="66" y="184" width="262" height="40" rx="8"/><text class="f-t" x="80" y="209">키워드 <tspan class="f-s">10분</tspan></text>
+          <text class="f-lab cand" x="4" y="266">지원자</text>
+          <rect class="f-box cand" x="66" y="242" width="262" height="40" rx="8"/><text class="f-t" x="80" y="267">문제 상황 <tspan class="f-s">18분</tspan></text>
+          <text class="f-lab cand" x="4" y="324">지원자</text>
+          <rect class="f-box cand" x="66" y="300" width="262" height="40" rx="8"/><text class="f-t" x="80" y="325">해결책 <tspan class="f-s">18분</tspan></text>
+          <text class="f-lab cand" x="4" y="382">지원자</text>
+          <rect class="f-box cand" x="66" y="358" width="262" height="40" rx="8"/><text class="f-t" x="80" y="383">기획안 <tspan class="f-s">14분·제출</tspan></text>
+          <text class="f-lab cand" x="4" y="440">지원자</text>
+          <rect class="f-box cand" x="66" y="416" width="262" height="40" rx="8"/><text class="f-t" x="80" y="441">디브리핑 <tspan class="f-s">설명·설문</tspan></text>
+          <text class="f-lab svc" x="4" y="498">서비스</text>
+          <rect class="f-box svc" x="66" y="474" width="262" height="40" rx="8"/><text class="f-t" x="80" y="499">리포트 생성 <tspan class="f-s">평가 에이전트·초안</tspan></text>
+          <text class="f-lab admin" x="4" y="556">담당자</text>
+          <rect class="f-box admin" x="66" y="532" width="262" height="40" rx="8"/><text class="f-t" x="80" y="557">리포트 검토 <tspan class="f-s">차원 조정·메모</tspan></text>
+          <text class="f-lab admin" x="4" y="614">담당자</text>
+          <rect class="f-box admin" x="66" y="590" width="262" height="40" rx="8"/><text class="f-t" x="80" y="615">검토 완료 <tspan class="f-s">→ 서비스가 최종본 확정</tspan></text>
+        </g>
+        <g>
+          <path class="f-arr" d="M197,50 L197,66" marker-end="url(#ah2)"/>
+          <path class="f-arr" d="M197,108 L197,124" marker-end="url(#ah2)"/>
+          <path class="f-arr" d="M197,166 L197,182" marker-end="url(#ah2)"/>
+          <path class="f-arr" d="M197,224 L197,240" marker-end="url(#ah2)"/>
+          <path class="f-arr" d="M197,282 L197,298" marker-end="url(#ah2)"/>
+          <path class="f-arr" d="M197,340 L197,356" marker-end="url(#ah2)"/>
+          <path class="f-arr" d="M197,398 L197,414" marker-end="url(#ah2)"/>
+          <path class="f-arr" d="M197,456 L197,472" marker-end="url(#ah2)"/>
+          <path class="f-arr" d="M197,514 L197,530" marker-end="url(#ah2)"/>
+          <path class="f-arr" d="M197,572 L197,588" marker-end="url(#ah2)"/>
+          <path class="f-dash" d="M336,190 L344,190 L344,392 L336,392"/>
+          <text class="f-note" x="352" y="291" transform="rotate(90 352 291)" text-anchor="middle">서비스가 세션 기록</text>
+        </g>
+        <text class="f-note" x="66" y="656">단계 시간은 60분 세션 기준(15분 시연은 같은 비율)</text>
+      </svg>
+      <div class="legend"><span><span class="chip admin">담당자</span> 관리자 화면</span><span><span class="chip cand">지원자</span> 초대 링크 화면</span><span><span class="chip svc">서비스</span> api·워커·MCP</span><span>점선: 토론 단계의 기록</span></div>
+    </figure>
+
+    <div class="table-box">
+      <table class="stack">
+        <thead><tr><th>용어</th><th>뜻</th></tr></thead>
+        <tbody>
+          <tr><td data-label="용어"><b>칸</b> · 지원자 화면 "정할 항목"</td><td data-label="뜻">단계마다 하나씩 정하는 값(키워드 · 문제 상황 · 해결책). 상태는 비어 있음과 확정 두 가지이고, 확정하면 다음 단계로 넘어갑니다.</td></tr>
+          <tr><td data-label="용어"><b>합의 패널</b> · "결정 사항"</td><td data-label="뜻">확정된 칸 결과만 쌓이는 우측 탭. 후보안과 지지 현황은 보이지 않고 토론은 채팅으로만 합니다. 확정 버튼은 "이걸로 정하기"입니다.</td></tr>
+          <tr><td data-label="용어"><b>카드</b> · 설계된 장면</td><td data-label="뜻">단계 시작 기준 고정 시각에 담당 동료가 실제 발언으로 일으키는 장면(6장). 같은 채용 건의 지원자는 같은 카드를 겪습니다.</td></tr>
+          <tr><td data-label="용어"><b>기준안</b></td><td data-label="뜻">문제 상황 카드 시각에 잠그는 안. 그 순간 지원자가 지지하지 않는 첫 시나리오 안이고, 강한결·서지안이 이 안을 지지합니다.</td></tr>
+          <tr><td data-label="용어"><b>오피스 시각</b></td><td data-label="뜻">메시지 타임스탬프에만 쓰는 회의 속 시각(09:00~10:00). 상단 바와 안내는 실제 남은 시간을 씁니다.</td></tr>
+          <tr><td data-label="용어"><b>BARS</b>(행동 기준 척도)</td><td data-label="뜻">요소마다 하위 차원 3~4개(모두 19개), 차원마다 1~5 수준과 수준별 대표 행동을 공개해 둔 척도. 평가 에이전트와 담당자가 같은 척도를 봅니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="canon">정본: <a href="../../product/user-flows.md">product/user-flows.md</a> <a href="../../architecture/session-lifecycle.md">architecture/session-lifecycle.md</a> "세션 흐름 한눈에" <a href="../../product/scenario.md">product/scenario.md</a> 1장</p>
+  </section>
+
+  <!-- 3 -->
+  <section id="stages">
+    <div class="lede">
+      <div class="eyebrow">3 · 단계별</div>
+      <h2>단계마다 화면, 하는 일, 규칙, 관찰하는 행동</h2>
+      <p class="muted">화면은 15분 시연 세션을 단계 시드(그 단계 직전 상태의 세션)로 만든 뒤 찍었습니다. 번호 마커는 아래 설명과 짝을 이루고, 이미지를 누르면 크게 봅니다. 시간은 60분 기준이고 괄호 안이 15분 시연 값입니다. 지원자 표시 이름이 "지원자-xxxxxx"인 것은 시드 세션의 별칭입니다.</p>
+    </div>
+
+    <div class="prep">
+      <h3>준비: 담당자가 채용 건을 만들고 초대합니다</h3>
+      <p>관리자 화면(<code>/admin</code>)에서 이름과 세션 길이(60분 · 데모 15분)만 정해 채용 건을 만듭니다. 요소 선택 UI는 없고, 5요소의 뜻과 "이렇게 봅니다"가 안내로만 보입니다. 페르소나·카드·척도 세부는 보이지 않습니다. 지원자는 별칭과 이메일로 초대하고, 72시간짜리 1회용 링크를 담당자가 복사해 직접 전달합니다(이메일 발송 없음). 만든 채용 건은 그 시점 시나리오의 복사본으로 고정됩니다.</p>
+      <p class="small muted">F-08 채용 건 생성 <span class="chip pass">구현</span> · F-02 지원자 초대 <span class="chip pass">구현</span>(이메일 발송 없음, 링크 복사) · F-01 가입·로그인 <span class="chip pass">구현</span> · F-03 지원자 목록 <span class="chip pass">구현</span></p>
+    </div>
+
+    <!-- 입장 -->
+    <article class="stage" id="s-entry">
+      <div class="stage-head">
+        <h3>① 입장 · 동의 · 대기 <span class="chip cand">지원자</span></h3>
+        <p class="muted">초대 링크 → 안내 → 표시 이름과 동의 → 대기 화면에서 팀 소개 → 시작.</p>
+      </div>
+      <div class="screen">
+        <figure>
+          <button class="zoomable" type="button" aria-label="대기 화면 크게 보기">
+            <span class="frame"><img src="media/entry-03.jpg" alt="대기 화면: 시작할 준비가 됐어요, 새 프로젝트 팀(하늘(나), 강한결, 윤하람, 서지안), 진행 한 줄, 화면 구성 그림, 시작하기 버튼" loading="lazy" width="1100" height="687">
+              <span class="mk" style="left:27.9%;top:21.3%" aria-hidden="true">1</span>
+              <span class="mk" style="left:27.9%;top:32%" aria-hidden="true">2</span>
+              <span class="mk" style="left:27.9%;top:43.7%" aria-hidden="true">3</span>
+              <span class="mk" style="left:27.9%;top:75.1%" aria-hidden="true">4</span>
+              <span class="mk" style="left:37.3%;top:89.5%" aria-hidden="true">5</span>
+            </span>
+          </button>
+          <figcaption>대기 화면(15분 시연)</figcaption>
+        </figure>
+        <ol class="marks">
+          <li><b class="n">1</b><span>팀 소개: AI 동료 3명의 이름과 고정 프로필 이미지, 내 표시 이름과 이니셜 아바타. "사람 팀원 역할을 맡은 AI입니다." 성향 유형은 보이지 않습니다.</span></li>
+          <li><b class="n">2</b><span>진행 한 줄: 키워드 → 문제 상황 → 해결책을 함께 정하고 마지막 단계(60분 기준 14분)에 기획안을 혼자 써서 제출.</span></li>
+          <li><b class="n">3</b><span>화면 구성 그림: 상단 단계 진행바와 남은 시간, 가운데 토론방, 우측 탭(결정 사항 · 자료 · AI 어시스턴트 · 기획안).</span></li>
+          <li><b class="n">4</b><span>시각 안내: 상단은 이 단계의 남은 시간, 메시지 옆은 회의 속 시각(09:00~10:00). 이 설명은 토론 화면의 ? 버튼으로 다시 봅니다.</span></li>
+          <li><b class="n">5</b><span>시작하기: 누르는 순간 시간이 흐르고, 접속이 끊겨도 멈추지 않습니다.</span></li>
+        </ol>
+      </div>
+      <div class="thumbs">
+        <figure><button class="zoomable" type="button" aria-label="입장 화면 크게 보기"><span class="frame"><img src="media/entry-01.jpg" alt="입장 화면: 새 프로젝트 팀 토론, 15분 연속 진행, PC 권장, 끊겨도 시간은 흐름, 외부 도구와 어시스턴트 기록 안내, 다음 버튼" loading="lazy" width="1100" height="687"></span></button><figcaption>입장: 고정 안내와 [다음]</figcaption></figure>
+        <figure><button class="zoomable" type="button" aria-label="동의 화면 크게 보기"><span class="frame"><img src="media/entry-02.jpg" alt="동의 화면: 기록되는 것, 평가 방식, AI 어시스턴트, 만들지 않는 것 안내와 토론방에서 보일 이름 입력, 동의 체크" loading="lazy" width="1100" height="687"></span></button><figcaption>동의: 기록·평가 방식 안내와 표시 이름</figcaption></figure>
+        <figure><button class="zoomable" type="button" aria-label="토론 시작 화면 크게 보기"><span class="frame"><img src="media/entry-04.jpg" alt="토론 시작 직후 화면: 상단 키워드 단계와 남은 시간, 토론방의 시작 안내, 우측 결정 사항 탭의 키워드 후보 4개" loading="lazy" width="1100" height="687"></span></button><figcaption>시작 직후 토론 화면</figcaption></figure>
+      </div>
+      <div class="info">
+        <div class="box"><h4>사용자가 하는 일</h4><ul><li>링크를 열고 안내를 읽은 뒤 [다음].</li><li>표시 이름(기본값은 초대 이름, 1~20자)을 정하고 동의.</li><li>대기 화면에서 팀과 화면 구성을 보고 [시작하기].</li></ul></div>
+        <div class="box"><h4>규칙</h4><ul><li>링크는 72시간 1회용. 만료·취소된 링크는 안내 문구로, 끝난 세션은 디브리핑으로 갑니다.</li><li>동의하지 않으면 시작할 수 없습니다. 표시 이름은 시작 뒤 바꾸지 않습니다.</li><li>동의 화면이 알리는 것: 토론 결과가 내 제안과 다를 수 있고 안의 질이 아니라 과정의 태도를 본다, 기록 대상과 90일 보관, 어시스턴트 기록은 사실로만 제공.</li><li>동료가 AI라는 사실과 관찰 요소 이름은 알리고, 동료 성향과 카드는 알리지 않습니다.</li></ul></div>
+        <div class="box"><h4>관찰하는 행동</h4><p>없음. 관찰은 시작 뒤 토론방에서부터입니다.</p></div>
+      </div>
+      <div class="box req">
+        <div class="req-row"><span><b>F-10</b> 초대 링크 입장 <span class="chip pass">구현</span></span><ul><li><code>apps/web/e2e/stages/entry.spec.ts::입장 → 동의 → 대기(참여자) → 시작</code></li><li><code>services/api/tests/test_c09_entry.py::test_entry_consent_prestart_state_start_resume_and_debrief</code></li></ul></div>
+        <div class="req-row"><span><b>F-11</b> 안내·동의 <span class="chip pass">구현</span></span><ul><li><code>apps/web/components/debate/wording.test.ts::지원자 화면 문구에 내부 용어(칸·합의 패널·확정)가 없고 지원자 말을 쓴다</code></li></ul></div>
+      </div>
+    </article>
+
+    <!-- 키워드 -->
+    <article class="stage" id="s-keyword">
+      <div class="stage-head">
+        <h3>② 키워드 <span class="chip cand">10분 (2.5분)</span></h3>
+        <p class="muted">네 명이 물 · 불 · 나무 · 바람 중 하나를 정합니다. 강한결은 불, 서지안은 바람을 밀고, 윤하람은 물으면 나무를 말합니다.</p>
+      </div>
+      <div class="screen">
+        <figure>
+          <button class="zoomable" type="button" aria-label="키워드 단계 화면 크게 보기">
+            <span class="frame"><img src="media/keyword-01.jpg" alt="키워드 단계 화면: 상단 진행바와 이 단계 2:30 남음, 토론방의 시작 안내와 강한결의 '저는 불이 좋다고 봐요', 우측 결정 사항의 후보 4개 버튼과 이걸로 정하기" loading="lazy" width="1100" height="687">
+              <span class="mk" style="left:8.7%;top:3.1%" aria-hidden="true">1</span>
+              <span class="mk" style="left:86.4%;top:3.1%" aria-hidden="true">2</span>
+              <span class="mk" style="left:11.8%;top:19.9%" aria-hidden="true">3</span>
+              <span class="mk" style="left:17.7%;top:28.2%" aria-hidden="true">4</span>
+              <span class="mk" style="left:63.1%;top:28.7%" aria-hidden="true">5</span>
+              <span class="mk" style="left:98.9%;top:34.6%" aria-hidden="true">6</span>
+              <span class="mk" style="left:79.3%;top:9.3%" aria-hidden="true">7</span>
+            </span>
+          </button>
+          <figcaption>키워드 단계(15분 시연)</figcaption>
+        </figure>
+        <ol class="marks">
+          <li><b class="n">1</b><span>단계 진행바: 키워드 · 문제 상황 · 해결책 · 기획안 작성 4칸. 지난 단계에는 결과(합의/지원자 결정/시간 초과)가 붙습니다.</span></li>
+          <li><b class="n">2</b><span>이 단계 남은 시간. 마감 2분 전(압축 비율)부터 경고 색입니다.</span></li>
+          <li><b class="n">3</b><span>시스템 안내: 할 일, 후보 4개, 남은 시간만 알립니다. 진행·중재·평가하지 않습니다.</span></li>
+          <li><b class="n">4</b><span>AI 동료 말풍선: 이름과 고정 프로필 이미지, 자리별 연한 틴트. 입력 중 표시 뒤 완성 문장이 한 번에 도착합니다.</span></li>
+          <li><b class="n">5</b><span>키워드 후보 4개 버튼. 후보 밖 키워드는 정할 수 없습니다.</span></li>
+          <li><b class="n">6</b><span>[이걸로 정하기] → 확인 창 하나 → 확정되면 다음 단계로 넘어갑니다.</span></li>
+          <li><b class="n">7</b><span>자료 탭: 키워드가 정해지기 전에는 잠겨 있습니다.</span></li>
+        </ol>
+      </div>
+      <div class="thumbs">
+        <figure><button class="zoomable" type="button" aria-label="키워드 확정 뒤 화면 크게 보기"><span class="frame"><img src="media/keyword-03.jpg" alt="키워드 확정 뒤: 진행바 '키워드 · 지원자 결정', 결정 사항에 물 · 지원자 결정 · 정한 사람 나, 문제 상황 입력 칸이 열림, 자료 탭 배지" loading="lazy" width="1100" height="687"></span></button><figcaption>확정 뒤: "지원자 결정" 표시와 다음 정할 항목</figcaption></figure>
+        <figure><button class="zoomable" type="button" aria-label="자료 탭 화면 크게 보기"><span class="frame"><img src="media/keyword-04.jpg" alt="자료 탭: 「물」 자료 4개(지역별 물 부족 통계, 도심 침수 사례, 수돗물 음용률 조사, 빗물 재이용 사례)" loading="lazy" width="1100" height="687"></span></button><figcaption>정한 키워드의 자료만 열림</figcaption></figure>
+      </div>
+      <div class="info">
+        <div class="box"><h4>사용자가 하는 일</h4><ul><li>채팅으로 키워드를 토론합니다.</li><li>결정 사항 탭에서 후보 하나를 고르고 [이걸로 정하기] → 확인.</li><li>또는 동료가 합의로 채우거나 마감에 시간 초과로 정해집니다.</li></ul></div>
+        <div class="box"><h4>규칙</h4><ul>
+          <li><b>마감은 누적 고정</b>: 키워드 L/6, 문제 상황 7L/15, 해결책 23L/30, 기획안 L(L = 세션 길이). 일찍 정하면 남은 시간이 다음 단계로 넘어갑니다.</li>
+          <li><b>결과 표시</b>: 시간 초과면 "시간 초과". 그 밖에는 확정 순간 그 안의 지지자가 4명 중 3명 이상이면 "합의", 아니면(혼자 확정 등) "지원자 결정". AI 합의 채우기는 늘 "합의"입니다.</li>
+          <li>지원자는 반대가 남아도 혼자 정할 수 있고, 확정 순간의 지지 현황은 기록에만 남습니다.</li>
+          <li><b>카드</b> 경쟁 키워드 반론(L/20, 3분 · 0.75분): 지원자와 다른 키워드를 민 동료(서지안 우선, 다음 강한결)가 이유 하나와 함께 자기 안을 밀고 지원자 안의 약점을 묻습니다.</li>
+          <li>키워드가 정해지면 그 키워드의 자료만 자료 탭과 AI 어시스턴트에 열립니다.</li>
+        </ul></div>
+        <div class="box"><h4>관찰하는 행동</h4><p><b>설득/논리력</b>: 근거 제시 · 반론 대응 · 경쟁 안 비교 · 논의 수렴</p><p class="small muted">해결책 단계의 반론 카드와 함께 이 요소의 핵심 장면입니다.</p></div>
+      </div>
+      <div class="box req">
+        <div class="req-row"><span><b>F-13</b> 결정 사항 <span class="chip pass">구현</span></span><ul><li><code>apps/web/e2e/stages/keyword.spec.ts::후보 확정 → 결정 사항 → 문제 상황 단계 → 자료 열림</code></li><li><code>services/api/tests/test_c01_confirm.py::test_outcome_is_candidate_decision_below_three_supporters_of_confirmed</code></li></ul></div>
+        <div class="req-row"><span><b>F-14</b> 단계 진행바·시간 <span class="chip pass">구현</span></span><ul><li><code>services/api/tests/test_scenario.py::test_cumulative_phase_deadlines</code></li></ul></div>
+        <div class="req-row"><span><b>F-15</b> 참고 자료 <span class="chip pass">구현</span></span><ul><li><code>services/rag-mcp/tests/test_tools.py::test_blocked_before_keyword_confirmed</code></li></ul></div>
+        <div class="req-row"><span><b>F-23</b> 카드 실행 <span class="chip pass">구현</span></span><ul><li><code>services/api/tests/agent/test_cards.py::test_card_due_keyword_critic_pushes_own_keyword</code></li></ul></div>
+      </div>
+    </article>
+
+    <!-- 문제 상황 -->
+    <article class="stage" id="s-problem">
+      <div class="stage-head">
+        <h3>③ 문제 상황 <span class="chip cand">18분 (4.5분)</span></h3>
+        <p class="muted">정한 키워드의 문제 상황 하나를 정합니다. 카드 시각에 두 동료가 지원자 안과 다른 안을 지지하고, 강한결이 강하게 밀어붙입니다.</p>
+      </div>
+      <div class="screen">
+        <figure>
+          <button class="zoomable" type="button" aria-label="문제 상황 시간 초과 화면 크게 보기">
+            <span class="frame"><img src="media/problem-03.jpg" alt="문제 상황 시간 초과 뒤: 진행바 '문제 상황 · 시간 초과', 결정 사항에 가뭄으로 생활용수 제한이 잦아짐 · 시간 초과 · 정한 사람 서지안, 서지안의 시간 초과 고정 문장, 해결책 입력 칸" loading="lazy" width="1100" height="687">
+              <span class="mk" style="left:20.6%;top:3.1%" aria-hidden="true">1</span>
+              <span class="mk" style="left:26.2%;top:49.1%" aria-hidden="true">2</span>
+              <span class="mk" style="left:32%;top:57.8%" aria-hidden="true">3</span>
+              <span class="mk" style="left:46.9%;top:76.7%" aria-hidden="true">4</span>
+              <span class="mk" style="left:91.6%;top:28.7%" aria-hidden="true">5</span>
+              <span class="mk" style="left:62.9%;top:42.6%" aria-hidden="true">6</span>
+            </span>
+          </button>
+          <figcaption>마감 시간 초과 직후(15분 시연)</figcaption>
+        </figure>
+        <ol class="marks">
+          <li><b class="n">1</b><span>진행바에 "문제 상황 · 시간 초과"가 남습니다.</span></li>
+          <li><b class="n">2</b><span>침묵 초대: 지원자가 오래 말이 없으면 서지안이 "OO님은 어떻게 생각하세요?"라고 한 번 묻습니다.</span></li>
+          <li><b class="n">3</b><span>카드 뒤 강한결이 기준안을 지지합니다. 카드 전에는 강한결·서지안도 입장을 밝히지 않습니다.</span></li>
+          <li><b class="n">4</b><span>시간 초과 고정 문장: "시간이 다 돼서 대화에서 가장 많이 모인 의견인 X로 할게요." 우선순위 자리(서지안) 이름으로 api가 게시합니다.</span></li>
+          <li><b class="n">5</b><span>결정 사항에 결과 줄 "시간 초과"와 정한 사람이 쌓입니다(오피스 시각 없음).</span></li>
+          <li><b class="n">6</b><span>다음 정할 항목(해결책)이 열립니다. 문제 상황·해결책은 짧은 글로 적고, 형식 안내만 있습니다.</span></li>
+        </ol>
+      </div>
+      <div class="thumbs">
+        <figure><button class="zoomable" type="button" aria-label="수용 카드 발언 화면 크게 보기"><span class="frame"><img src="media/problem-02.jpg" alt="카드 시각 뒤 토론방: 강한결 '자료부터 같이 보고 얘기해요', 서지안의 침묵 초대, 강한결 '저는 가뭄으로 생활용수 제한이 잦아짐이 좋다고 봐요'" loading="lazy" width="1100" height="687"></span></button><figcaption>카드 시각 뒤 기준안 지지 발언</figcaption></figure>
+        <figure><button class="zoomable" type="button" aria-label="실제 LLM 어시스턴트 화면 크게 보기"><span class="frame"><img src="media/real-assistant.jpg" alt="실제 LLM 세션의 AI 어시스턴트 탭: '지역별 물 부족 통계 자료에서 핵심만 알려 주세요' 요청과 인용 칩이 붙은 답, 토론방에는 강한결의 실제 모델 문장" loading="lazy" width="1100" height="687"></span></button><figcaption><span class="chip warn">실제 LLM</span> AI 어시스턴트: 열린 자료만 찾아 인용과 함께 답</figcaption></figure>
+      </div>
+      <div class="info">
+        <div class="box"><h4>사용자가 하는 일</h4><ul><li>자료 탭과 AI 어시스턴트로 자료를 보며 문제 상황을 토론합니다.</li><li>강한결의 압박과 다른 안 지지에 반응합니다.</li><li>정할 항목에 문제 상황을 적고 [이걸로 정하기], 또는 합의·시간 초과로 정해집니다.</li></ul></div>
+        <div class="box"><h4>규칙</h4><ul>
+          <li><b>카드</b> 다른 안 지지 · 고집형 압박(둘 다 L/20, 3분 · 0.75분): 이때 기준안을 잠그고 강한결(확정 전 불변)과 서지안이 기준안을 지지합니다. 강한결은 지원자 안을 짧게 일축하고 같은 근거로 재반박합니다(압박 최대 3회, 인신공격 없음).</li>
+          <li>서지안은 지원자가 그 안에 두 번 반대하거나 대안을 내면 지원자 안으로 지지를 옮깁니다(단계당 1회). 지원자 안이 채택될 수 있고, 그러면 수용/유연성은 "해당 없음"입니다.</li>
+          <li><b>시간 초과</b>: 마감 L/30(2분) 전 안내 → 마감 때 api가 현재 지지자가 가장 많은 안을 고릅니다. 동률이면 지원자가 지지한 안, 그다음 먼저 제안된 안입니다.</li>
+          <li><b>선점 금지</b>: 다른 동료가 강한결을 말리거나 지원자 편을 들어 중재하지 않고, 지원자에게 승복을 권하지 않습니다.</li>
+          <li><b>침묵 초대</b>(토론 세 단계 공통): L/20(3분 · 45초) 동안 말이 없거나 단계 절반이 지나도록 의견이 없으면 서지안이 단계당 한 번 묻습니다. 그 뒤 첫 발언은 "초대 후"로 기록됩니다.</li>
+          <li><b>AI 어시스턴트</b>: 열린 자료만 스스로 검색·조회(요청당 도구 최대 3회)해 인용과 함께 답합니다. 세션당 60회, 동료는 이 대화를 보지 않습니다.</li>
+        </ul></div>
+        <div class="box"><h4>관찰하는 행동</h4><p><b>수용/유연성</b>: 다른 안 재검토 · 결정 절차 존중 · 결과 승복 · 다음 단계 기여(관찰은 해결책 단계 끝까지)</p><p><b>경청/존중</b>: 응답성 · 이해 확인 · 타당성 인정 · 존중하는 반대</p><p class="small muted">근거 있는 이의 제기도 높게 봅니다. 입장을 바꿨는지가 아니라 상대 근거에 반응했는지를 봅니다.</p></div>
+      </div>
+      <div class="box req">
+        <div class="req-row"><span><b>F-26</b> 칸 채우기 <span class="chip pass">구현</span></span><ul><li><code>apps/web/e2e/stages/problem.spec.ts::수용 카드 발언 → 시간 초과 채우기 → 입력 닫힘</code></li><li><code>services/api/tests/test_c03_timeout.py::test_timeout_fills_most_supported_option_without_graph</code></li></ul></div>
+        <div class="req-row"><span><b>F-22</b> 고정 입장과 근거 발언 <span class="chip pass">구현</span></span><ul><li><code>services/api/tests/agent/test_persona.py::test_offplan_regenerates_then_fallback</code></li></ul></div>
+        <div class="req-row"><span><b>F-23</b> 카드 실행 <span class="chip pass">구현</span></span><ul><li><code>services/api/tests/test_scheduler.py::test_problem_cards_lock_lead_and_joint_message_delivers_both</code></li></ul></div>
+        <div class="req-row"><span><b>F-16</b> AI 어시스턴트 <span class="chip pass">구현</span></span><ul><li><code>services/api/tests/agent/test_assistant.py::test_model_picks_tools_and_cites</code></li><li><code>services/api/tests/agent/test_assistant.py::test_tool_calls_capped_at_three</code></li></ul></div>
+        <div class="req-row"><span><b>F-27</b> 실시간 의도 분류 <span class="chip pass">구현</span></span><ul><li><code>services/api/tests/test_mailbox.py::test_classifier_failure_is_other_and_low_confidence_adds_no_stance</code></li></ul></div>
+      </div>
+    </article>
+
+    <!-- 해결책 -->
+    <article class="stage" id="s-solution">
+      <div class="stage-head">
+        <h3>④ 해결책 <span class="chip cand">18분 (4.5분)</span></h3>
+        <p class="muted">해결 방향(데이터 · 참여 · 인프라) 하나를 정합니다. 강한결은 데이터, 서지안은 참여, 윤하람은 숨은 안으로 인프라를 가지고 있습니다.</p>
+      </div>
+      <div class="screen">
+        <figure>
+          <button class="zoomable" type="button" aria-label="해결책 합의 채움 화면 크게 보기">
+            <span class="frame"><img src="media/solution-02.jpg" alt="해결책 AI 합의 채움: 지원자 '윤하람님은 어떻게 생각하세요?', 윤하람의 빗물 저금통 안, 지원자의 반대와 지지, 서지안 '그럼 빗물 저금통·투수 포장 같은 생활 인프라로 정리할게요', 우측이 기획안 탭으로 전환" loading="lazy" width="1100" height="687">
+              <span class="mk" style="left:42.9%;top:30.1%" aria-hidden="true">1</span>
+              <span class="mk" style="left:34.9%;top:38.9%" aria-hidden="true">2</span>
+              <span class="mk" style="left:29.8%;top:65.4%" aria-hidden="true">3</span>
+              <span class="mk" style="left:34.6%;top:79.3%" aria-hidden="true">4</span>
+              <span class="mk" style="left:34.2%;top:3.1%" aria-hidden="true">5</span>
+              <span class="mk" style="left:88.9%;top:9.3%" aria-hidden="true">6</span>
+            </span>
+          </button>
+          <figcaption>AI 합의 채움 직후(15분 시연)</figcaption>
+        </figure>
+        <ol class="marks">
+          <li><b class="n">1</b><span>지원자가 머뭇거린 윤하람을 이름으로 부릅니다. 다른 동료는 대신 부르지 않습니다(선점 금지).</span></li>
+          <li><b class="n">2</b><span>윤하람은 이름이 불리거나 전체 질문을 받을 때만 숨은 안을 말합니다.</span></li>
+          <li><b class="n">3</b><span>지원자의 반대와 지지가 의도 분류로 현재 지지에 반영됩니다(확신도 high인 제안·동의만 지지, 같은 안 반대는 철회).</span></li>
+          <li><b class="n">4</b><span>AI 합의 채우기: 지원자를 포함해 4명 중 3명이 같은 안을 지지하는 순간 "그럼 X로 정리할게요"와 칸 확정이 함께 저장됩니다.</span></li>
+          <li><b class="n">5</b><span>진행바 "해결책 · 합의".</span></li>
+          <li><b class="n">6</b><span>기획안 단계가 되면 우측 탭이 기획안으로 자동 전환됩니다.</span></li>
+        </ol>
+      </div>
+      <div class="thumbs">
+        <figure><button class="zoomable" type="button" aria-label="머뭇거림과 침묵 초대 화면 크게 보기"><span class="frame"><img src="media/solution-03.jpg" alt="해결책 단계: 서지안의 침묵 초대 '지원자님은 어떻게 생각하세요?'와 윤하람 '저... 하나 생각한 게 있긴 한데... 아니에요, 먼저 얘기하세요'" loading="lazy" width="1100" height="687"></span></button><figcaption>윤하람의 머뭇거림 카드와 침묵 초대</figcaption></figure>
+        <figure><button class="zoomable" type="button" aria-label="혼자 확정 화면 크게 보기"><span class="frame"><img src="media/solution-04.jpg" alt="반대가 남은 상태에서 지원자가 혼자 확정: 진행바 '해결책 · 지원자 결정', 기획안 탭으로 전환" loading="lazy" width="1100" height="687"></span></button><figcaption>반대가 남은 채 혼자 확정 → "지원자 결정"</figcaption></figure>
+      </div>
+      <div class="info">
+        <div class="box"><h4>사용자가 하는 일</h4><ul><li>해결 방향을 토론하고 머뭇거린 동료, 반론을 낸 동료에게 반응합니다.</li><li>정할 항목에 해결책을 적고 [이걸로 정하기], 또는 합의·시간 초과로 정해집니다.</li></ul></div>
+        <div class="box"><h4>규칙</h4><ul>
+          <li><b>카드</b> 소극형 침묵(L/30, 2분 · 0.5분): 윤하람이 "저… 하나 생각한 게 있긴 한데… 아니에요" 하고 말을 거둡니다. 이후 지원자가 이름을 부르거나 전체에 물을 때까지 말하지 않습니다.</li>
+          <li><b>카드</b> 지원자 안 반론(L/12, 5분 · 1.25분): 서지안(지원자가 서지안 안을 지지하면 강한결)이 지원자 안의 약점을 자료로 짚고 자기 안을 밉니다. 담당만 바뀌고 입장은 그대로입니다.</li>
+          <li><b>합의 채우기</b>: 한 안의 지지자가 4명 중 3명 이상이고 지원자가 그 안을 지지할 때만, 대기 없이 바로 채웁니다. 채우는 자리는 그 안 지지자 중 서지안 → 윤하람 → 강한결 순입니다. 지원자 동의 없이 AI가 결론을 내지 않습니다.</li>
+          <li><b>선점 금지</b>: 다른 동료가 윤하람에게 발언 기회를 주거나 지원자 안을 대신 변호하지 않습니다.</li>
+        </ul></div>
+        <div class="box"><h4>관찰하는 행동</h4><p><b>배려/포용</b>: 머뭇거림 알아차리고 초대하기 · 들은 의견 이어받기 · 결정 전 모두의 목소리 확인 · 말하기 편한 분위기</p><p><b>설득/논리력</b>: 반론 카드 장면</p><p class="small muted">수용/유연성의 "다음 단계 기여"도 이 단계에서 봅니다.</p></div>
+      </div>
+      <div class="box req">
+        <div class="req-row"><span><b>F-26</b> 칸 채우기 <span class="chip pass">구현</span></span><ul><li><code>apps/web/e2e/stages/solution.spec.ts::AI 합의 채우기: 공지 메시지 → 결정 사항 칸 확정 → 기획안 단계</code></li><li><code>services/api/tests/test_consensus.py::test_three_of_four_with_candidate_is_consensus_immediately</code></li></ul></div>
+        <div class="req-row"><span><b>F-25</b> 침묵 초대 <span class="chip pass">구현</span></span><ul><li><code>apps/web/e2e/stages/solution.spec.ts::silent: 침묵하면 idle 뒤 비판형 초대 메시지가 1건</code></li><li><code>services/api/tests/agent/test_turn.py::test_silence_invite_once_by_critic</code></li></ul></div>
+        <div class="req-row"><span><b>F-21</b> 턴 조절 <span class="chip pass">구현</span></span><ul><li><code>services/api/tests/agent/test_turn.py::test_named_reply_first_and_at_most_two</code></li></ul></div>
+      </div>
+    </article>
+
+    <!-- 기획안 -->
+    <article class="stage" id="s-proposal">
+      <div class="stage-head">
+        <h3>⑤ 기획안 작성 <span class="chip cand">14분 (3.5분)</span></h3>
+        <p class="muted">지원자가 혼자 6칸 기획안을 써서 제출합니다. 동료는 물으면 채팅으로만 돕습니다.</p>
+      </div>
+      <div class="screen">
+        <figure>
+          <button class="zoomable" type="button" aria-label="기획안 작성 화면 크게 보기">
+            <span class="frame"><img src="media/proposal-02.jpg" alt="기획안 작성 단계: 우측 기획안 탭의 키워드·문제 상황·해결책 미리 채움, 근거 입력, 하단 '방금 저장됨'과 제출 버튼, 상단 남은 시간" loading="lazy" width="1100" height="687">
+              <span class="mk" style="left:86.4%;top:3.1%" aria-hidden="true">1</span>
+              <span class="mk" style="left:63.1%;top:38.7%" aria-hidden="true">2</span>
+              <span class="mk" style="left:63.1%;top:68.7%" aria-hidden="true">3</span>
+              <span class="mk" style="left:70%;top:96.4%" aria-hidden="true">4</span>
+              <span class="mk" style="left:93.1%;top:96.4%" aria-hidden="true">5</span>
+              <span class="mk" style="left:54.5%;top:96.1%" aria-hidden="true">6</span>
+            </span>
+          </button>
+          <figcaption>기획안 작성(15분 시연)</figcaption>
+        </figure>
+        <ol class="marks">
+          <li><b class="n">1</b><span>남은 시간이 끝나면 그 시점 초안이 자동 제출됩니다.</span></li>
+          <li><b class="n">2</b><span>키워드 · 문제 상황 · 해결책은 확정 값으로 미리 채워 두고 고칠 수 있습니다.</span></li>
+          <li><b class="n">3</b><span>근거 · 기대효과 · 아이디어 기여는 빈칸으로 시작합니다. 예시·추천 문구는 없습니다.</span></li>
+          <li><b class="n">4</b><span>1초 디바운스 자동 저장과 마지막 저장 시각.</span></li>
+          <li><b class="n">5</b><span>[제출]은 이 단계에서만. 빈 칸 경고 → "제출하면 수정할 수 없어요" 확인 → 세션 종료.</span></li>
+          <li><b class="n">6</b><span>이 단계에도 토론방에서 동료에게 물을 수 있습니다.</span></li>
+        </ol>
+      </div>
+      <div class="thumbs">
+        <figure><button class="zoomable" type="button" aria-label="빈 칸 경고 창 크게 보기"><span class="frame"><img src="media/proposal-03.jpg" alt="빈 칸 경고 창: 비워 둔 칸이 있어요. 그대로 제출할까요? 기대효과, 돌아가서 쓰기와 그대로 제출 버튼" loading="lazy" width="1100" height="687"></span></button><figcaption>빈 칸 경고 창</figcaption></figure>
+        <figure><button class="zoomable" type="button" aria-label="실제 LLM 빈 칸 경고 크게 보기"><span class="frame"><img src="media/real-blank-warning.jpg" alt="실제 LLM 세션의 빈 칸 경고 창: 근거, 기대효과, 아이디어 기여가 비어 있음" loading="lazy" width="1100" height="352"></span></button><figcaption><span class="chip warn">실제 LLM</span> 세 칸이 빈 채 제출하려 할 때</figcaption></figure>
+        <figure><button class="zoomable" type="button" aria-label="제출 뒤 잠긴 화면 크게 보기"><span class="frame"><img src="media/proposal-04.jpg" alt="제출 뒤: 상단 '제출했어요. 세션이 끝났습니다'와 나가기 버튼, 입력창과 기획안이 잠김" loading="lazy" width="1100" height="687"></span></button><figcaption>제출 뒤 잠김 → [나가기]로 디브리핑</figcaption></figure>
+      </div>
+      <div class="info">
+        <div class="box"><h4>사용자가 하는 일</h4><ul><li>기획안 탭의 6칸(키워드 · 문제 상황 · 해결책 · 근거 · 기대효과 · 아이디어 기여)을 씁니다.</li><li>필요하면 동료에게 채팅으로 묻습니다.</li><li>[제출] → 확인. 제출하지 않으면 종료 시각에 자동 제출됩니다.</li></ul></div>
+        <div class="box"><h4>규칙</h4><ul>
+          <li>아이디어 기여 칸에는 "이 기획에 반영된 의견과 그 의견을 낸 사람"이라는 중립 안내만 둡니다.</li>
+          <li>동료는 기획안을 대신 쓰지 않고, 누가 무엇을 냈는지 먼저 말하거나 기여 칸 작성을 권하지 않습니다.</li>
+          <li><b>카드</b> 기여 귀속: 페르소나 행동 없음. 기획안 단계 시작이 카드 발생 시각이고, 기여 칸을 실제 최초 제안자 기록과 대조합니다.</li>
+          <li>빈 칸 수와 경고 확인 여부는 기록되지만 성실성이나 기획안 품질의 대리 지표로 쓰지 않습니다.</li>
+        </ul></div>
+        <div class="box"><h4>관찰하는 행동</h4><p><b>정직/공정</b>: 기여 기록의 정확성 · 토론 중 출처 존중 · 결정 과정의 사실 표현</p><p class="small muted">기획안 내용의 질은 평가하지 않습니다.</p></div>
+      </div>
+      <div class="box req">
+        <div class="req-row"><span><b>F-17</b> 기획안 작성·제출 <span class="chip pass">구현</span></span><ul><li><code>apps/web/e2e/stages/proposal.spec.ts::디바운스 저장 → 제출 확인 → 잠김 → 디브리핑</code></li><li><code>services/api/tests/test_c06_submit.py::test_auto_submit_at_ends_at</code></li><li><code>apps/web/components/debate/proposal-editor.test.ts::빈 칸이 있으면 경고 → 확인 창 → blank_warning_shown 제출</code></li></ul></div>
+        <div class="req-row"><span><b>F-35</b> 기여 대조 <span class="chip pass">구현</span></span><ul><li><code>services/report-worker/tests/test_graph.py::test_c7_honesty_credit_contrast</code></li></ul></div>
+      </div>
+    </article>
+
+    <!-- 디브리핑 -->
+    <article class="stage" id="s-debrief">
+      <div class="stage-head">
+        <h3>⑥ 디브리핑 <span class="chip cand">지원자</span></h3>
+        <p class="muted">끝난 뒤 어떤 장면이 설계되어 있었는지 설명하고, 평가 결과는 보여 주지 않습니다.</p>
+      </div>
+      <div class="screen">
+        <figure>
+          <button class="zoomable" type="button" aria-label="디브리핑 화면 크게 보기">
+            <span class="frame"><img src="media/debrief-01.jpg" alt="디브리핑: 수고하셨습니다, 같은 채용 건의 모든 지원자가 같은 장면을 겪었고 정답 없이 반응을 봅니다, 성향 공개 안내, 평가 결과는 보여 드리지 않습니다, 문의 경로, 종료 설문 2문항과 자유 의견" loading="lazy" width="1100" height="687">
+              <span class="mk" style="left:24.2%;top:22.7%" aria-hidden="true">1</span>
+              <span class="mk" style="left:24.2%;top:27.5%" aria-hidden="true">2</span>
+              <span class="mk" style="left:24.2%;top:32%" aria-hidden="true">3</span>
+              <span class="mk" style="left:24.2%;top:37.7%" aria-hidden="true">4</span>
+              <span class="mk" style="left:24.2%;top:50.2%" aria-hidden="true">5</span>
+            </span>
+          </button>
+          <figcaption>디브리핑 머리와 설문</figcaption>
+        </figure>
+        <ol class="marks">
+          <li><b class="n">1</b><span>고정 첫 문장: "같은 채용 건의 모든 지원자가 같은 장면을 겪었고, 정답 없이 반응을 봅니다."</span></li>
+          <li><b class="n">2</b><span>동료가 성향을 가진 AI였다는 설명. 성향은 여기서 처음 공개합니다.</span></li>
+          <li><b class="n">3</b><span>평가 결과는 보여 주지 않습니다.</span></li>
+          <li><b class="n">4</b><span>장면이 불공정했거나 연결이 끊겼으면 알리는 이의 제기·문의 경로.</span></li>
+          <li><b class="n">5</b><span>종료 설문 2문항(자연스러웠나 · 공정했나, 1~5)과 자유 의견 한 칸. 건너뛸 수 있고 한 번만 냅니다.</span></li>
+        </ol>
+      </div>
+      <div class="thumbs">
+        <figure><button class="zoomable" type="button" aria-label="보는 요소와 내 발언 돌아보기 크게 보기"><span class="frame"><img src="media/debrief-02.jpg" alt="디브리핑: 보는 요소별 '이렇게 봅니다' 한 줄과 내 발언 돌아보기(키워드·문제 상황·해결책 단계별 발언 하나씩), 함께한 AI 동료" loading="lazy" width="1100" height="687"></span></button><figcaption>보는 요소와 내 발언 돌아보기</figcaption></figure>
+        <figure><button class="zoomable" type="button" aria-label="평가와 기록 안내 크게 보기"><span class="frame"><img src="media/debrief-03.jpg" alt="디브리핑: 설문 제출 확인, 평가와 기록(결과를 보여 주지 않는 이유, 기업이 보는 것, 90일 보관, 기획안 7일 열람)" loading="lazy" width="1100" height="687"></span></button><figcaption>평가와 기록 안내</figcaption></figure>
+      </div>
+      <div class="info">
+        <div class="box"><h4>사용자가 하는 일</h4><ul><li>장면 설명과 동료 소개를 읽습니다.</li><li>내 발언을 돌아보고 설문을 냅니다.</li><li>제출한 기획안을 다시 봅니다(종료 후 7일).</li></ul></div>
+        <div class="box"><h4>규칙</h4><ul><li>실제로 발동한 카드마다 고정 설명 문장과 관련 요소 이름·"이렇게 봅니다" 한 줄. 척도 세부와 수준은 보이지 않습니다.</li><li>내 발언 돌아보기: 토론 단계마다 가장 긴 본인 발언 1개, 최대 3개를 원문 그대로.</li><li>기업이 보는 것(대화·어시스턴트 요청 원문, 제출 기획안), 기록 90일 보관을 알립니다.</li><li>자동 제출이면 머리에 "시간이 끝나 지금 상태로 제출됐어요" 한 줄.</li></ul></div>
+        <div class="box"><h4>관찰하는 행동</h4><p>없음. 관찰은 제출로 끝났습니다.</p></div>
+      </div>
+      <div class="box req">
+        <div class="req-row"><span><b>F-18</b> 디브리핑 <span class="chip pass">구현</span></span><ul><li><code>apps/web/e2e/stages/debrief.spec.ts::디브리핑: 첫 문장·내 발언·설문</code></li><li><code>scenarios/missions/debate/tests/test_catalog.py::test_debrief_intro</code></li></ul></div>
+      </div>
+    </article>
+
+    <!-- 리포트 검토 -->
+    <article class="stage" id="s-report">
+      <div class="stage-head">
+        <h3>⑦ 리포트 검토 <span class="chip admin">담당자</span></h3>
+        <p class="muted">세션이 끝나면 리포트 초안이 만들어지고 "리포트 준비됨"이 됩니다. 담당자가 근거를 보고 차원 단위로 조정한 뒤 검토를 완료합니다.</p>
+      </div>
+      <div class="screen">
+        <figure>
+          <button class="zoomable" type="button" aria-label="리포트 화면 크게 보기">
+            <span class="frame"><img src="media/admin-report-01.jpg" alt="관리자 리포트 머리: 검토 대기 배지와 삭제 예정일, 인쇄, 전체 기록 보기, 참고 자료 고정 문구, 설계된 장면 안내, 참여자와 유형, 요소 요약표(수준 칩, 기록 없음 차원 수, 근거 약함)" loading="lazy" width="1100" height="687">
+              <span class="mk" style="left:18.7%;top:18.3%" aria-hidden="true">1</span>
+              <span class="mk" style="left:72.9%;top:12.2%" aria-hidden="true">2</span>
+              <span class="mk" style="left:18.7%;top:32.3%" aria-hidden="true">3</span>
+              <span class="mk" style="left:18.7%;top:39.4%" aria-hidden="true">4</span>
+              <span class="mk" style="left:18.7%;top:46.7%" aria-hidden="true">5</span>
+              <span class="mk" style="left:26.2%;top:66.2%" aria-hidden="true">6</span>
+              <span class="mk" style="left:70%;top:61.4%" aria-hidden="true">7</span>
+            </span>
+          </button>
+          <figcaption>리포트 머리와 요소 요약(시드 세션, 고정 출력)</figcaption>
+        </figure>
+        <ol class="marks">
+          <li><b class="n">1</b><span>단계 배지(검토 대기 · 확정 중 · 검토 완료)와 삭제 예정일(종료 + 90일), 오른쪽 [인쇄].</span></li>
+          <li><b class="n">2</b><span>전체 기록 보기: 대화·칸 확정·자료 열람·어시스턴트 호출·제출을 한 타임라인으로.</span></li>
+          <li><b class="n">3</b><span>고정 문구: 담당자가 평가할 때 보는 참고 자료이고, 수준은 AI 평가 에이전트의 판단이며 담당자가 조정해 최종 평가합니다.</span></li>
+          <li><b class="n">4</b><span>"설계된 장면": 반대·압박·머뭇거림은 모든 지원자에게 같게 설계된 장면입니다.</span></li>
+          <li><b class="n">5</b><span>참여자와 동료 유형. 유형은 관리자 리포트와 디브리핑에서만 보입니다.</span></li>
+          <li><b class="n">6</b><span>요약표: 요소마다 "수준 N (1~5)"(차원 평균 반올림) 또는 기록 없음과 사유. 합계 행은 없습니다.</span></li>
+          <li><b class="n">7</b><span>기록 없음 차원 수와 근거 약함(확신도 low 차원 수).</span></li>
+        </ol>
+      </div>
+      <div class="thumbs">
+        <figure><button class="zoomable" type="button" aria-label="차원 조정 화면 크게 보기"><span class="frame"><img src="media/admin-report-02.jpg" alt="차원 펼침: 관련 카드 장면(설계된 장면, 이벤트 미발생), 근거 메시지와 앞뒤 맥락 보기·기록에서 보기, AI 판단과 담당자 조정(수준과 메모) 나란히" loading="lazy" width="1100" height="687"></span></button><figcaption>차원 조정: AI 판단과 담당자 값·메모 나란히</figcaption></figure>
+        <figure><button class="zoomable" type="button" aria-label="요소 수준 재계산 화면 크게 보기"><span class="frame"><img src="media/admin-report-04.jpg" alt="요약표에 경청/존중 '수준 5 담당자 조정됨'과 AI 판단 기록 없음, 아래 토론 흐름 띠(단계별 결과·정한 사람)" loading="lazy" width="1100" height="687"></span></button><figcaption>조정한 차원으로 요소 수준 재계산</figcaption></figure>
+        <figure><button class="zoomable" type="button" aria-label="검토 완료 화면 크게 보기"><span class="frame"><img src="media/admin-report-03.jpg" alt="검토 완료 뒤: 제출 기획안 원문, AI 활용 '사용하지 않음', 검토 완료 시각과 검토자, 메모 추가만 가능" loading="lazy" width="1100" height="687"></span></button><figcaption>검토 완료 뒤에는 메모 추가만</figcaption></figure>
+      </div>
+      <div class="info">
+        <div class="box"><h4>사용자가 하는 일</h4><ul><li>지원자 목록에서 상태와 요소별 수준 칩을 봅니다.</li><li>리포트에서 차원을 펼쳐 근거 원문과 앞 5·뒤 3 맥락을 확인합니다.</li><li>필요한 차원만 [조정](수준 또는 기록 없음 + 메모 필수).</li><li>검토자 이름을 적고 [검토 완료] → 확정 중 → 검토 완료.</li></ul></div>
+        <div class="box"><h4>규칙</h4><ul>
+          <li>리포트 순서: 요약표 → 토론 흐름(칸 결과·지지 현황·카드·끊김) → 요소 섹션(차원 접힘) → 사실 지표 → 제출 기획안 → AI 활용.</li>
+          <li>차원마다 수준, 근거, 판단 이유, 확신도. 확신도 low면 "근거 약함, 원문 확인 권장".</li>
+          <li>기록 없음 사유: 지원자 활동 없음 · 판단 보류 · 근거 부족 · 해당 없음 · 이벤트 미발생 · 자동 제출로 기여 칸 미작성.</li>
+          <li>AI 활용은 요청·응답·인용 자료를 시간순 사실로만 보이고 수준 판단이 없습니다. 쓰지 않았으면 "사용하지 않음".</li>
+          <li>검토 완료 뒤 수준은 바꿀 수 없고 메모만 더합니다. 인쇄·PDF는 늘 라이트로 접힌 차원을 모두 펼칩니다.</li>
+          <li>지원자 목록에 수준 정렬·합계가 없습니다.</li>
+        </ul></div>
+        <div class="box"><h4>보는 것</h4><p>담당자는 AI 판단을 참고해 차원 단위로 최종 평가합니다. 같은 척도로 5요소 19차원이 모든 채용 건에 쓰이지만 채용 건 간 비교는 두지 않습니다.</p></div>
+      </div>
+      <div class="box req">
+        <div class="req-row"><span><b>F-04a</b> 조정·검토 완료 <span class="chip pass">구현</span></span><ul><li><code>apps/web/e2e/stages/admin-report.spec.ts::리포트 → 차원 조정 → 검토 완료 → 재계산</code></li><li><code>services/api/tests/test_c10_review.py::test_review_adjusts_one_dimension_and_final_keeps_draft_hash</code></li></ul></div>
+        <div class="req-row"><span><b>F-04</b> 리포트 보기 <span class="chip pass">구현</span></span><ul><li><code>services/report-worker/tests/test_graph.py::test_draft_shape_matches_report_contract</code></li></ul></div>
+        <div class="req-row"><span><b>F-33</b> 차원별 수준 판단 <span class="chip pass">구현</span></span><ul><li><code>services/report-worker/tests/test_evaluate.py::test_invalid_dimension_retries_element_once_then_evaluate_failed</code></li><li><code>tests/eval/test_eval.py::test_bars_live</code> <span class="muted">(live)</span></li></ul></div>
+        <div class="req-row"><span><b>F-05</b> 전체 기록 <span class="chip pass">구현</span></span><ul><li><code>services/api/tests/test_internal.py::test_facts_and_record_refs</code></li></ul></div>
+        <div class="req-row"><span><b>F-04c</b> 인쇄·PDF <span class="chip warn">부분</span></span><ul><li>인쇄 스타일 구현, 화면과 같은 출력은 사람이 눈으로 확인</li></ul></div>
+      </div>
+    </article>
+
+    <p class="canon">정본: <a href="../../product/user-flows.md">product/user-flows.md</a> <a href="../../product/scenario.md">product/scenario.md</a> 1~4장 <a href="../../product/rubric.md">product/rubric.md</a> 3·5장 <a href="../../features.md">features.md</a> <a href="../../guides/testing.md">guides/testing.md</a> "단계별 테스트"</p>
+  </section>
+
+  <!-- 4 -->
+  <section id="exceptions">
+    <div class="lede">
+      <div class="eyebrow">4 · 예외 흐름</div>
+      <h2>시간은 멈추지 않고, 빠진 장면은 그대로 기록합니다</h2>
+    </div>
+    <div class="grid">
+      <div class="box">
+        <h3>연결 끊김</h3>
+        <ul>
+          <li>끊겨도 시간은 흐르고 단계 마감·시간 초과 채우기도 예정대로 일어납니다.</li>
+          <li>화면은 3초 뒤 다시 붙어 전체 상태를 다시 읽습니다. 같은 링크로 들어오면 대화·칸·기획안·남은 시간이 이어집니다.</li>
+          <li>끊긴 구간은 "약 2분 동안 연결이 끊겼어요" 안내와 리포트 사실로 남습니다. 수준 판단과는 무관하고, 관찰 창과 겹치면 확신도를 낮춥니다.</li>
+          <li>두 탭·기기로 열면 마지막 연결만 유효합니다.</li>
+        </ul>
+        <p class="small muted">F-19 이어하기 <span class="chip pass">구현</span></p>
+      </div>
+      <div class="box">
+        <h3>자동 제출</h3>
+        <ul>
+          <li>종료 시각이 되면 그 시점 초안이 자동 제출되고 세션이 끝납니다.</li>
+          <li>디브리핑 머리에 "시간이 끝나 지금 상태로 제출됐어요", 리포트에 "시간 종료로 자동 제출"이 보입니다.</li>
+          <li>자동 제출이고 아이디어 기여 칸이 비었으면 그 차원은 "자동 제출로 기여 칸 미작성"입니다.</li>
+        </ul>
+        <p class="small muted">F-17 <span class="chip pass">구현</span></p>
+      </div>
+      <div class="box">
+        <h3>카드 일부 전달 · 미발생</h3>
+        <ul>
+          <li>카드는 담당 동료가 실제로 게시해야 전달됩니다. 못 한 동료는 다음 실행에서 이어 말하고, 다시 넣기는 카드당 최대 3회 · 30초 간격입니다.</li>
+          <li>담당 일부만 전달된 카드는 핵심 장면으로 세지 않아 미발생 규칙을 적용하고, 리포트에 "일부 동료만 전달됨"으로 보입니다.</li>
+          <li>단계가 카드 시각 전에 끝나면 미발생이고, 보조 장면으로도 판단할 수 없는 차원은 "이벤트 미발생"입니다.</li>
+        </ul>
+        <p class="small muted">F-23 <span class="chip pass">구현</span> · F-34 <span class="chip pass">구현</span></p>
+      </div>
+      <div class="box">
+        <h3>리포트 생성 실패 · 다시 만들기</h3>
+        <ul>
+          <li>실패하면 5 · 15 · 45초 간격으로 자동 재시도하고, 3회 실패하면 실패 큐로 보내 "실패"로 표시합니다.</li>
+          <li>[리포트 다시 생성]: 초안 전 실패면 같은 기록으로 다시 만들고 저장된 차원 판단을 재사용합니다. 판단 보류 차원이 있으면 새 회차로 다시 평가합니다.</li>
+          <li>확정 단계 실패면 조정은 그대로 두고 확정만 다시 합니다("조정은 저장되어 있습니다. 확정만 다시 시도합니다.").</li>
+        </ul>
+        <p class="small muted">F-36 생성 실패 처리 <span class="chip pass">구현</span></p>
+      </div>
+    </div>
+    <p class="canon">정본: <a href="../../../PRD.md">PRD.md</a> 7.4 <a href="../../architecture/session-lifecycle.md">architecture/session-lifecycle.md</a> "단계 진행과 재시작 복구"·"리포트" <a href="../../product/scenario.md">product/scenario.md</a> 4.2 <a href="../../product/rubric.md">product/rubric.md</a> 5장</p>
+  </section>
+
+  <!-- 5 -->
+  <section id="inside">
+    <div class="lede">
+      <div class="eyebrow">5 · 뒤에서 도는 방식</div>
+      <h2>서비스 8개, 한 턴, 평가 한 번</h2>
+      <p class="muted">평가 항목이 요구하는 조각(MCP 3개, 큐·워커, 프론트)만 분리하고 나머지는 api 한 프로세스에 둡니다. DB 쓰기는 api만 하고, MCP와 워커는 api 내부 API(8001)를 부릅니다.</p>
+    </div>
+    <div class="table-box">
+      <table class="stack">
+        <thead><tr><th>서비스</th><th>하는 일</th><th>입구</th></tr></thead>
+        <tbody>
+          <tr><td data-label="서비스"><b>web</b></td><td data-label="하는 일">지원자 토론 화면(<code>/s/[token]</code>)과 관리자 화면(<code>/admin</code>). 권한·상태 판단은 하지 않습니다(Next.js).</td><td data-label="입구"><a href="../../../apps/web/README.md">apps/web</a></td></tr>
+          <tr><td data-label="서비스"><b>api</b></td><td data-label="하는 일">인증·REST·WebSocket·세션 시계(5초 스케줄러: 마감·시간 초과 채우기·침묵 초대·카드 시각·자동 제출), 토론 그래프·의도 분류·어시스턴트·금지 문구 검사(FastAPI + LangGraph).</td><td data-label="입구"><a href="../../../services/api/README.md">services/api</a></td></tr>
+          <tr><td data-label="서비스"><b>debate-mcp</b></td><td data-label="하는 일">토론 상태·대화 조회, 메시지 게시, 안 제안, 입장 기록, 합의 칸 채우기 도구. 규칙 판단은 api가 합니다.</td><td data-label="입구"><a href="../../../services/debate-mcp/README.md">services/debate-mcp</a></td></tr>
+          <tr><td data-label="서비스"><b>rag-mcp</b></td><td data-label="하는 일">확정된 키워드의 자료만 검색·조회(BGE-M3, pgvector). 확정 전에는 막습니다.</td><td data-label="입구"><a href="../../../services/rag-mcp/README.md">services/rag-mcp</a></td></tr>
+          <tr><td data-label="서비스"><b>assessment-mcp</b></td><td data-label="하는 일">카드 관찰 기록, 척도·세션 기록·근거 맥락 조회, 평가 저장. 페르소나는 허용 목록과 토큰 양쪽에서 막혀 접근하지 못합니다.</td><td data-label="입구"><a href="../../../services/assessment-mcp/README.md">services/assessment-mcp</a></td></tr>
+          <tr><td data-label="서비스"><b>report-worker</b></td><td data-label="하는 일">세션 종료 후 큐 작업으로 평가 에이전트를 돌려 리포트 초안을 만들고, 검토 완료 뒤 확정합니다. 재시도·실패 큐.</td><td data-label="입구"><a href="../../../services/report-worker/README.md">services/report-worker</a></td></tr>
+          <tr><td data-label="서비스"><b>postgres</b></td><td data-label="하는 일">PostgreSQL 16 + pgvector. 세션·메시지·칸·관찰·평가·리포트.</td><td data-label="입구"><a href="../../architecture/data-model.md">data-model.md</a></td></tr>
+          <tr><td data-label="서비스"><b>rabbitmq</b></td><td data-label="하는 일">리포트 생성·승인 큐(persistent, 재시도, 실패 큐).</td><td data-label="입구"><a href="../../contracts/queue.md">contracts/queue.md</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>한 턴: 지원자 메시지에서 동료 발언까지</h3>
+    <ol class="steps">
+      <li><span class="i">1 · 코드</span><span class="t">저장·ack</span><span class="s">메시지 저장과 세대(generation) +1, 의도 분류 전에 확인 표시</span></li>
+      <li><span class="i">2 · LLM</span><span class="t">의도 분류</span><span class="s">제안·동의·반대·질문·기타, 대상 안, 확신도 → 현재 지지 갱신. 실패하면 기타</span></li>
+      <li><span class="i">3 · 코드 → LLM</span><span class="t">턴 매니저</span><span class="s">지명·미전달 카드·침묵 초대·합의 규칙 먼저. 결과가 0명일 때만 LLM이 화자 0~2명</span></li>
+      <li><span class="i">4 · LLM</span><span class="t">페르소나</span><span class="s">자기 입장 계획·카드 지시·허용 도구로 발언 생성</span></li>
+      <li><span class="i">5 · 코드</span><span class="t">guard</span><span class="s">금지 문구 → 재생성 1회 → 안전 문구</span></li>
+      <li><span class="i">6 · 코드</span><span class="t">입장 검사</span><span class="s">계획 밖 입장 → 재생성 1회 → 고정 문구</span></li>
+      <li><span class="i">7 · 코드</span><span class="t">게시</span><span class="s">지원자가 입력 중이면 기다림. 세대가 바뀌었으면 버림. debate-mcp → api → WebSocket</span></li>
+      <li><span class="i">8 · 코드</span><span class="t">합의 판정</span><span class="s">3/4이면 공지와 칸 확정을 한 트랜잭션으로</span></li>
+    </ol>
+    <p class="small muted">그래프를 깨우는 자극은 지원자 메시지, 단계 시작, 침묵, 카드 시각 네 가지입니다. 단계 마감의 시간 초과 채우기는 그래프를 거치지 않고 api가 직접 합니다. 세션마다 메일박스 하나가 자극을 순서대로 처리합니다.</p>
+
+    <h3>평가: 세션이 끝난 뒤 한 번</h3>
+    <ol class="steps admin-step">
+      <li><span class="i">collect</span><span class="t">기록 수집</span><span class="s">대화 전체·칸 기록·제출본·카드 관찰·기여 기록</span></li>
+      <li><span class="i">aggregate</span><span class="t">사실 지표</span><span class="s">발언 수·자발/초대 후·최초 제안자 등. 코드로 계산</span></li>
+      <li><span class="i">evaluate</span><span class="t">평가 에이전트</span><span class="s">요소마다 한 번, 다른 요소 결과는 보지 않음. 검증 실패면 그 요소만 1회 재요청</span></li>
+      <li><span class="i">draft</span><span class="t">리포트 초안</span><span class="s">근거마다 앞 5·뒤 3 맥락. 총점 없음</span></li>
+      <li class="h"><span class="i">interrupt</span><span class="t">담당자 검토</span><span class="s">차원 조정·메모, 검토 완료</span></li>
+      <li><span class="i">finalize</span><span class="t">확정</span><span class="s">승인한 초안을 그대로 최종본으로(해시 동일, 조정은 조회 때 병합)</span></li>
+    </ol>
+
+    <div class="grid">
+      <div class="box"><h4>역할별 모델</h4><p class="small">페르소나 · 턴 매니저 · 의도 분류 · 어시스턴트 · 평가 다섯 역할을 env(<code>MODEL_PERSONA</code> 등)로 따로 정하고 기본은 <code>gpt-4o-mini</code>입니다. 실패하면 재시도 2회 뒤 규칙 폴백이고 자동 대체 모델은 없습니다. 테스트는 LLM을 가짜로 두고 실제 호출은 <code>live</code> 마커로 뺍니다.</p></div>
+      <div class="box"><h4>Harness 8요소</h4><p class="small">Instructions · Tools · Context · State·Memory · Agent Loop · Guardrails · Recovery · Observability. 요소마다 구현 위치·수치·확인 방법을 표로 정리해 두었습니다.</p></div>
+      <div class="box"><h4>시나리오는 데이터</h4><p class="small"><code>scenarios/missions/debate/</code>의 키워드·페르소나·카드·척도·프롬프트·자료를 채용 건 생성 때 복사·고정합니다. 코드는 해석만 합니다.</p></div>
+    </div>
+    <p class="canon">정본: <a href="../../architecture/overview.md">architecture/overview.md</a> <a href="../../architecture/session-lifecycle.md">architecture/session-lifecycle.md</a> <a href="../../architecture/agents.md">architecture/agents.md</a> <a href="../../architecture/harness.md">architecture/harness.md</a> <a href="../../contracts/README.md">contracts/README.md</a></p>
+  </section>
+
+  <!-- 6 -->
+  <section id="extend">
+    <div class="lede">
+      <div class="eyebrow">6 · 확장하려면</div>
+      <h2>과제별로 고칠 곳, 돌릴 검증, 주의할 점</h2>
+      <p class="muted">공통 순서: 문서(정본)를 먼저 고치고 → 코드·데이터 → 검증. 모든 PR은 <code>make test</code>와 <code>make lint</code>를 postgres를 띄운 상태로 돌립니다(없으면 api DB 테스트가 skip됩니다). 기획 방향이 바뀌면 <code>docs/decisions.md</code>에 날짜·이유·대안을 남깁니다.</p>
+    </div>
+    <pre><code>make test &amp;&amp; make lint                 # 단위·계약·카탈로그 대조(LLM mock)
+make infra-up &amp;&amp; make seed               # 로컬 개발 모드 인프라와 시드
+make stage STAGE=keyword MIN=15          # 그 단계 직전 세션의 초대 링크
+make stage-advance SID=&lt;id&gt; TO=deadline  # 시간 당겨 시간 초과·침묵·카드 확인</code></pre>
+    <div class="table-box">
+      <table class="stack">
+        <thead><tr><th>과제</th><th>고칠 파일·문서</th><th>꼭 돌릴 검증</th><th>주의</th></tr></thead>
+        <tbody>
+          <tr>
+            <td data-label="과제"><b>시나리오·키워드 추가</b><br><span class="small muted">키워드·문제·해결책·자료</span></td>
+            <td data-label="고칠 파일·문서"><ul><li><code>docs/product/scenario.md</code> 2.3·2.4 표</li><li><code>scenarios/missions/debate/keywords.yaml</code>, <code>personas.yaml</code>(키워드별 입장), <code>materials/&lt;keyword&gt;/*.md</code></li></ul></td>
+            <td data-label="꼭 돌릴 검증"><ul><li><code>make test</code>(카탈로그 ↔ 문서 표 대조)</li><li><code>make seed</code> 또는 <code>make e2e-stack-seed</code>(새 버전 원문 시드·재색인)</li><li><code>make stage</code>로 새 채용 건 확인</li></ul></td>
+            <td data-label="주의"><ul><li>미션 폴더 해시가 <code>catalog_version</code>이라 한 글자만 바꿔도 버전이 바뀌고 <b>새 채용 건부터</b> 적용됩니다. 기존 채용 건은 자기 복사본으로 계속 갑니다.</li><li>표와 yaml이 글자 그대로 같아야 합니다. 계약 예시에 카탈로그 값이 있으면 함께 고칩니다.</li></ul></td>
+          </tr>
+          <tr>
+            <td data-label="과제"><b>페르소나 말투 바꾸기</b></td>
+            <td data-label="고칠 파일·문서"><ul><li><code>docs/product/scenario.md</code> 2.1</li><li><code>prompts/persona_&lt;type&gt;.md</code>, <code>prompts/common_rules.md</code>, <code>personas.yaml</code>(tone·rules·must_not)</li><li>필요하면 <code>prompts/guard_patterns.yaml</code>, <code>stance_fallback.yaml</code></li></ul></td>
+            <td data-label="꼭 돌릴 검증"><ul><li><code>make test</code></li><li><code>make eval-live</code> 1회(페르소나 응답 품질·유출 질문, 결과 파일을 PR에 링크)</li><li><code>make e2e-stages</code></li></ul></td>
+            <td data-label="주의"><ul><li>바꾸는 것은 말투뿐입니다. 누가 어떤 안을 밀지·합의·카드 시각은 데이터와 결정적 코드가 정합니다.</li><li>유형이 지원자 화면에 드러나면 안 됩니다(아바타 파일은 <code>avatar-NN.png</code> 같은 중립 이름, 덮어쓰지 않고 새 파일로).</li></ul></td>
+          </tr>
+          <tr>
+            <td data-label="과제"><b>카드 추가·수정</b></td>
+            <td data-label="고칠 파일·문서"><ul><li><code>docs/product/scenario.md</code> 4장, <code>docs/product/rubric.md</code>(핵심 카드), <code>docs/architecture/agents.md</code> 카드 표</li><li><code>scenarios/missions/debate/cards.yaml</code></li><li>카드별 지시·선점 금지 <code>services/api/app/agent/debate/rules.py</code>, 필요하면 <code>services/api/app/services/facts.py</code></li></ul></td>
+            <td data-label="꼭 돌릴 검증"><ul><li><code>make test</code>(카드 문구·창 대조, 스케줄러·카드 테스트)</li><li><code>make e2e-stages</code></li><li>실 스택 <code>make e2e</code>(<code>all_five</code> 15분) 1회</li></ul></td>
+            <td data-label="주의"><ul><li>카드 시각은 단계 시작 기준 고정이고 15분 압축 값은 최소 20초입니다. 시각을 바꾸면 테스트의 시각 단언도 함께 바뀝니다.</li><li>선점 금지 문구와 리포트용 고정 문장(<code>report_template</code>)을 함께 정합니다.</li></ul></td>
+          </tr>
+          <tr>
+            <td data-label="과제"><b>평가 차원·척도 문구</b></td>
+            <td data-label="고칠 파일·문서"><ul><li><code>docs/product/rubric.md</code> 3·5장</li><li><code>scenarios/missions/debate/rubric.yaml</code>, <code>prompts/evaluator/common.md</code>·<code>&lt;element&gt;.md</code></li></ul></td>
+            <td data-label="꼭 돌릴 검증"><ul><li><code>make test</code>(rubric.yaml ↔ 문서 표 글자 대조)</li><li><code>make eval-live</code>(BARS 픽스처 일치율)</li></ul></td>
+            <td data-label="주의"><ul><li>평가 프롬프트 해시(<code>prompt_versions</code>)가 리포트에 남습니다.</li><li>리포트 재생성은 채용 건 복사본의 척도·프롬프트를 씁니다. 새 프롬프트로 옛 세션을 다시 평가하는 경로는 없습니다.</li><li>실력을 보는 앵커나 1절 "하지 않는 것"에 어긋나는 표현은 넣지 않습니다.</li></ul></td>
+          </tr>
+          <tr>
+            <td data-label="과제"><b>화면 추가</b></td>
+            <td data-label="고칠 파일·문서"><ul><li><code>docs/product/user-flows.md</code>, <code>docs/architecture/design-system.md</code>(토큰·컴포넌트)</li><li><code>apps/web/app/</code>(경로), <code>apps/web/components/</code></li></ul></td>
+            <td data-label="꼭 돌릴 검증"><ul><li><code>make test</code>(vitest), <code>make lint</code></li><li><code>make e2e-stages</code>(격리 스택, <code>LLM_FAKE=1</code>), 새 흐름이면 spec 추가</li></ul></td>
+            <td data-label="주의"><ul><li>web은 권한·상태를 판단하지 않고 MCP를 직접 부르지 않습니다.</li><li>지원자 화면은 "정할 항목·결정 사항·이걸로 정하기"를 쓰고, 평가 대상 행동을 유도하는 문구와 동료 유형을 보이지 않습니다.</li></ul></td>
+          </tr>
+          <tr>
+            <td data-label="과제"><b>API 추가</b></td>
+            <td data-label="고칠 파일·문서"><ul><li><code>docs/contracts/api.md</code>(또는 ws·internal·mcp·queue) 먼저</li><li><code>services/api/app/routers/</code>, 예시 JSON <code>tests/fixtures/contracts/</code>와 사본 <code>apps/web/mocks/fixtures/</code></li><li>DB가 바뀌면 <code>infra/db/schema.sql</code>과 <code>docs/architecture/data-model.md</code></li></ul></td>
+            <td data-label="꼭 돌릴 검증"><ul><li><code>make test</code>(계약 픽스처 형태·사본 일치), <code>make lint</code></li><li><code>make test-e2e</code>(가짜 api <code>tests/e2e/fake_stack.py</code>)</li><li><code>make docs-gen</code> → <code>make docs-check</code>(README 생성 블록)</li></ul></td>
+            <td data-label="주의"><ul><li><b>계약 변경은 같은 PR</b>에서 그 계약을 쓰는 쪽(MCP·워커·web mock·가짜 api)까지 맞춥니다.</li><li>마이그레이션이 없으므로 DB 변경 PR에는 "로컬 볼륨을 지우고 다시 만들 것"을 적습니다.</li><li>관리자 조회는 회사 단위로 격리합니다.</li></ul></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="canon">정본: <a href="../../guides/scenario-changes.md">guides/scenario-changes.md</a> <a href="../../guides/contributing.md">guides/contributing.md</a> <a href="../../guides/testing.md">guides/testing.md</a> <a href="../../guides/quickstart.md">guides/quickstart.md</a> <a href="../../guides/configuration.md">guides/configuration.md</a></p>
+  </section>
+
+  <!-- 7 -->
+  <section id="limits">
+    <div class="lede">
+      <div class="eyebrow">7 · 알려진 제한 · 다음 과제</div>
+      <h2>지금 없는 것과 알고 있는 한계</h2>
+    </div>
+    <div class="grid">
+      <div class="box">
+        <h3>MVP 이후</h3>
+        <ul>
+          <li>F-06 참고 자료 관리(관리자 화면), F-07 면접 확인 질문 제안. 자료는 미션 데이터와 <code>make seed</code>로 관리합니다.</li>
+          <li>기업별 요소 선택과 페르소나 풀 확장. 지금은 5요소 · 카드 6장 · 페르소나 3명 고정입니다.</li>
+          <li>채용 건 목록 검색·필터, "리포트 전" 상태 자동 갱신(목록을 다시 열어야 함).</li>
+          <li>일부 흐름에서 확인 창이 두 번 나옵니다.</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>알려진 제한</h3>
+        <ul>
+          <li>토론 그래프는 체크포인트 없이 DB 기록으로 재처리합니다. 리포트 그래프만 체크포인트를 씁니다.</li>
+          <li>페르소나 기억은 최근 자기 발언 3개와 최근 대화 30개입니다.</li>
+          <li>카드 재전달은 카드당 최대 3회이고, 일부만 전달된 카드는 핵심 장면으로 세지 않습니다.</li>
+          <li>시나리오 복사본이 없는 옛 채용 건은 저장된 값으로 재구성하고 프롬프트만 현재 파일에서 채웁니다.</li>
+          <li>15분 실제 LLM 세션에서 첫 동료 응답 p95가 8.6초로 목표 8초를 조금 넘습니다.</li>
+          <li>F-04c 인쇄 결과가 화면과 같은지는 사람이 눈으로 확인합니다.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="canon">정본: <a href="../../features.md">features.md</a> "MVP 이후·알려진 제한" <a href="../../../tests/playtest/records/rerun-20261022/summary.md">playtest 재실행 요약</a> <a href="../visual-report/index.html">테스트 기록(시각 보고서)</a></p>
+  </section>
+
+  <footer>
+    <span>이 페이지는 공유용 요약이고 정본이 아닙니다. 규칙이 다르게 보이면 <a href="../../../PRD.md">PRD.md</a>와 <a href="../../README.md">docs/README.md</a> 색인의 정본 문서가 맞습니다.</span>
+    <span>화면 출처: 단계별 화면 테스트(Playwright, <code>make e2e-stages</code>, <code>LLM_FAKE=1</code>, 15분 시연 세션)와 실제 LLM 세션 캡처 두 장. 이미지는 폭 1100px JPEG로 줄였습니다.</span>
+  </footer>
+</div>
+
+<dialog id="zoom" aria-label="화면 크게 보기">
+  <div class="zoom-box">
+    <button class="close" type="button">닫기</button>
+    <div id="zoom-body"></div>
+  </div>
+</dialog>
+<script>
+(function () {
+  var dlg = document.getElementById("zoom");
+  var body = document.getElementById("zoom-body");
+  document.querySelectorAll("button.zoomable").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var frame = btn.querySelector(".frame");
+      if (!frame || !dlg.showModal) return;
+      body.innerHTML = "";
+      body.appendChild(frame.cloneNode(true));
+      var img = body.querySelector("img");
+      if (img) img.removeAttribute("loading");
+      dlg.showModal();
+    });
+  });
+  // 바깥(배경)이나 이미지를 누르거나 닫기 버튼으로 닫는다. Esc는 dialog 기본 동작
+  dlg.addEventListener("click", function () { dlg.close(); });
+})();
+</script>
+
+</body>
+</html>

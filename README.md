@@ -61,6 +61,7 @@ make stage STAGE=keyword MIN=15    # 단계 시드 세션의 초대 링크 출�
 
 | 목적 | 문서 |
 |---|---|
+| 제품 가이드(화면·규칙·동작·확장 출발점) | [docs/share/product-guide/index.html](docs/share/product-guide/index.html) |
 | 기능·구현 상태·검증 테스트 | [docs/features.md](docs/features.md) |
 | 단계·페르소나·카드·합의 규칙 | [docs/product/scenario.md](docs/product/scenario.md) |
 | 평가 척도와 판단 규칙 | [docs/product/rubric.md](docs/product/rubric.md) |

@@ -6,6 +6,7 @@ Day Zero는 지원자가 AI 동료 3명과 채팅으로 토론해 키워드 → 
 
 | 하고 싶은 일 | 먼저 읽을 문서 |
 |---|---|
+| 제품을 한 페이지로 훑기(화면·규칙·동작·확장 출발점) | [share/product-guide/index.html](share/product-guide/index.html) |
 | 처음 받아서 실행해 보기 | [guides/quickstart.md](guides/quickstart.md) → [guides/configuration.md](guides/configuration.md) |
 | 테스트를 돌리고 범위를 알기 | [guides/testing.md](guides/testing.md) |
 | 기여 규칙(브랜치·PR·필수 검사·계약·DB 변경) | [guides/contributing.md](guides/contributing.md) |
