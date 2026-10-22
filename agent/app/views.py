@@ -1,20 +1,14 @@
-"""Pure view functions over a session state from Spring Boot (scenario catalog lives with the agent).
+"""The candidate's view over a session state from Spring Boot (scenario catalog lives with the agent).
 
-Spring calls these over internal HTTP (POST /agent/views/*); they read nothing and write nothing.
-The planted artifact checkpoints (app/artifacts.py) appear only in the admin view, as artifact_checks.
+Spring calls it over internal HTTP (POST /agent/views/candidate); it reads nothing and writes nothing.
+The admin side (dilemma, condition, detector, planted artifact checks, timeline, heatmap) is the analytics
+bundle (app/analytics.py), served by analytics-mcp and stored by Spring as a snapshot (api-contract §5).
 """
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
-from . import artifacts, detector
-from .criteria import AXES, CRITERIA
+from .criteria import AXES
 from .dilemmas import persuade_beat
-from .personas import public_mode
 from .scenarios import MILESTONE_KEYS, MILESTONES, get_scenario, public_scenario
-
-PAINPOINTS = json.loads((Path(__file__).parent / "data" / "painpoints.json").read_text(encoding="utf-8"))
 
 
 def candidate_view(doc: dict) -> dict:
@@ -50,61 +44,4 @@ def candidate_view(doc: dict) -> dict:
         "dilemma": dilemma,
         "choice": {"option": doc["choice"]["option"]} if doc.get("choice") else None,
         "debrief": debrief,
-    }
-
-
-def choice_detail(doc: dict, scn: dict) -> dict | None:
-    if scn.get("kind") != "dilemma":
-        return None
-    ax = AXES[scn["axis"]]
-    ch = doc.get("choice")
-    out = {"axis": ax, "axis_ranking": scn["axis_ranking"], "options": scn["dilemma"]["options"], "pole_of": scn["dilemma"]["pole_of"],
-           "population": CRITERIA["meta"], "choice": None}
-    if ch:
-        opt = next(o for o in scn["dilemma"]["options"] if o["id"] == ch["option"])
-        rationale = next((m["text"] for m in doc.get("messages") or [] if m["idx"] == ch.get("msg_idx")), "")
-        pole_label = "통합안" if ch["pole"] == "both" else next(p["label"] for p in ax["poles"] if p["side"] == ch["pole"])
-        out["choice"] = {**ch, "label": opt["label"], "pole_label": pole_label, "rationale": rationale}
-    return out
-
-
-def condition_detail(doc: dict) -> dict | None:
-    c = doc.get("condition")
-    if not c:
-        return None
-    return {**c, "lead_mode": public_mode(c["lead"]), "peer_mode": public_mode(c["peer"])}
-
-
-def admin_row(doc: dict) -> dict:
-    scn = get_scenario(doc["scenario_id"])
-    det = choice_detail(doc, scn)
-    cond = condition_detail(doc)
-    return {
-        "id": doc["id"],
-        "alias": doc["alias"],
-        "category": scn["category"],
-        "scenario_id": doc["scenario_id"],
-        "axis": det["axis"]["name"] if det else None,
-        "choice": det["choice"]["pole_label"] if det and det["choice"] else None,
-        "condition": f"{cond['lead_mode']['label']} 팀장 · {cond['peer_mode']['label']} 동료" if cond else None,
-        "status": doc["status"],
-        "milestone_idx": doc["milestone_idx"],
-        "messages": doc.get("message_count", len(doc.get("messages") or [])),
-        "observations": doc.get("observation_count", len(doc.get("observations") or [])),
-        "report_status": doc.get("report_status", "none"),
-        "created_at": doc["created_at"],
-    }
-
-
-def admin_view(doc: dict) -> dict:
-    scn = get_scenario(doc["scenario_id"])
-    return {
-        **doc,
-        "category": scn["category"],
-        "scenario": scn,
-        "painpoints": PAINPOINTS.get(scn["painpoint_key"]) if scn.get("painpoint_key") else None,
-        "dilemma": choice_detail(doc, scn),
-        "condition": condition_detail(doc),
-        "detector": detector.summarize(doc),
-        "artifact_checks": artifacts.artifact_checks(doc["scenario_id"], doc.get("artifacts") or [], doc.get("annotations") or [], scn=scn),
     }

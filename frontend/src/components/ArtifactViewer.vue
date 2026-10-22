@@ -4,7 +4,7 @@
 // Admin: read-only, with the planted checkpoints (spotted / missed) next to the candidate's markups.
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { renderMarkdown } from '../utils/markdown'
-import { KIND, MARK, MARK_KINDS, OWNER_TEAM, anchorLabel, annRange, citeRef, rangeLabel } from '../utils/artifacts'
+import { KIND, MARK, MARK_KINDS, anchorLabel, annRange, citeRef, ownerOf, rangeLabel } from '../utils/artifacts'
 
 const props = defineProps({
   artifact: { type: Object, default: null }, // normArtifacts() item; null = closed
@@ -40,7 +40,7 @@ let opener = null
 const open = computed(() => !!props.artifact)
 const body = computed(() => art.value?.body || '')
 const lines = computed(() => body.value.split('\n'))
-const owner = computed(() => (art.value?.owner === 'team' || !props.personas[art.value?.owner] ? OWNER_TEAM : props.personas[art.value.owner]))
+const owner = computed(() => ownerOf(props.personas, art.value?.owner))
 const html = computed(() => (art.value && art.value.kind !== 'code' ? renderMarkdown(body.value, { lines: true }) : ''))
 const anns = computed(() => (art.value?.annotations || []).map((n) => ({ ...n, range: annRange(n, body.value) })))
 const sorted = computed(() => [...anns.value].sort((a, b) => (a.range?.[0] ?? 1e9) - (b.range?.[0] ?? 1e9) || a.id - b.id))

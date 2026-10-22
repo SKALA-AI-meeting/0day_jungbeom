@@ -26,6 +26,7 @@ def wired():
     from app import runner
     from app.harness import tools
     from app.harness.events import MemorySink
+    from mcp_servers.analytics import server as analytics_server
     from mcp_servers.business import server as business
     from mcp_servers.detector.server import mcp as detector_mcp
     from mcp_servers.rag.server import mcp as rag_mcp
@@ -35,9 +36,11 @@ def wired():
     index.build()
     backend = FakeBackend()
     business.use_transport(httpx.MockTransport(backend.handle))
+    analytics_server.use_transport(httpx.MockTransport(backend.handle))  # analytics-mcp reads /internal/sessions/{id}/state
     tools.use_in_process("business", business.mcp)
     tools.use_in_process("rag", rag_mcp)
     tools.use_in_process("detector", detector_mcp)
+    tools.use_in_process("analytics", analytics_server.mcp)
     sink = MemorySink()
     runner.set_sink(sink)
     return {"backend": backend, "sink": sink}

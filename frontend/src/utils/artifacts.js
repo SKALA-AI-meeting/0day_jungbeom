@@ -14,6 +14,10 @@ export const MARK = {
 }
 export const MARK_KINDS = Object.keys(MARK)
 export const OWNER_TEAM = { name: '팀 공동', emoji: '👥' }
+// When the persona names are not known (yet), a lead/peer item still shows its role, never "팀 공동".
+const OWNER_ROLE = { lead: { name: '팀장', emoji: '🧭' }, peer: { name: '동료', emoji: '🛠️' } }
+/** Who an artifact belongs to: personas = id -> { name, emoji } (scenario personas, may be empty). */
+export const ownerOf = (personas, id) => (id === 'team' ? OWNER_TEAM : personas?.[id] || OWNER_ROLE[id] || OWNER_TEAM)
 
 const toMs = (t) => (t == null ? null : typeof t === 'number' ? (t < 1e12 ? t * 1000 : t) : Date.parse(t))
 

@@ -33,6 +33,7 @@ public final class Controllers {
     public record TaskReq(@NotBlank String type, String sessionId, @Size(max = 1500) String text, @Size(max = 10) String choiceId) {}
     public record ApprovalReq(boolean approved, @Size(max = 500) String comment) {}
     public record InviteReq(@Size(max = 20) String alias, @Email String email) {}
+    public record AnalyticsRefreshReq(@NotNull @Size(max = AnalyticsService.MAX_REFRESH) List<String> sessionIds) {}
     /** Checked in SessionService/ArtifactService in the contract's order (409 / 404 / 400), not by bean validation. */
     public record AnnotationReq(String artifactId, AnchorReq anchor, String kind, String text) {}
     public record AnchorReq(Integer lineStart, Integer lineEnd, String quote) {}
@@ -165,14 +166,20 @@ public final class Controllers {
         }
     }
 
-    /** The AI task contract (PDF table 5-8): create 202, get, stream, approval, mine. */
+    /**
+     * The AI task contract (PDF table 5-8): create 202, get, stream, approval, mine.
+     * Browser-made types each delegate to the service that owns their rules; every other type is 400 here.
+     */
     @RestController
     @RequestMapping("/api/ai/tasks")
     public static class Tasks {
         private final TaskService tasks;
         private final SessionService sessions;
+        private final AnalyticsService analytics;
         private final SseHub hub;
-        public Tasks(TaskService tasks, SessionService sessions, SseHub hub) { this.tasks = tasks; this.sessions = sessions; this.hub = hub; }
+        public Tasks(TaskService tasks, SessionService sessions, AnalyticsService analytics, SseHub hub) {
+            this.tasks = tasks; this.sessions = sessions; this.analytics = analytics; this.hub = hub;
+        }
 
         @PostMapping
         public ResponseEntity<Map<String, Object>> create(@AuthenticationPrincipal AuthUser u, @Valid @RequestBody TaskReq r) {
@@ -184,6 +191,7 @@ public final class Controllers {
                     if (!"completed".equals(s.status)) throw new ResponseStatusException(HttpStatus.CONFLICT, "끝난 세션만 리포트를 만들 수 있어요.");
                     yield Map.of("taskId", sessions.requestReport(s, u.subject()).id);
                 }
+                case "ANALYTICS" -> analytics.request(u, r.sessionId()); // {taskId, reused}: a working task is handed out again
                 default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 작업 종류예요.");
             };
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(out);
@@ -228,20 +236,29 @@ public final class Controllers {
         private final InviteRepository invites;
         private final InboxService inbox;
         private final AccountService accounts;
-        public Admin(SessionService sessions, AuthService auth, InviteRepository invites, InboxService inbox, AccountService accounts) {
-            this.sessions = sessions; this.auth = auth; this.invites = invites; this.inbox = inbox; this.accounts = accounts;
+        private final AnalyticsService analytics;
+        public Admin(SessionService sessions, AuthService auth, InviteRepository invites, InboxService inbox, AccountService accounts, AnalyticsService analytics) {
+            this.sessions = sessions; this.auth = auth; this.invites = invites; this.inbox = inbox; this.accounts = accounts; this.analytics = analytics;
         }
 
         /** Issue checklist: what the agent asked a person to decide (shown first after login). */
         @GetMapping("/inbox") public Map<String, Object> inbox(@AuthenticationPrincipal AuthUser u) { return inbox.inbox(u); }
+        /** The badge poll: {count} only (the full list is fetched by the checklist page). */
+        @GetMapping("/inbox/count") public Map<String, Object> inboxCount(@AuthenticationPrincipal AuthUser u) { return Map.of("count", inbox.count(u)); }
         @GetMapping("/accounts") public List<Map<String, Object>> accounts(@AuthenticationPrincipal AuthUser u) { return accounts.companyAccounts(u); }
         @PostMapping("/accounts/{id}/decision")
         public Map<String, Object> decide(@AuthenticationPrincipal AuthUser u, @PathVariable Long id, @Valid @RequestBody DecisionReq r) {
             return accounts.manualDecision(u, id, r.approved(), r.comment());
         }
 
+        /** Dashboard rows and session detail: Spring data + the stored analytics snapshot, never a call to the agent. */
         @GetMapping("/sessions") public List<Map<String, Object>> list(@AuthenticationPrincipal AuthUser u) { return sessions.adminRows(u); }
         @GetMapping("/sessions/{id}") public Map<String, Object> get(@AuthenticationPrincipal AuthUser u, @PathVariable String id) { return sessions.adminView(u, id); }
+        /** Non-fresh snapshots among the listed sessions (≤ 20) -> an ANALYTICS task each (new or reused): [{sessionId, taskId}]. */
+        @PostMapping("/analytics/refresh")
+        public ResponseEntity<List<Map<String, Object>>> refreshAnalytics(@AuthenticationPrincipal AuthUser u, @Valid @RequestBody AnalyticsRefreshReq r) {
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(analytics.refresh(u, r.sessionIds()));
+        }
         /** REPORT_FAILED "넘기기" (retry is POST /api/ai/tasks {type: REPORT}). */
         @PostMapping("/sessions/{id}/report/dismiss") public Map<String, Object> dismissReport(@AuthenticationPrincipal AuthUser u, @PathVariable String id) {
             return sessions.dismissReport(u, id);
@@ -272,8 +289,9 @@ public final class Controllers {
         private final TaskService tasks;
         private final AccountService accounts;
         private final ArtifactService artifacts;
-        public Internal(SessionService sessions, TaskService tasks, AccountService accounts, ArtifactService artifacts) {
-            this.sessions = sessions; this.tasks = tasks; this.accounts = accounts; this.artifacts = artifacts;
+        private final AnalyticsService analytics;
+        public Internal(SessionService sessions, TaskService tasks, AccountService accounts, ArtifactService artifacts, AnalyticsService analytics) {
+            this.sessions = sessions; this.tasks = tasks; this.accounts = accounts; this.artifacts = artifacts; this.analytics = analytics;
         }
 
         @GetMapping("/accounts/{id}") public Map<String, Object> account(@PathVariable Long id) { return accounts.internalView(id); }
@@ -304,6 +322,10 @@ public final class Controllers {
         @PutMapping("/sessions/{id}/report") public Map<String, Object> report(@PathVariable String id, @RequestBody Map<String, Object> body) {
             sessions.saveReport(id, body.get("report"));
             return Map.of("ok", true);
+        }
+        /** business.save_analytics: body = the bundle; stored only if its source.state_rev is not older than the stored one. */
+        @PutMapping("/sessions/{id}/analytics") public Map<String, Object> analytics(@PathVariable String id, @RequestBody Map<String, Object> bundle) {
+            return Map.of("stored", analytics.store(id, bundle));
         }
         @PostMapping("/tasks/{id}/events") public Map<String, Object> events(@PathVariable String id, @RequestBody List<Map<String, Object>> batch) {
             tasks.onEvents(id, batch);

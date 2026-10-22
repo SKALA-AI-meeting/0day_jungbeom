@@ -2,6 +2,9 @@
 
 Mirrors docs/architecture/api-contract.md: artifacts (init, replace-all), annotations (annotate() plays the candidate's
 browser POST), the dialogue ledger (turn), the artifact/annotation GET endpoints, and all three in the session state.
+v4 (§5): `state_rev` in the state, bumped on every change that affects analytics (init, the candidate's message and choice,
+turn, detection, annotation, report save, status change), and PUT /internal/sessions/{id}/analytics, kept only when its
+source.state_rev is not older than the stored snapshot's. analytics_status() answers like Spring's missing | stale | fresh.
 """
 import json
 import time
@@ -26,7 +29,27 @@ class FakeBackend:
     def __init__(self) -> None:
         self.sessions: dict[str, dict] = {}
         self.accounts: dict[int, dict] = {}
+        self.analytics: dict[str, dict] = {}  # sid -> stored bundle (sessions.analytics_json); kept out of the state like Spring
+        self.analytics_puts: list[tuple[str, int, bool]] = []  # (sid, source.state_rev, stored) per PUT, in order
         self._annotation_id = 0
+
+    @staticmethod
+    def _bump(s: dict) -> None:
+        s["state_rev"] += 1
+
+    def set_status(self, sid: str, status: str) -> None:
+        """Spring's finish/complete: a status change bumps state_rev."""
+        s = self.sessions[sid]
+        s["status"] = status
+        if status != "active":
+            s["ended_at"] = s["ended_at"] or time.time()
+        self._bump(s)
+
+    def analytics_status(self, sid: str) -> str:
+        snap = self.analytics.get(sid)
+        if snap is None:
+            return "missing"
+        return "stale" if snap["source"]["state_rev"] < self.sessions[sid]["state_rev"] else "fresh"
 
     def account(self, **fields) -> dict:
         aid = len(self.accounts) + 1
@@ -39,7 +62,7 @@ class FakeBackend:
         s = {"id": sid, "alias": alias, "company": "테스트", "scenario_id": scenario_id, "status": "active", "milestone_idx": 0,
              "turns_in_milestone": 0, "condition": None, "choice": None, "milestone_log": [], "notes": "", "report_status": "none",
              "created_at": time.time(), "ended_at": None, "messages": [], "observations": [], "detections": {}, "report": None,
-             "artifacts": [], "annotations": [], "dialogue": None}
+             "artifacts": [], "annotations": [], "dialogue": None, "state_rev": 0}
         self.sessions[sid] = s
         return s
 
@@ -52,6 +75,7 @@ class FakeBackend:
             m["choice"] = choice
             s["choice"] = {"option": choice, "pole": choice, "msg_idx": idx, "ts": m["ts"]}
         s["messages"].append(m)
+        self._bump(s)
         return idx
 
     def annotate(self, sid: str, artifact_id: str, *, line_start: int | None = None, line_end: int | None = None,
@@ -83,6 +107,7 @@ class FakeBackend:
         n = {"id": self._annotation_id, "artifact_id": artifact_id, "anchor": {"line_start": line_start, "line_end": line_end, "quote": quote},
              "kind": kind, "text": text, "msg_idx": len(s["messages"]), "created_at": time.time()}
         s["annotations"].append(n)
+        self._bump(s)
         return n
 
     def _artifacts(self, items: list[dict]) -> list[dict]:
@@ -139,6 +164,7 @@ class FakeBackend:
             s["condition"] = body["condition"]
             s["messages"].append(body["message"])
             s["milestone_log"] = [{"key": "communicate", "entered_idx": 0, "ts": time.time()}]
+            self._bump(s)
             return httpx.Response(200, json={"ok": True})
         if op == "artifacts":
             if len(parts) == 4:
@@ -170,13 +196,30 @@ class FakeBackend:
                 s["dialogue"] = body["dialogue"]
             if body.get("completed"):
                 s["status"], s["ended_at"] = "completed", time.time()
+            self._bump(s)
             return httpx.Response(200, json={"status": s["status"], "milestone_idx": s["milestone_idx"]})
         if op == "detections":
             s["detections"][str(body["msg_idx"])] = body["detection"]
+            self._bump(s)
             return httpx.Response(200, json={"ok": True})
         if op == "report":
             if s["status"] != "completed":
                 return httpx.Response(409, json={"detail": "끝나지 않은 세션"})
             s["report"], s["report_status"] = body["report"], "ready"
+            self._bump(s)
             return httpx.Response(200, json={"ok": True})
+        if op == "analytics":
+            assert req.method == "PUT"
+            src = body.get("source") if isinstance(body, dict) else None
+            if not isinstance(src, dict) or body.get("version") != 1 or not isinstance(src.get("state_rev"), int):
+                return httpx.Response(400, json={"detail": "분석 번들 형식이 올바르지 않아요."})
+            rev = src["state_rev"]
+            # test invariant: a bundle is computed from a state Spring served, so it can never be ahead of it
+            assert rev <= s["state_rev"], f"bundle rev {rev} ahead of state_rev {s['state_rev']}"
+            held = self.analytics.get(sid)
+            stored = held is None or rev >= held["source"]["state_rev"]
+            if stored:
+                self.analytics[sid] = body
+            self.analytics_puts.append((sid, rev, stored))
+            return httpx.Response(200, json={"stored": stored})
         return httpx.Response(404, json={"detail": "unknown"})

@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { auth } from './api'
 import { moduleById } from './modules'
-import { inbox, refreshInbox } from './state/inbox'
+import { inbox, refreshInbox, refreshInboxCount } from './state/inbox'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,9 +24,10 @@ watch(
   { immediate: true },
 )
 
-// keep the checklist badge fresh while inside the admin area
+// keep the checklist badge fresh while inside the admin area: the count only, except on the checklist itself,
+// which offers the items that arrived meanwhile ("새 항목 N건 불러오기")
 let timer
-const poll = () => refreshInbox().catch(() => {})
+const poll = () => (route.path === '/admin/inbox' ? refreshInbox() : refreshInboxCount()).catch(() => {})
 watch(
   () => area.value.id === 'admin' && !!auth.state.admin,
   (on) => {

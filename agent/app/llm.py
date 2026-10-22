@@ -167,13 +167,43 @@ class BaseLLM:
     async def update_ledger(self, scn, ledger: dict, pending: list[dict], names) -> LedgerUpdate: ...
     async def speak(self, scn, pid: str, messages, names, directive: str, meta: dict | None = None, card: dict | None = None) -> dict: ...
     async def observe(self, scn, milestone: str, messages, names, user_text: str) -> list[ObsItem]: ...
-    async def summarize(self, scn, observations: list[dict], notes: str) -> SummaryOut: ...
+    async def summarize(self, scn, observations: list[dict], notes: str, figures: dict | None = None) -> SummaryOut: ...
     async def review_account(self, account: dict): ...
 
 
 def clean_line(text: str) -> str:
     text = re.sub(r"^\[[^\]]+\]\s*", "", (text or "").strip()).strip('"“”')
     return strip_boilerplate(re.sub(r"\n{3,}", "\n\n", text))
+
+
+# Report grounding: the analytics bundle's compact `figures` (analytics-mcp, api-contract §5), one labelled line each.
+FIGURE_LABELS = (
+    ("messages", "메시지"), ("candidate_messages", "지원자 메시지"), ("observations", "관찰 근거"), ("by_signal", "관찰 신호별"),
+    ("milestones_reached", "도달한 단계"), ("checkpoints", "같이 본 과제의 확인 지점 표시"),
+    ("tki_estimate", "디텍터 성향 추정"), ("pooled_kappa", "관찰자-디텍터 일치도(κ)"), ("kappa_n", "κ를 계산한 판정 수(발화×역량)"),
+)
+SIGNAL_LABELS = {"positive": "긍정", "neutral": "중립", "risk": "확인 필요"}
+
+
+def figures_block(figures: dict | None) -> str:
+    """Prompt text for `figures`, values verbatim (the model quotes them, never recomputes). '(없음)' without a bundle."""
+    from .personas import MODES
+
+    if not figures:
+        return "(없음)"
+
+    def value(k, v):
+        if v is None:
+            return "없음"
+        if k == "by_signal" and isinstance(v, dict):
+            return " · ".join(f"{SIGNAL_LABELS.get(s, s)} {n}" for s, n in v.items())
+        if k == "tki_estimate" and v in MODES:
+            return f"{MODES[v]['label']} ({v})"
+        return str(v)
+
+    known = dict(FIGURE_LABELS)
+    keys = [k for k, _ in FIGURE_LABELS if k in figures] + [k for k in figures if k not in known]
+    return "\n".join(f"- {known.get(k, k)}: {value(k, figures[k])}" for k in keys)
 
 
 def _note(key: str) -> None:
@@ -437,12 +467,12 @@ class OpenAILLM(BaseLLM):
         out = await self._structured("observer", ObsList, [("system", sys), ("human", human)])
         return out.items
 
-    async def summarize(self, scn, observations, notes):
+    async def summarize(self, scn, observations, notes, figures=None):
         from .harness import instructions
 
         rows = "\n".join(f"- {o['competency']} ({LABEL[o['milestone']]}, {o['signal']}) {o['behavior']} / \"{o['quote']}\"" for o in observations)
         sys = instructions.render("summarize", competencies=COMP_LINES)
-        human = instructions.render("summarize_input", rows=rows or "(없음)", notes=notes or "(없음)")
+        human = instructions.render("summarize_input", figures=figures_block(figures), rows=rows or "(없음)", notes=notes or "(없음)")
         return await self._structured("summarize", SummaryOut, [("system", sys), ("human", human)])
 
 
@@ -568,10 +598,13 @@ class MockLLM(BaseLLM):
 
         return Plausibility(overall="clean", concerns=[])  # rules alone decide in offline tests
 
-    async def summarize(self, scn, observations, notes):
+    async def summarize(self, scn, observations, notes, figures=None):
+        # grounded like the real prompt: session-level numbers are quoted from `figures`, never recomputed here
+        ground = f" · 세션 관찰 {figures.get('observations', '-')}건, 단계 {figures.get('milestones_reached', '-')}" if figures else ""
+
         def line(cid):
             n = sum(1 for o in observations if o["competency"] == cid)
-            return f"관찰 {n}건이 기록됨 (mock 요약)" if n else "해당 상황에서 관련 행동이 기록되지 않음"
+            return f"관찰 {n}건이 기록됨 (mock 요약{ground})" if n else "해당 상황에서 관련 행동이 기록되지 않음"
 
         return SummaryOut(C01=line("C01"), C02=line("C02"), C03=line("C03"), C05=line("C05"))
 

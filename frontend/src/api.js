@@ -49,6 +49,7 @@ export const api = {
   login: (email, password) => req('POST', '/api/auth/login', { email, password }),
   adminMe: () => req('GET', '/api/auth/me', null, admin()),
   inbox: () => req('GET', '/api/admin/inbox', null, admin()),
+  inboxCount: () => req('GET', '/api/admin/inbox/count', null, admin()), // { count }: the top-bar badge (no cards, no chart SVGs)
   accounts: () => req('GET', '/api/admin/accounts', null, admin()),
   decideAccount: (id, approved, comment) => req('POST', `/api/admin/accounts/${id}/decision`, { approved, comment }, admin()),
   adminList: () => req('GET', '/api/admin/sessions', null, admin()),
@@ -56,6 +57,10 @@ export const api = {
   adminInvites: () => req('GET', '/api/admin/invites', null, admin()),
   adminInvite: (alias, email) => req('POST', '/api/admin/invites', { alias, email: email || null }, admin()),
   requestReport: (sid) => req('POST', '/api/ai/tasks', { type: 'REPORT', sessionId: sid }, admin()),
+  // analytics snapshot (api-contract §5): 202 { taskId, reused? } — a QUEUED/RUNNING ANALYTICS task of the session is reused
+  requestAnalytics: (sid) => req('POST', '/api/ai/tasks', { type: 'ANALYTICS', sessionId: sid }, admin()),
+  // 202 [{ sessionId, taskId }] for the given sessions (≤20) whose snapshot is not fresh
+  refreshAnalytics: (sessionIds) => req('POST', '/api/admin/analytics/refresh', { sessionIds }, admin()),
   dismissReport: (sid) => req('POST', `/api/admin/sessions/${sid}/report/dismiss`, null, admin()),
   approve: (taskId, approved, comment) => req('POST', `/api/ai/tasks/${taskId}/approval`, { approved, comment }, admin()),
   task: (taskId, token) => req('GET', `/api/ai/tasks/${taskId}`, null, token),

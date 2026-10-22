@@ -1,4 +1,4 @@
-"""Tools: MCP clients for business-mcp, rag-mcp and detector-mcp (FastMCP, Streamable HTTP /mcp).
+"""Tools: MCP clients for business-mcp, rag-mcp, detector-mcp and analytics-mcp (FastMCP, Streamable HTTP /mcp).
 
 - every call is traced, counted against the loop limits and wrapped in TOOL_START / TOOL_END events
 - change tools that need approval are refused here unless the caller passes approved=True (defense in depth)
@@ -18,6 +18,7 @@ URLS = {
     "business": os.getenv("BUSINESS_MCP_URL", "http://127.0.0.1:9101/mcp"),
     "rag": os.getenv("RAG_MCP_URL", "http://127.0.0.1:9102/mcp"),
     "detector": os.getenv("DETECTOR_MCP_URL", "http://127.0.0.1:9103/mcp"),
+    "analytics": os.getenv("ANALYTICS_MCP_URL", "http://127.0.0.1:9104/mcp"),
 }
 _override: dict[str, object] = {}  # tests: in-process FastMCP servers
 
@@ -79,9 +80,9 @@ async def _invoke(server: str, tool: str, args: dict):
     return res.data if res.data is not None else (res.structured_content or {})
 
 
-# Arguments that carry evaluation data (observer evidence, ledger, report, review, detections): TOOL_START events can reach
-# the candidate's stream, so these are summarized by size only. The full call is still in the trace span.
-REDACTED_ARGS = {"observations", "dialogue", "report", "review", "detection", "artifacts"}
+# Arguments that carry evaluation data (observer evidence, ledger, report, review, detections, analytics bundle): TOOL_START
+# events can reach the candidate's stream, so these are summarized by size only. The full call is still in the trace span.
+REDACTED_ARGS = {"observations", "dialogue", "report", "review", "detection", "artifacts", "analytics"}
 
 
 def _summary(args: dict) -> dict:

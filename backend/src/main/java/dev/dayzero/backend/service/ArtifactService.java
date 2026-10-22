@@ -4,6 +4,7 @@ import dev.dayzero.backend.domain.Annotation;
 import dev.dayzero.backend.domain.ChatSession;
 import dev.dayzero.backend.domain.SessionArtifact;
 import dev.dayzero.backend.repo.AnnotationRepository;
+import dev.dayzero.backend.repo.ChatSessionRepository;
 import dev.dayzero.backend.repo.MessageRepository;
 import dev.dayzero.backend.repo.SessionArtifactRepository;
 import java.time.OffsetDateTime;
@@ -18,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
  * Shared work items (같이 확인할 과제) and the candidate's markups on them (api-contract §1).
  * The agent seeds the items at START; the candidate marks them up; personas and the observer read both.
  * Internal shapes are snake_case (agent), public shapes camelCase (browser). Planted checkpoints never get here.
+ * Adding or removing a markup changes the admin analytics (planted checkpoints spotted), so it bumps state_rev.
  */
 @Service
 public class ArtifactService {
@@ -30,9 +32,10 @@ public class ArtifactService {
     private final SessionArtifactRepository artifacts;
     private final AnnotationRepository annotations;
     private final MessageRepository messages;
+    private final ChatSessionRepository sessions;
 
-    public ArtifactService(SessionArtifactRepository artifacts, AnnotationRepository annotations, MessageRepository messages) {
-        this.artifacts = artifacts; this.annotations = annotations; this.messages = messages;
+    public ArtifactService(SessionArtifactRepository artifacts, AnnotationRepository annotations, MessageRepository messages, ChatSessionRepository sessions) {
+        this.artifacts = artifacts; this.annotations = annotations; this.messages = messages; this.sessions = sessions;
     }
 
     // ---------------------------------------------------------------- seeding (internal init)
@@ -147,7 +150,9 @@ public class ArtifactService {
         Annotation n = new Annotation();
         n.sessionId = s.id; n.artifactId = a.artifactId; n.lineStart = lineStart; n.lineEnd = end; n.quote = q;
         n.kind = kind; n.text = note; n.msgIdx = (int) messages.countBySessionId(s.id);
-        return annotations.save(n);
+        Annotation saved = annotations.save(n);
+        sessions.bumpRev(s.id);
+        return saved;
     }
 
     @Transactional
@@ -156,6 +161,7 @@ public class ArtifactService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "마크업을 찾을 수 없어요."));
         if (!"active".equals(s.status)) throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 종료된 세션이에요.");
         annotations.delete(n);
+        sessions.bumpRev(s.id);
     }
 
     // ---------------------------------------------------------------- helpers

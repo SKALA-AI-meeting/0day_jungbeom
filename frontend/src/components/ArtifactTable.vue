@@ -1,7 +1,7 @@
 <script setup>
 // "같이 확인할 과제": the design doc, result table and code the team looks at together. A row opens the viewer.
 // The table follows its own width (container query): in a narrow column, owner and status fold under the title.
-import { KIND, OWNER_TEAM } from '../utils/artifacts'
+import { KIND, ownerOf } from '../utils/artifacts'
 
 defineProps({
   artifacts: { type: Array, required: true }, // normArtifacts()
@@ -10,7 +10,7 @@ defineProps({
   active: { type: String, default: null }, // id of the artifact open in the viewer
 })
 const emit = defineEmits(['open'])
-const owner = (personas, id) => (id === 'team' || !personas[id] ? OWNER_TEAM : personas[id])
+const owner = ownerOf
 const spotted = (checks, id) => {
   const mine = checks.filter((c) => c.artifactId === id)
   return mine.length ? `${mine.filter((c) => c.spotted).length}/${mine.length}` : '–'

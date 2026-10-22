@@ -41,6 +41,7 @@ services:
       BUSINESS_MCP_URL: http://business-mcp:9101/mcp
       RAG_MCP_URL: http://rag-mcp:9102/mcp
       DETECTOR_MCP_URL: http://detector-mcp:9103/mcp
+      ANALYTICS_MCP_URL: http://analytics-mcp:9104/mcp
       DATABASE_URL: postgresql://dayzero:dayzero@postgres:5432/agentstate
       RABBIT_URL: amqp://guest:guest@rabbitmq:5672/
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
@@ -52,10 +53,15 @@ services:
       business-mcp: { condition: service_started }
       rag-mcp: { condition: service_started }
       detector-mcp: { condition: service_started }
+      analytics-mcp: { condition: service_started }
 
   business-mcp:
     <<: *agent-image
     command: ["python", "-m", "mcp_servers.business.server"]
+
+  analytics-mcp:               # read-only: admin numbers + SVG charts from Spring's /internal state (:9104, not published)
+    <<: *agent-image
+    command: ["python", "-m", "mcp_servers.analytics.server"]
 
   rag-mcp:
     <<: *agent-image

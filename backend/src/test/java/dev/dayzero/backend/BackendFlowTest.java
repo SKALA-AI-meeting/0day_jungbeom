@@ -19,10 +19,12 @@ import dev.dayzero.backend.task.TaskWatchdog;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -52,7 +54,6 @@ class BackendFlowTest {
     void stubAgent() {
         when(agent.scenario(anyString())).thenAnswer(i -> "nope".equals(i.getArgument(0)) ? null : Map.of("id", i.getArgument(0)));
         when(agent.view(anyString(), anyMap())).thenAnswer(i -> Map.of("kind", i.getArgument(0), "state", i.getArgument(1)));
-        when(agent.rows(anyList())).thenAnswer(i -> i.getArgument(0));
     }
 
     JsonNode body(MockHttpServletRequestBuilder b, int status) throws Exception {
@@ -401,13 +402,15 @@ class BackendFlowTest {
         assertThat(view.get("artifacts").get(1).get("annotations")).hasSize(1);
         assertThat(view.get("artifacts").get(1).get("annotations").get(0).get("anchor").get("quote").asText()).isEqualTo("x / 0");
 
-        // admin view: the same public items with markups, plus the dialogue slot; the agent's view got items + markups
+        // admin view: the same public items with markups, plus the dialogue slot and the state's markups (internal shape);
+        // the planted-checkpoint checks are agent-computed, so they only come inside the analytics snapshot (none yet)
         JsonNode av = body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200);
         assertThat(av.get("artifacts")).hasSize(2);
         assertThat(av.get("artifacts").get(0).get("annotations")).hasSize(1);
         assertThat(av.has("dialogue")).isTrue();
-        assertThat(av.get("state").get("artifacts")).hasSize(2);
-        assertThat(av.get("state").get("annotations")).hasSize(2);
+        assertThat(av.get("annotations")).hasSize(2);
+        assertThat(av.has("artifact_checks")).isFalse();
+        assertThat(av.get("analytics").isNull()).isTrue();
     }
 
     @Test
@@ -625,7 +628,7 @@ class BackendFlowTest {
 
     @Test
     void taskTypesComeFromTheRegistry() throws Exception {
-        assertThat(handlers.types()).containsExactlyInAnyOrder("START", "TURN", "REPORT", "ACCOUNT_REVIEW");
+        assertThat(handlers.types()).containsExactlyInAnyOrder("START", "TURN", "REPORT", "ACCOUNT_REVIEW", "ANALYTICS");
         String[] st = startSession().split("\\|");
         String sid = st[0], cand = "Bearer " + st[1];
         String admin = "Bearer " + adminToken();
@@ -648,5 +651,355 @@ class BackendFlowTest {
         List<String> types = new ArrayList<>();
         for (JsonNode x : body(get("/api/ai/tasks?mine=true").header("Authorization", cand), 200)) types.add(x.get("type").asText());
         assertThat(types).contains("START", "TURN").doesNotContain("REPORT", "ACCOUNT_REVIEW");
+    }
+
+    // ------------------------------------------------------------------ v4: analytics through MCP (snapshot + ANALYTICS task)
+    static final Map<String, Object> COND = Map.of("stratum", "V2", "lead", "competing", "peer", "avoiding");
+
+    long rev(String sid) throws Exception {
+        return body(internal(get("/internal/sessions/" + sid + "/state")), 200).get("state_rev").asLong();
+    }
+
+    /** The rev moved past `before` (one change that affects analytics); returns the new rev. */
+    long bumped(String sid, long before, String what) throws Exception {
+        long now = rev(sid);
+        assertThat(now).as(what).isGreaterThan(before);
+        return now;
+    }
+
+    /** A version-1 bundle as analytics-mcp builds it (only the parts Spring reads or passes on). */
+    static Map<String, Object> bundle(String sid, long rev, double computedAt) {
+        Map<String, Object> b = new LinkedHashMap<>();
+        b.put("version", 1);
+        b.put("session_id", sid);
+        b.put("computed_at", computedAt);
+        b.put("source", Map.of("state_rev", rev, "message_count", 1, "status", "active", "milestone_idx", 0));
+        b.put("row", Map.of("category", "기획·PM · 핀테크", "scenario_title", "재참여 개선", "axis", "원칙 ↔ 파격", "choice", "통합안",
+                "condition", "회피형 팀장 · 협력형 동료"));
+        b.put("timeline", List.of(Map.of("key", "communicate", "label", "소통", "reached", true, "messages", 1, "observations", 0)));
+        b.put("heatmap", Map.of("cells", List.of(), "totals", Map.of(), "max_n", 0));
+        b.put("figures", Map.of("messages", 1, "candidate_messages", 0, "pooled_kappa", 0.31, "checkpoints", "0/2", "milestones_reached", "1/4"));
+        b.put("charts", List.of(Map.of("id", "timeline", "type", "timeline", "title", "마일스톤 타임라인", "available", true)));
+        return b;
+    }
+
+    JsonNode putAnalytics(String sid, Map<String, Object> bundle, int status) throws Exception {
+        return body(internal(json(put("/internal/sessions/" + sid + "/analytics"), bundle)), status);
+    }
+
+    JsonNode adminRow(String admin, String sid) throws Exception {
+        for (JsonNode r : body(get("/api/admin/sessions").header("Authorization", admin), 200))
+            if (sid.equals(r.get("id").asText())) return r;
+        return null;
+    }
+
+    JsonNode analyticsTask(String auth, String sid, int status) throws Exception {
+        return body(json(post("/api/ai/tasks"), Map.of("type", "ANALYTICS", "sessionId", sid)).header("Authorization", auth), status);
+    }
+
+    @Test
+    void stateRevCountsEveryChangeThatAffectsAnalytics() throws Exception {
+        String cand = "Bearer " + activeCandidate().split("\\|")[1];
+        String sid = body(json(post("/api/me/sessions"), Map.of("scenarioId", "dl.pm.fintech")).header("Authorization", cand), 201).get("sessionId").asText();
+        long r = rev(sid);
+        assertThat(r).isZero();
+        body(internal(json(post("/internal/sessions/" + sid + "/init"), Map.of("condition", COND, "artifacts", sampleArtifacts(),
+                "message", Map.of("idx", 0, "speaker", "lead", "text", "시작할게요", "milestone", "communicate")))), 200);
+        r = bumped(sid, r, "init");
+        doneAll(sid, "START");
+        body(json(post("/api/ai/tasks"), Map.of("type", "TURN", "sessionId", sid, "text", "범위부터 정리해 볼게요")).header("Authorization", cand), 202);
+        r = bumped(sid, r, "candidate message");
+        doneAll(sid, "TURN");
+        body(internal(json(post("/internal/sessions/" + sid + "/turn"), Map.of("new_messages", List.of(Map.of("idx", 2, "speaker", "lead", "text", "좋아요", "milestone", "communicate")),
+                "observations", List.of(Map.of("id", "o1_0", "competency", "C01", "milestone", "communicate", "behavior", "범위 확인", "quote", "범위부터", "signal", "positive", "msg_idx", 1)),
+                "milestone_idx_after", 1, "turns_after", 0))), 200);
+        r = bumped(sid, r, "agent turn");
+        body(internal(json(post("/internal/sessions/" + sid + "/turn"), Map.of("new_messages", List.of(), "milestone_idx_after", 2, "turns_after", 0))), 200);
+        r = bumped(sid, r, "milestone change");
+        body(json(post("/api/ai/tasks"), Map.of("type", "TURN", "sessionId", sid, "text", "둘 다 가져가죠", "choiceId", "both")).header("Authorization", cand), 202);
+        r = bumped(sid, r, "choice");
+        doneAll(sid, "TURN");
+        body(internal(json(post("/internal/sessions/" + sid + "/detections"), Map.of("msg_idx", 1, "detection", Map.of("rules", Map.of("assertiveness", 3))))), 200);
+        r = bumped(sid, r, "detection");
+        long markup = annotate(sid, cand, mark("a1", Map.of("lineStart", 2), "risk", "목표 수치 근거가 없어요"), 201).get("id").asLong();
+        r = bumped(sid, r, "markup added");
+        annotate(sid, cand, mark("zz", Map.of("lineStart", 1), "risk", "없는 과제"), 404);
+        assertThat(rev(sid)).as("refused markup").isEqualTo(r);
+        body(delete("/api/sessions/" + sid + "/annotations/" + markup).header("Authorization", cand), 204);
+        r = bumped(sid, r, "markup deleted");
+        // not analytics: the candidate's notes and storing a snapshot leave the rev alone
+        body(json(put("/api/sessions/" + sid + "/notes"), Map.of("text", "메모")).header("Authorization", cand), 200);
+        assertThat(putAnalytics(sid, bundle(sid, r, 1.0), 200).get("stored").asBoolean()).isTrue();
+        assertThat(rev(sid)).as("notes + snapshot").isEqualTo(r);
+        body(post("/api/sessions/" + sid + "/finish").header("Authorization", cand), 200);
+        r = bumped(sid, r, "completion");
+        body(internal(json(put("/internal/sessions/" + sid + "/report"), Map.of("report", Map.of("status", "ready")))), 200);
+        bumped(sid, r, "report save");
+    }
+
+    @Test
+    void analyticsSnapshotIsMonotonicAndGoesStaleWithTheSession() throws Exception {
+        String[] st = startSession(sampleArtifacts()).split("\\|");
+        String sid = st[0], cand = "Bearer " + st[1];
+        String admin = "Bearer " + adminToken();
+        JsonNode av = body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200);
+        assertThat(av.get("analytics").isNull()).isTrue();
+        assertThat(av.get("analytics_status").asText()).isEqualTo("missing");
+        assertThat(av.get("analytics_task").isNull()).isTrue();
+        JsonNode row = adminRow(admin, sid);
+        assertThat(row.get("analytics_status").asText()).isEqualTo("missing");
+        assertThat(row.get("category").asText()).isEqualTo("dl.pm.fintech"); // no snapshot: falls back to the scenario id
+        assertThat(row.get("axis").isNull()).isTrue();
+        assertThat(row.get("messages").asInt()).isEqualTo(1);
+
+        long r = rev(sid);
+        assertThat(putAnalytics(sid, bundle(sid, r, 1.0), 200).get("stored").asBoolean()).isTrue();
+        av = body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200);
+        assertThat(av.get("analytics_status").asText()).isEqualTo("fresh");
+        assertThat(av.get("analytics").get("source").get("state_rev").asLong()).isEqualTo(r);
+        assertThat(av.get("analytics").get("figures").get("pooled_kappa").asDouble()).isEqualTo(0.31);
+        assertThat(av.get("state_rev").asLong()).isEqualTo(r);
+        row = adminRow(admin, sid);
+        assertThat(row.get("analytics_status").asText()).isEqualTo("fresh");
+        assertThat(row.get("category").asText()).isEqualTo("기획·PM · 핀테크");
+        assertThat(row.get("axis").asText()).isEqualTo("원칙 ↔ 파격");
+        assertThat(row.get("choice").asText()).isEqualTo("통합안");
+        assertThat(row.get("condition").asText()).isEqualTo("회피형 팀장 · 협력형 동료");
+
+        // older is refused, equal and newer are stored
+        assertThat(putAnalytics(sid, bundle(sid, r - 1, 9.0), 200).get("stored").asBoolean()).isFalse();
+        assertThat(body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200).get("analytics").get("computed_at").asDouble()).isEqualTo(1.0);
+        assertThat(putAnalytics(sid, bundle(sid, r, 2.0), 200).get("stored").asBoolean()).isTrue();
+        assertThat(body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200).get("analytics").get("computed_at").asDouble()).isEqualTo(2.0);
+
+        // a markup makes it stale; the stale numbers stay visible until the next snapshot
+        annotate(sid, cand, mark("a2", Map.of("lineStart", 2), "risk", "0으로 나눠요"), 201);
+        av = body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200);
+        assertThat(av.get("analytics_status").asText()).isEqualTo("stale");
+        assertThat(av.get("analytics").get("computed_at").asDouble()).isEqualTo(2.0);
+        assertThat(adminRow(admin, sid).get("analytics_status").asText()).isEqualTo("stale");
+        long now = rev(sid);
+        assertThat(putAnalytics(sid, bundle(sid, now, 3.0), 200).get("stored").asBoolean()).isTrue();
+        assertThat(body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200).get("analytics_status").asText()).isEqualTo("fresh");
+        assertThat(putAnalytics(sid, bundle(sid, r, 4.0), 200).get("stored").asBoolean()).isFalse(); // the old run finishing late
+
+        // the body is checked: a rev (whole, ≥ 0, not ahead of the session), the same session; unknown session 404
+        Map<String, Object> noRev = new HashMap<>(bundle(sid, now, 5.0));
+        noRev.remove("source");
+        putAnalytics(sid, noRev, 400);
+        Map<String, Object> textRev = new HashMap<>(bundle(sid, now, 5.0));
+        textRev.put("source", Map.of("state_rev", "42"));
+        putAnalytics(sid, textRev, 400);
+        putAnalytics(sid, bundle(sid, -1, 5.0), 400);
+        putAnalytics(sid, bundle(sid, now + 1, 5.0), 400);
+        putAnalytics(sid, bundle("other-session", now, 5.0), 400);
+        Map<String, Object> floatRev = new HashMap<>(bundle(sid, now, 5.0));
+        floatRev.put("source", Map.of("state_rev", (double) now));
+        putAnalytics(sid, floatRev, 400);
+        // ...and the parts the screens draw from: a bundle with only a rev never makes the session look fresh
+        putAnalytics(sid, Map.of("version", 1, "session_id", sid, "source", Map.of("state_rev", now)), 400);
+        for (String key : List.of("version", "session_id", "row", "heatmap", "figures", "timeline", "charts")) {
+            Map<String, Object> partial = new HashMap<>(bundle(sid, now, 5.0));
+            partial.remove(key);
+            putAnalytics(sid, partial, 400);
+        }
+        Map<String, Object> v2 = new HashMap<>(bundle(sid, now, 5.0));
+        v2.put("version", 2);
+        putAnalytics(sid, v2, 400);
+        Map<String, Object> noCharts = new HashMap<>(bundle(sid, now, 5.0));
+        noCharts.put("charts", List.of());
+        putAnalytics(sid, noCharts, 400);
+        putAnalytics("nope", bundle("nope", 0, 5.0), 404);
+        assertThat(body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200).get("analytics").get("computed_at").asDouble()).isEqualTo(3.0);
+        // the internal API stays internal
+        mvc.perform(json(put("/internal/sessions/" + sid + "/analytics"), bundle(sid, now, 6.0)).header("Authorization", admin)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void adminScreensNeverCallTheAgent() throws Exception {
+        String[] st = startSession(sampleArtifacts()).split("\\|");
+        String sid = st[0], cand = "Bearer " + st[1];
+        String admin = "Bearer " + adminToken();
+        body(internal(json(post("/internal/sessions/" + sid + "/turn"), Map.of("new_messages", List.of(),
+                "observations", List.of(Map.of("id", "o0_0", "competency", "C02", "milestone", "communicate", "behavior", "확인", "quote", "시작", "signal", "neutral", "msg_idx", 0)),
+                "milestone_idx_after", 0, "turns_after", 1))), 200);
+        putAnalytics(sid, bundle(sid, rev(sid), 1.0), 200);
+        // the agent is down: every call to it fails
+        ResponseStatusException down = new ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "Agent 서버에 연결하지 못했어요.");
+        when(agent.view(anyString(), anyMap())).thenThrow(down);
+        when(agent.scenario(anyString())).thenThrow(down);
+        when(agent.meta()).thenThrow(down);
+        Mockito.clearInvocations(agent);
+
+        JsonNode av = body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200);
+        assertThat(av.get("alias").asText()).startsWith("지원자");
+        assertThat(av.get("scenario_id").asText()).isEqualTo("dl.pm.fintech");
+        assertThat(av.get("messages")).hasSize(1);
+        assertThat(av.get("observations")).hasSize(1);
+        assertThat(av.get("milestone_log")).hasSize(1);
+        assertThat(av.get("artifacts")).hasSize(2);
+        assertThat(av.get("tasks").isArray()).isTrue();
+        assertThat(av.get("analytics_status").asText()).isEqualTo("fresh");
+        assertThat(av.get("analytics").get("row").get("category").asText()).isEqualTo("기획·PM · 핀테크");
+        for (String agentMade : List.of("scenario", "painpoints", "detector", "dilemma", "artifact_checks", "category"))
+            assertThat(av.has(agentMade)).as(agentMade).isFalse();
+        JsonNode row = adminRow(admin, sid);
+        List<String> keys = new ArrayList<>();
+        row.fieldNames().forEachRemaining(keys::add);
+        assertThat(keys).containsExactly("id", "alias", "category", "scenario_id", "axis", "choice", "condition", "status", "milestone_idx",
+                "messages", "observations", "report_status", "created_at", "analytics_status");
+        assertThat(row.get("observations").asInt()).isEqualTo(1);
+        assertThat(row.get("created_at").isNumber()).isTrue();
+        assertThat(Mockito.mockingDetails(agent).getInvocations()) // (the startup task-type check may ask for /agent/handlers)
+                .noneMatch(i -> !"handlers".equals(i.getMethod().getName()));
+        // the candidate's screen is still made by the agent
+        body(get("/api/sessions/" + sid).header("Authorization", cand), 503);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void analyticsTaskIsForTheCompanysAdminAndAWorkingOneIsReused() throws Exception {
+        String[] st = startSession().split("\\|");
+        String sid = st[0], cand = "Bearer " + st[1];
+        String admin = "Bearer " + adminToken();
+        String other = "Bearer " + body(json(post("/api/auth/signup"), Map.of("companyName", "분석 타사", "email", "analytics@corp.dev", "password", "other-pass-123")), 200).get("token").asText();
+        analyticsTask(cand, sid, 403);
+        analyticsTask(other, sid, 403);
+        analyticsTask(admin, "nope", 404);
+        JsonNode first = analyticsTask(admin, sid, 202);
+        assertThat(first.get("reused").asBoolean()).isFalse();
+        String tid = first.get("taskId").asText();
+        Map<String, Object> sent = ((TaskDispatcher.Recording) dispatcher).sent.stream().filter(m -> tid.equals(m.get("taskId"))).findFirst().orElseThrow();
+        assertThat(sent.get("type")).isEqualTo("ANALYTICS");
+        assertThat(sent.get("mode")).isEqualTo("RUN");
+        assertThat(sent.get("threadId")).isEqualTo("analytics:" + sid + ":" + tid);
+        // while it works, asking again hands out the same task
+        JsonNode again = analyticsTask(admin, sid, 202);
+        assertThat(again.get("taskId").asText()).isEqualTo(tid);
+        assertThat(again.get("reused").asBoolean()).isTrue();
+        event(tid, "TOOL_START", Map.of("tool", "analytics.session_analytics"));
+        assertThat(analyticsTask(admin, sid, 202).get("taskId").asText()).isEqualTo(tid);
+        JsonNode at = body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200).get("analytics_task");
+        assertThat(at.get("id").asText()).isEqualTo(tid);
+        assertThat(at.get("status").asText()).isEqualTo("RUNNING");
+        // admin data: the candidate can neither read nor follow it
+        body(get("/api/ai/tasks/" + tid).header("Authorization", cand), 403);
+        body(get("/api/ai/tasks/" + tid + "/stream").header("Authorization", cand), 403);
+        assertThat(body(get("/api/ai/tasks?mine=true").header("Authorization", cand), 200).toString()).doesNotContain(tid).doesNotContain("ANALYTICS");
+        assertThat(body(get("/api/ai/tasks/" + tid).header("Authorization", admin), 200).get("type").asText()).isEqualTo("ANALYTICS");
+        // derived work stays out of the admin's task history (it would crowd out what people asked for); the session lists it
+        assertThat(body(get("/api/ai/tasks?mine=true").header("Authorization", admin), 200).toString()).doesNotContain(tid).doesNotContain("\"ANALYTICS\"");
+        assertThat(body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200).get("tasks").toString()).contains(tid);
+        // the agent stores the snapshot (business.save_analytics) and finishes
+        putAnalytics(sid, bundle(sid, rev(sid), 1.0), 200);
+        event(tid, "DONE", Map.of("stored", true, "figures", Map.of("messages", 1)));
+        JsonNode done = body(get("/api/ai/tasks/" + tid).header("Authorization", admin), 200);
+        assertThat(done.get("status").asText()).isEqualTo("DONE");
+        assertThat(done.get("result").get("stored").asBoolean()).isTrue();
+        expectIdleAnalytics(admin, sid, "fresh");
+        // a finished task is not reused; the type cannot pause for a person (not resumable)
+        JsonNode next = analyticsTask(admin, sid, 202);
+        assertThat(next.get("reused").asBoolean()).isFalse();
+        assertThat(next.get("taskId").asText()).isNotEqualTo(tid);
+        event(next.get("taskId").asText(), "APPROVAL_REQUIRED", Map.of("tool", "business.save_analytics"));
+        assertThat(body(get("/api/ai/tasks/" + next.get("taskId").asText()).header("Authorization", admin), 200).get("status").asText()).isEqualTo("FAILED");
+        assertThat(body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200).get("analytics_task").isNull()).isTrue();
+    }
+
+    /** Admin detail: the snapshot has this status and no ANALYTICS task is working. */
+    void expectIdleAnalytics(String admin, String sid, String analyticsStatus) throws Exception {
+        JsonNode v = body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200);
+        assertThat(v.get("analytics_status").asText()).isEqualTo(analyticsStatus);
+        assertThat(v.get("analytics_task").isNull()).isTrue();
+    }
+
+    @Test
+    void refreshStartsTasksOnlyForTheCompanysNonFreshSessions() throws Exception {
+        String admin = "Bearer " + adminToken();
+        String fresh = startSession().split("\\|")[0];
+        String missing = startSession().split("\\|")[0];
+        String[] st = startSession(sampleArtifacts()).split("\\|");
+        String stale = st[0];
+        putAnalytics(fresh, bundle(fresh, rev(fresh), 1.0), 200);
+        putAnalytics(stale, bundle(stale, rev(stale), 1.0), 200);
+        annotate(stale, "Bearer " + st[1], mark("a1", Map.of("lineStart", 1), "question", "제목 확인"), 201);
+        String working = analyticsTask(admin, missing, 202).get("taskId").asText(); // already being computed
+        int sentBefore = ((TaskDispatcher.Recording) dispatcher).sent.size();
+
+        JsonNode out = body(json(post("/api/admin/analytics/refresh"), Map.of("sessionIds", List.of(fresh, missing, stale, "nope", missing))).header("Authorization", admin), 202);
+        assertThat(out).hasSize(2);
+        assertThat(out.get(0).get("sessionId").asText()).isEqualTo(missing);
+        assertThat(out.get(0).get("taskId").asText()).isEqualTo(working);
+        assertThat(out.get(1).get("sessionId").asText()).isEqualTo(stale);
+        String staleTask = out.get(1).get("taskId").asText();
+        assertThat(sentTaskId(stale, "ANALYTICS", "")).isEqualTo(staleTask);
+        assertThat(((TaskDispatcher.Recording) dispatcher).sent.size()).isEqualTo(sentBefore + 1); // only the stale one is new
+        // asked again while they work: the same tasks
+        JsonNode again = body(json(post("/api/admin/analytics/refresh"), Map.of("sessionIds", List.of(stale, missing))).header("Authorization", admin), 202);
+        assertThat(again.get(0).get("taskId").asText()).isEqualTo(staleTask);
+        assertThat(again.get(1).get("taskId").asText()).isEqualTo(working);
+        // another company's admin gets nothing for these sessions; candidates cannot ask; at most 20 ids
+        String other = "Bearer " + body(json(post("/api/auth/signup"), Map.of("companyName", "새로고침 타사", "email", "refresh@corp.dev", "password", "other-pass-123")), 200).get("token").asText();
+        assertThat(body(json(post("/api/admin/analytics/refresh"), Map.of("sessionIds", List.of(missing, stale))).header("Authorization", other), 202)).isEmpty();
+        body(json(post("/api/admin/analytics/refresh"), Map.of("sessionIds", List.of(stale))).header("Authorization", "Bearer " + st[1]), 403);
+        List<String> many = new ArrayList<>();
+        for (int i = 0; i < 21; i++) many.add("s" + i);
+        body(json(post("/api/admin/analytics/refresh"), Map.of("sessionIds", many)).header("Authorization", admin), 400);
+        body(json(post("/api/admin/analytics/refresh"), Map.of()).header("Authorization", admin), 400);
+    }
+
+    @Test
+    void candidateNeverSeesAnalyticsFiguresOrCharts() throws Exception {
+        String[] st = startSession(sampleArtifacts()).split("\\|");
+        String sid = st[0], cand = "Bearer " + st[1];
+        putAnalytics(sid, bundle(sid, rev(sid), 1.0), 200);
+        body(internal(json(post("/internal/sessions/" + sid + "/turn"), Map.of("new_messages", List.of(), "milestone_idx_after", 0, "turns_after", 1, "completed", true))), 200);
+        body(internal(json(put("/internal/sessions/" + sid + "/report"), Map.of("report", Map.of("status", "ready", "figures", Map.of("pooled_kappa", 0.31),
+                "charts", List.of(Map.of("chart_id", "timeline", "title", "마일스톤 타임라인", "svg", "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>")))))), 200);
+        for (JsonNode cv : List.of(body(get("/api/sessions/" + sid).header("Authorization", cand), 200),
+                body(post("/api/sessions/" + sid + "/finish").header("Authorization", cand), 200))) {
+            assertThat(cv.toString()).doesNotContain("analytics").doesNotContain("figures").doesNotContain("charts")
+                    .doesNotContain("pooled_kappa").doesNotContain("<svg");
+        }
+        // ...while the admin has both the snapshot and the report
+        JsonNode av = body(get("/api/admin/sessions/" + sid).header("Authorization", "Bearer " + adminToken()), 200);
+        assertThat(av.get("analytics").get("figures").get("pooled_kappa").asDouble()).isEqualTo(0.31);
+        assertThat(av.get("report").get("charts")).hasSize(1);
+    }
+
+    @Test
+    void reportApprovalCardCarriesFiguresAndCharts() throws Exception {
+        String sid = startSession().split("\\|")[0];
+        String admin = "Bearer " + adminToken();
+        body(internal(json(post("/internal/sessions/" + sid + "/turn"), Map.of("new_messages", List.of(), "milestone_idx_after", 0, "turns_after", 1, "completed", true))), 200);
+        String rid = sentTaskId(sid, "REPORT", "");
+        String svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"720\" height=\"200\"><text x=\"8\" y=\"20\">소통</text></svg>";
+        event(rid, "APPROVAL_REQUIRED", Map.of("tool", "business.save_report", "draft", Map.of("C01", Map.of("summary", "근거 있는 요약")),
+                "figures", Map.of("messages", 12, "pooled_kappa", 0.31, "checkpoints", "1/2"),
+                "charts", List.of(Map.of("chart_id", "timeline", "title", "마일스톤 타임라인", "svg", svg), Map.of("chart_id", "tki", "title", "TKI", "svg", svg))));
+        JsonNode item = inboxItem(admin, "task:" + rid);
+        assertThat(item.get("kind").asText()).isEqualTo("REPORT");
+        assertThat(item.get("figures").get("pooled_kappa").asDouble()).isEqualTo(0.31);
+        assertThat(item.get("figures").get("checkpoints").asText()).isEqualTo("1/2");
+        assertThat(item.get("charts")).hasSize(2);
+        assertThat(item.get("charts").get(0).get("chart_id").asText()).isEqualTo("timeline");
+        assertThat(item.get("charts").get(0).get("svg").asText()).isEqualTo(svg);
+        assertThat(item.get("draft").get("C01").get("summary").asText()).isEqualTo("근거 있는 요약");
+        JsonNode pending = body(get("/api/admin/sessions/" + sid).header("Authorization", admin), 200).get("pending_approval");
+        assertThat(pending.get("draft").get("charts")).hasSize(2);
+        // a draft from before v4 (no figures / charts) still makes a card
+        String sid2 = startSession().split("\\|")[0];
+        body(internal(json(post("/internal/sessions/" + sid2 + "/turn"), Map.of("new_messages", List.of(), "milestone_idx_after", 0, "turns_after", 1, "completed", true))), 200);
+        String rid2 = sentTaskId(sid2, "REPORT", "");
+        event(rid2, "APPROVAL_REQUIRED", Map.of("tool", "business.save_report"));
+        JsonNode old = inboxItem(admin, "task:" + rid2);
+        assertThat(old.get("figures").isNull()).isTrue();
+        assertThat(old.get("charts")).isEmpty();
+        // the top-bar badge polls a count only: the same number, none of the chart SVGs
+        JsonNode count = body(get("/api/admin/inbox/count").header("Authorization", admin), 200);
+        assertThat(count.get("count").asInt()).isEqualTo(body(get("/api/admin/inbox").header("Authorization", admin), 200).get("count").asInt());
+        assertThat(count.size()).isEqualTo(1);
+        assertThat(count.toString()).doesNotContain("<svg");
+        body(get("/api/admin/inbox/count").header("Authorization", "Bearer " + startSession().split("\\|")[1]), 403);
     }
 }

@@ -11,3 +11,10 @@ export async function refreshInbox() {
   inbox.loaded = true
   return r
 }
+
+/** The badge only: { count } without the cards (a REPORT card carries its chart SVGs, ~30 KB each). */
+export async function refreshInboxCount() {
+  const r = await api.inboxCount()
+  inbox.count = r.count
+  return r
+}

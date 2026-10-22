@@ -97,9 +97,16 @@ public class TaskService {
         return events.findByTaskIdOrderBySeqAsc(taskId).stream().map(e -> new SseHub.Ev(e.seq, e.type, json.any(e.dataJson))).toList();
     }
 
-    /** "My history": a candidate sees the tasks of their own session; an admin sees the company's tasks (system-made ones included). */
+    /**
+     * "My history": a candidate sees the tasks of their own session; an admin sees the company's tasks (system-made ones
+     * included), except the types whose handler is not listedInHistory (derived ANALYTICS refreshes).
+     */
     public List<AiTask> mine(AuthUser u) {
-        if (u.isAdmin()) return tasks.findTop30ByCompanyIdOrderByCreatedAtDesc(u.companyId());
+        if (u.isAdmin()) {
+            List<String> unlisted = handlers.types().stream().filter(type -> !handlers.of(type).listedInHistory()).toList();
+            return unlisted.isEmpty() ? tasks.findTop30ByCompanyIdOrderByCreatedAtDesc(u.companyId())
+                    : tasks.findTop30ByCompanyIdAndTypeNotInOrderByCreatedAtDesc(u.companyId(), unlisted);
+        }
         List<AiTask> out = new ArrayList<>(tasks.findTop30ByCreatedByOrderByCreatedAtDesc(u.subject()));
         out.removeIf(t -> !handlers.of(t.type).candidateVisible());
         if (u.accountId() != null) {

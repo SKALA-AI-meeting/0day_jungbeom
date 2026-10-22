@@ -5,8 +5,9 @@ It never touches a database: every tool calls Spring Boot's internal API (/inter
 Spring message, which the agent's harness treats as non-retryable for 4xx.
 
   조회  get_session_state, list_conditions, get_account, list_artifacts, get_artifact, list_annotations
-  변경  init_session, append_turn, save_detection, save_report, decide_account
-        (save_report, and decide_account except auto_clean / auto_schema, need human approval in the agent)
+  변경  init_session, append_turn, save_detection, save_report, decide_account, save_analytics
+        (save_report, and decide_account except auto_clean / auto_schema, need human approval in the agent;
+         save_analytics stores derived data from analytics-mcp and needs none)
 
 Shared artifacts are seeded once at START (init_session, replace-all) in the contract shape only: anything else on an
 item (the agent's planted checkpoints) is dropped here before it can reach Spring or the browser.
@@ -154,6 +155,27 @@ async def save_detection(session_id: str, msg_idx: int, detection: dict) -> dict
 async def save_report(session_id: str, report: dict) -> dict:
     """[변경·승인 필요] 리포트를 저장해 기업 관리자에게 공개한다. Agent는 사람이 승인한 뒤에만 호출한다."""
     return await _req("PUT", f"/internal/sessions/{_sid(session_id)}/report", {"report": report})
+
+
+@mcp.tool
+async def save_analytics(session_id: str, analytics: dict) -> dict:
+    """[변경] analytics-mcp가 계산한 관리자용 분석 스냅샷(번들 version 1)을 저장한다. 파생 데이터라 승인이 필요 없고,
+    Spring은 저장된 것보다 오래된 source.state_rev면 버린다(stored=false)."""
+    sid = _sid(session_id)
+    src = analytics.get("source") if isinstance(analytics, dict) else None
+    if not isinstance(src, dict) or analytics.get("version") != 1 or isinstance(analytics.get("version"), bool):
+        raise ToolError("400 분석 번들 형식(version 1, source)이 올바르지 않아요.")
+    if analytics.get("session_id") != sid:
+        raise ToolError("400 분석 번들의 session_id가 세션과 달라요.")
+    rev = src.get("state_rev")
+    if not isinstance(rev, int) or isinstance(rev, bool) or rev < 0:
+        raise ToolError("400 source.state_rev는 0 이상 정수여야 해요.")
+    # the parts the admin screens draw from (Spring checks the same): a partial bundle must not look like a fresh snapshot
+    if not all(isinstance(analytics.get(k), dict) for k in ("row", "heatmap", "figures")) \
+            or not all(isinstance(analytics.get(k), list) and analytics.get(k) for k in ("timeline", "charts")):
+        raise ToolError("400 분석 번들에 row·heatmap·figures(객체)와 timeline·charts(비어 있지 않은 목록)가 있어야 해요.")
+    res = await _req("PUT", f"/internal/sessions/{sid}/analytics", analytics)
+    return {"stored": bool(res.get("stored"))}
 
 
 @mcp.tool

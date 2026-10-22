@@ -13,6 +13,8 @@ const meta = ref(null)
 const error = ref('')
 const inv = ref({ alias: '', email: '' })
 const created = ref(null)
+const loaded = ref(false) // the empty-state texts wait for the first answer
+const now = ref(Date.now())
 let timer
 
 async function load() {
@@ -21,13 +23,40 @@ async function load() {
       api.adminList(), api.myTasks(auth.admin()), api.adminInvites(), api.accounts(),
     ])
     error.value = ''
+    now.value = Date.now()
+    refreshStale(rows.value)
   } catch (e) {
     if (e.status !== 401) error.value = e.message || '목록을 불러오지 못했어요.' // 401 is routed to login by the API client
+  } finally {
+    loaded.value = true
   }
 }
-onMounted(async () => {
-  meta.value = await api.meta().catch(() => null)
-  await load()
+
+// Rows carry analytics_status (api-contract §5). When the set of sessions whose snapshot is not fresh changes,
+// ask Spring once to refresh up to 20 of them (it creates or reuses ANALYTICS tasks); the 5 s poll alone never asks again.
+// A row reads "분석 갱신 중" only while a task it asked for may still be running; after that (task failed, agent down)
+// it says plainly that the numbers are behind, and the session page offers "다시 계산".
+const REFRESH_MS = 90_000
+const notFresh = (r) => !!r.analytics_status && r.analytics_status !== 'fresh'
+const asked = ref({}) // sessionId -> when its refresh was asked for
+const refreshing = (r) => notFresh(r) && now.value - (asked.value[r.id] || 0) < REFRESH_MS
+let staleKey = ''
+function refreshStale(list) {
+  const ids = list.filter(notFresh).map((r) => r.id)
+  const key = [...ids].sort().join(',')
+  if (key === staleKey) return
+  staleKey = key
+  if (!ids.length) return
+  api.refreshAnalytics(ids.slice(0, 20))
+    .then((started) => {
+      const at = Date.now()
+      asked.value = { ...asked.value, ...Object.fromEntries(started.map((x) => [x.sessionId, at])) }
+    })
+    .catch(() => {}) // best effort: the rows say the numbers are behind either way
+}
+onMounted(() => {
+  api.meta().then((m) => (meta.value = m)).catch(() => {}) // labels only (jobLabel falls back to the id); /api/meta goes through the agent, never awaited
+  load()
   timer = setInterval(load, 5000)
 })
 onBeforeUnmount(() => clearInterval(timer))
@@ -77,12 +106,17 @@ const fmt = (t) => new Date(typeof t === 'number' ? t * 1000 : t).toLocaleString
     </Transition>
 
     <section class="card">
-      <p v-if="!rows.length" class="muted">아직 세션이 없어요. 지원자 화면에서 대화를 시작해 보세요.</p>
+      <p v-if="!loaded" class="muted">불러오는 중…</p>
+      <p v-else-if="!rows.length" class="muted">아직 세션이 없어요. 지원자 화면에서 대화를 시작해 보세요.</p>
       <table v-else>
         <thead><tr><th>별칭</th><th>시나리오</th><th>가치 축 · 선택</th><th>진행</th><th>상태</th><th>메시지</th><th>근거</th><th>리포트</th><th>시작</th></tr></thead>
         <tbody>
-          <tr v-for="r in rows" :key="r.id" @click="$router.push(`/admin/sessions/${r.id}`)">
-            <td><b>{{ r.alias }}</b></td>
+          <tr v-for="r in rows" :key="r.id" tabindex="0" @click="$router.push(`/admin/sessions/${r.id}`)" @keydown.enter="$router.push(`/admin/sessions/${r.id}`)">
+            <td>
+              <b>{{ r.alias }}</b>
+              <div v-if="refreshing(r)" class="anl" title="차트와 수치를 최신 대화 기준으로 다시 계산하고 있어요"><i aria-hidden="true" />분석 갱신 중</div>
+              <div v-else-if="notFresh(r)" class="anl idle" title="최근 대화가 아직 차트와 수치에 반영되지 않았어요. 세션을 열면 다시 계산할 수 있어요.">분석 최신 아님</div>
+            </td>
             <td>{{ r.category }}</td>
             <td>
               <template v-if="r.axis"><span class="small">{{ r.axis }}</span><br /><span class="chip" :class="r.choice ? 'blue' : 'gray'">{{ r.choice || '미선택' }}</span></template>
@@ -105,7 +139,8 @@ const fmt = (t) => new Date(typeof t === 'number' ? t * 1000 : t).toLocaleString
 
     <section class="card accts">
       <h3>지원자 계정 <small class="muted">에이전트가 가입 요건과 입력값을 확인한 결과예요</small></h3>
-      <p v-if="!accounts.length" class="muted">아직 가입한 지원자가 없어요. 아래에서 초대 링크를 만들어 보내 보세요.</p>
+      <p v-if="!loaded" class="muted">불러오는 중…</p>
+      <p v-else-if="!accounts.length" class="muted">아직 가입한 지원자가 없어요. 아래에서 초대 링크를 만들어 보내 보세요.</p>
       <table v-else class="tasks">
         <thead><tr><th>별칭</th><th>이메일</th><th>직무 · 경력</th><th>상태</th><th>근거</th><th>가입</th></tr></thead>
         <tbody>
@@ -139,8 +174,9 @@ const fmt = (t) => new Date(typeof t === 'number' ? t * 1000 : t).toLocaleString
       </div>
       <div class="card">
         <h3>AI 작업 이력</h3>
-        <p class="muted small">계정 확인·대화·리포트처럼 회사 안에서 실행된 에이전트 작업이에요. (GET /api/ai/tasks?mine=true)</p>
-        <p v-if="!tasks.length" class="muted">아직 요청한 작업이 없어요.</p>
+        <p class="muted small">계정 확인·대화·리포트처럼 회사 안에서 실행된 에이전트 작업이에요. 분석 스냅숏 갱신은 세션 상세에서 볼 수 있어요. (GET /api/ai/tasks?mine=true)</p>
+        <p v-if="!loaded" class="muted">불러오는 중…</p>
+        <p v-else-if="!tasks.length" class="muted">아직 요청한 작업이 없어요.</p>
         <table v-else class="tasks">
           <tbody>
             <tr v-for="t in tasks.slice(0, 8)" :key="t.id" @click="t.sessionId && $router.push(`/admin/sessions/${t.sessionId}`)">
@@ -177,7 +213,13 @@ table { width: 100%; border-collapse: collapse; }
 th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 td { padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 tbody tr { cursor: pointer; }
-tbody tr:hover { background: var(--bg); }
+tbody tr:hover, tbody tr:focus-visible { background: var(--bg); }
+tbody tr:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.anl { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.anl i { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); animation: blink 1.6s ease-in-out infinite; }
+.anl.idle { border-style: dashed; }
+@keyframes blink { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .anl i, .pulse { animation: none; } }
 .bar { display: flex; gap: 3px; width: 88px; }
 .bar i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
 .bar i.on { background: var(--brand); }

@@ -3,7 +3,7 @@ package dev.dayzero.backend.domain;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
-/** An agent job (START | TURN | REPORT | ACCOUNT_REVIEW). Created with 202, executed by the agent, progress relayed as SSE. */
+/** An agent job (START | TURN | REPORT | ACCOUNT_REVIEW | ANALYTICS). Created with 202, executed by the agent, progress relayed as SSE. */
 @Entity
 @Table(name = "ai_tasks")
 public class AiTask {

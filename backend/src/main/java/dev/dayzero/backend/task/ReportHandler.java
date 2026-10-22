@@ -3,13 +3,16 @@ package dev.dayzero.backend.task;
 import dev.dayzero.backend.domain.AiTask;
 import dev.dayzero.backend.repo.ChatSessionRepository;
 import dev.dayzero.backend.service.Json;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /**
  * REPORT: the agent drafts the report and pauses at save_report until an admin approves publishing it.
  * Mirrors the task into sessions.report_status; a failed report becomes a REPORT_FAILED checklist item.
+ * The checklist card carries the draft's figures and charts (analytics-mcp) as the agent sent them.
  */
 @Component
 public class ReportHandler implements TaskHandler {
@@ -35,6 +38,9 @@ public class ReportHandler implements TaskHandler {
     @Override
     public Optional<Map<String, Object>> inboxItem(AiTask t) {
         Map<String, Object> it = InboxItems.approval(t, json, "공개 승인", "반려");
+        Map<String, Object> ask = Objects.requireNonNullElseGet(json.map(t.resultJson), Map::of);
+        it.put("figures", ask.get("figures"));                     // the numbers the summary is grounded in
+        it.put("charts", ask.getOrDefault("charts", List.of()));   // [{chart_id, title, svg}]: shown as <img>, never as HTML
         if (t.sessionId != null) {
             sessions.findById(t.sessionId).ifPresent(s -> {
                 it.put("title", "리포트 공개 승인 요청");

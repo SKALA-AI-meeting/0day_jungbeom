@@ -18,6 +18,12 @@ public interface TaskHandler {
     /** May the candidate who owns the task's session read it (GET / stream / history)? */
     default boolean candidateVisible() { return false; }
 
+    /**
+     * Listed in the admin's task history (GET /api/ai/tasks?mine=true)? False for derived, system-made work that would
+     * crowd out the tasks a person asked for; it stays readable by id and on its session's detail page.
+     */
+    default boolean listedInHistory() { return true; }
+
     /** Can the agent's graph pause for a person (APPROVAL_REQUIRED) and resume on the same thread? */
     default boolean resumable() { return false; }
 

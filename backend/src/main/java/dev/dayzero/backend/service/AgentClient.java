@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * Internal HTTP to the FastAPI agent (Spring -> agent only; never an LLM call from Spring).
  * Catalog and view endpoints are pure functions over scenario data that lives with the agent.
+ * The admin screens never come through here: their analytics are an ANALYTICS task's stored snapshot (AnalyticsService).
  */
 @Component
 public class AgentClient {
@@ -51,14 +52,10 @@ public class AgentClient {
         }
     }
 
+    /** POST /agent/views/{kind}; only the candidate view is still made this way (api-contract §5). */
     @SuppressWarnings("unchecked")
     public Map<String, Object> view(String kind, Map<String, Object> state) {
         return call(() -> http.post().uri("/agent/views/{kind}", kind).body(state).retrieve().body(Map.class));
-    }
-
-    @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> rows(List<Map<String, Object>> states) {
-        return call(() -> http.post().uri("/agent/views/admin-rows").body(states).retrieve().body(List.class));
     }
 
     public void submit(Map<String, Object> taskMessage) {

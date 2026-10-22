@@ -1,8 +1,10 @@
-"""Task execution (one agent job = one trace). START | TURN | REPORT | ACCOUNT_REVIEW (RUN, or RESUME after approval).
+"""Task execution (one agent job = one trace). START | TURN | REPORT | ACCOUNT_REVIEW | ANALYTICS (RUN, or RESUME after approval).
 
 New task types register a Handler in HANDLERS (handlers.py: run, and resume if the graph can pause for a person).
 
 Data in and out goes through business-mcp (Spring /internal/**); the agent never writes the business DB.
+Admin numbers and charts come from analytics-mcp: the ANALYTICS task, the report graph, and a quiet background refresh
+after every successful START and TURN store the bundle as Spring's snapshot (business.save_analytics, newest state_rev wins).
 Retry: the caller (HTTP background loop or RabbitMQ consumer) retries retryable failures; only the final
 attempt reports FAILED. TOKEN events carry `attempt` and a `reset` flag, so a retry replaces partial text.
 """
@@ -133,6 +135,7 @@ async def _start(msg: dict) -> dict:
     sid = msg["sessionId"]
     st = await tools.call("business", "get_session_state", {"session_id": sid})
     if st.get("messages"):  # idempotent on retry
+        _spawn(_refresh_background(sid))
         return {"messages": st["messages"], "milestone_idx": st["milestone_idx"], "skipped": True}
     scn = get_scenario(st["scenario_id"])
     history = await tools.call("business", "list_conditions", {})
@@ -144,6 +147,7 @@ async def _start(msg: dict) -> dict:
     m0 = {"idx": 0, "speaker": beat["speaker"], "text": reply["text"], "sources": reply.get("sources") or [], "milestone": MILESTONE_KEYS[0], "ts": time.time()}
     shared = artifacts.without_checkpoints(artifacts.catalog(scn, st["scenario_id"]))  # planted checkpoints stay in the agent
     await tools.call("business", "init_session", {"session_id": sid, "condition": condition, "message": m0, "artifacts": shared})
+    _spawn(_refresh_background(sid))
     return {"messages": [m0], "milestone_idx": 0}
 
 
@@ -154,6 +158,7 @@ async def _turn(msg: dict, ctx: TaskContext) -> dict:
         raise NonRetryable("session is not active")
     user_idx = int(p["user_idx"])
     if any(m["idx"] > user_idx for m in st["messages"]):  # already applied by an earlier attempt
+        _spawn(_refresh_background(sid))
         return {"new_messages": [m for m in st["messages"] if m["idx"] > user_idx], "milestone_idx": st["milestone_idx"], "status": st["status"], "skipped": True}
     prior = [m for m in st["messages"] if m["idx"] < user_idx]
     state = {"session": {**st, "messages": prior}, "user_text": p["text"], "user_idx": user_idx,
@@ -174,8 +179,15 @@ async def _turn(msg: dict, ctx: TaskContext) -> dict:
     # quiet: TURN streams to the candidate and these args carry observer evidence and the ledger (the span is still traced)
     res = await tools.call("business", "append_turn", turn, quiet=True)
     user_msg = next(m for m in st["messages"] if m["idx"] == user_idx)
-    _spawn(_detect_background(sid, user_msg, prior))
+    _spawn(_after_turn(sid, user_msg, prior))
     return {"new_messages": new, "milestone_idx": after, "status": res.get("status"), "completed": bool(final.get("completed"))}
+
+
+async def _after_turn(sid: str, user_msg: dict, prior: list[dict]) -> None:
+    """Detection first, then one snapshot refresh: the stored bundle then already includes this message's judgement
+    (refreshing in parallel would store a snapshot that the detection makes stale right away)."""
+    await _detect_background(sid, user_msg, prior)
+    await _refresh_background(sid)
 
 
 async def _detect_background(sid: str, user_msg: dict, prior: list[dict]) -> None:
@@ -188,6 +200,25 @@ async def _detect_background(sid: str, user_msg: dict, prior: list[dict]) -> Non
         log.exception("background detection failed")
 
 
+async def refresh_analytics(sid: str, *, quiet: bool = False) -> dict:
+    """analytics-mcp computes the bundle from Spring's state; business-mcp stores it as the session's snapshot.
+    Spring keeps it only if its source.state_rev is not older than the stored one -> {"stored": bool}."""
+    bundle = await tools.call("analytics", "session_analytics", {"session_id": sid}, quiet=quiet)
+    res = await tools.call("business", "save_analytics", {"session_id": sid, "analytics": bundle}, quiet=quiet)
+    return {"stored": bool(res.get("stored")), "figures": bundle.get("figures")}
+
+
+async def _refresh_background(sid: str) -> None:
+    """After START / TURN. Quiet: those streams reach the candidate and the bundle is evaluation data.
+    A failure is only logged; the admin screen shows the snapshot as stale and can ask for an ANALYTICS task."""
+    if not tools.enabled("analytics"):
+        return
+    try:
+        await refresh_analytics(sid, quiet=True)
+    except Exception:
+        log.exception("background analytics refresh failed for %s", sid)
+
+
 def _spawn(coro) -> None:
     t = asyncio.create_task(coro)
     _bg.add(t)
@@ -195,7 +226,7 @@ def _spawn(coro) -> None:
 
 
 async def drain_background() -> None:
-    if _bg:
+    while _bg:  # a drained task may have spawned the next one (task -> detection -> snapshot refresh)
         await asyncio.gather(*list(_bg), return_exceptions=True)
 
 
@@ -238,10 +269,20 @@ async def _report_resume(msg: dict) -> dict:
     return {"approved": bool(decision.get("approved")), "saved": bool(out.get("saved"))}
 
 
+async def _analytics_run(msg: dict, ctx: TaskContext) -> dict:
+    """ANALYTICS (admin asked, or the snapshot is missing/stale): analytics.session_analytics -> business.save_analytics.
+    `stored` is false when Spring already holds a snapshot of a newer state_rev (nothing lost: that one is fresher)."""
+    sid = msg.get("sessionId")
+    if not sid:
+        raise NonRetryable("ANALYTICS needs a sessionId")
+    return await refresh_analytics(sid)
+
+
 # Task registry: add a Handler here (and a TaskHandler on the Spring side) to plug in a new agent workflow.
 HANDLERS: Registry = Registry([
     Handler("START", lambda msg, ctx: _start(msg), description="세션 시작: 상대 조건 배정, 같이 볼 과제 시드, 첫 메시지"),
     Handler("TURN", _turn, description="지원자 한 턴: 관찰 근거, 팀원 응답, 단계 전환, 대화 장부"),
-    Handler("REPORT", lambda msg, ctx: _report_run(msg), _report_resume, description="역량 리포트 작성, 관리자 승인 뒤 저장"),
+    Handler("REPORT", lambda msg, ctx: _report_run(msg), _report_resume, description="역량 리포트 작성(분석 수치·차트 근거), 관리자 승인 뒤 저장"),
     Handler("ACCOUNT_REVIEW", _review_run, _review_resume, description="지원자 계정 심사, 애매하면 관리자 승인"),
+    Handler("ANALYTICS", _analytics_run, description="관리자 분석 스냅샷 갱신: analytics-mcp로 다시 계산해 저장"),
 ])

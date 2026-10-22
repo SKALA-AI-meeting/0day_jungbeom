@@ -22,24 +22,36 @@ def test_views_hide_secrets_from_candidates():
              "condition": {"stratum": "V2", "lead": "competing", "peer": "avoiding"}, "choice": None, "milestone_log": [], "notes": "",
              "created_at": 0, "messages": [], "observations": [], "detections": {}, "report_status": "none"}
     with TestClient(app) as c:
+        assert c.post("/agent/views/candidate", json=state).status_code == 401
         cand = c.post("/agent/views/candidate", json=state, headers=H).json()
         assert cand["dilemma"]["options"] and "beats" not in str(cand) and "condition" not in cand
-        adm = c.post("/agent/views/admin", json=state, headers=H).json()
-        assert adm["condition"]["lead_mode"]["label"] == "경쟁형" and adm["dilemma"]["axis"]["id"] == "V2"
-        rows = c.post("/agent/views/admin-rows", json=[{**state, "message_count": 3, "observation_count": 1}], headers=H).json()
-        assert rows[0]["axis"] and rows[0]["messages"] == 3
+        assert "analytics" not in cand and "figures" not in cand and "charts" not in cand and "detector" not in cand
+        assert c.post("/agent/views/candidate", json=[state], headers=H).status_code == 400
+
+
+def test_admin_views_are_gone():
+    """v4 (api-contract §5): the admin screens read Spring's analytics snapshot; nothing calls the agent synchronously for them."""
+    state = {"id": "s1", "alias": "A", "scenario_id": "delay", "status": "active", "milestone_idx": 0, "created_at": 0}
+    with TestClient(app) as c:
+        assert c.post("/agent/views/admin", json=state, headers=H).status_code == 404
+        assert c.post("/agent/views/admin-rows", json=[state], headers=H).status_code == 404
+        assert c.post("/agent/views/report", json=state, headers=H).status_code == 404
+        assert c.post("/agent/views/admin", json=state).status_code == 401
+        paths = {r.path for r in app.routes}
+        assert "/agent/views/admin-rows" not in paths and "/agent/views/{kind}" in paths
 
 
 def test_handlers_endpoint_lists_task_types():
     with TestClient(app) as c:
         assert c.get("/agent/handlers").status_code == 401
         rows = c.get("/agent/handlers", headers=H).json()
-        assert {r["type"]: r["resumable"] for r in rows} == {"START": False, "TURN": False, "REPORT": True, "ACCOUNT_REVIEW": True}
+        assert {r["type"]: r["resumable"] for r in rows} == {"START": False, "TURN": False, "REPORT": True, "ACCOUNT_REVIEW": True,
+                                                             "ANALYTICS": False}
         assert all(set(r) == {"type", "resumable", "description"} for r in rows)
 
 
-def test_admin_view_checks_artifacts_and_candidate_view_stays_clean():
-    from app import artifacts
+def test_artifact_checks_are_admin_analytics_and_candidate_view_stays_clean():
+    from app import analytics, artifacts
     from app.scenarios import get_scenario
 
     planted = artifacts.catalog(get_scenario("conflict"), "conflict")
@@ -50,9 +62,9 @@ def test_admin_view_checks_artifacts_and_candidate_view_stays_clean():
              "condition": {"stratum": "C", "lead": "competing", "peer": "avoiding"}, "choice": None, "milestone_log": [], "notes": "",
              "created_at": 0, "messages": [], "observations": [], "detections": {}, "report_status": "none",
              "artifacts": artifacts.without_checkpoints(planted), "annotations": [note], "dialogue": None}
+    adm = analytics.build(state)  # what analytics-mcp serves and Spring stores as the admin snapshot
+    hit = next(x for x in adm["artifact_checks"] if x["artifact_id"] == "a3" and x["line"] == line)
+    assert hit["spotted"] and hit["annotation_ids"] == [7] and len(adm["artifact_checks"]) == 5
     with TestClient(app) as c:
-        adm = c.post("/agent/views/admin", json=state, headers=H).json()
-        hit = next(x for x in adm["artifact_checks"] if x["artifact_id"] == "a3" and x["line"] == line)
-        assert hit["spotted"] and hit["annotation_ids"] == [7] and len(adm["artifact_checks"]) == 5
         cand = c.post("/agent/views/candidate", json=state, headers=H).json()
         assert "artifact_checks" not in cand and "checkpoints" not in str(cand) and hit["issue"] not in str(cand)

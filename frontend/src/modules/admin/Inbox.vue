@@ -3,7 +3,9 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { api } from '../../api'
+import ChartGallery from '../../components/ChartGallery.vue'
 import CheckMark from '../../components/CheckMark.vue'
+import FigureChips from '../../components/FigureChips.vue'
 import { inbox, refreshInbox } from '../../state/inbox'
 
 const route = useRoute()
@@ -19,9 +21,9 @@ const submitting = ref(false)
 const error = ref('')
 
 onMounted(async () => {
+  api.meta().then((m) => (meta.value = m)).catch(() => {}) // labels only (they fall back to ids); /api/meta goes through the agent
   try {
-    const [r, m] = await Promise.all([refreshInbox(), api.meta()])
-    meta.value = m
+    const r = await refreshInbox()
     if (!r.count) return router.replace(after()) // nothing is waiting on a person: straight on
     items.value = r.items
     open.value = r.items[0].id
@@ -156,7 +158,9 @@ async function submit() {
             </ul>
 
             <div v-if="it.kind === 'REPORT' && it.draft" class="draft">
+              <FigureChips v-if="it.figures" :figures="it.figures" compact />
               <div v-for="(c, cid) in it.draft" :key="cid"><b>{{ cid }} {{ c.name }}</b> <span class="muted small">근거 {{ c.count }}건</span><p>{{ c.summary }}</p></div>
+              <ChartGallery v-if="it.charts?.length" :charts="it.charts" compact />
               <RouterLink v-if="it.sessionId" :to="`/admin/sessions/${it.sessionId}`" class="small">대화와 근거 전체 보기 →</RouterLink>
             </div>
             <div v-else-if="it.kind === 'REPORT_FAILED'" class="draft">

@@ -1,4 +1,4 @@
-"""Task handlers: one entry per agent task type (START, TURN, REPORT, ACCOUNT_REVIEW, ...).
+"""Task handlers: one entry per agent task type (START, TURN, REPORT, ACCOUNT_REVIEW, ANALYTICS, ...).
 
 Spring keeps the matching TaskHandler bean (dev.dayzero.backend.task) and GET /agent/handlers lets it check that both
 sides know the same types. A handler is

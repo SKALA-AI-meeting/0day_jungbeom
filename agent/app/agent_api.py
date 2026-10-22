@@ -3,7 +3,7 @@
 POST /agent/tasks          run a task in the background (HTTP dispatch mode) -> 202
 GET  /agent/meta           scenario catalog for the UI (proxied by Spring /api/meta)
 GET  /agent/scenarios/{id} public scenario (no beats, stances or hidden axis)
-POST /agent/views/{kind}   candidate | admin view over a state from Spring;  /agent/views/admin-rows for lists
+POST /agent/views/candidate the candidate view over a state from Spring (admin screens read the analytics snapshot, api-contract §5)
 GET  /agent/handlers       task types this agent runs [{type, resumable, description}] (Spring checks its TaskHandlers)
 GET  /agent/health         checkpointer, model mode, prompt versions
 """
@@ -15,9 +15,10 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Body, Depends, FastAPI, Header, HTTPException
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
@@ -89,15 +90,11 @@ def scenario(scenario_id: str):
         raise HTTPException(404, "unknown scenario")
 
 
-@app.post("/agent/views/admin-rows", dependencies=[Depends(internal)])
-def admin_rows(states: list[dict]):
-    return [views.admin_row(s) for s in states]
-
-
 @app.post("/agent/views/{kind}", dependencies=[Depends(internal)])
-def view(kind: str, state: dict):
-    if kind == "candidate":
-        return views.candidate_view(state)
-    if kind == "admin":
-        return views.admin_view(state)
-    raise HTTPException(404, "unknown view")
+def view(kind: str, state: Any = Body(default=None)):
+    # admin / admin-rows are gone: the admin screens render Spring's analytics snapshot (analytics-mcp, api-contract §5)
+    if kind != "candidate":
+        raise HTTPException(404, "unknown view")
+    if not isinstance(state, dict):
+        raise HTTPException(400, "state object is required")
+    return views.candidate_view(state)

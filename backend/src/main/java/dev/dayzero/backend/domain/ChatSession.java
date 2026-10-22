@@ -25,4 +25,9 @@ public class ChatSession {
     public String reportStatus = "none"; // none pending awaiting_approval ready rejected failed dismissed
     public OffsetDateTime createdAt = OffsetDateTime.now();
     public OffsetDateTime endedAt;
+    // Read-only here: state_rev only moves through ChatSessionRepository.bumpRev (atomic, so concurrent changes are all
+    // counted) and the analytics snapshot only through storeAnalytics (so a conversation write can never overwrite it).
+    @Column(insertable = false, updatable = false) public long stateRev;
+    @Column(columnDefinition = "text", insertable = false, updatable = false) public String analyticsJson; // admin only
+    @Column(insertable = false, updatable = false) public OffsetDateTime analyticsAt;
 }

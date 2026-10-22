@@ -16,7 +16,9 @@ import org.springframework.web.server.ResponseStatusException;
  * All business rules of an assessment session live here (single place, PDF 5-1):
  * invite validity, one turn at a time, choice only once and only in the compromise milestone,
  * status transitions, automatic report task on completion, company isolation, restarting a failed opening.
- * Shared work items and markups: ArtifactService.
+ * Every change that affects the admin analytics bumps sessions.state_rev (ChatSessionRepository.bumpRev): init, turn
+ * (the candidate's message and choice, the agent's reply), detection, report save, completion; markups in ArtifactService.
+ * Shared work items and markups: ArtifactService. Analytics snapshot and ANALYTICS tasks: AnalyticsService.
  */
 @Service
 public class SessionService {
@@ -33,15 +35,16 @@ public class SessionService {
     private final TaskService tasks;
     private final AgentClient agent;
     private final ArtifactService artifacts;
+    private final AnalyticsService analytics;
     private final Json json;
     private final AppProperties props;
 
     public SessionService(ChatSessionRepository sessions, InviteRepository invites, MessageRepository messages, ObservationRepository observations,
                           DetectionRepository detections, AiTaskRepository taskRepo, TaskService tasks, AgentClient agent, ArtifactService artifacts,
-                          Json json, AppProperties props) {
+                          AnalyticsService analytics, Json json, AppProperties props) {
         this.sessions = sessions; this.invites = invites; this.messages = messages; this.observations = observations;
         this.detections = detections; this.taskRepo = taskRepo; this.tasks = tasks; this.agent = agent; this.artifacts = artifacts;
-        this.json = json; this.props = props;
+        this.analytics = analytics; this.json = json; this.props = props;
     }
 
     // ---------------------------------------------------------------- invites
@@ -150,6 +153,7 @@ public class SessionService {
             s.choiceJson = json.write(Map.of("option", choiceId, "pole", choiceId, "msg_idx", idx, "ts", epoch(m.createdAt)));
             sessions.save(s);
         }
+        sessions.bumpRev(sessionId); // the candidate's message (and choice) counts in the analytics
         AiTask t = tasks.create("TURN", sessionId, s.company.id, u.accountId(), u.subject(), Map.of("text", m.text, "user_idx", idx, "choice_id", choiceId == null ? "" : choiceId));
         return Map.of("taskId", t.id, "userMessage", messageMap(m));
     }
@@ -223,6 +227,7 @@ public class SessionService {
         s.status = "completed";
         s.endedAt = OffsetDateTime.now();
         sessions.save(s);
+        sessions.bumpRev(s.id);
         requestReport(s, "system");
     }
 
@@ -237,8 +242,14 @@ public class SessionService {
 
     // ---------------------------------------------------------------- internal API (agent via business-mcp)
     public Map<String, Object> state(String id) {
-        ChatSession s = load(id);
+        return state(load(id));
+    }
+
+    /** state_rev is read first (with the row), so a change that lands while the rest is read only makes the snapshot look older. */
+    private Map<String, Object> state(ChatSession s) {
+        String id = s.id;
         Map<String, Object> st = baseState(s);
+        st.put("state_rev", s.stateRev);
         st.put("messages", messages.findBySessionIdOrderByIdxAsc(id).stream().map(this::messageMap).toList());
         st.put("observations", observations.findBySessionIdOrderByIdAsc(id).stream().map(this::obsMap).toList());
         Map<String, Object> det = new LinkedHashMap<>();
@@ -271,7 +282,7 @@ public class SessionService {
     }
 
     public List<Map<String, Object>> conditions() {
-        return sessions.findByConditionJsonIsNotNull().stream().map(s -> json.map(s.conditionJson)).toList();
+        return sessions.allConditionJson().stream().map(json::map).toList();
     }
 
     @Transactional
@@ -285,6 +296,7 @@ public class SessionService {
         saveAgentMessage(id, msg, 0);
         s.milestoneLogJson = json.write(List.of(Map.of("key", MILESTONES.get(0), "entered_idx", 0, "ts", epoch(OffsetDateTime.now()))));
         sessions.save(s);
+        sessions.bumpRev(id);
         return Map.of("ok", true);
     }
 
@@ -319,6 +331,7 @@ public class SessionService {
             s.dialogueJson = json.write(dialogue);
         }
         sessions.save(s);
+        sessions.bumpRev(id);
         boolean completed = Boolean.TRUE.equals(body.get("completed"));
         if (completed) complete(s);
         return Map.of("status", s.status, "milestone_idx", s.milestoneIdx);
@@ -330,6 +343,7 @@ public class SessionService {
         Detection d = detections.findBySessionIdAndMsgIdx(id, msgIdx).orElseGet(Detection::new);
         d.sessionId = id; d.msgIdx = msgIdx; d.docJson = json.write(doc);
         detections.save(d);
+        sessions.bumpRev(id);
     }
 
     @Transactional
@@ -339,17 +353,25 @@ public class SessionService {
         s.reportJson = json.write(report);
         s.reportStatus = "ready";
         sessions.save(s);
+        sessions.bumpRev(id);
     }
 
-    // ---------------------------------------------------------------- views (computed by the agent's catalog)
-    /** The candidate's screen: never the dialogue ledger, observations or planted checkpoints. */
+    // ---------------------------------------------------------------- views
+    /**
+     * The candidate's screen (computed by the agent's catalog): never the dialogue ledger, observations, planted
+     * checkpoints, the report or anything from the analytics (bundle, figures, charts).
+     */
     public Map<String, Object> candidateView(AuthUser u, String id) {
         authorized(id, u);
         Map<String, Object> st = state(id);
         st.remove("dialogue");
+        st.remove("report"); // carries the report's figures and charts: for the company only
         Map<String, Object> v = new LinkedHashMap<>(agent.view("candidate", st));
         v.remove("dialogue");
         v.remove("artifact_checks");
+        v.remove("analytics");
+        v.remove("figures");
+        v.remove("charts");
         v.put("artifacts", artifacts.publicList(id));
         v.put("start_status", startStatus(id));
         v.put("busy", !taskRepo.findBySessionIdAndTypeAndStatusIn(id, "TURN", TaskService.ACTIVE).isEmpty()
@@ -357,30 +379,60 @@ public class SessionService {
         return v;
     }
 
+    /**
+     * The admin's session screen — no call to the agent. Spring's own data (the session state, public work items,
+     * dialogue ledger, tasks, the report draft waiting for approval) plus the stored analytics snapshot: everything
+     * the agent computes (scenario, painpoints, dilemma and condition details, detector, artifact_checks, timeline,
+     * heatmap, figures, charts) is only in `analytics`, with `analytics_status` and the working `analytics_task`.
+     */
     public Map<String, Object> adminView(AuthUser u, String id) {
         ChatSession s = authorized(id, u);
-        Map<String, Object> v = new LinkedHashMap<>(agent.view("admin", state(id))); // the agent adds artifact_checks
+        Map<String, Object> v = state(s);
         v.put("artifacts", artifacts.publicList(id));
-        v.put("dialogue", json.any(s.dialogueJson));
         List<Map<String, Object>> recent = new ArrayList<>();
+        Map<String, Object> analyticsTask = null;
         for (AiTask t : taskRepo.findBySessionIdOrderByCreatedAtDesc(id)) {
             recent.add(taskMap(t));
             if ("REPORT".equals(t.type) && "WAITING_APPROVAL".equals(t.status) && !v.containsKey("pending_approval"))
                 v.put("pending_approval", Map.of("taskId", t.id, "draft", Objects.requireNonNullElse(json.any(t.resultJson), Map.of())));
+            if (analyticsTask == null) analyticsTask = AnalyticsService.working(t);
         }
         v.put("tasks", recent);
+        Map<String, Object> bundle = analytics.snapshot(s);
+        v.put("analytics", bundle);
+        v.put("analytics_status", analytics.status(s, bundle));
+        v.put("analytics_task", analyticsTask);
         return v;
     }
 
+    /**
+     * Dashboard rows — no call to the agent. The keys of the agent-made rows (category, axis, choice, condition) come
+     * from the snapshot's `row` (category falls back to scenario_id; the others stay null until a snapshot exists);
+     * counts and status are Spring's, live.
+     */
     public List<Map<String, Object>> adminRows(AuthUser u) {
-        List<Map<String, Object>> states = new ArrayList<>();
+        List<Map<String, Object>> rows = new ArrayList<>();
         for (ChatSession s : sessions.findByCompanyIdOrderByCreatedAtDesc(u.companyId())) {
-            Map<String, Object> st = baseState(s);
-            st.put("message_count", messages.countBySessionId(s.id));
-            st.put("observation_count", observations.countBySessionId(s.id));
-            states.add(st);
+            Map<String, Object> bundle = analytics.snapshot(s);
+            Map<?, ?> row = bundle != null && bundle.get("row") instanceof Map<?, ?> r ? r : Map.of();
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", s.id);
+            m.put("alias", s.alias);
+            m.put("category", row.get("category") != null ? row.get("category") : s.scenarioId);
+            m.put("scenario_id", s.scenarioId);
+            m.put("axis", row.get("axis"));
+            m.put("choice", row.get("choice"));
+            m.put("condition", row.get("condition"));
+            m.put("status", s.status);
+            m.put("milestone_idx", s.milestoneIdx);
+            m.put("messages", messages.countBySessionId(s.id));
+            m.put("observations", observations.countBySessionId(s.id));
+            m.put("report_status", s.reportStatus);
+            m.put("created_at", epoch(s.createdAt));
+            m.put("analytics_status", analytics.status(s, bundle));
+            rows.add(m);
         }
-        return states.isEmpty() ? List.of() : agent.rows(states);
+        return rows;
     }
 
     public Map<String, Object> taskMap(AiTask t) {

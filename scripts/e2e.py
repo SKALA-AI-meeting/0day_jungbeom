@@ -4,6 +4,10 @@
   signup (ambiguous) -> agent review pauses -> admin inbox -> reject -> account REJECTED
   after START: shared artifacts -> a line markup on a planted checkpoint of the code artifact + a quote markup
   -> admin detail has annotations, artifact_checks (spotted) and the dialogue ledger; the candidate view has none of them
+  analytics snapshot (api-contract §5): after the first turn the background refresh leaves it fresh -> a markup makes it
+  stale -> an ANALYTICS task (analytics-mcp -> business.save_analytics) makes it fresh with the markup in artifact_checks;
+  the approved report carries figures + SVG charts (one render_charts call: the same-tool cap holds) and the snapshot is fresh afterwards;
+  the admin's task history leaves the ANALYTICS refreshes out and the inbox badge count matches the list
 
   cd agent && uv run --python 3.12 python ../scripts/e2e.py [BASE_URL]
 Uses the seeded demo invite and the documented demo admin account (test credentials only).
@@ -11,6 +15,7 @@ Uses the seeded demo invite and the documented demo admin account (test credenti
 import json
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
 import httpx
@@ -113,8 +118,28 @@ print(f"   [{m0['speaker']}] {m0['text']}  ⟨근거: {m0.get('sources')}⟩")
 
 def no_secrets(view, where):
     dumped = json.dumps(view, ensure_ascii=False)
-    for key in ('"dialogue"', '"checkpoints"', '"artifact_checks"', '"observations"'):
+    for key in ('"dialogue"', '"checkpoints"', '"artifact_checks"', '"observations"', '"analytics"', '"figures"', '"charts"', "<svg"):
         assert key not in dumped, f"{where} leaks {key}"
+
+
+def admin_detail():
+    r = c.get(f"/api/admin/sessions/{sid}", headers=H)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def wait_fresh(tries=45):
+    """The snapshot the agent stores after START / TURN (quiet background refresh) or an ANALYTICS task."""
+    for _ in range(tries):
+        d = admin_detail()
+        if d["analytics_status"] == "fresh":
+            return d
+        time.sleep(2)
+    return d
+
+
+def check_of(bundle, artifact_id, line_no):
+    return next((ck for ck in bundle.get("artifact_checks") or [] if ck["artifact_id"] == artifact_id and ck["line"] == line_no), None)
 
 
 # 3b) shared work items: mark a planted problem in the code artifact by line, and quote a line of another item
@@ -154,19 +179,56 @@ lines = [
     ("요청은 제가 오늘 3시까지 보내고, 통과 범위는 목요일에 확정할게요. 우려하신 지연은 화요일 전체 검토로 보완할게요.", None),
     ("정리하면 오늘 검토 요청, 금요일 부분 출시, 다음 주 나머지 출시예요.", None),
 ]
-for text, choice in lines:
+say(sid, tok, *lines[0])
+
+# 3c) analytics snapshot (api-contract §5): fresh after the turn's background refresh -> a markup makes it stale ->
+#     an ANALYTICS task recomputes it through analytics-mcp and stores it (business.save_analytics) -> fresh again
+adm = wait_fresh()
+assert adm["analytics_status"] == "fresh", f"background refresh after the turn: {adm['analytics_status']} {adm.get('analytics_task')}"
+rev0 = adm["analytics"]["source"]["state_rev"]
+marked = {(code["id"], line), (other["id"], qline)}
+target = next(((aid, cp["line"]) for aid, cps in planted.items() for cp in cps
+               if all(aid != m_aid or abs(cp["line"] - m_line) > 1 for m_aid, m_line in marked)), None)
+assert target, planted
+before = check_of(adm["analytics"], *target)
+assert before and not before["spotted"], before
+t_art = arts[target[0]]
+a_late = annotate(target[0], {"lineStart": target[1], "lineEnd": target[1]}, "question",
+                  "이 줄은 근거가 어디서 왔는지 확인하고 싶어요.")
+adm = admin_detail()
+print("analytics after markup", adm["analytics_status"], "| snapshot rev", adm["analytics"]["source"]["state_rev"], "(was", rev0, ") < session rev", adm["state_rev"])
+assert adm["analytics_status"] == "stale", adm["analytics_status"]
+assert not check_of(adm["analytics"], *target)["spotted"], "the stored snapshot is the older one until it is recomputed"
+denied = c.post("/api/ai/tasks", json={"type": "ANALYTICS", "sessionId": sid}, headers=CT).status_code
+assert denied == 403, f"candidate asked for ANALYTICS: {denied}"
+r = c.post("/api/ai/tasks", json={"type": "ANALYTICS", "sessionId": sid}, headers=H)
+assert r.status_code == 202, r.text
+atask = r.json()
+evs = stream(atask["taskId"], admin)
+assert [t for t, _ in evs][-1] == "DONE", evs[-1]
+tools_used = [d.get("tool") for t, d in evs if t == "TOOL_START"]
+assert "analytics.session_analytics" in tools_used and "business.save_analytics" in tools_used, tools_used
+adm = admin_detail()
+after = check_of(adm["analytics"], *target)
+print("ANALYTICS", atask, "->", adm["analytics_status"], "| rev", adm["analytics"]["source"]["state_rev"],
+      "| check", t_art["title"][:20], f"L{target[1]}", "spotted", after["spotted"], after["annotation_ids"])
+assert adm["analytics_status"] == "fresh", adm["analytics_status"]
+assert after["spotted"] and a_late["id"] in after["annotation_ids"], after
+
+for text, choice in lines[1:]:
     done = say(sid, tok, text, choice)
     if done.get("completed"):
         break
 view = c.get(f"/api/sessions/{sid}", headers={"Authorization": f"Bearer {tok}"}).json()
 print("status", view["status"], "debrief items", len(view.get("debrief") or []))
 no_secrets(view, "candidate view (after turns)")
-assert sum(len(a["annotations"]) for a in view["artifacts"]) == 2, "candidate sees its own markups"
+assert sum(len(a["annotations"]) for a in view["artifacts"]) == 3, "candidate sees its own markups"
+assert c.get(f"/api/ai/tasks/{atask['taskId']}", headers=CT).status_code == 403, "ANALYTICS tasks are for the company"
 
-adm = c.get(f"/api/admin/sessions/{sid}", headers=H).json()
+adm = admin_detail()
 notes = {n["id"] for a in adm["artifacts"] for n in a["annotations"]}
-assert {a_line["id"], a_quote["id"]} <= notes, notes
-checks = adm.get("artifact_checks") or []
+assert {a_line["id"], a_quote["id"], a_late["id"]} <= notes, notes
+checks = (adm.get("analytics") or {}).get("artifact_checks") or []
 spotted = [ck for ck in checks if ck["spotted"]]
 print("artifact_checks", len(checks), "spotted", [(ck["artifact_id"], ck["line"], ck["annotation_ids"]) for ck in spotted])
 assert any(ck["artifact_id"] == code["id"] and ck["line"] == line and a_line["id"] in ck["annotation_ids"] for ck in spotted), checks
@@ -184,15 +246,39 @@ for _ in range(60):
 pa = adm["pending_approval"]
 it = inbox_item(pa["taskId"])  # the same pause is on the admin's issue checklist
 print("inbox", it["kind"], it["tool"], "| draft C01:", (it.get("draft") or {}).get("C01", {}).get("summary"))
+# the person approves the numbers and charts that will be published (analytics-mcp, drawn in the report graph's analyze)
+print("   figures", it.get("figures"), "| charts", [ch["chart_id"] for ch in it.get("charts") or []])
+assert it.get("figures") and it.get("charts"), "the approval card carries figures and charts"
+assert pa["draft"].get("charts") and all(ch["svg"].lstrip().startswith("<svg") for ch in pa["draft"]["charts"]), "draft charts are SVG"
 c.post(f"/api/ai/tasks/{pa['taskId']}/approval", json={"approved": True, "comment": "e2e"}, headers=H).raise_for_status()
 stream(pa["taskId"], admin)
-adm = c.get(f"/api/admin/sessions/{sid}", headers=H).json()
-det = adm["detector"]
-print("report_status", adm["report_status"], "| condition", adm["condition"]["lead_mode"]["label"], "/", adm["condition"]["peer_mode"]["label"],
+adm = admin_detail()
+rep, an = adm["report"] or {}, adm["analytics"] or {}
+charts = rep.get("charts") or []
+print("report figures", rep.get("figures"), "| charts", [(ch["chart_id"], len(ch["svg"])) for ch in charts], "| analytics_rev", rep.get("analytics_rev"))
+assert rep.get("figures") and rep["figures"].get("observations") is not None, rep.get("figures")
+assert charts and {ch["chart_id"] for ch in charts} <= {"timeline", "heatmap", "tki", "checkpoints"}, charts
+for ch in charts:
+    svg = ch["svg"]
+    assert svg.lstrip().startswith("<svg") and "<script" not in svg and "foreignObject" not in svg, ch["chart_id"]
+print("analytics after the report", adm["analytics_status"], "| rev", an.get("source", {}).get("state_rev"), "| figures", an.get("figures"))
+assert adm["analytics_status"] == "fresh", (adm["analytics_status"], adm.get("analytics_task"))
+det, cond = an["detector"], an["condition"]
+print("report_status", adm["report_status"], "| condition", cond["lead_mode"]["label"], "/", cond["peer_mode"]["label"],
       "| detector", det.get("status"), det.get("coverage"), det.get("tki_estimate"), "kappa", (det.get("agreement") or {}).get("pooled_kappa"))
+rows = {r["id"]: r for r in c.get("/api/admin/sessions", headers=H).json()}
+print("dashboard row", {k: rows[sid].get(k) for k in ("category", "axis", "choice", "condition", "analytics_status")})
+assert rows[sid]["category"] == an["row"]["category"] and rows[sid]["analytics_status"] == "fresh", rows[sid]
 task = c.get(f"/api/ai/tasks/{pa['taskId']}", headers=H).json()
 runs = task.get("trace") or []  # one summary per run: the run that paused for approval, then the resume
 runs = runs if isinstance(runs, list) else [runs]
 tot = lambda k: sum((r or {}).get(k) or 0 for r in runs)
 print("task", task["status"], "attempts", task["attempts"], "| runs", len(runs), "llm", tot("llm_calls"), "tools", tot("tool_calls"), "tokens", tot("tokens_in"), "/", tot("tokens_out"))
-print("mine", [(t["type"], t["status"]) for t in c.get("/api/ai/tasks?mine=true", headers=H).json()][:3])
+per_run = [Counter(s["name"] for s in (r or {}).get("spans") or [] if s.get("kind") == "tool") for r in runs]
+print("report tools per run", [dict(x) for x in per_run])
+assert any(x["analytics.render_charts"] for x in per_run) and not any(x["analytics.render_chart"] for x in per_run), per_run
+assert all(n <= 3 for x in per_run for name, n in x.items() if not name.startswith("business.")), "same-tool cap (3) holds"
+mine = c.get("/api/ai/tasks?mine=true", headers=H).json()
+print("mine", [(t["type"], t["status"]) for t in mine][:3])
+assert not any(t["type"] == "ANALYTICS" for t in mine), "derived ANALYTICS tasks stay out of the admin's task history"
+assert c.get("/api/admin/inbox/count", headers=H).json()["count"] == c.get("/api/admin/inbox", headers=H).json()["count"]

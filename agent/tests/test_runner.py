@@ -54,6 +54,9 @@ def test_start_allocates_condition_and_streams_opening(wired):
     done = evs(sink, m["taskId"])[-1]["data"]
     assert done["trace"]["trace_id"] == m["taskId"] and "directive_opening" in done["trace"]["prompt_versions"]
     assert s["messages"][0]["sources"], "opening line is grounded on a company document (rag-mcp)"
+    assert backend.analytics_status(sid) == "fresh", "START refreshes the admin snapshot in the background"
+    assert not any(str(e["data"].get("tool", "")).startswith("analytics.") or e["data"].get("tool") == "business.save_analytics"
+                   for e in evs(sink, m["taskId"])), "the refresh is quiet: nothing about it reaches the candidate's stream"
 
 
 def test_full_session_choice_and_report_approval(wired):
@@ -80,6 +83,7 @@ def test_full_session_choice_and_report_approval(wired):
         await runner.execute(run)
         last = evs(sink, run["taskId"])[-1]
         assert last["type"] == "APPROVAL_REQUIRED" and last["data"]["tool"] == "business.save_report"
+        assert last["data"]["figures"] and [c["chart_id"] for c in last["data"]["charts"]] == ["timeline", "heatmap", "tki", "checkpoints"]
         assert backend.sessions[sid]["report"] is None  # guardrail: nothing saved before approval
         resume = msg("REPORT", sid, mode="RESUME", thread=run["threadId"], resume={"approved": True, "by": "admin:1"})
         resume["taskId"] = run["taskId"]
@@ -89,6 +93,7 @@ def test_full_session_choice_and_report_approval(wired):
     sid, run = asyncio.run(main())
     s = backend.sessions[sid]
     assert s["report"]["status"] == "ready" and s["report"]["approved_by"] == "admin:1"
+    assert len(s["report"]["charts"]) == 4 and backend.analytics_status(sid) == "fresh"
     assert evs(sink, run["taskId"])[-1]["type"] == "DONE"
     users = [m["idx"] for m in s["messages"] if m["speaker"] == "user"]
     assert set(users) <= {int(k) for k in s["detections"]}, "every candidate message judged by detector-mcp"
@@ -101,7 +106,7 @@ def test_rejected_report_is_not_saved_and_finished_session_fails_turn(wired):
 
     async def main():
         sid, _ = await start(backend, "delay")
-        backend.sessions[sid]["status"] = "completed"
+        backend.set_status(sid, "completed")
         run = msg("REPORT", sid)
         await runner.execute(run)
         resume = msg("REPORT", sid, mode="RESUME", thread=run["threadId"], resume={"approved": False})
@@ -114,6 +119,7 @@ def test_rejected_report_is_not_saved_and_finished_session_fails_turn(wired):
     assert backend.sessions[sid]["report"] is None
     assert evs(sink, run["taskId"])[-1]["data"]["approved"] is False
     assert evs(sink, t["taskId"])[-1]["type"] == "FAILED"
+    assert backend.analytics[sid]["source"]["state_rev"] >= 1, "a rejected draft still leaves the admin snapshot"
 
 
 def test_change_tool_needs_approval_even_when_called_directly():
@@ -132,8 +138,9 @@ def test_unknown_type_and_resume_of_a_run_only_type_fail_without_retry(wired):
 
 
 def test_handlers_registry():
-    assert list(runner.HANDLERS) == ["START", "TURN", "REPORT", "ACCOUNT_REVIEW"]
-    assert {h["type"]: h["resumable"] for h in runner.HANDLERS.describe()} == {"START": False, "TURN": False, "REPORT": True, "ACCOUNT_REVIEW": True}
+    assert list(runner.HANDLERS) == ["START", "TURN", "REPORT", "ACCOUNT_REVIEW", "ANALYTICS"]
+    assert {h["type"]: h["resumable"] for h in runner.HANDLERS.describe()} == {"START": False, "TURN": False, "REPORT": True, "ACCOUNT_REVIEW": True,
+                                                                              "ANALYTICS": False}
     assert all(h["description"] for h in runner.HANDLERS.describe())
     with pytest.raises(ValueError):
         Registry([Handler("START", runner.HANDLERS["START"].run), Handler("START", runner.HANDLERS["START"].run)])

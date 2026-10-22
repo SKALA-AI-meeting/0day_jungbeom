@@ -20,6 +20,9 @@ const TOOL = {
   'business.get_session_state': '세션 불러오기',
   'business.list_artifacts': '같이 본 과제 불러오기',
   'business.list_annotations': '지원자 마크업 불러오기',
+  'business.save_analytics': '분석 스냅숏 저장',
+  'analytics.session_analytics': '분석 도구 호출',
+  'analytics.render_charts': '리포트 차트 그리기',
 }
 const SETTLED = ['done', 'failed', 'again']
 const jobs = ref([])

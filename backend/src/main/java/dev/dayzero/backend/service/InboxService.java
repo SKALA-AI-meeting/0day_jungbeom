@@ -35,4 +35,11 @@ public class InboxService {
         for (InboxContributor c : contributors) items.addAll(c.items(u.companyId()));
         return Map.of("items", items, "count", items.size());
     }
+
+    /** The top-bar badge: how many items inbox() lists, without building them (a REPORT card carries its chart SVGs). */
+    public int count(AuthUser u) {
+        int n = tasks.waitingApproval(u.companyId()).size();
+        for (InboxContributor c : contributors) n += c.items(u.companyId()).size();
+        return n;
+    }
 }

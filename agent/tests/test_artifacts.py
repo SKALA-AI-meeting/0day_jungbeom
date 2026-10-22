@@ -4,7 +4,7 @@ import uuid
 
 import pytest
 
-from app import artifacts, runner, views
+from app import analytics, artifacts, runner, views
 from app.criteria import INDUSTRIES, JOBS
 from app.harness import guardrails, tools
 from app.scenarios import SCENARIOS, get_scenario
@@ -167,7 +167,7 @@ def _note(nid, aid, kind="risk", line_start=None, line_end=None, quote=None):
             "kind": kind, "text": "확인 부탁해요.", "msg_idx": 1, "created_at": 0}
 
 
-def test_admin_view_marks_spotted_checkpoints():
+def test_analytics_marks_spotted_checkpoints():
     sid = "dl.dev.fintech"
     cps = artifacts.checkpoints(sid)
     (a1,), (a2,), (c1, c2) = cps["a1"], cps["a2"], cps["a3"]
@@ -175,7 +175,7 @@ def test_admin_view_marks_spotted_checkpoints():
              _note(2, "a3", "question", line_start=c2["line"] + 2),  # too far
              _note(3, "a2", "question", quote="09시까지"),  # the quote sits on the checkpoint line
              _note(4, "a1", "ok", line_start=a1["line"], line_end=a1["line"])]  # looked at it and said fine: not spotted
-    checks = {(c["artifact_id"], c["line"]): c for c in views.admin_view(_state(sid, notes))["artifact_checks"]}
+    checks = {(c["artifact_id"], c["line"]): c for c in analytics.build(_state(sid, notes))["artifact_checks"]}
     assert len(checks) == 4
     assert checks[("a3", c1["line"])]["spotted"] and checks[("a3", c1["line"])]["annotation_ids"] == [1]
     assert not checks[("a3", c2["line"])]["spotted"] and checks[("a3", c2["line"])]["annotation_ids"] == []
@@ -194,7 +194,7 @@ def test_artifact_checks_follow_the_stored_body():
     cp = artifacts.checkpoints(sid)["a1"][0]
     moved = [dict(a) for a in planted]
     moved[0]["body"] = "> 메모: 오전에 업데이트\n" + moved[0]["body"]  # a line was inserted above
-    checks = views.admin_view(_state(sid, [_note(9, "a1", line_start=cp["line"] + 1)], arts=moved))["artifact_checks"]
+    checks = analytics.build(_state(sid, [_note(9, "a1", line_start=cp["line"] + 1)], arts=moved))["artifact_checks"]
     assert next(c for c in checks if c["artifact_id"] == "a1")["line"] == cp["line"] + 1
     assert next(c for c in checks if c["artifact_id"] == "a1")["spotted"]
-    assert views.admin_view(_state(sid, [], arts=[]))["artifact_checks"] == [], "sessions seeded before artifacts existed"
+    assert analytics.build(_state(sid, [], arts=[]))["artifact_checks"] == [], "sessions seeded before artifacts existed"
