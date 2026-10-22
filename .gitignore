@@ -7,7 +7,6 @@ __pycache__/
 node_modules/
 .next/
 .DS_Store
-*.worktrees/
 
 # 로컬 설치 디자인 스킬(npx skills add emilkowalski/skills)
 apps/web/.agents/

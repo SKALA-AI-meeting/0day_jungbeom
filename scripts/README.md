@@ -11,7 +11,6 @@
 | `stage_advance.py` | 세션 시간 당기기 | `make stage-advance` |
 | `save_eval_fixture.py` | 끝난 세션의 SessionRecord를 eval 픽스처로 저장 | - |
 | `docs_gen.py` | README 생성 블록 갱신·검사, features.md 테스트 참조 검사 | `make docs-gen`, `make docs-check` |
-| `worktree.sh` | 병렬 작업용 git worktree 생성·제거 | - |
 
 ## 스크립트별 사용
 
@@ -87,13 +86,6 @@ uv run --project services/api python scripts/save_eval_fixture.py <session_id>
 make docs-gen      # 블록 갱신
 make docs-check    # 생성 블록 최신 여부 + features.md 참조 검사
 ```
-
-### worktree.sh
-
-| 항목 | 내용 |
-|---|---|
-| 실행 위치 | 저장소 안 어디서나 |
-| 하는 일 | `sh scripts/worktree.sh <이름>`은 `../Day-0_zaeho.worktrees/<이름>`에 `track/<이름>` 브랜치 worktree를 만들고, `--remove <이름>`은 worktree만 지운다(브랜치는 남김) |
 
 ## 서비스 이름과 포트
 
