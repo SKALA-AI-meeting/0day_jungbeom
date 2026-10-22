@@ -55,5 +55,5 @@ docs/
 ├── contracts/       README(공통·인증) · api · ws · internal · mcp · queue
 ├── services/        api · web · report-worker · mcp
 ├── guides/          quickstart · configuration · testing · database · scenario-changes · contributing
-└── share/           공유용 산출물(아키텍처 페이지·보고서·시각 보고서). 정본이 아니다
+└── share/           공유용 산출물(아키텍처 페이지·보고서·시각 보고서·제품 가이드). 정본이 아니다
 ```
