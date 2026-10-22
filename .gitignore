@@ -25,3 +25,7 @@ tests/playtest/records/**/shots/
 tests/playtest/records/**/video/
 tests/playtest/records/**/server.log
 tests/playtest/records/**/server.pid
+
+# 로컬 도구 산출물
+.playwright-mcp/
+output/
