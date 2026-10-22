@@ -1,4 +1,4 @@
-// 제출 전 저장 경계(Codex 리뷰 B1): 진행 중인 저장을 기다리고, 실패하면 제출을 막는다.
+// 제출 전 저장 경계: 진행 중인 저장을 기다리고, 실패하면 제출을 막는다.
 import { afterEach, expect, test, vi } from "vitest";
 
 import { createSaver } from "./saver";
