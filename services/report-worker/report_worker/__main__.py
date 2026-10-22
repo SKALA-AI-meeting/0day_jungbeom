@@ -29,7 +29,6 @@ async def main() -> None:
         llm=FakeEvaluatorLLM()
         if os.environ.get("LLM_FAKE") == "1"
         else OpenAILLM(settings.model_evaluator, os.environ),
-        scenarios_dir=settings.scenarios_dir,
     )
     consumer = RabbitConsumer(settings.rabbitmq_url)
     # 워커는 thread report:{session_id}:{eval_round}만 접근한다

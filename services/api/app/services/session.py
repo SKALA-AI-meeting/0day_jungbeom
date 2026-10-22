@@ -6,6 +6,7 @@
 단계 전환(advance_phase)은 phases.py, 칸 확정은 debate.py가 같은 트랜잭션에서 부른다.
 """
 
+import logging
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
@@ -14,12 +15,27 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import queue
+from app.agent.catalog import copy_missing
 from app.auth import INVITE_TTL, new_invite_token
 from app.models import EvaluationRun, Invite, Position, Proposal, Report, Session, Slot
 from app.services import scenario as sc
 from app.services.clock import Clock
 from app.services.common import ENDED_STATUSES, Effects, conflict, empty_sections, iso
 from app.services.phases import enter_phase
+
+log = logging.getLogger(__name__)
+
+# 채용 건 시나리오 복사본(catalog·prompts)이 없어 시작할 수 없을 때. 현재 파일로 채우지 않는다
+POSITION_OUTDATED = (
+    "이 채용 건은 이전 버전 설정으로 만들어져 세션을 시작할 수 없어요. "
+    "채용 담당자에게 문의해 주세요."
+)
+# 워커가 채용 건 복사본의 평가 프롬프트가 없어 실패시킨 리포트(failed_reason에 예외 이름이 남는다)
+PINNED_COPY_MISSING = "PinnedCopyMissing"
+REGENERATE_OUTDATED = (
+    "이 채용 건은 평가에 필요한 시나리오 복사본이 없어 리포트를 다시 만들 수 없어요. "
+    "원문 기록으로 확인해 주세요."
+)
 
 
 async def create_for_invite(
@@ -75,6 +91,9 @@ async def start(
         return
     if session.status != "invited":
         raise conflict("conflict", f"cannot start from {session.status}")
+    if missing := copy_missing(position.scenario):
+        log.warning("position %s scenario copy lacks %s", position.id, missing)
+        raise conflict("position_outdated", POSITION_OUTDATED)
     now = clock.now()
     session.status = "in_progress"
     session.started_at = now
@@ -159,6 +178,8 @@ async def regenerate(db: AsyncSession, session: Session, fx: Effects) -> str:
     있으면 eval_round +1). 지운 draft는 새 draft가 저장될 때까지 조회·후보 목록에 나가지 않는다."""
     if session.status != "failed" or session.failed_stage != "report":
         raise conflict("conflict", "only report failures can be regenerated")
+    if PINNED_COPY_MISSING in (session.failed_reason or ""):
+        raise conflict("position_outdated", REGENERATE_OUTDATED)  # 다시 해도 같은 복사본으로 실패
     session.failed_stage = None
     session.failed_reason = None
     if await report_failed_step(db, session) == "finalize":

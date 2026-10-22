@@ -65,12 +65,11 @@ def _edit(path, old, new):
     path.write_text(path.read_text(encoding="utf-8").replace(old, new), encoding="utf-8")
 
 
-def test_catalog_reads_position_snapshot_not_current_files(tmp_path, scenarios_dir, caplog):
+def test_catalog_reads_position_snapshot_not_current_files(tmp_path, scenarios_dir):
     """채용 건 생성 뒤 미션 YAML이 바뀌어도 그 채용 건은 생성 때 입장·카드·후보로 진행한다."""
-    import logging
     import shutil
 
-    from app.agent.catalog import Catalog
+    from app.agent.catalog import Catalog, ScenarioCopyMissing
 
     root = tmp_path / "scenarios"
     shutil.copytree(scenarios_dir, root)
@@ -84,33 +83,17 @@ def test_catalog_reads_position_snapshot_not_current_files(tmp_path, scenarios_d
     _edit(cards, f"card_id: {first_card}", "card_id: renamed_card")
     new = sc.assemble(root, "debate", 15)
 
-    pinned = Catalog.from_scenario(old, root)
+    pinned = Catalog.from_scenario(old)
     assert pinned.persona("p1")["stances"]["keyword"]["push"] == "fire"
     assert pinned.label_of("fire_p1") == "노후 주택·전통시장 화재"
     assert pinned.card(first_card) is not None and pinned.card("renamed_card") is None
 
-    fresh = Catalog.from_scenario(new, root)
+    fresh = Catalog.from_scenario(new)
     assert fresh.persona("p1")["stances"]["keyword"]["push"] == "water"
     assert fresh.label_of("fire_p1") == "바뀐 후보"
     assert fresh.card("renamed_card") is not None
 
-    # 옛 채용 건(catalog 없음): 스케줄러·합의가 읽는 기존 복사본과 같은 기준으로 재구성한다
-    legacy = {k: v for k, v in old.items() if k != "catalog"}
-    with caplog.at_level(logging.INFO, logger="app.agent.catalog"):
-        rebuilt = Catalog.from_scenario(legacy, root)
-    assert rebuilt.persona("p1")["stances"]["keyword"]["push"] == "fire"
-    assert rebuilt.label_of("fire_p1") == "노후 주택·전통시장 화재"
-    assert [c["card_id"] for c in rebuilt.cards["cards"]] == [c["card_id"] for c in old["cards"]]
-    assert rebuilt.mission["lead_option"] == old["lead_option"]
-    assert rebuilt.mission["consensus_fill"]["filler_priority"] == old["fill_priority"]
-    assert not any("scenario copy lacks" in r.message for r in caplog.records)  # 파일을 읽지 않음
-
-    # 복사본에 없는 부분(프롬프트)만 현재 파일에서 채우고, 카탈로그 버전이 다르면 경고
-    caplog.clear()
-    no_prompts = {k: v for k, v in legacy.items() if k != "prompts"}
-    with caplog.at_level(logging.INFO, logger="app.agent.catalog"):
-        filled = Catalog.from_scenario(no_prompts, root)
-    assert filled.persona("p1")["stances"]["keyword"]["push"] == "fire"
-    assert filled.prompts["intent.md"] == old["prompts"]["intent.md"]
-    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
-    assert len(warnings) == 1 and "catalog_version" in warnings[0].message
+    # 복사본에 catalog·prompts가 없으면 현재 파일로 채우지 않고 실패한다
+    for drop in ("catalog", "prompts"):
+        with pytest.raises(ScenarioCopyMissing, match=drop):
+            Catalog.from_scenario({k: v for k, v in old.items() if k != drop})

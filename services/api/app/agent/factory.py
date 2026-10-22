@@ -69,7 +69,6 @@ def build_debate_runner(
         scenario=scenario,
         ports_for=ports_for,
         checkpointer=checkpointer,
-        scenarios_dir=settings.scenarios_dir,
     )
 
 
@@ -78,5 +77,4 @@ def build_assistant_runner(settings: Settings, scenario: ScenarioLoader) -> Assi
         llm=make_llm("assistant"),
         rag=mcp_rag(settings.rag_mcp_url),
         scenario=scenario,
-        scenarios_dir=settings.scenarios_dir,
     )

@@ -10,7 +10,7 @@
 invited ──동의·시작──▶ in_progress ──제출 / 세션 만료 자동 제출──▶ completed ──워커 draft──▶ report_ready ──검토 완료──▶ approving ──워커 final──▶ reviewed
    │                        │                                              └──워커 3회 실패──▶ failed(report) ──재생성──▶ completed(초안 전 실패) ∣ approving(확정 실패)
    └──취소──▶ cancelled ◀────┘ (시작 후 취소 = 중도 포기, 리포트 없음)
-                            └──페르소나 LLM 연속 실패 3회──▶ failed(session)
+                            └──페르소나 LLM 연속 실패 3회 ∣ 채용 건 시나리오 복사본 없음──▶ failed(session)
 ```
 
 - `ended_at`: 세션이 끝난 시각. completed(제출·자동 제출)·failed(session)·cancelled로 바뀌는 트랜잭션에서 한 번 쓴다(시작 전 취소 포함). failed(report)는 이미 completed라 바꾸지 않는다. **삭제 예정일 `purge_at = ended_at + 90일`, 디브리핑 기한 = `ended_at + 7일`**.

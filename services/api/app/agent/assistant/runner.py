@@ -22,7 +22,6 @@ import uuid
 from collections import defaultdict
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from pathlib import Path
 from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
@@ -76,12 +75,10 @@ class AssistantGraphRunner:
         llm: BaseLLM,
         rag: RagFactory,
         scenario: ScenarioLoader,
-        scenarios_dir: Path | None = None,
     ) -> None:
         self.llm = llm
         self.rag = rag
         self.scenario = scenario
-        self.scenarios_dir = scenarios_dir
         self._catalogs: dict[uuid.UUID, Catalog] = {}
         self._history: defaultdict[uuid.UUID, list[dict[str, str]]] = defaultdict(list)
         self._locks: defaultdict[uuid.UUID, asyncio.Lock] = defaultdict(asyncio.Lock)
@@ -89,7 +86,7 @@ class AssistantGraphRunner:
     async def catalog(self, session_id: uuid.UUID) -> Catalog:
         if session_id not in self._catalogs:
             scenario = await self.scenario(session_id)
-            self._catalogs[session_id] = Catalog.from_scenario(scenario, self.scenarios_dir)
+            self._catalogs[session_id] = Catalog.from_scenario(scenario)
         return self._catalogs[session_id]
 
     async def answer(

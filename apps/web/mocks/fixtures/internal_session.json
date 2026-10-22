@@ -5,6 +5,7 @@
   "alias": "지원자A",
   "display_name": "김지원",
   "position": {
+    "id": "pos-1",
     "name": "서비스 기획",
     "mission_id": "debate",
     "session_minutes": 60,

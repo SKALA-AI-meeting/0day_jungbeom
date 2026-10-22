@@ -194,3 +194,20 @@ async def test_regenerate_hides_previous_draft_until_new_draft(api, ctx):
     await api.internal.post(f"/internal/sessions/{sess.id}/report/draft", json={"content": fresh})
     report = (await _get_report(api, sess)).json()
     assert report["evaluation"]["run_id"] == fresh["evaluation"]["run_id"]
+
+
+async def test_regenerate_refused_when_report_failed_for_missing_scenario_copy(api, ctx):
+    from app.services.session import REGENERATE_OUTDATED
+
+    sess = await api.new_session()
+    await finish(api, sess)
+    error = "report.generate attempt 1: PinnedCopyMissing: position p scenario copy lacks prompts"
+    await api.internal.post(f"/internal/sessions/{sess.id}/report_failed", json={"error": error})
+
+    regen = await api.public.post(
+        f"/admin/sessions/{sess.id}/report/regenerate", headers=bearer(sess.admin)
+    )
+
+    assert regen.status_code == 409
+    assert regen.json()["error"] == {"code": "position_outdated", "message": REGENERATE_OUTDATED}
+    assert (await _get_report(api, sess)).json()["error"]["code"] == "report_failed"

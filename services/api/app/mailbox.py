@@ -7,7 +7,8 @@
 3. message 자극이면 낡았는지와 상관없이 의도 분류·안·입장 반영(저장된 messages.phase 기준, 1회).
 4. card_due면 session_cards 행 생성·기준안 잠금.
 5. 낡았으면(세션 종료·단계 다름·message인데 generation이 현재보다 작음) skipped로 닫는다.
-6. 아니면 AgentRunner.run → 결과 상태(finished·deferred·failed) 기록, 페르소나 LLM 연속 실패 3회면
+6. 채용 건 시나리오 복사본(catalog·prompts)이 없으면 실행하지 않고 즉시 failed(session).
+7. 아니면 AgentRunner.run → 결과 상태(finished·deferred·failed) 기록, 페르소나 LLM 연속 실패 3회면
    failed(session).
 
 세션 Lock·handled 집합은 없다. 멱등은 agent_runs.status와 DB 멱등 키로만 한다.
@@ -24,6 +25,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select, update
 
+from app.agent.catalog import copy_missing
 from app.agent.runner import RunResult, Stimulus
 from app.models import AgentRun, Message, Session
 from app.services import budget, debate
@@ -37,6 +39,7 @@ log = logging.getLogger(__name__)
 DONE = ("finished", "skipped", "deferred")
 PERSONA_LLM_FAILURE = "persona_llm_unavailable"
 MAX_LLM_FAILURES = 3
+SCENARIO_COPY_MISSING = "scenario_copy_missing"
 
 
 def pending_key(session_id: uuid.UUID, stimulus: Stimulus) -> Hashable | None:
@@ -163,9 +166,19 @@ class Mailboxes:
                 session = await db.get(Session, session_id, with_for_update=True)
                 await debate.lock_lead_option(db, session, position, stimulus.card_id, ctx.clock)
                 await db.commit()
+            missing = copy_missing(position.scenario)
+            position_id = position.id
         if stale:
             await self._finish(run_id, RunResult(status="skipped"))
             return "skipped"
+        if missing:
+            # 현재 파일로 채우지 않는다. 진행할 수 없으니 시간 초과·자동 제출을 기다리지 않고 끝낸다
+            log.error("position %s scenario copy lacks %s; session failed", position_id, missing)
+            await self._finish(
+                run_id, RunResult(ok=False, status="failed", error=SCENARIO_COPY_MISSING)
+            )
+            await self._fail_session(session_id, f"{SCENARIO_COPY_MISSING}: {', '.join(missing)}")
+            return "failed"
         try:
             result = await ctx.runner.run(session_id, stimulus, run_id)
         except Exception as exc:
@@ -194,6 +207,18 @@ class Mailboxes:
                     session_service.fail(
                         session, "session", "persona llm failed 3 times", self.ctx.clock.now(), fx
                     )
+                await db.commit()
+            self.ctx.emit(session_id, fx)
+        await self.ctx.publish(session_id, fx)
+
+    async def _fail_session(self, session_id: uuid.UUID, reason: str) -> None:
+        fx = Effects()
+        async with self.ctx.ordered(session_id):
+            async with self.ctx.session_factory() as db:
+                session = await db.get(Session, session_id, with_for_update=True)
+                if session is None:
+                    return
+                session_service.fail(session, "session", reason, self.ctx.clock.now(), fx)
                 await db.commit()
             self.ctx.emit(session_id, fx)
         await self.ctx.publish(session_id, fx)

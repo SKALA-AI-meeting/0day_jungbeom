@@ -58,7 +58,7 @@ REWRITE_FALLBACK = (
 REF_PATTERN = re.compile(r"^(msg|slot|proposal|contribution):(.+)$")
 
 
-# ---- 프롬프트·금지어 (채용 건 복사본, 없으면 카탈로그 파일) ------------------------------------
+# ---- 프롬프트·금지어 (채용 건 복사본) -------------------------------------------------------
 
 EVALUATOR_FILES = ("evaluator/common.md", *(f"evaluator/{e}.md" for e in ELEMENTS))
 GUARD_FILE = "guard_patterns.yaml"
@@ -94,7 +94,12 @@ def _forbidden(guard_yaml: str) -> list[re.Pattern]:
     return [re.compile(p) for p in data["evaluator_forbidden"]["patterns"]]
 
 
+class PinnedCopyMissing(Exception):
+    """채용 건 복사본에 평가 프롬프트·금지 패턴이 없다. 재시도해도 같으므로 바로 실패 처리한다."""
+
+
 def load_prompts(scenarios_dir: Path, mission_id: str) -> Prompts:
+    """현재 카탈로그 파일(eval·테스트용). 평가 실행은 `pinned_catalog`만 쓴다."""
     return _prompts(_read_files(scenarios_dir, mission_id))
 
 
@@ -103,20 +108,19 @@ def load_forbidden(scenarios_dir: Path, mission_id: str) -> list[re.Pattern]:
 
 
 def pinned_catalog(
-    scenario: dict[str, Any], scenarios_dir: Path, mission_id: str
+    scenario: dict[str, Any], position_id: str | None
 ) -> tuple[Prompts, list[re.Pattern]]:
     """채용 건 생성 때 `positions.scenario.prompts`에 복사된 평가 프롬프트·금지 패턴.
 
-    같은 채용 건의 지원자는 같은 프롬프트로 평가된다. 복사본에 평가 파일이 빠진 옛 채용 건만
-    현재 카탈로그 파일을 읽고 읽을 때마다 로그 1줄을 남긴다.
+    같은 채용 건의 지원자는 같은 프롬프트로 평가된다. 복사본에 하나라도 빠졌으면 현재 파일로
+    채우지 않고 `PinnedCopyMissing`을 올린다.
     """
     texts = scenario.get("prompts") or {}
-    pinned = all(texts.get(n) for n in (*EVALUATOR_FILES, GUARD_FILE)) and (
-        "evaluator_forbidden" in (yaml.safe_load(texts[GUARD_FILE]) or {})
-    )
-    if not pinned:
-        log.info("position scenario lacks evaluator prompts; reading %s files", mission_id)
-        texts = _read_files(scenarios_dir, mission_id)
+    missing = [n for n in (*EVALUATOR_FILES, GUARD_FILE) if not texts.get(n)]
+    if not missing and "evaluator_forbidden" not in (yaml.safe_load(texts[GUARD_FILE]) or {}):
+        missing = [f"{GUARD_FILE}:evaluator_forbidden"]
+    if missing:
+        raise PinnedCopyMissing(f"position {position_id} scenario copy lacks {', '.join(missing)}")
     return _prompts(texts), _forbidden(texts[GUARD_FILE])
 
 

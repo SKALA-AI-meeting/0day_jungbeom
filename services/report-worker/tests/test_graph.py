@@ -9,9 +9,9 @@ eval_round·thread 규칙, interrupt·resume과 final 해시, LLM 타임아웃 �
 
 import copy
 import json
-import logging
 import shutil
 
+import pytest
 import yaml
 from report_worker.evaluate import ELEMENTS, load_prompts
 from report_worker.graph import evaluation_run_id, thread_config
@@ -25,6 +25,7 @@ from tests.conftest import (
     element_outputs,
     load,
     merged_report,
+    prompts_copy,
 )
 
 
@@ -340,29 +341,18 @@ async def test_llm_fault_evaluator_timeout_requeues_then_succeeds(h, monkeypatch
 
 
 def _catalog_copy(tmp_path):
-    """임시 카탈로그(프롬프트 폴더만)와, 지금 내용으로 채용 건을 만들 때 복사되는 prompts 맵."""
+    """임시 카탈로그(프롬프트 폴더만). 채용 건 생성 뒤 파일이 바뀌는 상황을 만든다."""
     src = SCENARIOS / "missions" / "debate" / "prompts"
     folder = tmp_path / "missions" / "debate" / "prompts"
     shutil.copytree(src, folder)
     return folder
 
 
-def _snapshot(folder):
-    """api `scenario.assemble`의 `prompts`와 같은 모양(prompts/ 상대 경로 → 본문, fixtures 제외)."""
-    return {
-        p.relative_to(folder).as_posix(): p.read_text(encoding="utf-8")
-        for p in sorted(folder.rglob("*"))
-        if p.is_file() and "fixtures" not in p.parts
-    }
-
-
-def _use_position(h, tmp_path, prompts):
+def _use_position(h, prompts):
     h.api.session["position"]["scenario"]["prompts"] = prompts
-    h.scenarios_dir = tmp_path
     h.new_graph()
 
 
-LACKS = "lacks evaluator prompts"
 CHANGED = "\n바뀐 지침"
 
 
@@ -386,13 +376,12 @@ def _assert_original_prompts(h):
             assert original.elements[element] in user
 
 
-async def test_position_keeps_evaluator_prompts_after_catalog_change(h, tmp_path, caplog):
+async def test_position_keeps_evaluator_prompts_after_catalog_change(h, tmp_path):
     folder = _catalog_copy(tmp_path)
-    _use_position(h, tmp_path, _snapshot(folder))  # 채용 건 생성 시점
+    _use_position(h, prompts_copy(folder))  # 채용 건 생성 시점
     _change_catalog(folder)
 
-    with caplog.at_level(logging.INFO, logger="report_worker.evaluate"):
-        await h.generate()
+    await h.generate()
 
     _assert_original_prompts(h)
     assert h.assessment.saved[0]["prompt_versions"] == load_prompts(SCENARIOS, "debate").versions
@@ -400,12 +389,11 @@ async def test_position_keeps_evaluator_prompts_after_catalog_change(h, tmp_path
     draft, usage = h.api.drafts[0]
     assert usage["llm_calls"] == 5 and usage["element_retries"] == 0
     assert not any(d["no_record_reason"] == "evaluate_failed" for d in draft["dimensions"])
-    assert LACKS not in caplog.text
 
 
-async def test_pinned_prompts_cover_retry_rewrite_and_rerun(h, tmp_path, caplog):
+async def test_pinned_prompts_cover_retry_rewrite_and_rerun(h, tmp_path):
     folder = _catalog_copy(tmp_path)
-    _use_position(h, tmp_path, _snapshot(folder))
+    _use_position(h, prompts_copy(folder))
     _change_catalog(folder)
     h.llm.script["persuasion"] = ["형식 오류", element_outputs()["persuasion"]]  # 요소 재요청
     h.assessment.record["observations"] = [  # 경청 요약 재작성
@@ -413,25 +401,23 @@ async def test_pinned_prompts_cover_retry_rewrite_and_rerun(h, tmp_path, caplog)
     ]
     h.api.down = True  # draft 저장 실패 → 재실행은 저장된 평가 재사용
 
-    with caplog.at_level(logging.INFO, logger="report_worker.evaluate"):
-        await h.generate()
-        assert len(h.llm.calls) == 7  # 5요소 + 재요청 1 + 요약 재작성 1
-        h.api.down = False
-        h.new_graph()
-        await h.generate(attempt=2)
-        await h.generate(eval_round=2)  # 새 평가 회차도 같은 채용 건 복사본
+    await h.generate()
+    assert len(h.llm.calls) == 7  # 5요소 + 재요청 1 + 요약 재작성 1
+    h.api.down = False
+    h.new_graph()
+    await h.generate(attempt=2)
+    await h.generate(eval_round=2)  # 새 평가 회차도 같은 채용 건 복사본
 
     _assert_original_prompts(h)
     assert len(h.llm.calls) == 13  # 2회차: 5요소 + 요약 재작성 1(재요청 스크립트는 소진)
     versions = load_prompts(SCENARIOS, "debate").versions
     assert [s["prompt_versions"] for s in h.assessment.saved] == [versions, versions]
-    assert LACKS not in caplog.text
 
 
 async def test_new_position_gets_changed_evaluator_prompts(h, tmp_path):
     folder = _catalog_copy(tmp_path)
     (folder / "evaluator" / "common.md").write_text("바뀐 공통 지침", encoding="utf-8")
-    _use_position(h, tmp_path, _snapshot(folder))  # 바뀐 뒤 만든 채용 건
+    _use_position(h, prompts_copy(folder))  # 바뀐 뒤 만든 채용 건
 
     await h.generate()
 
@@ -441,35 +427,30 @@ async def test_new_position_gets_changed_evaluator_prompts(h, tmp_path):
     assert saved["common"] != load_prompts(SCENARIOS, "debate").versions["common"]
 
 
-async def test_old_position_without_prompts_falls_back_to_files(h, tmp_path, caplog):
-    folder = _catalog_copy(tmp_path)
-    (folder / "evaluator" / "common.md").write_text("현재 파일 지침", encoding="utf-8")
-    _use_position(h, tmp_path, None)  # 프롬프트 복사 전에 만든 채용 건
-    h.api.down = True
-
-    with caplog.at_level(logging.INFO, logger="report_worker.evaluate"):
-        await h.generate()
-        assert caplog.text.count(LACKS) == 2  # evaluate·draft가 각각 읽음
-        caplog.clear()
-        h.api.down = False
-        h.new_graph()
-        await h.generate(attempt=2)  # 저장 평가 재사용: draft의 금지어 로드만 폴백
-        assert caplog.text.count(LACKS) == 1
-
-    assert all(system == "현재 파일 지침" for _, system, _ in h.llm.calls)
-    assert len(h.llm.calls) == 5 and len(h.api.drafts) == 1
+def _without(name):
+    prompts = prompts_copy(SCENARIOS / "missions" / "debate" / "prompts")
+    if name == "evaluator_forbidden":
+        guard = yaml.safe_load(prompts["guard_patterns.yaml"])
+        del guard["evaluator_forbidden"]
+        prompts["guard_patterns.yaml"] = yaml.safe_dump(guard, allow_unicode=True)
+    else:
+        del prompts[name]
+    return prompts
 
 
-async def test_partial_snapshot_falls_back_to_files_entirely(h, tmp_path, caplog):
-    folder = _catalog_copy(tmp_path)
-    partial = _snapshot(folder)
-    del partial["evaluator/honesty.md"]
-    (folder / "evaluator" / "common.md").write_text("현재 파일 지침", encoding="utf-8")
-    _use_position(h, tmp_path, partial)
+@pytest.mark.parametrize(
+    "missing", [None, "evaluator/honesty.md", "guard_patterns.yaml", "evaluator_forbidden"]
+)
+async def test_position_without_pinned_prompts_fails_without_retry(h, missing):
+    """복사본이 없거나 일부 빠진 채용 건은 현재 파일로 채우지 않고 바로 DLQ → 리포트 실패."""
+    _use_position(h, None if missing is None else _without(missing))
 
-    with caplog.at_level(logging.INFO, logger="report_worker.evaluate"):
-        await h.generate()
+    await h.generate()
 
-    assert all(system == "현재 파일 지침" for _, system, _ in h.llm.calls)
-    assert h.assessment.saved[0]["prompt_versions"] == load_prompts(tmp_path, "debate").versions
-    assert LACKS in caplog.text
+    assert h.llm.calls == [] and h.assessment.saved == [] and h.api.drafts == []
+    assert [q for q, _ in h.published] == ["report.dlq"] and h.sleeps == []
+    error = h.published[-1][1]["error"]
+    assert "PinnedCopyMissing" in error and "position pos-1" in error
+    assert (missing or "evaluator/common.md") in error
+    await h.worker.dead_letter(h.published[-1][1])
+    assert h.api.failed == [error]
