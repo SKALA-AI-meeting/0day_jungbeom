@@ -266,6 +266,25 @@
   }
 }
 
+/*
+  토론 화면 배경 레이어(블록 그리드 뒤). 강조색을 옅게 섞은 번짐 두 개로, 토큰만 써서 다크 모드도 따라간다.
+  블록 구분은 여전히 얇은 선과 여백이고 배경은 장식이다.
+*/
+.debate-backdrop {
+  background:
+    radial-gradient(
+      60% 50% at 0% 0%,
+      color-mix(in srgb, var(--color-accent) 10%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      50% 45% at 100% 100%,
+      color-mix(in srgb, var(--color-accent) 7%, transparent),
+      transparent 70%
+    ),
+    var(--color-canvas);
+}
+
 /* 버튼 누름 피드백(design-system.md 모션): 속성 지정, scale 0.98 */
 .press {
   transition:

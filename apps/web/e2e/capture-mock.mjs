@@ -64,7 +64,7 @@ async function waitFor(check, label, timeout = 60_000) {
   throw new Error(`시간 초과: ${label}`);
 }
 
-const tab = (name) => page.getByRole("tab", { name, exact: false }).click();
+const tab = (name) => page.getByRole("region", { name }).getByRole("heading", { name }).click();
 
 try {
   console.log(`캡처 → ${OUT}`);

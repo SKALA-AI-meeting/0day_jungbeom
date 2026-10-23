@@ -84,13 +84,16 @@ export async function shot(page: Page, stage: string, name: string): Promise<voi
 
 /** 토론방에 지원자 메시지를 보내고 내 말풍선이 나타날 때까지 기다린다 */
 export async function say(page: Page, text: string): Promise<void> {
-  await page.getByLabel("메시지 입력").fill(text);
-  await page.getByRole("button", { name: "보내기" }).click();
+  // 블록이 모두 보여 AI 어시스턴트의 [보내기]와 겹치므로 토론방 안에서 찾는다
+  const chat = page.getByRole("region", { name: "토론방" });
+  await chat.getByLabel("메시지 입력").fill(text);
+  await chat.getByRole("button", { name: "보내기" }).click();
   await expect(page.getByRole("log").getByText(text)).toBeVisible();
 }
 
+/** 그리드 블록(결정 사항·자료·AI 어시스턴트·기획안)의 제목을 눌러 그 블록의 안 읽음 배지를 지운다 */
 export async function tab(page: Page, label: string): Promise<void> {
-  await page.getByRole("tab", { name: new RegExp(label) }).click();
+  await page.getByRole("region", { name: label }).getByRole("heading", { name: label }).click();
 }
 
 /** 토론방(말풍선 영역) */

@@ -1,12 +1,13 @@
 "use client";
 
-// 토론 세션 화면: 상단 바(단계 진행바·이 단계 남은 시간·?·나가기) / 가운데 토론방 / 우측 4탭.
+// 토론 세션 화면: 상단 바(단계 진행바·이 단계 남은 시간·?·나가기) / 배경 레이어 위 3x2 블록 그리드.
+// 윗줄은 토론방(2칸)·결정 사항, 아랫줄은 자료·AI 어시스턴트·기획안. 윗줄이 더 높다.
 // 남은 시간과 오피스 시각을 한 줄에 쓰지 않는다(R7). 종료되면 입력을 모두 잠그고 [나가기]로 디브리핑.
 import { Dialog } from "@base-ui/react/dialog";
 import { CircleCheck, Clock3, HelpCircle, X } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Button, Tabs, Wordmark, cn } from "@/components/ui";
+import { Button, Wordmark, cn } from "@/components/ui";
 import { resolutionLabel } from "@/lib/resolution";
 
 import { ChatRoom } from "./chat";
@@ -102,6 +103,48 @@ function HelpButton({ snap }: { snap: StateSnapshot }) {
   );
 }
 
+/** 그리드 한 칸. 누르거나 포커스가 들어오면 그 블록의 안 읽음 배지를 지운다(onActivate) */
+function Block({
+  id,
+  title,
+  count,
+  onActivate,
+  className,
+  children,
+}: {
+  id: PanelTab;
+  title: string;
+  count?: number;
+  onActivate: (id: PanelTab) => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      aria-label={title}
+      onPointerDown={() => onActivate(id)}
+      onFocusCapture={() => onActivate(id)}
+      className={cn(
+        "flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-surface",
+        className,
+      )}
+    >
+      <header className="flex shrink-0 items-center gap-1.5 border-b border-line px-4 py-2.5">
+        <h2 className="text-callout font-semibold">{title}</h2>
+        {!!count && (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-accent tabular-nums">
+            <span aria-hidden className="size-1.5 rounded-full bg-accent" />
+            {count}
+          </span>
+        )}
+      </header>
+      <div data-panel={id} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {children}
+      </div>
+    </section>
+  );
+}
+
 const ENDED_TEXT: Record<EndReason, string> = {
   submitted: "제출했어요. 세션이 끝났습니다.",
   timeout: "시간이 끝나 지금 상태로 제출됐어요.",
@@ -124,12 +167,10 @@ export function DebateView({
   const locked = !!view.ended || view.replaced;
   const remaining = view.ended ? null : phaseRemaining(view, now);
 
-  const tabs: { value: PanelTab; label: string; count?: number }[] = [
-    { value: "decisions", label: "결정 사항", count: view.badges.decisions },
-    { value: "materials", label: "자료", count: view.badges.materials },
-    { value: "assistant", label: "AI 어시스턴트" },
-    { value: "proposal", label: "기획안" },
-  ];
+  // 블록이 모두 보이므로 view.tab은 "마지막으로 만진 블록"이다. 같은 블록이면 다시 보내지 않는다
+  const activate = (id: PanelTab) => {
+    if (view.tab !== id) session.setTab(id);
+  };
 
   const panels: Record<PanelTab, ReactNode> = {
     decisions: (
@@ -165,7 +206,9 @@ export function DebateView({
   };
 
   return (
-    <div className="flex h-dvh min-w-[1024px] flex-col bg-canvas">
+    <div className="relative isolate flex h-dvh min-w-[1024px] flex-col bg-canvas">
+      {/* 배경은 블록과 따로 둔 레이어다. 무늬를 바꿀 때는 globals.css의 .debate-backdrop만 고친다 */}
+      <div aria-hidden className="debate-backdrop pointer-events-none absolute inset-0 -z-10" />
       <header className="vibrancy sticky top-0 z-30 flex h-13 shrink-0 items-center gap-6 border-b border-line px-5">
         <Wordmark className="h-4" />
         <PhaseBar snap={snap} />
@@ -186,38 +229,30 @@ export function DebateView({
           <HelpButton snap={snap} />
         </div>
       </header>
-      <div className="flex min-h-0 flex-1">
-        <ChatRoom
-          snap={snap}
-          pending={view.pending}
-          typing={typingSeats(view)}
-          locked={locked}
-          onSend={session.sendMessage}
-          onTyping={session.sendTyping}
-        />
-        <aside
-          className="flex w-[38%] max-w-[520px] min-w-[360px] shrink-0 flex-col border-l border-line bg-surface"
-          aria-label="우측 패널"
-        >
-          {/* 탭을 바꿔도 각 탭의 스크롤·입력 중 내용이 남도록 패널을 모두 둔 채 숨긴다(keepMounted) */}
-          <Tabs
-            variant="segmented"
-            className="min-h-0 flex-1"
-            panelClassName="flex flex-col overflow-hidden"
-            keepMounted
-            value={view.tab}
-            onValueChange={(value) => session.setTab(value as PanelTab)}
-            items={tabs.map((tab) => ({
-              ...tab,
-              content: (
-                <div data-panel={tab.value} className="min-h-0 flex-1 overflow-y-auto">
-                  {panels[tab.value]}
-                </div>
-              ),
-            }))}
+      <main className="grid min-h-0 flex-1 grid-cols-3 grid-rows-[minmax(0,1.7fr)_minmax(0,1fr)] gap-3 p-3">
+        <div className="col-span-2 flex min-h-0 min-w-0 overflow-hidden rounded-xl border border-line">
+          <ChatRoom
+            snap={snap}
+            pending={view.pending}
+            typing={typingSeats(view)}
+            locked={locked}
+            onSend={session.sendMessage}
+            onTyping={session.sendTyping}
           />
-        </aside>
-      </div>
+        </div>
+        <Block id="decisions" title="결정 사항" count={view.badges.decisions} onActivate={activate}>
+          {panels.decisions}
+        </Block>
+        <Block id="materials" title="자료" count={view.badges.materials} onActivate={activate}>
+          {panels.materials}
+        </Block>
+        <Block id="assistant" title="AI 어시스턴트" onActivate={activate}>
+          {panels.assistant}
+        </Block>
+        <Block id="proposal" title="기획안" onActivate={activate}>
+          {panels.proposal}
+        </Block>
+      </main>
       {view.replaced && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="flex max-w-sm flex-col gap-2 rounded-xl bg-surface p-6 shadow-[var(--shadow-float)]">

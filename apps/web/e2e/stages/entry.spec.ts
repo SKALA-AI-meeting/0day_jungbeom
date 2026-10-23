@@ -30,7 +30,7 @@ test("입장 → 동의 → 대기(참여자) → 시작", async ({ page }) => {
   await page.getByRole("button", { name: "시작하기" }).click();
 
   await expect(room(page)).toBeVisible();
-  await expect(page.getByRole("tab", { name: /결정 사항/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: "결정 사항" })).toBeVisible();
   await shot(page, "entry", "04-시작");
   const session = await internalGet<{ status: string; display_name: string; phase: string }>(
     s.sessionId,
